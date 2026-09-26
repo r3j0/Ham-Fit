@@ -1,0 +1,425 @@
+.shell {
+  background: var(--canvas);
+}
+.content {
+  gap: 24px;
+}
+.hero {
+  display: grid;
+  gap: 14px;
+  padding: 20px;
+  border-radius: var(--radius-hero);
+  background: var(--navy);
+  color: var(--surface);
+}
+.eyebrow {
+  color: var(--tint);
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: 0.1em;
+}
+.badge {
+  padding: 5px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--navy);
+  font-size: 12px;
+  font-weight: 700;
+}
+.hero h2 {
+  color: inherit;
+  font-size: 26px;
+  line-height: 1.5;
+  letter-spacing: -0.04em;
+}
+.hero > p {
+  font-size: 14px;
+}
+.heroGoal {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  margin-top: 4px;
+}
+.heroTrack {
+  height: 6px;
+  margin-top: -8px;
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  opacity: 0.3;
+}
+.start {
+  background: var(--surface);
+  color: var(--navy);
+}
+.start:hover {
+  background: var(--tint);
+}
+.start:active {
+  background: var(--border);
+}
+.sectionHeading {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.sectionHeading h2 {
+  font-size: 18px;
+}
+.sectionHeading > span,
+.focus {
+  font-size: 12px;
+  color: var(--muted);
+}
+.exerciseList,
+.results {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.exerciseList {
+  display: grid;
+  gap: 12px;
+}
+.exerciseCard {
+  background: var(--surface);
+  border-radius: var(--radius-card);
+  padding: 16px;
+}
+.exerciseRow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.number {
+  color: var(--sky);
+  font-size: 24px;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+.exerciseRow h3 {
+  font-size: 19px;
+  margin-top: 4px;
+}
+.exerciseRow > p {
+  margin-left: auto;
+  display: grid;
+  gap: 3px;
+  text-align: right;
+  white-space: nowrap;
+}
+.exerciseRow strong {
+  font-size: 18px;
+  color: var(--navy);
+}
+.exerciseRow p span {
+  font-size: 13px;
+  color: var(--muted);
+}
+.guide summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  cursor: pointer;
+  list-style: none;
+}
+.guide summary::-webkit-details-marker {
+  display: none;
+}
+.guide[open] summary svg {
+  transform: rotate(180deg);
+}
+.guide summary:hover {
+  color: var(--navy);
+}
+.guide ol {
+  padding-left: 22px;
+  margin: 8px 0;
+  display: grid;
+  gap: 8px;
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--text-secondary);
+}
+.exerciseCard .guide {
+  margin-top: 12px;
+  border-top: 1px solid var(--border);
+  padding-top: 4px;
+}
+.note {
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.85;
+}
+.assignment {
+  display: grid;
+  gap: 10px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+.assignment h3 {
+  overflow-wrap: anywhere;
+}
+.recordLink {
+  min-height: 44px;
+  display: grid;
+  place-items: center;
+}
+.progress {
+  display: grid;
+  gap: 10px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+.progress progress {
+  appearance: none;
+  border: 0;
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+  width: 100%;
+  height: 6px;
+  background: var(--border);
+  color: var(--sky);
+}
+.progress progress::-webkit-progress-bar {
+  background: var(--border);
+}
+.progress progress::-webkit-progress-value {
+  background: var(--sky);
+}
+.progress progress::-moz-progress-bar {
+  background: var(--sky);
+}
+.steps {
+  display: flex;
+  gap: 12px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+.steps li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-height: 32px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.steps li > span {
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  background: var(--border);
+  font-size: 12px;
+}
+.steps li[aria-current] {
+  color: var(--navy);
+  font-weight: 750;
+}
+.steps li[aria-current] > span {
+  color: var(--surface);
+  background: var(--sky);
+}
+.stage {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 24px 20px;
+  border-radius: var(--radius-hero);
+  background: var(--surface);
+}
+.stageHeading {
+  text-align: center;
+}
+.stageHeading h2 {
+  font-size: 30px;
+  margin: 4px 0 10px;
+}
+.stageHeading > p {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+.stageHeading strong {
+  color: var(--navy);
+  font-size: 20px;
+}
+.stageHeading p > span {
+  padding: 4px 9px;
+  border-radius: var(--radius-pill);
+  background: var(--tint);
+  color: var(--navy);
+  font-size: 13px;
+}
+.phase {
+  text-align: center;
+  font-size: 15px;
+  font-weight: 650;
+  color: var(--navy);
+}
+.stage :global(.timer-ring) {
+  width: min(200px, 100%);
+}
+.stageHint {
+  text-align: center;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.8;
+}
+.controls {
+  display: grid;
+  gap: 10px;
+}
+.readyIcon {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 16px;
+  align-self: center;
+  width: min(200px, 100%);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  color: var(--sky);
+  background: var(--tint);
+}
+.readyIcon span {
+  font-size: 14px;
+  color: var(--navy);
+}
+.completionHero {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  gap: 14px;
+  padding: 24px 0 8px;
+}
+.completionIcon {
+  display: grid;
+  place-items: center;
+  width: 92px;
+  height: 92px;
+  border-radius: 50%;
+  background: var(--tint);
+  color: var(--sky);
+  margin-bottom: 12px;
+}
+.completionHero h2 {
+  font-size: 27px;
+}
+.completionHero p {
+  font-size: 14px;
+  color: var(--muted);
+}
+.summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  margin: 0;
+  padding: 24px 12px;
+  background: var(--surface);
+  border-radius: var(--radius-card);
+  text-align: center;
+}
+.summary dt {
+  font-size: 12px;
+  color: var(--muted);
+}
+.summary dd {
+  margin: 8px 0 0;
+  color: var(--navy);
+  font-size: 28px;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+.summary small {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+}
+.results li {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  padding: 16px 4px;
+}
+.results li + li {
+  border-top: 1px solid var(--border);
+}
+.results p {
+  color: var(--muted);
+  font-size: 13px;
+  margin-top: 4px;
+}
+.doneIcon,
+.skippedIcon {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--tint);
+  color: var(--sky);
+}
+.skippedIcon {
+  background: var(--border);
+  color: var(--muted);
+}
+@media (max-width: 359px) {
+  .hero {
+    padding: 20px;
+  }
+  .hero h2 {
+    font-size: 25px;
+  }
+  .exerciseCard {
+    padding: 16px;
+  }
+  .exerciseRow {
+    gap: 10px;
+  }
+  .stage {
+    padding: 20px 16px;
+  }
+}
+@media (max-height: 760px) {
+  .stage {
+    gap: 12px;
+  }
+  .stage :global(.timer-ring),
+  .readyIcon {
+    width: min(156px, 100%);
+  }
+}
+
+.session :global(.page-header) {
+  min-height: 64px;
+  padding-block: 8px;
+}
+.session .content {
+  padding-top: 12px;
+  gap: 16px;
+}
+@media (max-height: 760px) {
+  .stage[data-phase="active"] .controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .stage[data-phase="active"] .controls button {
+    padding-inline: 8px;
+    gap: 6px;
+    font-size: 14px;
+  }
+  .stage[data-phase="active"] .controls button:only-child {
+    grid-column: 1 / -1;
+  }
+}

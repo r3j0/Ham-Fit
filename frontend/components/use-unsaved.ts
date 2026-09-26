@@ -1,6 +1,9 @@
 "use client";
 import { useEffect, useRef } from "react";
-export function useUnsaved(active: boolean) {
+export function useUnsaved(
+  active: boolean,
+  message = "저장하지 않은 입력이 있어요. 이 화면을 나갈까요?",
+) {
   const saved = useRef(false);
   useEffect(() => {
     if (!active) return;
@@ -22,7 +25,7 @@ export function useUnsaved(active: boolean) {
         target.getAttribute("href")?.startsWith("#")
       )
         return;
-      if (!window.confirm("저장하지 않은 입력이 있어요. 이 화면을 나갈까요?")) {
+      if (!window.confirm(message)) {
         event.preventDefault();
         event.stopPropagation();
       }
@@ -33,6 +36,6 @@ export function useUnsaved(active: boolean) {
       window.removeEventListener("beforeunload", before);
       document.removeEventListener("click", click, true);
     };
-  }, [active]);
+  }, [active, message]);
   return saved;
 }

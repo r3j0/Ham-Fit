@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { House, UserRound } from "lucide-react";
+import { House, UserRound, Dumbbell } from "lucide-react";
 
 export function BottomNavigation() {
   const pathname = usePathname();
@@ -14,6 +14,12 @@ export function BottomNavigation() {
       : "";
   const tabs = [
     { href: "/", label: "메인", icon: House, active: pathname === "/" },
+    {
+      href: "/workout",
+      label: "운동",
+      icon: Dumbbell,
+      active: pathname === "/workout",
+    },
     {
       href: "/account",
       label: "내 프로필",
