@@ -1,11 +1,7 @@
-export type WorkoutSegment = {
-  shortLabel?: string;
-  id: string;
-  title: string;
-  durationSeconds: number | null;
-  cadence?: { intervalMs: number; cues: string[] };
-  canFinish?: boolean;
-};
+import { advanceWorkoutTimer, type WorkoutSegment } from "./workout-timing.ts";
+export { workoutClock } from "./workout-timing.ts";
+export type { WorkoutSegment } from "./workout-timing.ts";
+
 export type WorkoutStep = {
   id: string;
   title: string;
@@ -81,14 +77,6 @@ export function resultValue(step: WorkoutStep, raw: string) {
     ? String(BigInt(value) * BigInt(step.result.multiplier))
     : value;
 }
-export function workoutClock(state: WorkoutState, now: number) {
-  const delta =
-    state.runningSince === null ? 0 : Math.max(0, now - state.runningSince);
-  return {
-    remainingMs: Math.max(0, state.remainingMs - delta),
-    elapsedMs: state.elapsedMs + delta,
-  };
-}
 export function interruptedWorkout(state: WorkoutState): WorkoutState {
   return state.phase === "active" || state.phase === "countdown"
     ? {
@@ -145,50 +133,17 @@ export function advanceWorkout(
         draftValue: "",
       };
     case "tick": {
-      if (
-        state.runningSince === null ||
-        !["countdown", "active"].includes(state.phase)
-      )
-        return state;
-      let next = { ...state };
-      let delta = Math.max(0, action.now - state.runningSince);
-      // Consume elapsed time across linked recovery/pulse stages without relying
-      // on callback frequency. Visibility interruptions invalidate the attempt.
-      for (;;) {
-        const segment = step.segments[next.segmentIndex];
-        if (next.phase === "active" && segment.durationSeconds === null)
-          return {
-            ...next,
-            elapsedMs: next.elapsedMs + delta,
-            runningSince: action.now,
-          };
-        if (delta < next.remainingMs)
-          return {
-            ...next,
-            remainingMs: next.remainingMs - delta,
-            elapsedMs: next.elapsedMs + delta,
-            runningSince: action.now,
-          };
-        delta -= next.remainingMs;
-        if (next.phase === "countdown") {
-          next = { ...next, phase: "active", segmentIndex: 0 };
-        } else if (next.segmentIndex + 1 < step.segments.length) {
-          next = { ...next, segmentIndex: next.segmentIndex + 1 };
-        } else
-          return {
-            ...next,
-            phase: "record",
-            remainingMs: 0,
-            elapsedMs: 0,
-            runningSince: null,
-          };
-        const upcoming = step.segments[next.segmentIndex];
-        next = {
-          ...next,
-          remainingMs: (upcoming.durationSeconds ?? 0) * 1000,
-          elapsedMs: 0,
-        };
-      }
+      if (state.phase !== "countdown" && state.phase !== "active") return state;
+      const timer = advanceWorkoutTimer(
+        step.segments,
+        { ...state, phase: state.phase },
+        action.now,
+      );
+      return {
+        ...state,
+        ...timer,
+        phase: timer.phase === "finished" ? "record" : timer.phase,
+      };
     }
     case "interrupt":
       return interruptedWorkout(state);

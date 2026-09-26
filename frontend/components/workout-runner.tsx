@@ -18,6 +18,11 @@ import {
   type WorkoutAction,
 } from "@/lib/workout";
 import { FieldError, Notice } from "./ui";
+import {
+  useWorkoutTicker,
+  useWorkoutSound,
+  WorkoutTimer,
+} from "./workout-timer";
 
 type Props = {
   definition: WorkoutDefinition;
@@ -25,8 +30,6 @@ type Props = {
   dispatch: (action: WorkoutAction) => void;
   disabled?: boolean;
 };
-const clock = (ms: number) =>
-  `${Math.floor(Math.ceil(ms / 1000) / 60)}:${String(Math.ceil(ms / 1000) % 60).padStart(2, "0")}`;
 export function WorkoutRunner({
   definition,
   state,
@@ -34,10 +37,6 @@ export function WorkoutRunner({
   disabled = false,
 }: Props) {
   const [error, setError] = useState("");
-  const [sound, setSound] = useState(false);
-  const [audioError, setAudioError] = useState("");
-  const audio = useRef<AudioContext | null>(null);
-  const lastBeat = useRef("");
   const title = useRef<HTMLHeadingElement>(null);
   const step = definition.steps[state.index];
   const segment = step.segments[state.segmentIndex];
@@ -46,77 +45,11 @@ export function WorkoutRunner({
   useEffect(() => {
     title.current?.focus({ preventScroll: true });
   }, [state.index, reviewing]);
-  useEffect(() => {
-    if (!running) return;
-    const timer = window.setInterval(
-      () => dispatch({ type: "tick", now: Date.now() }),
-      100,
-    );
-    const interrupt = () => {
-      if (document.hidden) dispatch({ type: "interrupt" });
-    };
-    const pageHide = () => dispatch({ type: "interrupt" });
-    document.addEventListener("visibilitychange", interrupt);
-    window.addEventListener("pagehide", pageHide);
-    return () => {
-      clearInterval(timer);
-      dispatch({ type: "interrupt" });
-      document.removeEventListener("visibilitychange", interrupt);
-      window.removeEventListener("pagehide", pageHide);
-    };
-  }, [running, dispatch]);
-  const beat =
-    state.phase === "countdown"
-      ? Math.floor(state.elapsedMs / 1000)
-      : segment?.cadence
-        ? Math.floor(state.elapsedMs / segment.cadence.intervalMs)
-        : 0;
-  const cue =
-    state.phase === "active" && segment?.cadence
-      ? segment.cadence.cues[beat % segment.cadence.cues.length]
-      : "";
-  useEffect(() => {
-    const id = `${state.index}:${state.phase}:${state.segmentIndex}:${beat}`;
-    if (lastBeat.current === id) return;
-    lastBeat.current = id;
-    if (
-      !sound ||
-      !audio.current ||
-      !["countdown", "active", "record"].includes(state.phase)
-    )
-      return;
-    const context = audio.current;
-    if (context.state !== "running") return;
-    const tone = context.createOscillator(),
-      gain = context.createGain();
-    tone.frequency.value =
-      state.phase === "record" ? 880 : beat % 4 === 0 ? 660 : 440;
-    gain.gain.setValueAtTime(0.12, context.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.12);
-    tone.connect(gain).connect(context.destination);
-    tone.start();
-    tone.stop(context.currentTime + 0.13);
-  }, [sound, state.index, state.phase, state.segmentIndex, beat]);
-  useEffect(
-    () => () => {
-      void audio.current?.close();
-    },
-    [],
+  useWorkoutTicker(running, dispatch);
+  const { sound, audioError, toggleSound, cue } = useWorkoutSound(
+    state,
+    segment,
   );
-  async function toggleSound() {
-    if (sound) {
-      setSound(false);
-      return;
-    }
-    try {
-      audio.current ??= new AudioContext();
-      await audio.current.resume();
-      setSound(true);
-      setAudioError("");
-    } catch {
-      setAudioError("소리를 켤 수 없어요. 화면의 박자 안내를 따라 주세요.");
-    }
-  }
   function act(action: WorkoutAction) {
     setError("");
     dispatch(action);
@@ -157,9 +90,6 @@ export function WorkoutRunner({
         </div>
       </section>
     );
-  const total =
-    state.phase === "countdown" ? 3000 : (segment?.durationSeconds ?? 0) * 1000;
-  const progress = total ? 1 - state.remainingMs / total : 1;
   return (
     <div className="stack">
       <ol className="assessment-steps" aria-label="측정 순서">
@@ -211,42 +141,12 @@ export function WorkoutRunner({
                 ? "자세를 준비해 주세요"
                 : segment.title}
             </p>
-            <div
-              className="timer-ring"
-              style={
-                {
-                  "--timer-progress": `${Math.round(progress * 100)}%`,
-                } as React.CSSProperties
-              }
-            >
-              <div
-                role="timer"
-                aria-label={
-                  state.phase === "countdown"
-                    ? "시작 카운트다운"
-                    : segment.durationSeconds === null
-                      ? "경과 시간"
-                      : "남은 시간"
-                }
-              >
-                <strong>
-                  {state.phase === "countdown"
-                    ? Math.ceil(state.remainingMs / 1000)
-                    : clock(
-                        segment.durationSeconds === null
-                          ? state.elapsedMs
-                          : state.remainingMs,
-                      )}
-                </strong>
-                <span>
-                  {state.phase === "countdown"
-                    ? "곧 시작해요"
-                    : segment.durationSeconds === null
-                      ? "경과 시간"
-                      : "남은 시간"}
-                </span>
-              </div>
-            </div>
+            <WorkoutTimer
+              phase={state.phase === "countdown" ? "countdown" : "active"}
+              remainingMs={state.remainingMs}
+              elapsedMs={state.elapsedMs}
+              segment={segment}
+            />
             {cue && (
               <div className="cadence-cue">
                 <b>{cue}</b>
