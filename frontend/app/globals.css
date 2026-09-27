@@ -343,9 +343,6 @@ h3 {
 .bottom-tab[aria-current] {
   color: var(--navy);
 }
-.bottom-tab:hover {
-  background: var(--tint);
-}
 .bottom-tab-icon {
   display: grid;
   place-items: center;
