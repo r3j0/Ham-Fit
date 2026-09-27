@@ -1,28 +1,33 @@
 # 모두채력 프론트엔드
 
-모바일 중심의 국민체력100 측정 기록 웹앱입니다. 이메일 가입·로그인·로그아웃, 내 계정 조회, 본인 측정 기록의 생성·목록·상세·수정·삭제를 실제 백엔드에 연결합니다. 기본 로그인·가입 후 시작 화면은 메인(`/`)이며 본문은 비워 두었습니다. 하단의 `메인 / 내 프로필` 탭으로 이동하고, 내 프로필(`/account`)에서 `내 측정 기록`을 열 수 있습니다. 기존 화면에서 인증이 만료되어 다시 로그인하면 작성하던 화면으로 돌아갑니다.
+모바일 중심의 국민체력100 측정·운동 기록 웹앱입니다. 이메일 가입·로그인·로그아웃, 생년월일 프로필, 본인 측정 기록 CRUD, 하루 한 영상 추천, 운동 재생·이어하기·명시적 완료와 이력을 실제 백엔드에 연결합니다. 메인(`/`)은 오늘 운동, 내 프로필(`/account`)은 생년월일과 측정·운동 이력의 진입점입니다. 하단 `메인 / 내 프로필` 구조를 유지합니다. 인증 만료 후 같은 계정으로 로그인하면 측정 또는 운동 화면으로 돌아갑니다.
 
-승인된 시안의 색상·서체·2단계 입력 흐름을 적용했습니다. 캐릭터는 `components/ui.tsx`의 `ArtworkSlot`으로 위치만 잡고, 로고는 임시 서비스명을 텍스트로 표시합니다. 실제 이미지 확정 시 이 자리를 교체하면 됩니다. 운동 추천·그룹·코인·캐릭터 성장·OCR·등급 자동 계산은 후속 범위입니다.
+승인된 시안의 색상·서체·2단계 측정 입력 흐름을 적용했습니다. 캐릭터는 `components/ui.tsx`의 `ArtworkSlot`으로 위치만 잡고, 로고는 임시 서비스명을 텍스트로 표시합니다. 실제 이미지 확정 시 이 자리를 교체하면 됩니다. 그룹·코인·캐릭터 성장·OCR 화면·등급 자동 계산 표시는 후속 범위입니다. 운동 기능의 계약과 검증 범위는 [운동 연동 문서](WORKOUTS.md)에 있습니다.
 
 ## 로컬 실행
 
 프론트와 백엔드 모두 Node.js 24.15 이상인 24 LTS 사용을 권장합니다. PostgreSQL과 인증·측정 API가 포함된 백엔드가 먼저 실행되어야 합니다.
 
-백엔드 변경이 아직 현재 브랜치에 합쳐지지 않았다면 저장소 루트에서 최신 `main`의 별도 체크아웃으로 실행할 수 있습니다. 해당 경로가 이미 있다면 새로 만들지 말고 기존 체크아웃의 커밋과 로컬 변경을 먼저 확인합니다.
+운동 기능은 백엔드 PR #9의 `8d09df968fdcdac9ba6a10639bce19b1fad27bbc` 계약을 사용합니다. 해당 PR이 아직 합쳐지지 않았다면 저장소 루트에서 별도 체크아웃으로 실행합니다. 해당 경로가 이미 있다면 새로 만들지 말고 기존 체크아웃의 커밋과 로컬 변경을 먼저 확인합니다.
 
 ```bash
-git fetch origin
-git worktree add --detach ../project-health-backend origin/main
+git fetch origin pull/9/head
+git worktree add --detach ../project-health-backend FETCH_HEAD
 cd ../project-health-backend/backend
 npm ci
 cp .env.example .env
 npm run db:local:start
 npm run auth:secret
 npm run db:migrate:deploy
+npm run build
+node scripts/recommendation-import-catalog.mjs
+node scripts/probe-workout-media.mjs data/recommendation/source/data-analysis/data/processed/workout_videos.json data/recommendation/source/data-analysis/data/processed/workout_videos.csv .local/recommendation/media-verification.json
 npm run start:dev
 ```
 
 로컬 PostgreSQL 실행 전 해당 백엔드의 README에 안내된 PostgreSQL 설치 조건을 확인하세요. 백엔드의 `FRONTEND_ORIGIN`은 `http://localhost:3000`으로 설정합니다. 기존 `.env`가 있으면 복사로 덮어쓰지 않습니다. 운영 데이터베이스를 로컬 검증에 사용하지 않습니다.
+
+영상 검증 파일은 Git에 포함되지 않습니다. 파일이 없으면 추천은 가능해도 영상은 재생 불가로 표시됩니다. 검증 파일 갱신 후에는 백엔드를 재시작합니다. 원본 소스가 줄바꿈 변환 등으로 변경되면 검사기는 고정 해시 불일치로 거절하므로 원본 바이트를 유지해야 합니다.
 
 다른 터미널에서 이 저장소의 `frontend/`로 이동합니다.
 
