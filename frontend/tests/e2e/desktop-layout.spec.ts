@@ -61,8 +61,12 @@ async function noOverflow(page: Page) {
   const nav = page.getByRole("navigation", { name: "하단 메뉴" });
   if (await nav.isVisible()) {
     const box = (await nav.boundingBox())!;
-    expect(box.y).toBe(0);
-    expect(main.y).toBeGreaterThanOrEqual(box.y + box.height);
+    expect(box.y + box.height).toBe(page.viewportSize()!.height);
+    expect(box.y).toBeGreaterThan(main.y);
+    const reserved = await page
+      .getByRole("main")
+      .evaluate((el) => parseFloat(getComputedStyle(el).paddingBottom));
+    expect(reserved).toBeGreaterThanOrEqual(box.height);
   }
 }
 

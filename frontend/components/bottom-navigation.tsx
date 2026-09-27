@@ -47,13 +47,15 @@ export function BottomNavigation() {
         <Link
           key={href}
           href={href}
-          className="bottom-tab"
+          className={`bottom-tab${href === "/workout" ? " bottom-tab-workout" : ""}`}
+          aria-label={label}
           aria-current={
             active ? (pathname === href ? "page" : "location") : undefined
           }
         >
-          <Icon size={22} aria-hidden="true" />
-          <span>{label}</span>
+          <span className="bottom-tab-icon" aria-hidden="true">
+            <Icon size={href === "/workout" ? 28 : 22} />
+          </span>
         </Link>
       ))}
     </nav>

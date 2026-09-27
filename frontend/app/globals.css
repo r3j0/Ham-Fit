@@ -334,23 +334,34 @@ h3 {
 }
 .bottom-tab {
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
   min-height: 44px;
   border-radius: var(--radius-control);
   color: var(--muted);
-  font-size: 13px;
-  line-height: 1.4;
-  font-weight: 550;
 }
 .bottom-tab[aria-current] {
   color: var(--navy);
-  font-weight: 750;
 }
 .bottom-tab:hover {
   background: var(--tint);
+}
+.bottom-tab-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+}
+.bottom-tab-workout .bottom-tab-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #e6f5fa;
+  color: #126580;
+}
+.bottom-tab-workout[aria-current] .bottom-tab-icon {
+  background: #1b99c4;
+  color: #062b3a;
 }
 .page-header {
   min-height: 80px;
@@ -1104,9 +1115,6 @@ fieldset:disabled select {
   display: flow-root;
   background: var(--canvas);
 }
-.kspo-sky-theme .bottom-tab[aria-current] > svg {
-  color: var(--sky);
-}
 /* KSPO Orange tokens for the profile screen. */
 .kspo-orange-theme {
   --navy: #a64900;
@@ -1145,7 +1153,7 @@ fieldset:disabled select {
   background: var(--tint);
 }
 .account-shell .menu-row > svg,
-.kspo-orange-theme .bottom-tab[aria-current] > svg {
+.kspo-orange-theme .bottom-tab[aria-current] .bottom-tab-icon {
   color: var(--accent);
 }
 .account-shell .radar-shape {
@@ -1634,7 +1642,6 @@ fieldset:disabled select {
   :root {
     --desktop-page-width: 1120px;
     --desktop-page-gutter: 40px;
-    --desktop-navigation-height: 64px;
   }
   .app-shell {
     width: calc(100% - 64px);
@@ -1642,35 +1649,12 @@ fieldset:disabled select {
     margin: 32px auto;
     min-height: calc(100dvh - 64px);
   }
-  .authenticated-app {
-    --bottom-navigation-height: 0px;
-    padding-top: var(--desktop-navigation-height);
-  }
-  .authenticated-app .app-shell {
-    min-height: calc(100dvh - var(--desktop-navigation-height) - 64px);
-    padding-bottom: 0;
-  }
-  .authenticated-app:has(:is(.onboarding-shell, .assessment-shell)) {
-    padding-top: 0;
-  }
-  .authenticated-app :is(.onboarding-shell, .assessment-shell) {
-    min-height: calc(100dvh - 64px);
-  }
   .bottom-navigation {
-    inset: 0 0 auto;
-    width: 100%;
     max-width: none;
-    height: var(--desktop-navigation-height);
     grid-template-columns: repeat(3, minmax(140px, 180px));
     justify-content: center;
     gap: 16px;
-    padding: 8px 32px;
-    box-shadow: inset 0 -1px 0 var(--border);
-  }
-  .bottom-tab {
-    flex-direction: row;
-    gap: 8px;
-    font-size: 15px;
+    padding-inline: 32px;
   }
   .page-header {
     min-height: 96px;
@@ -1824,7 +1808,7 @@ fieldset:disabled select {
     align-content: center;
     align-items: start;
     gap: 32px 48px;
-    min-height: calc(100dvh - var(--desktop-navigation-height) - 64px);
+    min-height: calc(100dvh - var(--bottom-navigation-height) - 64px);
   }
   .home-content > .home-intro,
   .home-content > .loading,

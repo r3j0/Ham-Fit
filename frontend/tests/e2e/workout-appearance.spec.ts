@@ -153,9 +153,9 @@ test("운동 하위 경로와 메뉴에 Skyblue를 적용하고 메인과 프로
     if (path.includes("mode=assessment")) {
       await expect(nav).toBeHidden();
     } else {
-      await expect(nav.locator("a[aria-current] > svg")).toHaveCSS(
+      await expect(nav.locator("a[aria-current] svg")).toHaveCSS(
         "color",
-        "rgb(27, 153, 196)",
+        "rgb(6, 43, 58)",
       );
     }
     if (path === "/workout" || path.includes("/history/")) {
@@ -171,7 +171,7 @@ test("운동 하위 경로와 메뉴에 Skyblue를 적용하고 메인과 프로
     .click();
   await expect(page.locator("main")).toHaveCSS("color", "rgb(51, 37, 28)");
   await expect(
-    page.getByRole("navigation").locator("a[aria-current] > svg"),
+    page.getByRole("navigation").locator("a[aria-current] svg"),
   ).toHaveCSS("color", "rgb(255, 127, 0)");
   await page
     .getByRole("navigation")
