@@ -48,12 +48,14 @@ export function Header({
   back,
   onBack,
   backDisabled = false,
+  showBrand = true,
   right,
 }: {
   title: string;
   back?: string;
   onBack?: () => void;
   backDisabled?: boolean;
+  showBrand?: boolean;
   right?: React.ReactNode;
 }) {
   return (
@@ -72,10 +74,12 @@ export function Header({
         <Link className="icon-button" href={back} aria-label="이전 화면">
           <ArrowLeft size={22} />
         </Link>
-      ) : (
+      ) : showBrand ? (
         <Link className="mini-brand" href="/" aria-label="모두채력 메인">
           모두<span>채력</span>
         </Link>
+      ) : (
+        <span aria-hidden="true" />
       )}
       <h1>{title}</h1>
       <div className="header-right">{right}</div>

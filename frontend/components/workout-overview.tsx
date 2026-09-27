@@ -13,6 +13,7 @@ import {
   Volume2,
   VolumeX,
 } from "lucide-react";
+import { WorkoutCalendar } from "./workout-calendar";
 import { useUserProfile } from "./user-profile-provider";
 import { Dialog, Header, Loading, Notice, Shell } from "./ui";
 import { useUnsaved } from "./use-unsaved";
@@ -45,7 +46,7 @@ export function WorkoutOverview({
   if (unsupported)
     return (
       <Shell>
-        <Header title="운동" />
+        <Header title="운동" showBrand={false} />
         <div className="content stack">
           <Notice>지원하지 않는 운동 과정이에요.</Notice>
           <Link className="button secondary" href={assessmentHref}>
@@ -122,6 +123,10 @@ function RoutineWorkout({ routine }: { routine: WorkoutRoutine }) {
     if (started) heading.current?.focus({ preventScroll: true });
   }, [started, state.index, state.phase]);
 
+  useEffect(() => {
+    if (started) window.scrollTo({ top: 0, behavior: "instant" });
+  }, [started]);
+
   function act(type: RoutineAction["type"]) {
     dispatch({ type, now: Date.now() });
   }
@@ -133,8 +138,9 @@ function RoutineWorkout({ routine }: { routine: WorkoutRoutine }) {
   if (!started)
     return (
       <Shell className={styles.shell}>
-        <Header title="오늘의 운동" />
+        <Header title="운동" showBrand={false} />
         <div className={`content stack ${styles.content}`}>
+          <WorkoutCalendar />
           <section
             className={styles.hero}
             aria-labelledby="today-workout-title"
