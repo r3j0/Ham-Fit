@@ -9,7 +9,6 @@ import { logout } from "@/lib/session";
 import { errorMessage } from "@/lib/http";
 import { useUserProfile } from "./user-profile-provider";
 import { Dialog, Loading, Notice, Shell } from "./ui";
-import { BirthProfileForm } from "./birth-profile-form";
 export function Account() {
   const { data: user, error: profileError, reload } = useUserProfile();
   const [logoutError, setLogoutError] = useState(""),
@@ -97,7 +96,6 @@ export function Account() {
             <ChevronRight size={20} />
           </Link>
         </div>
-        <BirthProfileForm />
         <button
           className="button secondary"
           onClick={() => setConfirm(true)}

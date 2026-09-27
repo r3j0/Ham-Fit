@@ -6,7 +6,7 @@ export function WorkoutError({ error }: { error: unknown }) {
   const help = {
     DATE_OF_BIRTH_REQUIRED: [
       "운동 추천을 받으려면 생년월일을 입력해 주세요.",
-      "/account",
+      "/account/settings",
       "생년월일 입력하기",
     ],
     MEASUREMENT_REQUIRED: [
@@ -16,7 +16,7 @@ export function WorkoutError({ error }: { error: unknown }) {
     ],
     AGE_UNSUPPORTED: [
       "운동 추천은 현재 만 13~64세를 지원해요.",
-      "/account",
+      "/account/settings",
       "생년월일 확인하기",
     ],
   }[code ?? ""];

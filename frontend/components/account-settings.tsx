@@ -9,6 +9,7 @@ import { ApiError, errorMessage } from "@/lib/http";
 import { Dialog, FieldError, Header, Notice, Shell, SubmitLabel } from "./ui";
 import { useOperationScope } from "./use-operation-scope";
 import { useUnsaved } from "./use-unsaved";
+import { BirthProfileForm } from "./birth-profile-form";
 
 type Mode = "email" | "password" | "delete";
 const titles: Record<Mode, string> = {
@@ -17,6 +18,7 @@ const titles: Record<Mode, string> = {
   delete: "회원 탈퇴",
 };
 export function AccountSettings() {
+  const [birthDirty, setBirthDirty] = useState(false);
   const [mode, setMode] = useState<Mode>("email");
   const [currentPassword, setCurrentPassword] = useState("");
   const [email, setEmail] = useState("");
@@ -32,7 +34,7 @@ export function AccountSettings() {
   const guard = useRef(false);
   const beginOperation = useOperationScope();
   const savedRef = useUnsaved(
-    !!(email || currentPassword || newPassword || confirmation),
+    birthDirty || !!(email || currentPassword || newPassword || confirmation),
   );
   useEffect(() => {
     if (!remaining) return;
@@ -105,6 +107,7 @@ export function AccountSettings() {
     <Shell className="settings-shell">
       <Header title="계정 설정" back="/account" />
       <div className="content stack">
+        <BirthProfileForm onDirtyChange={setBirthDirty} />
         <div className="segmented" role="group" aria-label="설정 항목">
           {(Object.keys(titles) as Mode[]).map((item) => (
             <button
@@ -126,7 +129,7 @@ export function AccountSettings() {
               : "변경하면 모든 기기에서 로그아웃돼요. 변경된 정보로 다시 로그인해 주세요."}
           </p>
         </div>
-        <form className="stack" onSubmit={submit}>
+        <form className="stack" aria-label={titles[mode]} onSubmit={submit}>
           <div className="field">
             <label htmlFor="current-password">현재 비밀번호</label>
             <input

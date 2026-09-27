@@ -7,9 +7,12 @@ import { getBirthProfile, saveBirthProfile } from "@/lib/workouts";
 import type { BirthProfile } from "@/lib/workout-types";
 import { FieldError, Loading, Notice } from "./ui";
 import { useOperationScope } from "./use-operation-scope";
-import { useUnsaved } from "./use-unsaved";
 
-export function BirthProfileForm() {
+export function BirthProfileForm({
+  onDirtyChange,
+}: {
+  onDirtyChange: (dirty: boolean) => void;
+}) {
   const [profile, setProfile] = useState<BirthProfile | null>(null);
   const [date, setDate] = useState("");
   const [error, setError] = useState("");
@@ -20,7 +23,10 @@ export function BirthProfileForm() {
   const guard = useRef(false);
   const begin = useOperationScope();
   const dirty = !!profile && date !== (profile.dateOfBirth ?? "");
-  useUnsaved(dirty);
+  // Account settings guards both forms together so navigation prompts only once.
+  useEffect(() => {
+    onDirtyChange(dirty);
+  }, [dirty, onDirtyChange]);
   useEffect(() => {
     const controller = new AbortController();
     getBirthProfile(controller.signal)

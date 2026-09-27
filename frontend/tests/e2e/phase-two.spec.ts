@@ -433,10 +433,16 @@ test("중복 이메일과 요청 제한은 입력을 보존하고 재시도할 �
   await expect(page.getByLabel("새 이메일", { exact: true })).toHaveValue(
     owner.email,
   );
-  await expect(page.locator("form").getByRole("button")).toHaveText(
-    "이메일 변경",
-  );
-  await expect(page.locator("form").getByRole("button")).toBeEnabled();
+  await expect(
+    page
+      .getByRole("form", { name: "이메일 변경", exact: true })
+      .getByRole("button"),
+  ).toHaveText("이메일 변경");
+  await expect(
+    page
+      .getByRole("form", { name: "이메일 변경", exact: true })
+      .getByRole("button"),
+  ).toBeEnabled();
 });
 
 test("공통 사용자 상태를 화면 이동에서 공유하고 새로고침 후 복원한다", async ({

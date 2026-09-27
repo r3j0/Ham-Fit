@@ -235,12 +235,15 @@ test("가입 → 정확한 부분 저장 → 새로고침 → 수정 → 삭제 
   await openRecords(page);
   await expect(page.getByText("첫 기록을 기다리고 있어요")).toBeVisible();
 });
-test("생년월일을 가입 시 저장하고 프로필에서 수정·복원한다", async ({
+test("생년월일은 계정 설정에서 수정·복원하고 조회·저장 실패와 미저장 이탈을 처리한다", async ({
   page,
 }) => {
   await signup(page, "main");
   await page.getByRole("link", { name: "내 프로필", exact: true }).click();
   const input = page.getByLabel("생년월일 입력", { exact: true });
+  await expect(input).toHaveCount(0);
+  await page.getByRole("link", { name: "계정 설정", exact: true }).click();
+  await expect(page).toHaveURL(/\/account\/settings$/);
   await expect(input).toHaveValue("2000-02-29");
   await input.fill("1999-03-01");
   const saved = page.waitForResponse(
@@ -252,15 +255,45 @@ test("생년월일을 가입 시 저장하고 프로필에서 수정·복원한�
   await expect(page.getByText("생년월일을 저장했어요.")).toBeVisible();
   await page.reload();
   await expect(input).toHaveValue("1999-03-01");
+  let failRead = true;
   await page.route("**/users/me/profile", (route) =>
-    route.request().method() === "PATCH"
+    route.request().method() === "PATCH" || failRead
       ? failApi(route, 503)
       : route.continue(),
   );
+  await page.reload();
+  await expect(
+    page.getByRole("button", { name: "생년월일 다시 불러오기" }),
+  ).toBeVisible();
+  await expect(page.getByLabel("새 이메일", { exact: true })).toBeEnabled();
+  failRead = false;
+  await page.getByRole("button", { name: "생년월일 다시 불러오기" }).click();
+  await expect(input).toHaveValue("1999-03-01");
   await input.fill("1998-03-01");
   await page.getByRole("button", { name: "생년월일 저장" }).click();
   await expect(page.getByRole("alert")).toBeVisible();
   await expect(input).toHaveValue("1998-03-01");
+  await page
+    .getByLabel("새 이메일", { exact: true })
+    .fill("unsaved@example.test");
+  let prompts = 0;
+  const cancel = async (dialog: import("@playwright/test").Dialog) => {
+    prompts++;
+    await dialog.dismiss();
+  };
+  page.on("dialog", cancel);
+  await page.getByRole("link", { name: "이전 화면", exact: true }).click();
+  await expect(page).toHaveURL(/\/account\/settings$/);
+  expect(prompts).toBe(1);
+  await expect(input).toHaveValue("1998-03-01");
+  await expect(page.getByLabel("새 이메일", { exact: true })).toHaveValue(
+    "unsaved@example.test",
+  );
+  page.off("dialog", cancel);
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.getByRole("link", { name: "이전 화면", exact: true }).click();
+  await expect(page).toHaveURL(/\/account$/);
+  await expect(input).toHaveCount(0);
   await expect(
     page.getByRole("button", { name: "로그아웃", exact: true }),
   ).toBeEnabled();
