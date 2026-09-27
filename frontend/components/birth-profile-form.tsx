@@ -10,8 +10,10 @@ import { useOperationScope } from "./use-operation-scope";
 
 export function BirthProfileForm({
   onDirtyChange,
+  onBusyChange,
 }: {
   onDirtyChange: (dirty: boolean) => void;
+  onBusyChange: (busy: boolean) => void;
 }) {
   const [profile, setProfile] = useState<BirthProfile | null>(null);
   const [date, setDate] = useState("");
@@ -27,6 +29,9 @@ export function BirthProfileForm({
   useEffect(() => {
     onDirtyChange(dirty);
   }, [dirty, onDirtyChange]);
+  useEffect(() => {
+    onBusyChange(busy);
+  }, [busy, onBusyChange]);
   useEffect(() => {
     const controller = new AbortController();
     getBirthProfile(controller.signal)

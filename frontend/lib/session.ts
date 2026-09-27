@@ -181,6 +181,8 @@ export async function api<T>(path: string, options: ApiRequestOptions = {}) {
   if (!token) throw new ApiError(401, "로그인이 필요해요.");
   const changesProfile =
     (options.method?.toUpperCase() === "POST" && path === "/measurements") ||
+    (options.method?.toUpperCase() === "PATCH" &&
+      path === "/users/me/profile") ||
     (/^(PATCH|DELETE)$/i.test(options.method ?? "") &&
       /^\/measurements\/[^/]+$/.test(path));
   const send = async () => {

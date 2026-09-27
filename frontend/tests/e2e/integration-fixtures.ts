@@ -199,12 +199,13 @@ export async function installApi(
     if (path === "/auth/me")
       return send({
         ...testUser,
+        nickname: null,
         isOnboarded: !!record,
         currency: { balance: 0 },
         currentCurriculum: assignment,
       });
     if (path === "/users/me/profile")
-      return send({ dateOfBirth: null, currentAge: null });
+      return send({ dateOfBirth: null, currentAge: null, nickname: null });
     if (path === "/workouts/current") return send(testWorkout);
     if (path === "/workouts/history")
       return send({ items: [testWorkout], nextCursor: null });

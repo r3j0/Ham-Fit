@@ -481,7 +481,7 @@ test("legacy users are guided to a birth profile, measurement, or unsupported-ag
   await page.getByRole("link", { name: "오늘 운동 받으러 가기" }).click();
   await page.getByRole("button", { name: "오늘 운동 추천받기" }).click();
   await page.getByRole("link", { name: "생년월일 입력하기" }).click();
-  await expect(page).toHaveURL(/\/account\/settings$/);
+  await expect(page).toHaveURL(/\/account\/settings\?tab=birth$/);
   await page.getByLabel("생년월일 입력", { exact: true }).fill("2000-01-01");
   await saveBirthProfile(page);
   await page
@@ -497,6 +497,7 @@ test("legacy users are guided to a birth profile, measurement, or unsupported-ag
     .getByRole("link", { name: "내 프로필", exact: true })
     .click();
   await page.getByRole("link", { name: "계정 설정", exact: true }).click();
+  await page.getByRole("button", { name: "생년월일", exact: true }).click();
   await page.getByLabel("생년월일 입력", { exact: true }).fill("1950-01-01");
   await saveBirthProfile(page);
   await page
@@ -506,7 +507,7 @@ test("legacy users are guided to a birth profile, measurement, or unsupported-ag
   await page.getByRole("button", { name: "오늘 운동 추천받기" }).click();
   await expect(
     page.getByRole("link", { name: "생년월일 확인하기" }),
-  ).toHaveAttribute("href", "/account/settings");
+  ).toHaveAttribute("href", "/account/settings?tab=birth");
 });
 
 test("history retains its first page on failure and retries the same cursor without duplicates", async ({

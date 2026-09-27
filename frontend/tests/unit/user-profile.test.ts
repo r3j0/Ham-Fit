@@ -6,6 +6,7 @@ const profile = {
   email: "profile@example.test",
   created_at: "2026-09-27T00:00:00Z",
   updated_at: "2026-09-27T00:00:00Z",
+  nickname: null,
   isOnboarded: true,
   currency: { balance: 0 },
   currentCurriculum: null,
@@ -81,4 +82,10 @@ test("joined days handle year boundaries, leap days, and a clock behind the serv
     daysSinceJoined("2026-09-28T00:00:00Z", new Date("2026-09-27T00:00:00Z")),
     0,
   );
+});
+
+test("account profiles read nullable nicknames without inventing or accepting malformed names", () => {
+  assert.equal(isUserProfile({ ...profile, nickname: "건강친구" }), true);
+  for (const nickname of [undefined, "", 7, "잘못 된이름", "가".repeat(21)])
+    assert.equal(isUserProfile({ ...profile, nickname }), false);
 });

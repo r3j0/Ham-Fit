@@ -63,7 +63,7 @@ export function Account() {
             />
             <div className="profile-copy">
               <div className="profile-heading">
-                <h2>닉네임</h2>
+                <h2>{user.nickname ?? "닉네임"}</h2>
                 <p className="profile-tenure">
                   가입한지{" "}
                   {String(daysSinceJoined(user.created_at)).padStart(2, "0")} 일

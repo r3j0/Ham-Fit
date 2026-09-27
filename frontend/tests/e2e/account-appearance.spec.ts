@@ -17,6 +17,7 @@ test("프로필은 재화·가입 경과일·활동 리포트와 얼굴 모션�
     route.fulfill({
       json: {
         ...testUser,
+        nickname: null,
         isOnboarded: true,
         currency: { balance: 1234567 },
         currentCurriculum: null,
@@ -202,6 +203,7 @@ test("미측정 계정도 가입 당일 표시와 예시 리포트를 보되 실
   await expect(page.getByRole("region", { name: "활동 리포트" })).toBeVisible();
   await expect(page.locator(".fitness-radar")).toHaveCount(0);
   await page.getByRole("link", { name: "계정 설정", exact: true }).click();
+  await page.getByRole("button", { name: "생년월일", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "생년월일", exact: true }),
   ).toBeVisible();
@@ -223,6 +225,7 @@ test("프로필 조회 오류에는 재화와 리포트를 숨기고 재시도�
         : {
             json: {
               ...testUser,
+              nickname: null,
               isOnboarded: false,
               currency: { balance: 25 },
               currentCurriculum: null,

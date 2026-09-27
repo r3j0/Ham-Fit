@@ -1,3 +1,4 @@
+import { isStoredNickname } from "./nickname.ts";
 import type { UserProfile } from "./types.ts";
 function object(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -8,6 +9,7 @@ export function isUserProfile(value: unknown): value is UserProfile {
     !object(value) ||
     typeof value.id !== "string" ||
     typeof value.email !== "string" ||
+    !isStoredNickname(value.nickname) ||
     typeof value.created_at !== "string" ||
     !Number.isFinite(Date.parse(value.created_at)) ||
     typeof value.updated_at !== "string" ||

@@ -13,6 +13,7 @@ export interface CurriculumAssignment {
   curriculum: { id: string; name: string };
 }
 export interface UserProfile extends User {
+  nickname: string | null;
   isOnboarded: boolean;
   currency: { balance: number };
   currentCurriculum: CurriculumAssignment | null;

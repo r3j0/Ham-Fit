@@ -244,6 +244,7 @@ test("생년월일은 계정 설정에서 수정·복원하고 조회·저장 �
   await expect(input).toHaveCount(0);
   await page.getByRole("link", { name: "계정 설정", exact: true }).click();
   await expect(page).toHaveURL(/\/account\/settings$/);
+  await page.getByRole("button", { name: "생년월일", exact: true }).click();
   await expect(input).toHaveValue("2000-02-29");
   await input.fill("1999-03-01");
   const saved = page.waitForResponse(
@@ -265,14 +266,23 @@ test("생년월일은 계정 설정에서 수정·복원하고 조회·저장 �
   await expect(
     page.getByRole("button", { name: "생년월일 다시 불러오기" }),
   ).toBeVisible();
+  await page
+    .getByRole("button", { name: "이메일 변경", exact: true })
+    .first()
+    .click();
   await expect(page.getByLabel("새 이메일", { exact: true })).toBeEnabled();
+  await page.getByRole("button", { name: "생년월일", exact: true }).click();
   failRead = false;
   await page.getByRole("button", { name: "생년월일 다시 불러오기" }).click();
   await expect(input).toHaveValue("1999-03-01");
   await input.fill("1998-03-01");
   await page.getByRole("button", { name: "생년월일 저장" }).click();
-  await expect(page.getByRole("alert")).toBeVisible();
+  await expect(page.getByRole("main").getByRole("alert")).toBeVisible();
   await expect(input).toHaveValue("1998-03-01");
+  await page
+    .getByRole("button", { name: "이메일 변경", exact: true })
+    .first()
+    .click();
   await page
     .getByLabel("새 이메일", { exact: true })
     .fill("unsaved@example.test");
@@ -283,9 +293,9 @@ test("생년월일은 계정 설정에서 수정·복원하고 조회·저장 �
   };
   page.on("dialog", cancel);
   await page.getByRole("link", { name: "이전 화면", exact: true }).click();
-  await expect(page).toHaveURL(/\/account\/settings$/);
+  await expect(page).toHaveURL(/\/account\/settings\?tab=email$/);
   expect(prompts).toBe(1);
-  await expect(input).toHaveValue("1998-03-01");
+  await expect(page.locator("#profile-birth")).toHaveValue("1998-03-01");
   await expect(page.getByLabel("새 이메일", { exact: true })).toHaveValue(
     "unsaved@example.test",
   );
