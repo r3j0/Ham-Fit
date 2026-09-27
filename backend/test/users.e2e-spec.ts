@@ -42,6 +42,7 @@ describe('User profile and permanent deletion against PostgreSQL', () => {
   let database: DatabaseService;
   let owner: Account;
   let other: Account;
+  let curriculumCountBeforeRegistration: number;
   const ids: string[] = [];
   const definitionIds: string[] = [];
   let afterMeasurementRead: (() => Promise<unknown>) | undefined;
@@ -86,6 +87,8 @@ describe('User profile and permanent deletion against PostgreSQL', () => {
     configureApp(app);
     await app.listen(0, '127.0.0.1');
     database = app.get(DatabaseService);
+    curriculumCountBeforeRegistration =
+      await database.workoutCurriculum.count();
     owner = await register();
     other = await register();
   });
@@ -204,7 +207,9 @@ describe('User profile and permanent deletion against PostgreSQL', () => {
       /"(?:measurements|measurement_items|user_fitness_goals|user_curriculum_assignments|user_currencies)"/,
     );
     observedQueries = undefined;
-    expect(await database.workoutCurriculum.count()).toBe(0);
+    expect(await database.workoutCurriculum.count()).toBe(
+      curriculumCountBeforeRegistration,
+    );
   });
 
   it('does not expose discarded profile fields or fitness goal routes', async () => {

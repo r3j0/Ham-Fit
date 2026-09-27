@@ -2,15 +2,31 @@ import 'reflect-metadata';
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { randomUUID } from 'node:crypto';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import request from 'supertest';
 import type { App } from 'supertest/types.js';
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 import { AppModule } from '../src/app.module.js';
 import { DatabaseService } from '../src/database/database.service.js';
 import { configureApp } from '../src/setup-app.js';
 import { RecommendationsService } from '../src/recommendations/recommendations.service.js';
 import { WorkoutCatalogService } from '../src/recommendations/workout-catalog.service.js';
-import { catalogHash, loadCatalog } from '../src/recommendations/catalog.js';
+import {
+  catalogHash,
+  loadCatalog,
+  SOURCE_COMMIT,
+} from '../src/recommendations/catalog.js';
 import type { RecommendationCatalog } from '../src/recommendations/catalog.js';
 import { vector } from '../src/recommendations/engine.js';
 import { MeasurementsService } from '../src/measurements/measurements.service.js';
@@ -46,9 +62,11 @@ describe('Daily workouts API against isolated PostgreSQL', () => {
   let other: Account;
   let now = new Date('2026-09-26T14:59:59Z');
   let rngCalls = 0;
+  let mediaDirectory: string;
   const users: string[] = [];
   const devices = new Map<string, { id: string; sequence: number }>();
   beforeAll(async () => {
+    mediaDirectory = mkdtempSync(join(tmpdir(), 'health-workouts-media-'));
     const module = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(RecommendationsService)
       .useFactory({
@@ -75,6 +93,10 @@ describe('Daily workouts API against isolated PostgreSQL', () => {
     other = await register();
   });
   beforeEach(async () => {
+    vi.stubEnv(
+      'WORKOUT_MEDIA_REPORT_PATH',
+      join(mediaDirectory, 'missing.json'),
+    );
     now = new Date('2026-09-26T14:59:59Z');
     rngCalls = 0;
     devices.clear();
@@ -88,10 +110,36 @@ describe('Daily workouts API against isolated PostgreSQL', () => {
     });
     await catalogs.activate(catalog);
   });
+  afterEach(() => vi.unstubAllEnvs());
   afterAll(async () => {
     await database?.user.deleteMany({ where: { id: { in: users } } });
     await app?.close();
+    rmSync(mediaDirectory, { recursive: true, force: true });
   });
+  function verifiedMedia(actualDurationSeconds = 100.4, status = 'verified') {
+    const path = join(mediaDirectory, `${randomUUID()}.json`);
+    writeFileSync(
+      path,
+      JSON.stringify({
+        schemaVersion: 2,
+        sourceCommit: SOURCE_COMMIT,
+        durationToleranceSeconds: 1,
+        videos: videos.map((video) => ({
+          videoId: video.videoId,
+          originalUrl: video.originalUrl,
+          catalogDurationSeconds: video.durationSeconds,
+          status,
+          verifiedUrl: video.originalUrl.replace('http:', 'https:'),
+          actualDurationSeconds,
+          httpsVerified: true,
+          rangeSupported: true,
+          mp4Validated: true,
+          sourceContentTypes: ['video/mp4'],
+        })),
+      }),
+    );
+    vi.stubEnv('WORKOUT_MEDIA_REPORT_PATH', path);
+  }
   async function register() {
     const response = await request(app.getHttpServer())
       .post('/api/v1/auth/register')
@@ -310,6 +358,133 @@ describe('Daily workouts API against isolated PostgreSQL', () => {
     ).toEqual([0.3, 0.3]);
     await event(first.id, 'start').expect(409);
     await get(first.id).expect(200, completed);
+  });
+  it.each(['progress', 'end', 'complete'])(
+    'accepts the verified 100.4-second endpoint for %s on a 100-second catalog video',
+    async (type) => {
+      verifiedMedia();
+      const first = await assign();
+      expect(first.video).toMatchObject({
+        durationSeconds: 100,
+        playbackStatus: 'verified',
+        verifiedDurationSeconds: 100.4,
+      });
+      await event(first.id, 'start').expect(200);
+      const key = randomUUID();
+      const extra = { deviceId: randomUUID(), sequence: 1 };
+      const saved = (
+        await event(
+          first.id,
+          type,
+          [{ start: 0, end: 100.4 }],
+          extra,
+          key,
+        ).expect(200)
+      ).body as Workout;
+      expect(saved.status).toBe(
+        type === 'end'
+          ? 'interrupted'
+          : type === 'complete'
+            ? 'completed'
+            : 'in_progress',
+      );
+      expect(saved.progress).toMatchObject({
+        durationSeconds: 100,
+        watchedSeconds: 100,
+        positionSeconds: 100,
+        intervals: [{ start: 0, end: 100 }],
+        ratio: 1,
+      });
+      await event(
+        first.id,
+        type,
+        [{ start: 0, end: 100.4 }],
+        extra,
+        key,
+      ).expect(200, saved);
+      // Equal normalized progress is still a different raw request under the same key.
+      await event(first.id, type, [{ start: 0, end: 100 }], extra, key).expect(
+        409,
+      );
+      await get(first.id).expect(200, saved);
+      expect(
+        await database.workoutProgressEvent.findFirstOrThrow({
+          where: { assignmentId: first.id, type },
+        }),
+      ).toMatchObject({
+        positionSeconds: 100.4,
+        intervals: [{ start: 0, end: 100.4 }],
+      });
+    },
+  );
+  it.each([
+    ['verified', 100.4, 100.5],
+    ['duration_mismatch', 104, 100.4],
+    ['unavailable', 100.4, 100.4],
+  ] as const)(
+    'rejects out-of-bounds positions and intervals without writing when media is %s',
+    async (status, duration, endpoint) => {
+      verifiedMedia(duration, status);
+      const first = await assign();
+      expect(first.video.playbackStatus).toBe(status);
+      const started = (await event(first.id, 'start').expect(200))
+        .body as Workout;
+      for (const [intervals, positionSeconds] of [
+        [[], endpoint],
+        [[{ start: 0, end: endpoint }], 100],
+      ] as const) {
+        const failed = await event(first.id, 'end', [...intervals], {
+          positionSeconds,
+        }).expect(400);
+        expect(failed.body).toMatchObject({ code: 'INVALID_PLAYBACK_EVENT' });
+      }
+      await get(first.id).expect(200, started);
+      expect(
+        await database.workoutProgressEvent.count({
+          where: { assignmentId: first.id },
+        }),
+      ).toBe(1);
+    },
+  );
+  it('does not count a verified overrun or seek as additional watched time', async () => {
+    verifiedMedia();
+    const first = await assign();
+    await event(first.id, 'start').expect(200);
+    const saved = (
+      await event(first.id, 'end', [
+        { start: 0, end: 49.9 },
+        { start: 100.1, end: 100.4 },
+      ]).expect(200)
+    ).body as Workout;
+    expect(saved.status).toBe('not_performed');
+    expect(saved.progress).toMatchObject({
+      durationSeconds: 100,
+      watchedSeconds: 49.9,
+      positionSeconds: 100,
+      intervals: [{ start: 0, end: 49.9 }],
+    });
+    expect(saved.weightAdjustment.strength.delta).toBe(0);
+  });
+  it('stores decimal 50% as interrupted and includes it in the next recommendation exposure', async () => {
+    verifiedMedia();
+    const first = await assign();
+    await event(first.id, 'start').expect(200);
+    const saved = (
+      await event(first.id, 'end', [
+        { start: 0.1, end: 25.1 },
+        { start: 50.1, end: 75.1 },
+      ]).expect(200)
+    ).body as Workout;
+    expect(saved.status).toBe('interrupted');
+    expect(saved.resultStatus).toBe('interrupted');
+    expect(saved.weightAdjustment.strength.delta).toBe(0.15);
+    await get(first.id).expect(200, saved);
+    now = new Date('2026-09-26T15:00:01Z');
+    const next = (await today().expect(201)).body as Workout;
+    expect(
+      (next.inputSnapshot as { exposure: { strength: number } }).exposure
+        .strength,
+    ).toBeCloseTo(0.15 * 0.5 ** (1 / 7), 12);
   });
   it('deduplicates event retries/concurrent devices and rejects stale, swapped and future inputs', async () => {
     const first = await assign();
