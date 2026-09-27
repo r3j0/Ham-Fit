@@ -41,7 +41,7 @@ test("서버 완료일만 달력과 스트릭에 표시하고 같은 날 중복 
 }) => {
   const api = await setup(page);
   await page.goto("/");
-  const streak = page.getByRole("region", { name: "운동 스트릭" });
+  const streak = page.getByRole("region", { name: "연속 운동" });
   await expect(streak).toContainText("3일 연속 운동 중");
   await expect(streak).toContainText("오늘의 운동을 완료했어요!");
   await expect(streak.getByRole("listitem")).toHaveCount(7);
@@ -162,7 +162,7 @@ test("이력의 모든 페이지를 읽고 실패 시 0일로 오인시키지 �
     });
   });
   await page.goto("/");
-  const streak = page.getByRole("region", { name: "운동 스트릭" });
+  const streak = page.getByRole("region", { name: "연속 운동" });
   await expect(streak.getByRole("alert")).toBeVisible();
   await expect(streak).not.toContainText("연속 운동 중");
   expect(cursors).toContain("next");
@@ -184,7 +184,7 @@ for (const width of [320, 390, 430, 1280]) {
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page.setViewportSize({ width, height: width === 320 ? 640 : 844 });
     await page.goto("/");
-    const streak = page.getByRole("region", { name: "운동 스트릭" });
+    const streak = page.getByRole("region", { name: "연속 운동" });
     await expect(streak).toBeVisible();
     await page.screenshot({
       path: info.outputPath(`streak-${width}.png`),

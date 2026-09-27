@@ -19,7 +19,7 @@ export function WorkoutStreak() {
       <div className={styles.heading}>
         <h2 id="workout-streak-title">
           <Flame size={20} aria-hidden="true" />
-          운동 스트릭
+          연속 운동
         </h2>
       </div>
       {!ready || error ? (

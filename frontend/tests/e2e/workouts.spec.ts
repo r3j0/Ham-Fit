@@ -281,7 +281,7 @@ test("actual playback excludes seeks, ends below 50%, resumes after reload and c
   await expect(
     page.getByRole("button", { name: "오늘 운동 추천받기" }),
   ).toHaveCount(0);
-  await expect(page.getByRole("region", { name: "운동 스트릭" })).toContainText(
+  await expect(page.getByRole("region", { name: "연속 운동" })).toContainText(
     "1일 연속 운동 중",
   );
   await page

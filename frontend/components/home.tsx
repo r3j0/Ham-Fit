@@ -7,6 +7,12 @@ import { TodayWorkout } from "./today-workout";
 import { WorkoutStreak } from "./workout-streak";
 import { useUserProfile } from "./user-profile-provider";
 
+// Temporary visual examples until group membership is available.
+const groupMascots = [
+  { variant: "cream", label: "크림색 그룹 햄스터 (예시)" },
+  { variant: "gray", label: "회색 그룹 햄스터 (예시)" },
+] as const;
+
 export function Home() {
   const profile = useUserProfile();
   const user = profile.data;
@@ -39,17 +45,36 @@ export function Home() {
                 </Link>
               </section>
             )}
-            <WorkoutStreak />
-            <div className="home-mascot-stage">
-              <BreathingMascot size={320} label="편안하게 숨 쉬는 햄스터" />
-            </div>
-            <section className="stack" aria-labelledby="today-title">
-              <div className="section-heading">
-                <ClipboardList size={22} />
-                <h2 id="today-title">오늘의 운동</h2>
+            <div className="home-companions">
+              <div className="home-mascot-stage">
+                <BreathingMascot size={256} label="편안하게 숨 쉬는 햄스터" />
               </div>
-              <TodayWorkout embedded />
-            </section>
+              <div
+                className="home-group-mascots"
+                role="group"
+                aria-label="그룹 햄스터 예시"
+              >
+                {groupMascots.map(({ variant, label }) => (
+                  <BreathingMascot
+                    key={variant}
+                    variant={variant}
+                    size={80}
+                    paused
+                    label={label}
+                  />
+                ))}
+              </div>
+            </div>
+            <div className="home-activity">
+              <section className="stack" aria-labelledby="today-title">
+                <div className="section-heading">
+                  <ClipboardList size={22} />
+                  <h2 id="today-title">오늘의 운동</h2>
+                </div>
+                <TodayWorkout embedded />
+              </section>
+              <WorkoutStreak />
+            </div>
           </>
         )}
       </div>

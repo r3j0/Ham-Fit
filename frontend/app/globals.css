@@ -138,14 +138,37 @@
   flex: 1;
   gap: 32px;
 }
+.home-companions,
+.home-activity {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 32px;
+}
+.home-companions {
+  --home-mascot-size: min(256px, 32svh);
+  gap: 20px;
+}
 .home-mascot-stage {
-  flex: 1;
   display: grid;
   place-items: center;
-  min-height: 280px;
+  min-height: 224px;
 }
 .home-mascot-stage > span {
-  width: min(100%, 320px, 40svh);
+  width: min(80%, var(--home-mascot-size));
+}
+.home-group-mascots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-hero);
+  background: var(--canvas);
+}
+.home-group-mascots > span {
+  width: min(calc(80% / 3), calc(var(--home-mascot-size) / 3));
 }
 .home-intro {
   background: var(--navy);
@@ -1806,9 +1829,6 @@ fieldset:disabled select {
     gap: 32px 48px;
     min-height: calc(100dvh - var(--desktop-navigation-height) - 64px);
   }
-  .home-content > section:not(.home-intro) {
-    grid-column: 2;
-  }
   .home-content > .home-intro,
   .home-content > .loading,
   .home-content > div.stack {
@@ -1817,17 +1837,15 @@ fieldset:disabled select {
   .home-content > .home-intro .button {
     max-width: 320px;
   }
-  .home-mascot-stage {
+  .home-companions {
+    --home-mascot-size: 288px;
     grid-column: 1;
-    grid-row: 1 / span 2;
-    align-self: center;
-    min-height: 400px;
   }
-  .home-content:has(.home-intro) .home-mascot-stage {
-    grid-row: 2 / span 2;
+  .home-activity {
+    grid-column: 2;
   }
-  .home-mascot-stage > span {
-    width: min(100%, 360px);
+  .home-mascot-stage {
+    min-height: 320px;
   }
   .home-content .curriculum-card {
     padding-bottom: 0;

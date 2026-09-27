@@ -74,7 +74,7 @@ for (const width of [960, 1280, 1440]) {
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page.setViewportSize({ width, height: 900 });
     const pages = [
-      ["home", "/", page.getByRole("heading", { name: "운동 스트릭" })],
+      ["home", "/", page.getByRole("heading", { name: "연속 운동" })],
       [
         "workout",
         "/workout",

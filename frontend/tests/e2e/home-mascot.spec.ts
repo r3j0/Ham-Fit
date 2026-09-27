@@ -28,14 +28,40 @@ test("메인은 중앙 캐릭터와 운동을 보여 주고 기록은 내 프로
   await expect(
     page.getByRole("heading", { name: "내 체력 기록부터 시작해요" }),
   ).toHaveCount(0);
-  await expect(page.locator("svg image")).toHaveAttribute(
+  await expect(mascot.locator("svg image")).toHaveAttribute(
     "href",
     "/mascots/cream-belly.svg",
   );
   expect((await page.request.get("/mascots/cream-belly.svg")).ok()).toBe(true);
+  expect((await page.request.get("/mascots/gray-belly.svg")).ok()).toBe(true);
+  const group = page.getByRole("group", { name: "그룹 햄스터 예시" });
+  const companions = group.getByRole("img");
+  await expect(companions).toHaveCount(2);
+  await expect(companions.nth(0)).toHaveAccessibleName(
+    "크림색 그룹 햄스터 (예시)",
+  );
+  await expect(companions.nth(1)).toHaveAccessibleName(
+    "회색 그룹 햄스터 (예시)",
+  );
+  await expect(companions.nth(0).locator("svg image")).toHaveAttribute(
+    "href",
+    "/mascots/cream-belly.svg",
+  );
+  await expect(companions.nth(1).locator("svg image")).toHaveAttribute(
+    "href",
+    "/mascots/gray-belly.svg",
+  );
+  await expect(
+    page.getByRole("heading", { name: "운동 스트릭", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: "연속 운동", exact: true }),
+  ).toBeVisible();
   for (const [width, height] of [
     [320, 640],
     [390, 844],
+    [430, 932],
+    [960, 900],
     [1280, 900],
   ]) {
     await page.setViewportSize({ width, height });
@@ -45,6 +71,39 @@ test("메인은 중앙 캐릭터와 운동을 보여 주고 기록은 내 프로
     expect(
       Math.abs(bounds!.x + bounds!.width / 2 - (stage.x + stage.width / 2)),
     ).toBeLessThan(2);
+    // The previous main mascot used min(100%, 320px, 40svh), or 360px on desktop.
+    const originalWidth =
+      width < 960
+        ? Math.min(stage.width, 320, height * 0.4)
+        : Math.min(stage.width, 360);
+    expect(bounds!.width).toBeCloseTo(originalWidth * 0.8, 1);
+    const groupBox = (await group.boundingBox())!;
+    const todayBox = (await page
+      .getByRole("region", { name: "오늘의 운동", exact: true })
+      .boundingBox())!;
+    const streakBox = (await page
+      .getByRole("region", { name: "연속 운동", exact: true })
+      .boundingBox())!;
+    expect(groupBox.y).toBeGreaterThanOrEqual(bounds!.y + bounds!.height);
+    expect(streakBox.y).toBeGreaterThanOrEqual(todayBox.y + todayBox.height);
+    if (width < 960) {
+      expect(todayBox.y).toBeGreaterThanOrEqual(groupBox.y + groupBox.height);
+    } else {
+      expect(groupBox.x + groupBox.width).toBeLessThanOrEqual(todayBox.x);
+      expect(groupBox.x + groupBox.width).toBeLessThanOrEqual(streakBox.x);
+      expect(stage.y).toBeCloseTo(todayBox.y, 1);
+    }
+    const companionBoxes = await Promise.all(
+      (await companions.all()).map((item) => item.boundingBox()),
+    );
+    for (const small of companionBoxes) {
+      expect(small!.width).toBeLessThanOrEqual(bounds!.width / 3 + 0.1);
+      expect(small!.height).toBeLessThanOrEqual(bounds!.height / 3 + 0.1);
+    }
+    expect(companionBoxes[0]!.y).toBeCloseTo(companionBoxes[1]!.y, 1);
+    expect(companionBoxes[0]!.x + companionBoxes[0]!.width).toBeLessThan(
+      companionBoxes[1]!.x,
+    );
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth),
     ).toBeLessThanOrEqual(width);
@@ -75,9 +134,23 @@ test("대기 호흡은 동작 줄이기와 숨겨진 탭을 따르고 페이지 
   await expect(
     page.getByRole("link", { name: "체력 기록 등록하기" }),
   ).toHaveAttribute("href", "/onboarding");
-  const head = page.locator('[data-part="head"]');
+  const head = page
+    .getByRole("img", { name: mascotName, exact: true })
+    .locator('[data-part="head"]');
+  const groupHeads = page
+    .getByRole("group", { name: "그룹 햄스터 예시" })
+    .locator('[data-part="head"]');
+  await expect(groupHeads).toHaveCount(2);
+  const stillPoses = await groupHeads.evaluateAll((nodes) =>
+    nodes.map((node) => node.getAttribute("transform")),
+  );
   const pose = await head.getAttribute("transform");
   await expect.poll(() => head.getAttribute("transform")).not.toBe(pose);
+  expect(
+    await groupHeads.evaluateAll((nodes) =>
+      nodes.map((node) => node.getAttribute("transform")),
+    ),
+  ).toEqual(stillPoses);
   await page.emulateMedia({ reducedMotion: "reduce" });
   await expect(head).toHaveAttribute(
     "transform",
