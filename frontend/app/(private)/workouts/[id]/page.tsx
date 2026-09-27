@@ -1,5 +1,5 @@
 import { WorkoutScreen } from "@/components/workout-screen";
-export const metadata = { title: "나의 운동" };
+export const metadata = { title: "운동 중" };
 export default async function Page({
   params,
 }: {

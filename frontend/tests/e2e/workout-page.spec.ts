@@ -1,40 +1,91 @@
 import { test, expect } from "@playwright/test";
 import { installApi, testRecord, testWorkout } from "./integration-fixtures";
 import { prepareAssessment } from "./workout-helpers";
+import type { Workout } from "../../lib/workout-types";
 
-test("운동 탭은 현재 배정만 표시하고 체험 세트와 타이머를 제거한다", async ({
+test("메인과 운동 탭은 오늘의 여러 배정을 모두 보여주고 시작·이어하기만 진행 화면으로 연결한다", async ({
   page,
 }) => {
   const api = await installApi(page, testRecord());
+  const resumed: Workout = {
+    ...testWorkout,
+    id: "second",
+    status: "interrupted",
+    video: { ...testWorkout.video, title: "두 번째 운동" },
+  };
+  const done: Workout = {
+    ...testWorkout,
+    id: "third",
+    status: "completed",
+    video: { ...testWorkout.video, title: "완료한 세 번째 운동" },
+  };
+  const previous = {
+    ...testWorkout,
+    id: "previous",
+    koreanDate: "2026-09-26",
+    video: { ...testWorkout.video, title: "어제 운동" },
+  };
+  await page.route("**/api/v1/workouts/history?*", (route) =>
+    route.fulfill({
+      json: new URL(route.request().url()).searchParams.has("cursor")
+        ? { items: [done, previous], nextCursor: null }
+        : { items: [testWorkout, resumed], nextCursor: "next-page" },
+    }),
+  );
   await page.goto("/");
-  await page
-    .getByRole("navigation")
-    .getByRole("link", { name: "운동", exact: true })
-    .click();
-  await expect(page).toHaveURL("/workout");
+  for (const path of ["/", "/workout"]) {
+    if (path === "/workout")
+      await page
+        .getByRole("navigation")
+        .getByRole("link", { name: "운동", exact: true })
+        .click();
+    const today = page.getByRole("region", {
+      name: "오늘의 운동",
+      exact: true,
+    });
+    const list = today.getByRole("list", { name: "오늘 배정된 운동" });
+    await expect(list.getByRole("listitem")).toHaveCount(3);
+    await expect(
+      today.getByRole("link", { name: "운동 시작하기", exact: true }),
+    ).toHaveAttribute("href", `/workouts/${testWorkout.id}`);
+    await expect(
+      today.getByRole("link", { name: "운동 이어하기", exact: true }),
+    ).toHaveAttribute("href", "/workouts/second");
+    await expect(list.getByText("완료", { exact: true })).toHaveCount(1);
+    await expect(today.getByRole("link")).toHaveCount(2);
+    await expect(
+      today.getByText(
+        /내 운동 이력|운동 상태 새로고침|내 측정 기록과 운동 이력|배정 ·|저장된 시청량|어제 운동/,
+      ),
+    ).toHaveCount(0);
+    await expect(today.locator("video")).toHaveCount(0);
+    await expect(page.getByRole("timer")).toHaveCount(0);
+  }
+  await page.getByRole("link", { name: "운동 시작하기", exact: true }).click();
+  await expect(page).toHaveURL(`/workouts/${testWorkout.id}`);
   await expect(
-    page.getByRole("heading", { name: "내 기존 운동", exact: true }),
+    page.getByRole("heading", { name: "운동 중", exact: true }),
   ).toBeVisible();
   await expect(
     page.getByText("현재 이 영상을 재생할 수 없어요.", { exact: false }),
   ).toBeVisible();
-  await expect(page.getByRole("timer")).toHaveCount(0);
-  await expect(page.getByText("체험 운동", { exact: true })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "세트 완료" })).toHaveCount(0);
-  await expect(
-    page.getByRole("button", { name: "오늘 운동 추천받기" }),
-  ).toHaveCount(0);
   expect(api.mutations).toEqual([]);
 });
 
-test("미배정 사용자는 명시적으로 추천을 받은 뒤 같은 화면에서 배정 영상을 확인한다", async ({
+test("오늘 배정이 없으면 이전 운동을 오늘 목록으로 표시하지 않고 명시적 추천 후 목록에 추가한다", async ({
   page,
 }) => {
   await installApi(page, testRecord());
+  const previous = { ...testWorkout, koreanDate: "2026-09-26" };
   let assigned = false;
   let requests = 0;
   await page.route("**/api/v1/workouts/current", (route) =>
-    route.fulfill({ json: assigned ? testWorkout : null }),
+    route.fulfill({ json: assigned ? testWorkout : previous }),
+  );
+  await page.route("**/api/v1/workouts/history?*", (route) =>
+    route.fulfill({
+      json: { items: [assigned ? testWorkout : previous], nextCursor: null },
+    }),
   );
   await page.route("**/api/v1/workouts/today", (route) => {
     requests++;
@@ -44,14 +95,17 @@ test("미배정 사용자는 명시적으로 추천을 받은 뒤 같은 화면�
   });
   await page.goto("/workout");
   await expect(
-    page.getByRole("heading", { name: "오늘의 운동을 받아 보세요" }),
+    page.getByRole("heading", { name: "아직 오늘 배정된 운동이 없어요" }),
   ).toBeVisible();
+  await expect(
+    page.getByRole("list", { name: "오늘 배정된 운동" }),
+  ).toHaveCount(0);
   expect(requests).toBe(0);
   await page.getByRole("button", { name: "오늘 운동 추천받기" }).click();
   await expect(
-    page.getByRole("heading", { name: "내 기존 운동", exact: true }),
-  ).toBeVisible();
-  await expect(page).toHaveURL("/workout");
+    page.getByRole("list", { name: "오늘 배정된 운동" }).getByRole("listitem"),
+  ).toHaveCount(1);
+  await expect(page.locator("video")).toHaveCount(0);
   expect(requests).toBe(1);
 });
 
@@ -79,7 +133,7 @@ test("공용 타이머 변경 후에도 간이측정의 고정 시간·중단 �
   await expect(page.getByLabel("10초 동안 센 맥박 (회)")).toBeVisible();
 });
 
-test("배정 상태를 새로고침하면 다른 기기에서 완료한 상태를 플레이어에도 반영한다", async ({
+test("다른 기기에서 완료한 운동은 화면 복귀 시 완료로 바뀌며 별도 새로고침 버튼은 없다", async ({
   page,
 }) => {
   await installApi(page, testRecord());
@@ -87,21 +141,19 @@ test("배정 상태를 새로고침하면 다른 기기에서 완료한 상태�
   await page.route("**/api/v1/workouts/current", (route) =>
     route.fulfill({ json: current }),
   );
-  await page.route(`**/api/v1/workouts/${testWorkout.id}`, (route) =>
-    route.fulfill({ json: current }),
-  );
   await page.goto("/workout");
-  await expect(
-    page.getByRole("heading", { name: "내 기존 운동", exact: true }),
-  ).toBeVisible();
+  const list = page.getByRole("list", { name: "오늘 배정된 운동" });
+  await expect(list.getByRole("link", { name: "운동 시작하기" })).toBeVisible();
   current = {
     ...testWorkout,
     revision: testWorkout.revision + 1,
     status: "completed",
     completedAt: "2026-09-27T03:00:00.000Z",
   };
-  await page.getByRole("button", { name: "운동 상태 새로고침" }).click();
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await expect(list.getByText("완료", { exact: true })).toBeVisible();
+  await expect(list.getByRole("link")).toHaveCount(0);
   await expect(
-    page.getByText("영상을 다시 볼 수 있고", { exact: false }),
-  ).toBeVisible();
+    page.getByRole("button", { name: "운동 상태 새로고침" }),
+  ).toHaveCount(0);
 });

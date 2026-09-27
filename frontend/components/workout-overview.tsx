@@ -31,10 +31,10 @@ export function WorkoutOverview({
             aria-labelledby="today-workout-title"
           >
             <div className={styles.heading}>
-              <h2 id="today-workout-title">내 배정 운동</h2>
+              <h2 id="today-workout-title">오늘의 운동</h2>
               <span className="caption">국민체력100</span>
             </div>
-            <TodayWorkout embedded playback />
+            <TodayWorkout embedded />
           </section>
           <WorkoutCalendar />
         </div>

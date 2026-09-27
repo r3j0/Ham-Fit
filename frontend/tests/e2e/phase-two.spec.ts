@@ -47,7 +47,7 @@ test("메인은 미배정·배정·완료를 구분하고 운동 내용을 임�
   await register(page);
   await page.goto("/");
   await expect(
-    page.getByRole("heading", { name: "오늘의 운동을 받아 보세요" }),
+    page.getByRole("heading", { name: "아직 오늘 배정된 운동이 없어요" }),
   ).toBeVisible();
   await expect(
     page.getByRole("link", { name: "체력 기록 등록하기" }),
@@ -74,7 +74,9 @@ test("메인은 미배정·배정·완료를 구분하고 운동 내용을 임�
   completed = true;
   await page.reload();
   await expect(
-    page.getByText("오늘의 운동을 완료했어요.", { exact: false }),
+    page
+      .getByRole("list", { name: "오늘 배정된 운동" })
+      .getByText("완료", { exact: true }),
   ).toBeVisible();
   await expect(
     page.getByRole("link", { name: "운동 시작하기", exact: true }),
@@ -104,7 +106,7 @@ test("구형 사용자 응답은 임의의 초기 상태로 표시하지 않고 
     page.getByRole("button", { name: "다시 불러오기" }),
   ).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: "오늘의 운동을 받아 보세요" }),
+    page.getByRole("heading", { name: "아직 오늘 배정된 운동이 없어요" }),
   ).toHaveCount(0);
 });
 

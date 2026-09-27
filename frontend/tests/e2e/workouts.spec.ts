@@ -1,7 +1,8 @@
 import { test, expect, type Page } from "@playwright/test";
 import path from "node:path";
 import { readFile } from "node:fs/promises";
-import type { Workout } from "../../lib/workout-types";
+import type { PlaybackEvent, Workout } from "../../lib/workout-types";
+import { installApi, testRecord, testWorkout } from "./integration-fixtures";
 const base = process.env.E2E_API_BASE_URL ?? "http://localhost:3001/api/v1";
 const password = "frontend-workout-test-password-2026!";
 async function waitForLimit(
@@ -107,8 +108,7 @@ async function prepare(page: Page) {
     ).json()) as Workout;
   return { workout, read, headers, email: auth.user.email as string };
 }
-// All persistence is the actual PR #9 API. Only media delivery is replaced with a tiny generated MP4.
-async function testMedia(page: Page, workout: Workout) {
+async function serveTestMedia(page: Page) {
   const url = new URL(
     "/test-workout.mp4",
     process.env.E2E_BASE_URL ?? "http://localhost:3000",
@@ -132,6 +132,11 @@ async function testMedia(page: Page, workout: Workout) {
       },
     });
   });
+  return url;
+}
+// Real API tests replace only media delivery with a tiny generated MP4.
+async function testMedia(page: Page, workout: Workout) {
+  const url = await serveTestMedia(page);
   await page.route(
     new RegExp(`/api/v1/workouts/(?:${workout.id}|current)$`),
     async (route) => {
@@ -180,6 +185,9 @@ test("actual playback excludes seeks, ends below 50%, resumes after reload and c
     .getByRole("link", { name: "운동", exact: true })
     .click();
   await expect(page).toHaveURL("/workout");
+  await expect(page.locator("video")).toHaveCount(0);
+  await page.getByRole("link", { name: "운동 시작하기", exact: true }).click();
+  await expect(page).toHaveURL(`/workouts/${workout.id}`);
   const video = page.getByLabel("운동 영상");
   await expect
     .poll(() => video.evaluate((v: HTMLVideoElement) => v.readyState))
@@ -233,11 +241,6 @@ test("actual playback excludes seeks, ends below 50%, resumes after reload and c
   await page.getByRole("button", { name: "완료 확인" }).click();
   await expect.poll(async () => (await read()).status).toBe("completed");
   await expect(video).toHaveAttribute("controls");
-  await expect(
-    page
-      .getByRole("region", { name: "운동 기록", exact: true })
-      .locator('button[aria-current="date"]'),
-  ).toHaveAttribute("data-completed", "true");
   const completed = await read();
   let replayEvents = 0;
   page.on("request", (request) => {
@@ -259,19 +262,32 @@ test("actual playback excludes seeks, ends below 50%, resumes after reload and c
     path: info.outputPath("completed-workout.png"),
     fullPage: true,
   });
+  await page.getByRole("link", { name: "운동 목록으로", exact: true }).click();
+  await expect(page).toHaveURL("/workout");
+  await expect(
+    page
+      .getByRole("region", { name: "운동 기록", exact: true })
+      .locator('button[aria-current="date"]'),
+  ).toHaveAttribute("data-completed", "true");
+  await expect(
+    page
+      .getByRole("list", { name: "오늘 배정된 운동" })
+      .getByText("완료", { exact: true }),
+  ).toBeVisible();
   await page
     .getByRole("navigation")
     .getByRole("link", { name: "메인", exact: true })
     .click();
-  await expect(
-    page.getByText("오늘의 운동을 완료했어요.", { exact: false }),
-  ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "오늘 운동 추천받기" }),
   ).toHaveCount(0);
   await expect(page.getByRole("region", { name: "운동 스트릭" })).toContainText(
     "1일 연속 운동 중",
   );
+  await page
+    .getByRole("navigation")
+    .getByRole("link", { name: "내 프로필", exact: true })
+    .click();
   await page.getByRole("link", { name: "내 운동 이력", exact: true }).click();
   await expect(
     page.getByRole("link", { name: "완료 기록 보기" }),
@@ -519,4 +535,106 @@ test("history retains its first page on failure and retries the same cursor with
   await expect(
     page.getByRole("button", { name: "이전 운동 더 보기" }),
   ).toHaveCount(0);
+});
+
+// The backend currently assigns one workout/day. This contract fixture validates
+// the frontend's multi-assignment navigation; persistence is covered above against PR #9.
+test("여러 운동은 각자의 영상과 기록으로 완료하고 목록에서 다음 운동을 시작한다", async ({
+  page,
+}) => {
+  await installApi(page, testRecord());
+  const mediaUrl = await serveTestMedia(page);
+  const rows: Workout[] = [0, 1].map((index) => ({
+    ...testWorkout,
+    id: `00000000-0000-4000-8000-00000000000${index + 5}`,
+    assignedAt: `2026-09-27T00:00:0${index}Z`,
+    video: {
+      ...testWorkout.video,
+      id: `video-${index}`,
+      title: index === 0 ? "첫 번째 배정 운동" : "두 번째 배정 운동",
+      durationSeconds: 12,
+      verifiedDurationSeconds: 12,
+      playbackStatus: "verified",
+      playbackUrl: mediaUrl,
+    },
+    progress: { ...testWorkout.progress, durationSeconds: 12 },
+  }));
+  const events: { id: string; type: PlaybackEvent["type"] }[] = [];
+  await page.route("**/api/v1/workouts/**", (route) => {
+    const pathname = new URL(route.request().url()).pathname;
+    if (pathname.endsWith("/current")) return route.fulfill({ json: rows[0] });
+    if (pathname.endsWith("/history"))
+      return route.fulfill({ json: { items: rows, nextCursor: null } });
+    const index = rows.findIndex((row) => pathname.includes(`/${row.id}`));
+    if (index < 0) return route.fallback();
+    if (route.request().method() === "POST") {
+      const event = route.request().postDataJSON() as PlaybackEvent;
+      events.push({ id: rows[index].id, type: event.type });
+      rows[index] = {
+        ...rows[index],
+        status: event.type === "complete" ? "completed" : "in_progress",
+        resultStatus: event.type === "complete" ? "completed" : null,
+        completedAt: event.type === "complete" ? "2026-09-27T03:00:00Z" : null,
+        revision: rows[index].revision + 1,
+        progress: {
+          ...rows[index].progress,
+          positionSeconds: event.positionSeconds,
+        },
+      };
+    }
+    return route.fulfill({ json: rows[index] });
+  });
+  await page.goto("/workout");
+  const list = page.getByRole("list", { name: "오늘 배정된 운동" });
+  await expect(list.getByRole("link", { name: "운동 시작하기" })).toHaveCount(
+    2,
+  );
+  for (let index = 0; index < rows.length; index++) {
+    const row = rows[index];
+    await list
+      .getByRole("listitem")
+      .filter({ hasText: row.video.title })
+      .getByRole("link", { name: "운동 시작하기" })
+      .click();
+    await expect(page).toHaveURL(`/workouts/${row.id}`);
+    await expect(
+      page.getByRole("heading", { name: row.video.title }),
+    ).toBeVisible();
+    const video = page.getByLabel("운동 영상");
+    await expect
+      .poll(() => video.evaluate((v: HTMLVideoElement) => v.readyState))
+      .toBeGreaterThanOrEqual(1);
+    await page.getByRole("button", { name: "운동 시작", exact: true }).click();
+    await expect
+      .poll(() => video.evaluate((v: HTMLVideoElement) => v.currentTime))
+      .toBeGreaterThan(1);
+    await page.getByRole("button", { name: "운동 완료", exact: true }).click();
+    await page.getByRole("button", { name: "완료 확인" }).click();
+    await expect(
+      page.getByText("운동을 완료했어요.", { exact: false }),
+    ).toBeVisible();
+    await page.getByRole("link", { name: "운동 목록으로" }).click();
+    await expect(page).toHaveURL("/workout");
+    await expect(list.getByText("완료", { exact: true })).toHaveCount(
+      index + 1,
+    );
+    await expect(list.getByRole("link", { name: "운동 시작하기" })).toHaveCount(
+      rows.length - index - 1,
+    );
+  }
+  expect(
+    events.filter((event) => event.type === "start").map((event) => event.id),
+  ).toEqual(rows.map((row) => row.id));
+  expect(
+    events
+      .filter((event) => event.type === "complete")
+      .map((event) => event.id),
+  ).toEqual(rows.map((row) => row.id));
+  await page
+    .getByRole("navigation")
+    .getByRole("link", { name: "메인", exact: true })
+    .click();
+  await expect(list.getByRole("listitem")).toHaveCount(2);
+  await expect(list.getByText("완료", { exact: true })).toHaveCount(2);
+  await expect(list.getByRole("link")).toHaveCount(0);
 });

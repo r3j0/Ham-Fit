@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { ApiError } from "@/lib/http";
 import { createPlaybackSession, samplePlayback } from "@/lib/playback-session";
@@ -359,6 +360,11 @@ export function WorkoutPlayer({ initial }: { initial: Workout }) {
       >
         저장된 운동 상태 확인
       </button>
+      {completed && (
+        <Link className="button primary" href="/workout">
+          운동 목록으로
+        </Link>
+      )}
       {confirm && (
         <Dialog
           title={

@@ -1,5 +1,4 @@
 "use client";
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { ApiError } from "@/lib/http";
 import { getCurrentWorkout, requestTodayWorkout } from "@/lib/workouts";
@@ -8,16 +7,15 @@ import { workoutJournal, type WorkoutWriter } from "@/lib/workout-journal";
 import { useSession } from "./session-provider";
 import { Header, Loading, Notice, Shell } from "./ui";
 import { WorkoutError } from "./workout-error";
-import { WorkoutPlayer } from "./workout-player";
-import { WorkoutSummary } from "./workout-summary";
+import { AssignedWorkoutList } from "./assigned-workout-list";
+import {
+  useWorkoutHistory,
+  WorkoutHistoryFeedback,
+} from "./workout-history-provider";
+import { assignedWorkoutsForDay } from "@/lib/assigned-workouts";
 
-export function TodayWorkout({
-  embedded = false,
-  playback = false,
-}: {
-  embedded?: boolean;
-  playback?: boolean;
-}) {
+export function TodayWorkout({ embedded = false }: { embedded?: boolean }) {
+  const history = useWorkoutHistory();
   const session = useSession();
   const userId = session.user!.id;
   const [workout, setWorkout] = useState<Workout | null>(null);
@@ -88,6 +86,7 @@ export function TodayWorkout({
       lease.save([]);
       setPending(false);
       setWorkout(value);
+      history.reload();
     } catch (e) {
       if (!lease.active()) return;
       // Definite validation/readiness failures created no assignment. Unknown outcomes keep the key.
@@ -111,90 +110,61 @@ export function TodayWorkout({
       }
     }
   }
-  const today = workout?.koreanDate === workout?.serverKoreanDate && !!workout;
+  const workouts = assignedWorkoutsForDay(
+    [...history.workouts, ...(workout ? [workout] : [])],
+    workout?.serverKoreanDate ?? history.today,
+  );
   const content = (
     <div className={embedded ? "stack" : "content stack"}>
-      {!playback && (
-        <>
-          <Link className="text-link" href="/workouts">
-            내 운동 이력
-          </Link>
-          <p className="muted">
-            내 측정 기록과 운동 이력에 맞춰 하루 한 가지 운동을 추천해요.
-          </p>
-        </>
-      )}
       {!loaded ? (
         <Loading />
       ) : (
         <>
           {error !== undefined && <WorkoutError error={error} />}
-          {pending && (
-            <Notice tone="info">
-              이전 추천 요청의 결과를 확인해야 해요. 같은 요청으로 다시 확인할
-              수 있어요.
-            </Notice>
-          )}
-          {workout ? (
-            <section className="workout-card stack">
-              {playback ? (
-                <WorkoutPlayer key={workout.id} initial={workout} />
+          {!history.ready || history.error ? (
+            <WorkoutHistoryFeedback />
+          ) : (
+            <>
+              {workouts.length > 0 ? (
+                <AssignedWorkoutList workouts={workouts} />
               ) : (
-                <WorkoutSummary workout={workout} />
+                <h2>아직 오늘 배정된 운동이 없어요</h2>
               )}
-              {!today && (
-                <p className="caption">
-                  이전에 받은 운동이에요. 오늘 운동을 새로 받거나 이전 운동을
-                  이어갈 수 있어요.
-                </p>
-              )}
-              {!playback && (
-                <Link className="button secondary" href="/workout">
-                  {workout.status === "completed"
-                    ? "완료한 운동 보기"
-                    : workout.status === "assigned"
-                      ? "운동 시작하기"
-                      : "운동 이어하기"}
-                </Link>
-              )}
-              {!playback && today && workout.status === "completed" && (
-                <Notice tone="success">
-                  오늘의 운동을 완료했어요. 다음 추천은 내일 받을 수 있어요.
+              {pending && (
+                <Notice tone="info">
+                  이전 추천 요청의 결과를 확인해야 해요. 같은 요청으로 다시
+                  확인할 수 있어요.
                 </Notice>
               )}
-            </section>
-          ) : (
-            <h2>오늘의 운동을 받아 보세요</h2>
+              {(!workouts.length || pending) && (
+                <button
+                  className="button primary"
+                  onClick={() => void create()}
+                  disabled={busy}
+                >
+                  {busy
+                    ? "추천을 확인하고 있어요"
+                    : pending
+                      ? "이전 추천 요청 확인하기"
+                      : "오늘 운동 추천받기"}
+                </button>
+              )}
+            </>
           )}
-          {(!today || pending) && (
+          {error !== undefined && (
             <button
-              className="button primary"
-              onClick={() => void create()}
+              className="text-button"
               disabled={busy}
+              onClick={() => {
+                setError(undefined);
+                setRetry((n) => n + 1);
+                history.reload();
+              }}
             >
-              {busy
-                ? "추천을 확인하고 있어요"
-                : pending
-                  ? "이전 추천 요청 확인하기"
-                  : "오늘 운동 추천받기"}
+              운동 목록 다시 불러오기
             </button>
           )}
-          <button
-            className="text-button"
-            disabled={busy}
-            onClick={() => {
-              setError(undefined);
-              setRetry((n) => n + 1);
-            }}
-          >
-            운동 상태 새로고침
-          </button>
         </>
-      )}
-      {playback && (
-        <Link className="text-link" href="/workouts">
-          내 운동 이력
-        </Link>
       )}
     </div>
   );
