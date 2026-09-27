@@ -180,6 +180,15 @@ test("actual playback excludes seeks, ends below 50%, resumes after reload and c
   await expect(
     page.getByRole("button", { name: "오늘 운동 추천받기" }),
   ).toHaveCount(0);
+  await page.getByRole("link", { name: "내 운동 이력", exact: true }).click();
+  await expect(
+    page.getByRole("link", { name: "완료 기록 보기" }),
+  ).toHaveAttribute("href", `/workouts/${workout.id}`);
+  await expect(page.getByText("최근 수행일", { exact: false })).toBeVisible();
+  await page.getByRole("link", { name: "완료 기록 보기" }).click();
+  await expect(
+    page.getByText("운동을 완료했어요.", { exact: false }),
+  ).toBeVisible();
 });
 test("a lost start response survives reload with the original event key and body", async ({
   page,
@@ -323,5 +332,102 @@ test("another device's completion is recovered without overwriting it", async ({
   expect((await read()).status).toBe("completed");
   await expect(
     page.getByRole("button", { name: "저장 다시 확인하기" }),
+  ).toHaveCount(0);
+});
+
+test("legacy users are guided to a birth profile, measurement, or unsupported-age notice", async ({
+  page,
+}) => {
+  const registered = await page.request.post(`${base}/auth/register`, {
+    headers: { "X-CSRF-Protection": "1" },
+    data: {
+      email: `legacy-workout-${crypto.randomUUID()}@example.test`,
+      password,
+    },
+  });
+  expect(registered.status()).toBe(201);
+  await page.goto("/workouts");
+  await expect(page.getByText("아직 운동 이력이 없어요")).toBeVisible();
+  await page.getByRole("link", { name: "오늘 운동 받으러 가기" }).click();
+  await page.getByRole("button", { name: "오늘 운동 추천받기" }).click();
+  await page.getByRole("link", { name: "생년월일 입력하기" }).click();
+  await page.getByLabel("생년월일 입력", { exact: true }).fill("2000-01-01");
+  await page.getByRole("button", { name: "생년월일 저장" }).click();
+  await expect(page.getByText("생년월일을 저장했어요.")).toBeVisible();
+  await page
+    .getByRole("navigation")
+    .getByRole("link", { name: "메인", exact: true })
+    .click();
+  await page.getByRole("button", { name: "오늘 운동 추천받기" }).click();
+  await expect(
+    page.getByRole("link", { name: "측정 기록 등록하기" }),
+  ).toBeVisible();
+  await page
+    .getByRole("navigation")
+    .getByRole("link", { name: "내 프로필", exact: true })
+    .click();
+  await page.getByLabel("생년월일 입력", { exact: true }).fill("1950-01-01");
+  await page.getByRole("button", { name: "생년월일 저장" }).click();
+  await expect(page.getByText("생년월일을 저장했어요.")).toBeVisible();
+  await page
+    .getByRole("navigation")
+    .getByRole("link", { name: "메인", exact: true })
+    .click();
+  await page.getByRole("button", { name: "오늘 운동 추천받기" }).click();
+  await expect(
+    page.getByRole("link", { name: "생년월일 확인하기" }),
+  ).toBeVisible();
+});
+
+test("history retains its first page on failure and retries the same cursor without duplicates", async ({
+  page,
+}) => {
+  const { workout } = await prepare(page);
+  let failed = false;
+  const cursors: string[] = [];
+  // Only pagination metadata and the extra display row are fixtures; the first row is an actual assignment.
+  await page.route("**/api/v1/workouts/history?*", async (route) => {
+    const cursor = new URL(route.request().url()).searchParams.get("cursor");
+    const response = await route.fetch();
+    const data = await response.json();
+    if (!cursor)
+      return route.fulfill({
+        response,
+        json: { ...data, nextCursor: workout.id },
+      });
+    cursors.push(cursor);
+    if (!failed) {
+      failed = true;
+      return route.fulfill({
+        response,
+        status: 503,
+        json: { message: "history test failure" },
+      });
+    }
+    return route.fulfill({
+      response,
+      json: {
+        items: [
+          workout,
+          {
+            ...workout,
+            id: "4129204b-3c7c-4f78-926b-7967b3eb8c18",
+            koreanDate: "2026-09-26",
+          },
+        ],
+        nextCursor: null,
+      },
+    });
+  });
+  await page.goto("/workouts");
+  await expect(page.locator(".workout-list > li")).toHaveCount(1);
+  await page.getByRole("button", { name: "이전 운동 더 보기" }).click();
+  await expect(page.getByRole("main").getByRole("alert")).toBeVisible();
+  await expect(page.locator(".workout-list > li")).toHaveCount(1);
+  await page.getByRole("button", { name: "이전 운동 더 보기" }).click();
+  await expect(page.locator(".workout-list > li")).toHaveCount(2);
+  expect(cursors).toEqual([workout.id, workout.id]);
+  await expect(
+    page.getByRole("button", { name: "이전 운동 더 보기" }),
   ).toHaveCount(0);
 });

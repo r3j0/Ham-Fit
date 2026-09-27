@@ -230,6 +230,11 @@ h3 {
   border-radius: 16px;
   background: #0f172a;
 }
+.workout-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
 .row {
   display: flex;
   gap: 12px;

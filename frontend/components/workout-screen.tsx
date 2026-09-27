@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { getWorkout } from "@/lib/workouts";
 import type { Workout } from "@/lib/workout-types";
@@ -24,6 +25,9 @@ export function WorkoutScreen({ id }: { id: string }) {
     <Shell>
       <Header title="나의 운동" back="/" />
       <div className="content stack">
+        <Link className="text-link" href="/workouts">
+          내 운동 이력
+        </Link>
         {error !== undefined && (
           <>
             <WorkoutError error={error} />

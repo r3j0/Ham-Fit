@@ -17,7 +17,10 @@ export function BottomNavigation() {
       href: "/account",
       label: "내 프로필",
       icon: UserRound,
-      active: pathname === "/account" || pathname.startsWith("/measurements"),
+      active:
+        pathname === "/account" ||
+        pathname === "/workouts" ||
+        pathname.startsWith("/measurements"),
     },
   ];
 
