@@ -58,3 +58,15 @@ test("blocked storage still supports request recovery within this document", () 
   journal.setOwner("one");
   assert.deepEqual(journal.acquire("one", "today").read(), [request]);
 });
+test("a blocked removal cannot resurrect an acknowledged request from disk", () => {
+  const disk = storage();
+  const journal = createWorkoutJournal(() => disk);
+  journal.setOwner("one");
+  const writer = journal.acquire("one", "today");
+  writer.save([request]);
+  disk.removeItem = () => {
+    throw new Error("blocked");
+  };
+  writer.save([]);
+  assert.deepEqual(writer.read(), []);
+});

@@ -222,6 +222,14 @@ h3 {
   height: 10px;
   accent-color: var(--sky);
 }
+.workout-video {
+  display: block;
+  width: 100%;
+  max-height: 60dvh;
+  aspect-ratio: 16 / 9;
+  border-radius: 16px;
+  background: #0f172a;
+}
 .row {
   display: flex;
   gap: 12px;

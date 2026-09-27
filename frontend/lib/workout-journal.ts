@@ -38,7 +38,8 @@ export function createWorkoutJournal(
     return all;
   }
   function remove(key: string) {
-    memory.delete(key);
+    // Keep a tombstone if removeItem is blocked; do not resurrect an acknowledged disk request.
+    memory.set(key, "[]");
     try {
       persisted()?.removeItem(key);
     } catch {

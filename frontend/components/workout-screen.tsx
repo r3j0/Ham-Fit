@@ -4,7 +4,7 @@ import { getWorkout } from "@/lib/workouts";
 import type { Workout } from "@/lib/workout-types";
 import { Header, Loading, Shell } from "./ui";
 import { WorkoutError } from "./workout-error";
-import { WorkoutSummary } from "./workout-summary";
+import { WorkoutPlayer } from "./workout-player";
 export function WorkoutScreen({ id }: { id: string }) {
   const [workout, setWorkout] = useState<Workout | null>(null);
   const [error, setError] = useState<unknown>();
@@ -39,7 +39,7 @@ export function WorkoutScreen({ id }: { id: string }) {
           </>
         )}
         {workout ? (
-          <WorkoutSummary workout={workout} />
+          <WorkoutPlayer key={workout.id} initial={workout} />
         ) : (
           error === undefined && <Loading />
         )}
