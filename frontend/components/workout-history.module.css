@@ -15,16 +15,25 @@
   gap: 8px;
   font-size: 18px;
 }
-.heading h2 svg {
-  color: var(--orange);
+.streakColumns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.85fr);
+  align-items: center;
+  gap: 16px;
+}
+.summary {
+  min-width: 0;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
 }
 .streakCount {
-  margin-top: 12px;
   color: var(--text-secondary);
-  font-size: 15px;
+  font-size: 13px;
+}
+.streakCount span {
+  display: block;
 }
 .streakCount strong {
-  margin-right: 4px;
   color: var(--navy);
   font-size: 30px;
   font-weight: 800;
@@ -35,13 +44,15 @@
   margin-top: 4px;
   color: var(--muted);
   font-size: 12px;
+  line-height: 1.6;
 }
 .week {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 2px;
   list-style: none;
-  padding: 0;
-  margin: 20px 0 8px;
+  padding: 2px;
+  margin: 0;
 }
 .week li {
   display: grid;
@@ -55,11 +66,15 @@
 .weekMark {
   display: grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
+  width: min(100%, 32px);
+  aspect-ratio: 1;
   border-radius: 50%;
   background: var(--surface);
   color: var(--navy);
+}
+.weekMark svg {
+  width: 75%;
+  height: 75%;
 }
 .weekMark[data-completed] {
   background: var(--tint);
@@ -77,11 +92,12 @@
 }
 .historyLink {
   display: flex;
-  justify-content: center;
+  justify-content: flex-end;
   align-items: center;
   gap: 4px;
+  width: fit-content;
   min-height: 44px;
-  margin-bottom: -8px;
+  margin: 12px 0 -8px auto;
   border-radius: var(--radius-control);
   color: var(--navy);
   font-size: 13px;
@@ -97,9 +113,11 @@
   .streak {
     padding: 16px;
   }
-  .weekMark {
-    width: 28px;
-    height: 28px;
+  .streakColumns {
+    gap: 12px;
+  }
+  .weekday {
+    font-size: 10px;
   }
 }
 
@@ -249,8 +267,7 @@
     padding: 24px;
   }
   .weekMark {
-    width: 36px;
-    height: 36px;
+    width: min(100%, 36px);
   }
 }
 

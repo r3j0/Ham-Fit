@@ -36,6 +36,8 @@ test("메인은 중앙 캐릭터와 운동을 보여 주고 기록은 내 프로
   expect((await page.request.get("/mascots/gray-belly.svg")).ok()).toBe(true);
   const group = page.getByRole("group", { name: "그룹 햄스터 예시" });
   const companions = group.getByRole("img");
+  await expect(group).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+  await expect(group).toHaveCSS("border-top-width", "0px");
   await expect(companions).toHaveCount(2);
   await expect(companions.nth(0)).toHaveAccessibleName(
     "크림색 그룹 햄스터 (예시)",
@@ -85,6 +87,7 @@ test("메인은 중앙 캐릭터와 운동을 보여 주고 기록은 내 프로
       .getByRole("region", { name: "연속 운동", exact: true })
       .boundingBox())!;
     expect(groupBox.y).toBeGreaterThanOrEqual(bounds!.y + bounds!.height);
+    expect(groupBox.y - (stage.y + stage.height)).toBeLessThanOrEqual(8);
     expect(streakBox.y).toBeGreaterThanOrEqual(todayBox.y + todayBox.height);
     if (width < 960) {
       expect(todayBox.y).toBeGreaterThanOrEqual(groupBox.y + groupBox.height);

@@ -186,6 +186,58 @@ for (const width of [320, 390, 430, 1280]) {
     await page.goto("/");
     const streak = page.getByRole("region", { name: "연속 운동" });
     await expect(streak).toBeVisible();
+    const heading = streak.getByRole("heading", {
+      name: "연속 운동",
+      exact: true,
+    });
+    const card = streak.locator(":scope > div").last();
+    await expect(card.getByRole("heading")).toHaveCount(0);
+    const headingBox = (await heading.boundingBox())!;
+    const cardBox = (await card.boundingBox())!;
+    expect(headingBox.y + headingBox.height).toBeLessThan(cardBox.y);
+    const todayHeading = page.getByRole("heading", {
+      name: "오늘의 운동",
+      exact: true,
+    });
+    for (const property of ["font-size", "font-weight", "color"]) {
+      const expected = await todayHeading.evaluate(
+        (el, prop) => getComputedStyle(el).getPropertyValue(prop),
+        property,
+      );
+      await expect(heading).toHaveCSS(property, expected);
+    }
+    const summary = streak
+      .getByText("3일 연속 운동 중", { exact: true })
+      .locator("..");
+    const week = streak.getByRole("list", { name: "최근 7일 운동 기록" });
+    const summaryBox = (await summary.boundingBox())!;
+    const weekBox = (await week.boundingBox())!;
+    expect(summaryBox.x + summaryBox.width).toBeLessThanOrEqual(weekBox.x);
+    expect(
+      Math.abs(
+        summaryBox.y + summaryBox.height / 2 - weekBox.y - weekBox.height / 2,
+      ),
+    ).toBeLessThan(1);
+    await expect(week.getByRole("listitem")).toHaveCount(7);
+    for (const day of await week.getByRole("listitem").all()) {
+      const box = (await day.boundingBox())!;
+      expect(box.x).toBeGreaterThanOrEqual(weekBox.x);
+      expect(box.x + box.width).toBeLessThanOrEqual(
+        weekBox.x + weekBox.width + 1,
+      );
+    }
+    const link = streak.getByRole("link", { name: "운동 기록 보기" });
+    const linkBox = (await link.boundingBox())!;
+    const padding = await card.evaluate((el) =>
+      parseFloat(getComputedStyle(el).paddingRight),
+    );
+    expect(linkBox.x + linkBox.width).toBeCloseTo(
+      cardBox.x + cardBox.width - padding,
+      1,
+    );
+    expect(linkBox.y).toBeGreaterThanOrEqual(
+      Math.max(summaryBox.y + summaryBox.height, weekBox.y + weekBox.height),
+    );
     await page.screenshot({
       path: info.outputPath(`streak-${width}.png`),
       fullPage: true,

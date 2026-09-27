@@ -147,7 +147,7 @@
 }
 .home-companions {
   --home-mascot-size: min(256px, 32svh);
-  gap: 20px;
+  gap: 4px;
 }
 .home-mascot-stage {
   display: grid;
@@ -162,10 +162,7 @@
   align-items: center;
   justify-content: center;
   gap: 24px;
-  padding: 16px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-hero);
-  background: var(--canvas);
+  padding-inline: 16px;
 }
 .home-group-mascots > span {
   width: min(calc(80% / 3), calc(var(--home-mascot-size) / 3));
