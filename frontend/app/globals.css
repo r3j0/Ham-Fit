@@ -210,6 +210,18 @@ h3 {
   flex-direction: column;
   gap: 12px;
 }
+.workout-card {
+  padding: 20px;
+  border-radius: 20px;
+  background: var(--canvas);
+  overflow-wrap: anywhere;
+}
+.workout-progress {
+  display: block;
+  width: 100%;
+  height: 10px;
+  accent-color: var(--sky);
+}
 .row {
   display: flex;
   gap: 12px;

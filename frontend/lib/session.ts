@@ -2,6 +2,7 @@ import { ApiError, errorMessage, request } from "./http";
 import type { RequestOptions } from "./http";
 import type { AuthResponse, User } from "./types";
 import { measurementDrafts } from "./measurement-drafts";
+import { workoutJournal } from "./workout-journal";
 type Session = {
   status: "loading" | "authenticated" | "anonymous" | "error";
   user: User | null;
@@ -29,6 +30,7 @@ function publish(next: Session) {
 }
 function accept(auth: AuthResponse, broadcast = true, newLogin = false) {
   measurementDrafts.setOwner(auth.user.id);
+  workoutJournal.setOwner(auth.user.id);
   accessToken = auth.access_token;
   publish({
     status: "authenticated",
@@ -43,6 +45,8 @@ function accept(auth: AuthResponse, broadcast = true, newLogin = false) {
 function clear(reason: "expired" | "logout" = "expired", broadcast = true) {
   if (reason === "logout") measurementDrafts.clear();
   else measurementDrafts.suspend();
+  if (reason === "logout") workoutJournal.clear();
+  else workoutJournal.suspend();
   accessToken = null;
   publish({
     status: "anonymous",

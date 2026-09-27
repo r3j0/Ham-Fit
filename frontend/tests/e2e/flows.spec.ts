@@ -189,6 +189,55 @@ test("생년월일을 가입 시 저장하고 프로필에서 수정·복원한�
     page.getByRole("button", { name: "로그아웃", exact: true }),
   ).toBeEnabled();
 });
+test("오늘 운동은 측정 입력을 안내하고 응답 유실·새로고침 후 같은 배정을 복구한다", async ({
+  page,
+}) => {
+  await signup(page, "main");
+  await expect(
+    page.getByRole("button", { name: "오늘 운동 추천받기" }),
+  ).toBeVisible();
+  await expect(page.getByRole("main").getByRole("alert")).toHaveCount(0);
+  await page.getByRole("button", { name: "오늘 운동 추천받기" }).click();
+  await expect(
+    page.getByRole("link", { name: "측정 기록 등록하기" }),
+  ).toBeVisible();
+  await openRecords(page);
+  await startRecord(page);
+  await add(page, "신장", "170");
+  await save(page);
+  await page
+    .getByRole("navigation")
+    .getByRole("link", { name: "메인", exact: true })
+    .click();
+  let assignmentId = "";
+  const keys: string[] = [];
+  await page.route("**/workouts/today", async (route) => {
+    keys.push(route.request().headers()["idempotency-key"]);
+    expect(route.request().postDataJSON()).toEqual({});
+    const response = await route.fetch();
+    if (!assignmentId) {
+      assignmentId = (await response.json()).id;
+      await route.abort("failed");
+    } else await route.fulfill({ response });
+  });
+  await page.getByRole("button", { name: "오늘 운동 추천받기" }).click();
+  await expect(
+    page.getByRole("button", { name: "이전 추천 요청 확인하기" }),
+  ).toBeVisible();
+  await page.reload();
+  await page.getByRole("button", { name: "이전 추천 요청 확인하기" }).click();
+  await expect(
+    page.getByRole("button", { name: "이전 추천 요청 확인하기" }),
+  ).toHaveCount(0);
+  expect(keys).toHaveLength(2);
+  expect(keys[0]).toBe(keys[1]);
+  await expect(
+    page.getByRole("link", { name: "운동 시작하기" }),
+  ).toHaveAttribute("href", `/workouts/${assignmentId}`);
+  await expect(
+    page.getByRole("button", { name: "오늘 운동 추천받기" }),
+  ).toHaveCount(0);
+});
 test("실제 저장 응답 유실 후 같은 키로 재시도해 중복 생성하지 않는다", async ({
   page,
 }) => {
@@ -902,7 +951,7 @@ test("로그아웃 401에서도 모든 탭의 인증과 임시 입력을 정리�
   expect(await draftKeys(page)).toEqual([]);
 });
 
-test("빈 메인과 내 프로필 탭을 오가며 기록을 관리하고 입력 이탈을 확인한다", async ({
+test("운동 메인과 내 프로필 탭을 오가며 기록을 관리하고 입력 이탈을 확인한다", async ({
   page,
 }) => {
   const email = await signup(page, "main");
@@ -911,9 +960,12 @@ test("빈 메인과 내 프로필 탭을 오가며 기록을 관리하고 입력
   const profileTab = nav.getByRole("link", { name: "내 프로필", exact: true });
   await expect(nav.getByRole("link")).toHaveText(["메인", "내 프로필"]);
   await expect(mainTab).toHaveAttribute("aria-current", "page");
-  // The only main-page element is an accessible, visually hidden heading.
-  await expect(page.getByRole("main").locator(":scope > *")).toHaveCount(1);
-  await expect(page.getByRole("main").locator("h1")).toHaveClass("sr-only");
+  await expect(
+    page.getByRole("heading", { name: "오늘의 운동", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "오늘 운동 추천받기" }),
+  ).toBeVisible();
   await page.reload();
   await expect(mainTab).toHaveAttribute("aria-current", "page");
 

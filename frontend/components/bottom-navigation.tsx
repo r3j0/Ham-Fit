@@ -7,7 +7,12 @@ import { House, UserRound } from "lucide-react";
 export function BottomNavigation() {
   const pathname = usePathname();
   const tabs = [
-    { href: "/", label: "메인", icon: House, active: pathname === "/" },
+    {
+      href: "/",
+      label: "메인",
+      icon: House,
+      active: pathname === "/" || pathname.startsWith("/workouts/"),
+    },
     {
       href: "/account",
       label: "내 프로필",
