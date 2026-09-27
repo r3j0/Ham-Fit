@@ -1,7 +1,7 @@
 # Project Health 백엔드 개발 원칙
 
 - 백엔드 코드·설정·문서·테스트는 모두 `backend/` 안에서 관리한다. 저장소 루트와 `frontend/`는 백엔드 작업으로 변경하지 않는다.
-- User UPDATE는 이메일·비밀번호 같은 계정 정보 변경이다(2026-09-21 정정). 선호 운동·운동 목적·개인별 목표/기준값은 계획에서 폐기하며 `currentFitness` 프로필 응답도 제거한다. 기존 측정 CRUD·저장 기록과 ‘유효한 측정 1건 이상’ 온보딩 조건은 유지한다. User의 실제 컬럼은 `id`, `email`, `password`, `created_at`, `updated_at`이고 재화·커리큘럼은 별도 관계다. [계정 스키마](docs/account-schema.md)와 [사용자 API](docs/users-api.md)를 따른다.
+- User UPDATE는 이메일·비밀번호 같은 계정 정보 변경이다(2026-09-21 정정). 선호 운동·운동 목적·개인별 목표/기준값은 계획에서 폐기하며 `currentFitness` 프로필 응답도 제거한다. 기존 측정 CRUD·저장 기록과 ‘유효한 측정 1건 이상’ 온보딩 조건은 유지한다. 2026-09-26 사용자 결정으로 단일 선택 운동량·운동 목적을 별도 `UserPreference`와 `/users/me/preferences` API로 추가한다. [운동 설정 API](docs/user-preferences-api.md)를 따르며 기존 계정 PATCH·온보딩·추천은 변경하지 않는다. User의 실제 컬럼은 `id`, `email`, `password`, `created_at`, `updated_at`이고 재화·커리큘럼은 별도 관계다. [계정 스키마](docs/account-schema.md)와 [사용자 API](docs/users-api.md)를 따른다.
 - 실제 배포하고 운영할 웹앱을 개발한다.
 - 원하는 화면이나 결과를 만들기 위해 사용자 데이터, 분석 점수, 추천, 완료 상태를 하드코딩하지 않는다. 운영 경로는 실제 입력·저장 데이터와 명시된 처리 규칙으로 동작해야 한다.
 - 데이터가 없거나 외부 요청이 실패하면 그 상태를 반환한다. 예시 데이터나 임의의 성공 결과로 조용히 대체하지 않는다.

@@ -21,7 +21,13 @@ export class DatabaseService
   }
 
   // Raw queries must use the same schema as generated Prisma queries.
-  table(name: 'users' | 'user_curriculum_assignments' | 'measurements') {
+  table(
+    name:
+      | 'users'
+      | 'user_curriculum_assignments'
+      | 'measurements'
+      | 'user_preferences',
+  ) {
     return Prisma.raw(`"${this.dbSchema.replaceAll('"', '""')}"."${name}"`);
   }
 
@@ -59,6 +65,9 @@ export class DatabaseService
         this.authRateLimit.findFirst({ select: { attempts: true } }),
         this.measurementCreateRequest.findFirst({ select: { key: true } }),
         this.userCurrency.findFirst({ select: { balance: true } }),
+        this.userPreference.findFirst({
+          select: { exerciseVolume: true, exerciseGoal: true, updatedAt: true },
+        }),
         this.workoutCurriculum.findFirst({ select: { id: true } }),
         this.userCurriculumAssignment.findFirst({ select: { id: true } }),
       ]);

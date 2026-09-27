@@ -45,6 +45,9 @@ export class AuthService {
         data: {
           email,
           password: passwordHash,
+          // Nested writes share one transaction: signup cannot commit without
+          // its default settings, currency and initial session.
+          preference: { create: {} },
           currency: { create: {} },
           sessions: {
             create: {

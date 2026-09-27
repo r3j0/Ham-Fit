@@ -6,6 +6,7 @@ Project Health의 NestJS API 서버입니다. 백엔드 코드·설정·문서·
 - [API 버전 관리](docs/api-versioning.md): 현재 `/api/v1`, DB·측정 기준·기록 수정 버전과 구분
 - [계정 스키마](docs/account-schema.md): 이메일·비밀번호 등 계정 필드와 사용자 관계
 - [계정 정보 변경·온보딩·재화·커리큘럼·영구 탈퇴 API](docs/users-api.md)
+- [개인 운동 설정 API·가입/탈퇴·배포 순서](docs/user-preferences-api.md)
 - [회원가입·로그인·로그아웃·토큰 갱신 API와 직접 테스트](docs/auth-api.md)
 - [측정 데이터 명세](docs/measurement-data-spec.md)
 - [측정 기록 CRUD API와 직접 테스트](docs/measurements-api.md)
@@ -48,6 +49,8 @@ curl http://localhost:3001/api/v1/health/ready
 `/health`는 프로세스 응답 여부, `/health/ready`는 실제 DB 연결·계정 스키마·검사 카탈로그 준비 여부를 검사합니다. 준비되지 않으면 503을 반환하고 DB 접속 정보는 노출하지 않습니다. 서버 시작 시 DB 연결에 실패하면 시작을 중단합니다.
 
 2026-09-21 정정으로 선호 운동·운동 목적·개인별 목표/기준값과 `currentFitness` 프로필 응답을 제거했습니다. 기존 측정 CRUD·저장 데이터와 유효한 기록 1건 이상의 온보딩 조건은 유지합니다.
+
+2026-09-26부터 별도 UserPreference에 운동량 선호·단일 운동 목적을 저장합니다. 기존 프로필·계정 변경 계약과 온보딩을 유지하며 운동 알고리즘에는 아직 반영하지 않습니다. 가입 중지 → 마이그레이션 → 모든 신규 서버 교체 → 누락 점검 → 가입 재개 순서가 필요합니다. [운동 설정 API](docs/user-preferences-api.md)에 요청·응답·복구 절차를 정리했습니다.
 
 2026-09-24부터 공식 수치 기준을 확보하지 못한 성인 `self_curl_up`은 신규 입력에서 제외합니다. 최신 카탈로그는 `nfa100-2026-09-24`이며, 기존 기록·과거 카탈로그와 청소년 `curl_up`은 유지합니다. [평가 API](docs/measurement-evaluation-api.md)에 신규 입력과 기존 기록 수정 계약을 정리했습니다.
 

@@ -28,7 +28,7 @@ npm run start:dev
 | `POST /auth/logout`   | refresh 쿠키 또는 Bearer access token        | 204, 해당 세션 폐기·쿠키 삭제                            |
 | `GET /auth/me`        | `Authorization: Bearer <access_token>`       | 200, 기존 공개 필드와 확장 프로필                        |
 
-회원가입·로그인·갱신 응답은 `{ "user": { "id", "email", "created_at", "updated_at" }, "access_token", "token_type": "Bearer", "expires_in": 900 }` 형태다. `expires_in`은 초 단위이며 세션 만료가 가까우면 짧아진다. 비밀번호 원문·해시와 refresh token은 JSON 응답에 포함하지 않는다. `GET /auth/me`는 기존 공개 필드를 유지하고 온보딩·재화·현재 배정을 제공한다. 선호 운동·운동 목적·목표·currentFitness 응답은 최신 사용자 정정으로 폐기했다. 이메일·비밀번호 변경과 영구 탈퇴는 [사용자 API](users-api.md)를 따른다. 가입·로그인·갱신의 `user` 객체는 기존 형태를 유지한다.
+회원가입·로그인·갱신 응답은 `{ "user": { "id", "email", "created_at", "updated_at" }, "access_token", "token_type": "Bearer", "expires_in": 900 }` 형태다. `expires_in`은 초 단위이며 세션 만료가 가까우면 짧아진다. 비밀번호 원문·해시와 refresh token은 JSON 응답에 포함하지 않는다. `GET /auth/me`는 기존 공개 필드를 유지하고 온보딩·재화·현재 배정을 제공한다. 기존 선호 배열·수치 목표·currentFitness 프로필 응답은 폐기했다. 2026-09-26에 추가한 단일 운동량·목적은 별도 [운동 설정 API](user-preferences-api.md)에서 조회·저장하며 로그인 상태를 유지한다. 이메일·비밀번호 변경과 영구 탈퇴는 [사용자 API](users-api.md)를 따른다. 가입·로그인·갱신의 `user` 객체는 기존 형태를 유지한다.
 
 이메일은 앞뒤 공백 제거·소문자화·형식 검증 후 저장한다. 회원가입 비밀번호는 15~128자이며 공백을 제거하거나 문자열을 바꾸지 않는다. 숫자·특수문자 조합을 강제하지 않는다. 알 수 없는 요청 필드도 400으로 거절한다.
 
@@ -96,7 +96,7 @@ curl -i -X POST http://localhost:3001/api/v1/auth/logout \
 
 ## 저장과 운영
 
-- `users`는 id·email·password·created_at·updated_at을 관리한다. 선호/목적·목표·currentFitness 응답은 2026-09-21 정정으로 폐기했다. 온보딩은 측정 기록 존재 여부로 계산하며 인증 가드에서 상세 관계를 로드하지 않는다. 신규 가입의 계정·재화(0)·세션·토큰은 동일한 nested write 트랜잭션으로 생성한다.
+- `users`는 id·email·password·created_at·updated_at을 관리한다. 선호/목적·목표·currentFitness 응답은 2026-09-21 정정으로 폐기했다. 온보딩은 측정 기록 존재 여부로 계산하며 인증 가드에서 상세 관계를 로드하지 않는다. 신규 가입의 계정·재화(0)·운동 설정(standard/null)·세션·토큰은 동일한 nested write 트랜잭션으로 생성한다.
 - `auth_sessions`: 계정 연결, 생성 시각, 고정 만료 시각, 폐기 시각. 기본 7일이며 갱신으로 연장되지 않는다.
 - `auth_refresh_tokens`: 256비트 난수 토큰의 SHA-256 해시, 세션 연결, 사용 시각. 사용한 해시도 세션 만료까지 유지해 재사용을 탐지한다. 비밀번호에는 SHA-256을 쓰지 않는다.
 - `auth_rate_limits`: 서버 간 공유하는 DB 요청 횟수. IP·이메일은 키를 이용한 HMAC으로 처리한다. 인증 POST는 IP당 분당 60회, 회원가입은 이메일당 15분당 5회, 로그인은 이메일당 15분당 10회다. 성공·실패 모두 센다. 시간 구간이 바뀌면 다시 허용하며 경계 부근에는 두 구간의 요청이 인접할 수 있다.
