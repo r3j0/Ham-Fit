@@ -40,14 +40,14 @@ export function WorkoutPlayer({ initial }: { initial: Workout }) {
   const canPlay =
     state.connected &&
     !state.recovering &&
-    workout.status === "in_progress" &&
+    (workout.status === "in_progress" || workout.status === "completed") &&
     state.error === undefined &&
     !state.terminalPending;
   const verified =
     workout.video.playbackStatus === "verified" && !!workout.video.playbackUrl;
   const completed = workout.status === "completed";
   useUnsaved(
-    playing || state.pending > 0,
+    (playing && !completed) || state.pending > 0,
     "운동 진행을 저장하고 있어요. 이 화면을 나가면 재생을 멈추고, 미확정 저장은 돌아온 뒤 다시 확인해요. 나갈까요?",
   );
   useEffect(() => {
@@ -55,19 +55,18 @@ export function WorkoutPlayer({ initial }: { initial: Workout }) {
     const mountedMedia = video.current;
     const capturePause = () => {
       const media = video.current ?? mountedMedia;
-      if (
-        !media ||
-        !restored.current ||
-        session.getSnapshot().workout.status !== "in_progress"
-      )
-        return;
+      if (!media) return;
       // Synchronous journaling survives pagehide even when the request cannot finish.
       suppressPause.current = true;
       media.pause();
-      void session.record(
-        "pause",
-        samplePlayback(media, session.getSnapshot().workout),
-      );
+      if (
+        restored.current &&
+        session.getSnapshot().workout.status === "in_progress"
+      )
+        void session.record(
+          "pause",
+          samplePlayback(media, session.getSnapshot().workout),
+        );
       suppressPause.current = false;
     };
     const visibility = () => {
@@ -83,9 +82,20 @@ export function WorkoutPlayer({ initial }: { initial: Workout }) {
       document.removeEventListener("visibilitychange", visibility);
     };
   }, [session]);
+  // The current-assignment card can receive a newer revision on focus or manual refresh.
+  useEffect(() => {
+    if (initial.revision > session.getSnapshot().workout.revision)
+      void session.refresh();
+  }, [initial, session]);
   useEffect(() => {
     if (!canPlay) video.current?.pause();
   }, [canPlay]);
+  useEffect(() => {
+    if (completed) {
+      video.current?.pause();
+      if (video.current) video.current.currentTime = 0;
+    }
+  }, [completed]);
   useEffect(() => {
     const media = video.current;
     if (
@@ -96,15 +106,21 @@ export function WorkoutPlayer({ initial }: { initial: Workout }) {
       Number.isFinite(media.duration)
     ) {
       media.currentTime = Math.min(
-        state.workout.progress.positionSeconds,
+        state.workout.status === "completed"
+          ? 0
+          : state.workout.progress.positionSeconds,
         media.duration,
       );
       restored.current = true;
     }
-  }, [state.recovering, state.workout.progress.positionSeconds]);
+  }, [
+    state.recovering,
+    state.workout.progress.positionSeconds,
+    state.workout.status,
+  ]);
   function capture(type: "progress" | "pause") {
     const media = video.current;
-    if (media)
+    if (media && session.getSnapshot().workout.status === "in_progress")
       void session.record(
         type,
         samplePlayback(media, session.getSnapshot().workout),
@@ -152,7 +168,8 @@ export function WorkoutPlayer({ initial }: { initial: Workout }) {
       <WorkoutSummary workout={workout} />
       {completed && (
         <Notice tone="success">
-          운동을 완료했어요. 완료한 운동의 기록은 변경되지 않아요.
+          운동을 완료했어요. 영상을 다시 볼 수 있고, 완료한 운동의 기록은
+          변경되지 않아요.
         </Notice>
       )}
       {state.error !== undefined && <WorkoutError error={state.error} />}
@@ -201,8 +218,11 @@ export function WorkoutPlayer({ initial }: { initial: Workout }) {
             onLoadedMetadata={(event) => {
               if (restored.current || session.getSnapshot().recovering) return;
               const media = event.currentTarget;
+              const saved = session.getSnapshot().workout;
               const position =
-                session.getSnapshot().workout.progress.positionSeconds;
+                saved.status === "completed"
+                  ? 0
+                  : saved.progress.positionSeconds;
               if (Number.isFinite(media.duration))
                 media.currentTime = Math.min(position, media.duration);
               restored.current = true;
@@ -212,7 +232,7 @@ export function WorkoutPlayer({ initial }: { initial: Workout }) {
               if (
                 !latest.connected ||
                 latest.recovering ||
-                latest.workout.status !== "in_progress" ||
+                !["in_progress", "completed"].includes(latest.workout.status) ||
                 latest.error !== undefined ||
                 latest.terminalPending
               ) {

@@ -1455,11 +1455,9 @@ fieldset:disabled select {
   width: 100%;
 }
 
-.authenticated-app:has(.workout-session-shell) .bottom-navigation,
 .authenticated-app:has(.assessment-shell) .bottom-navigation {
   display: none;
 }
-.authenticated-app .workout-session-shell,
 .authenticated-app .assessment-shell.is-running {
   padding-bottom: env(safe-area-inset-bottom);
 }
@@ -1625,13 +1623,10 @@ fieldset:disabled select {
     min-height: calc(100dvh - var(--desktop-navigation-height) - 64px);
     padding-bottom: 0;
   }
-  .authenticated-app:has(
-    :is(.onboarding-shell, .assessment-shell, .workout-session-shell)
-  ) {
+  .authenticated-app:has(:is(.onboarding-shell, .assessment-shell)) {
     padding-top: 0;
   }
-  .authenticated-app
-    :is(.onboarding-shell, .assessment-shell, .workout-session-shell) {
+  .authenticated-app :is(.onboarding-shell, .assessment-shell) {
     min-height: calc(100dvh - 64px);
   }
   .bottom-navigation {

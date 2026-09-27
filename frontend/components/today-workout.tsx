@@ -8,9 +8,16 @@ import { workoutJournal, type WorkoutWriter } from "@/lib/workout-journal";
 import { useSession } from "./session-provider";
 import { Header, Loading, Notice, Shell } from "./ui";
 import { WorkoutError } from "./workout-error";
+import { WorkoutPlayer } from "./workout-player";
 import { WorkoutSummary } from "./workout-summary";
 
-export function TodayWorkout({ embedded = false }: { embedded?: boolean }) {
+export function TodayWorkout({
+  embedded = false,
+  playback = false,
+}: {
+  embedded?: boolean;
+  playback?: boolean;
+}) {
   const session = useSession();
   const userId = session.user!.id;
   const [workout, setWorkout] = useState<Workout | null>(null);
@@ -126,24 +133,27 @@ export function TodayWorkout({ embedded = false }: { embedded?: boolean }) {
           )}
           {workout ? (
             <section className="workout-card stack">
-              <WorkoutSummary workout={workout} />
+              {playback ? (
+                <WorkoutPlayer key={workout.id} initial={workout} />
+              ) : (
+                <WorkoutSummary workout={workout} />
+              )}
               {!today && (
                 <p className="caption">
                   이전에 받은 운동이에요. 오늘 운동을 새로 받거나 이전 운동을
                   이어갈 수 있어요.
                 </p>
               )}
-              <Link
-                className="button secondary"
-                href={`/workouts/${workout.id}`}
-              >
-                {workout.status === "completed"
-                  ? "완료한 운동 보기"
-                  : workout.status === "assigned"
-                    ? "운동 시작하기"
-                    : "운동 이어하기"}
-              </Link>
-              {today && workout.status === "completed" && (
+              {!playback && (
+                <Link className="button secondary" href="/workout">
+                  {workout.status === "completed"
+                    ? "완료한 운동 보기"
+                    : workout.status === "assigned"
+                      ? "운동 시작하기"
+                      : "운동 이어하기"}
+                </Link>
+              )}
+              {!playback && today && workout.status === "completed" && (
                 <Notice tone="success">
                   오늘의 운동을 완료했어요. 다음 추천은 내일 받을 수 있어요.
                 </Notice>

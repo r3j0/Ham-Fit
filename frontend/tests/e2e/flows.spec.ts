@@ -309,7 +309,7 @@ test("오늘 운동은 측정 입력을 안내하고 응답 유실·새로고침
   expect(keys[0]).toBe(keys[1]);
   await expect(
     page.getByRole("link", { name: "운동 시작하기" }),
-  ).toHaveAttribute("href", `/workouts/${assignmentId}`);
+  ).toHaveAttribute("href", "/workout");
   await expect(
     page.getByRole("button", { name: "오늘 운동 추천받기" }),
   ).toHaveCount(0);

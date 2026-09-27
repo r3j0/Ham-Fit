@@ -132,17 +132,24 @@ async function testMedia(page: Page, workout: Workout) {
       },
     });
   });
-  await page.route(`**/api/v1/workouts/${workout.id}`, async (route) => {
-    const response = await route.fetch();
-    const data = await response.json();
-    await route.fulfill({
-      response,
-      json: {
-        ...data,
-        video: { ...data.video, playbackStatus: "verified", playbackUrl: url },
-      },
-    });
-  });
+  await page.route(
+    new RegExp(`/api/v1/workouts/(?:${workout.id}|current)$`),
+    async (route) => {
+      const response = await route.fetch();
+      const data = await response.json();
+      await route.fulfill({
+        response,
+        json: {
+          ...data,
+          video: {
+            ...data.video,
+            playbackStatus: "verified",
+            playbackUrl: url,
+          },
+        },
+      });
+    },
+  );
   // Event replies also carry video metadata; retain the same media fixture across state updates.
   await page.route(`**/api/v1/workouts/${workout.id}/events`, async (route) => {
     const response = await route.fetch();
@@ -167,7 +174,12 @@ test("actual playback excludes seeks, ends below 50%, resumes after reload and c
 }, info) => {
   const { workout, read } = await prepare(page);
   await testMedia(page, workout);
-  await openAuthenticated(page, `/workouts/${workout.id}`);
+  await openAuthenticated(page, "/");
+  await page
+    .getByRole("navigation")
+    .getByRole("link", { name: "운동", exact: true })
+    .click();
+  await expect(page).toHaveURL("/workout");
   const video = page.getByLabel("운동 영상");
   await expect
     .poll(() => video.evaluate((v: HTMLVideoElement) => v.readyState))
@@ -220,7 +232,24 @@ test("actual playback excludes seeks, ends below 50%, resumes after reload and c
   expect((await read()).status).toBe("in_progress");
   await page.getByRole("button", { name: "완료 확인" }).click();
   await expect.poll(async () => (await read()).status).toBe("completed");
-  await expect(video).not.toHaveAttribute("controls");
+  await expect(video).toHaveAttribute("controls");
+  const completed = await read();
+  let replayEvents = 0;
+  page.on("request", (request) => {
+    if (request.url().endsWith(`/workouts/${workout.id}/events`))
+      replayEvents++;
+  });
+  await video.evaluate((v: HTMLVideoElement) => {
+    v.currentTime = 0;
+    return v.play();
+  });
+  await expect
+    .poll(() => video.evaluate((v: HTMLVideoElement) => v.currentTime))
+    .toBeGreaterThan(1);
+  await video.evaluate((v: HTMLVideoElement) => v.pause());
+  expect((await read()).revision).toBe(completed.revision);
+  expect((await read()).progress).toEqual(completed.progress);
+  expect(replayEvents).toBe(0);
   await page.screenshot({
     path: info.outputPath("completed-workout.png"),
     fullPage: true,

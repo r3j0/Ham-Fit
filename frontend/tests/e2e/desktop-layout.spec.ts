@@ -169,8 +169,8 @@ test("데스크톱의 메인·운동·프로필·리포트는 기존 내용을 �
   );
   await page.goto("/workout");
   await sideBySide(
-    '[aria-labelledby="workout-history-title"]',
     '[aria-labelledby="today-workout-title"]',
+    '[aria-labelledby="workout-history-title"]',
   );
   await page.goto("/account");
   await sideBySide(".latest-fitness", ".menu-card");
