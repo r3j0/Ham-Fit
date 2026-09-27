@@ -54,7 +54,10 @@ test("프로필은 재화·가입 경과일·활동 리포트와 얼굴 모션�
     .toBe(true);
   await expect(page.locator(".profile-tenure")).toHaveText("가입한지 26 일");
   const report = page.getByRole("region", { name: "활동 리포트" });
-  await expect(report.getByText("예시", { exact: true })).toBeVisible();
+  await expect(report.getByText("예시", { exact: true })).toHaveCount(0);
+  await expect(report.getByRole("heading")).toHaveCount(0);
+  for (const emphasis of await report.locator("strong, svg").all())
+    await expect(emphasis).toHaveCSS("color", "rgb(189, 82, 0)");
   await expect(report.locator("dt")).toHaveText([
     "현재 연속 스트릭",
     "최장 연속 스트릭",

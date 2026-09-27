@@ -33,11 +33,7 @@ const metrics = [
 
 export function ProfileActivityReport() {
   return (
-    <section className="profile-report" aria-labelledby="profile-report-title">
-      <div className="profile-report-heading">
-        <h2 id="profile-report-title">활동 리포트</h2>
-        <span className="profile-report-preview">예시</span>
-      </div>
+    <section className="profile-report" aria-label="활동 리포트">
       <dl className="profile-report-metrics">
         {metrics.map(({ label, value, unit, Icon }) => (
           <div className="profile-report-metric" key={label}>
