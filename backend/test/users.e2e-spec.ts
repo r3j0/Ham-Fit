@@ -177,6 +177,8 @@ describe('User profile and permanent deletion against PostgreSQL', () => {
       isOnboarded: false,
       currency: { balance: 0 },
       currentCurriculum: null,
+      dateOfBirth: null,
+      currentAge: null,
     });
     expect(Object.keys(response.body as object).sort()).toEqual(
       [
@@ -187,6 +189,8 @@ describe('User profile and permanent deletion against PostgreSQL', () => {
         'isOnboarded',
         'currency',
         'currentCurriculum',
+        'dateOfBirth',
+        'currentAge',
       ].sort(),
     );
     expect(

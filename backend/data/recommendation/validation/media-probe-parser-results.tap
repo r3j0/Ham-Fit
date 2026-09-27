@@ -1,0 +1,64 @@
+TAP version 13
+# Subtest: accepts observed MIME typo only with independent MP4/video-track evidence
+ok 1 - accepts observed MIME typo only with independent MP4/video-track evidence
+  ---
+  duration_ms: 9.163458
+  type: 'test'
+  ...
+# Subtest: accepts structurally validated initial range with the same source MIME typo
+ok 2 - accepts structurally validated initial range with the same source MIME typo
+  ---
+  duration_ms: 0.571625
+  type: 'test'
+  ...
+# Subtest: preserves actual duration mismatch explicitly
+ok 3 - preserves actual duration mismatch explicitly
+  ---
+  duration_ms: 0.429334
+  type: 'test'
+  ...
+# Subtest: does not accept HTML or arbitrary bytes falsely labelled video/mg4
+ok 4 - does not accept HTML or arbitrary bytes falsely labelled video/mg4
+  ---
+  duration_ms: 0.164042
+  type: 'test'
+  ...
+# Subtest: rejects unexpected HTTP MIME and status, shifted ranges and truncated bodies
+ok 5 - rejects unexpected HTTP MIME and status, shifted ranges and truncated bodies
+  ---
+  duration_ms: 0.588625
+  type: 'test'
+  ...
+# Subtest: rejects content that changes total length between requests
+ok 6 - rejects content that changes total length between requests
+  ---
+  duration_ms: 0.170917
+  type: 'test'
+  ...
+# Subtest: rejects arbitrary URLs before network calls
+ok 7 - rejects arbitrary URLs before network calls
+  ---
+  duration_ms: 0.04725
+  type: 'test'
+  ...
+# Subtest: validates truncated extended boxes and MP4 brands
+ok 8 - validates truncated extended boxes and MP4 brands
+  ---
+  duration_ms: 0.160167
+  type: 'test'
+  ...
+# Subtest: reads mvhd versions 0 and 1, refuses missing tracks and zero timescale
+ok 9 - reads mvhd versions 0 and 1, refuses missing tracks and zero timescale
+  ---
+  duration_ms: 0.137125
+  type: 'test'
+  ...
+1..9
+# tests 9
+# suites 0
+# pass 9
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 46.331708

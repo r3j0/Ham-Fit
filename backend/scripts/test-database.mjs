@@ -80,6 +80,7 @@ try {
         'run',
         '--config',
         'vitest.config.e2e.ts',
+        ...process.argv.slice(2),
       ]));
   }
 } finally {
