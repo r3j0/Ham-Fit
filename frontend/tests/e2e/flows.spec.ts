@@ -39,6 +39,7 @@ async function signup(page: Page, destination: "records" | "main" = "records") {
   await page.getByLabel("이메일", { exact: true }).fill(email);
   await page.getByLabel("비밀번호", { exact: true }).fill(password);
   await page.getByLabel("비밀번호 확인", { exact: true }).fill(password);
+  await page.getByLabel("생년월일", { exact: true }).fill("2000-02-29");
   const registration = page.waitForResponse((response) =>
     response.url().endsWith("/auth/register"),
   );
@@ -157,6 +158,36 @@ test("가입 → 정확한 부분 저장 → 새로고침 → 수정 → 삭제 
   await expect(page).toHaveURL(new URL("/", page.url()).href);
   await openRecords(page);
   await expect(page.getByText("첫 기록을 기다리고 있어요")).toBeVisible();
+});
+test("생년월일을 가입 시 저장하고 프로필에서 수정·복원한다", async ({
+  page,
+}) => {
+  await signup(page, "main");
+  await page.getByRole("link", { name: "내 프로필", exact: true }).click();
+  const input = page.getByLabel("생년월일 입력", { exact: true });
+  await expect(input).toHaveValue("2000-02-29");
+  await input.fill("1999-03-01");
+  const saved = page.waitForResponse(
+    (r) =>
+      r.url().endsWith("/users/me/profile") && r.request().method() === "PATCH",
+  );
+  await page.getByRole("button", { name: "생년월일 저장" }).click();
+  expect((await saved).status()).toBe(200);
+  await expect(page.getByText("생년월일을 저장했어요.")).toBeVisible();
+  await page.reload();
+  await expect(input).toHaveValue("1999-03-01");
+  await page.route("**/users/me/profile", (route) =>
+    route.request().method() === "PATCH"
+      ? failApi(route, 503)
+      : route.continue(),
+  );
+  await input.fill("1998-03-01");
+  await page.getByRole("button", { name: "생년월일 저장" }).click();
+  await expect(page.getByRole("alert")).toBeVisible();
+  await expect(input).toHaveValue("1998-03-01");
+  await expect(
+    page.getByRole("button", { name: "로그아웃", exact: true }),
+  ).toBeEnabled();
 });
 test("실제 저장 응답 유실 후 같은 키로 재시도해 중복 생성하지 않는다", async ({
   page,

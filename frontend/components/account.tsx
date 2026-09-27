@@ -7,6 +7,7 @@ import { api, logout } from "@/lib/session";
 import { errorMessage } from "@/lib/http";
 import type { User } from "@/lib/types";
 import { ArtworkSlot, Dialog, Loading, Notice, Shell } from "./ui";
+import { BirthProfileForm } from "./birth-profile-form";
 export function Account() {
   const [user, setUser] = useState<User | null>(null),
     [profileError, setProfileError] = useState(""),
@@ -89,6 +90,7 @@ export function Account() {
             <ChevronRight size={20} />
           </Link>
         </div>
+        <BirthProfileForm />
         <button
           className="button secondary"
           onClick={() => setConfirm(true)}

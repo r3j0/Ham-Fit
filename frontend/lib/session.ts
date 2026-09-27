@@ -119,13 +119,18 @@ export async function authenticate(
   mode: "login" | "register",
   email: string,
   password: string,
+  dateOfBirth?: string,
 ) {
   await startup;
   return locked(async () => {
     const result = await request<AuthResponse>(`/auth/${mode}`, {
       method: "POST",
       headers: { "X-CSRF-Protection": "1" },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({
+        email,
+        password,
+        ...(mode === "register" && dateOfBirth ? { dateOfBirth } : {}),
+      }),
     });
     accept(result.data, true, true);
   });
