@@ -423,3 +423,55 @@
     grid-column: 1 / -1;
   }
 }
+
+@media (min-width: 960px) {
+  .overview {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
+    gap: 24px 32px;
+  }
+  .overview > :first-child {
+    grid-column: 1;
+    grid-row: 1 / span 3;
+  }
+  .overview > :is(.hero, .routine, .note) {
+    grid-column: 2;
+  }
+  .overview > .assignment {
+    grid-column: 1;
+  }
+  .overview > .recordLink {
+    grid-column: 2;
+    align-self: center;
+  }
+  .hero {
+    padding: 28px;
+  }
+  .hero h2 {
+    font-size: 30px;
+  }
+  .exerciseCard {
+    padding: 20px;
+  }
+  .session:global(.app-shell) {
+    max-width: 960px;
+  }
+  .session .content {
+    width: 100%;
+    max-width: 760px;
+    margin-inline: auto;
+  }
+  .stage {
+    padding-inline: 32px;
+  }
+  .controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .controls > :only-child {
+    grid-column: 1 / -1;
+  }
+  .completionHero {
+    padding-top: 32px;
+  }
+}

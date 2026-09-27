@@ -266,7 +266,7 @@ export function AssessmentWorkout() {
         </p>
       </div>
       <form
-        className={`stack ${inputStyles.compact}`}
+        className={`stack assessment-setup ${inputStyles.compact}`}
         onSubmit={start}
         noValidate
       >

@@ -119,3 +119,25 @@
     transition: none;
   }
 }
+
+@media (min-width: 960px) {
+  .shell > :global(.content) {
+    max-width: 1040px;
+    background: transparent;
+  }
+  .shell > :global(.content):last-child {
+    display: grid;
+    grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+    align-items: start;
+    max-width: 1040px;
+    gap: 48px;
+    padding-block: 56px;
+  }
+  .question {
+    font-size: 34px;
+    line-height: 1.4;
+  }
+  .choice {
+    min-height: 116px;
+  }
+}

@@ -540,7 +540,7 @@ export function RecordForm({
   if (step === 2 && !catalog)
     return (
       <Shell
-        className={`${onboarding ? "onboarding-shell" : ""} ${reference ? photoStyles.shell : ""}`}
+        className={`record-form-shell ${onboarding ? "onboarding-shell" : ""} ${reference ? photoStyles.shell : ""}`}
       >
         <Header
           title="입력 복원"
@@ -575,7 +575,7 @@ export function RecordForm({
     );
   return (
     <Shell
-      className={`${onboarding ? "onboarding-shell" : ""} ${reference ? photoStyles.shell : ""}`}
+      className={`record-form-shell ${onboarding ? "onboarding-shell" : ""} ${reference ? photoStyles.shell : ""}`}
     >
       <Header
         onBack={

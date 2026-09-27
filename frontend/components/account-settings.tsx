@@ -102,7 +102,7 @@ export function AccountSettings() {
     else void perform();
   }
   return (
-    <Shell>
+    <Shell className="settings-shell">
       <Header title="계정 설정" back="/account" />
       <div className="content stack">
         <div className="segmented" role="group" aria-label="설정 항목">

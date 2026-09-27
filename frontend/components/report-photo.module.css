@@ -80,3 +80,18 @@
   font-size: 16px;
   font-variant-numeric: tabular-nums;
 }
+
+@media (min-width: 960px) {
+  .selection {
+    gap: 24px;
+  }
+  .preview {
+    min-height: 320px;
+  }
+  .actions {
+    gap: 12px;
+  }
+  .resultList {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}

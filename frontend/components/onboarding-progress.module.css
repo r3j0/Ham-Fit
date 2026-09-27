@@ -27,3 +27,12 @@
   border-radius: inherit;
   background: var(--sky);
 }
+
+@media (min-width: 960px) {
+  .label {
+    font-size: 12px;
+  }
+  .track {
+    height: 6px;
+  }
+}

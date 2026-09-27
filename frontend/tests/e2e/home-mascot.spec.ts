@@ -41,7 +41,10 @@ test("메인은 중앙 캐릭터와 운동을 보여 주고 기록은 내 프로
     await page.setViewportSize({ width, height });
     const bounds = await mascot.boundingBox();
     expect(bounds).not.toBeNull();
-    expect(Math.abs(bounds!.x + bounds!.width / 2 - width / 2)).toBeLessThan(2);
+    const stage = (await page.locator(".home-mascot-stage").boundingBox())!;
+    expect(
+      Math.abs(bounds!.x + bounds!.width / 2 - (stage.x + stage.width / 2)),
+    ).toBeLessThan(2);
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth),
     ).toBeLessThanOrEqual(width);

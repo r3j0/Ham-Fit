@@ -142,3 +142,30 @@
     height: calc(100dvh - 48px);
   }
 }
+
+@media (min-width: 960px) {
+  .shell:global(.app-shell) {
+    height: calc(100dvh - 64px);
+    min-height: 0;
+  }
+  .canvas {
+    padding: 24px 24px 88px;
+  }
+  .workspace:has(.panel:not([hidden]):not(.collapsed)) .canvas {
+    right: 420px;
+  }
+  .panel {
+    inset: 20px 20px 20px auto;
+    width: 380px;
+  }
+  .panel.collapsed {
+    bottom: auto;
+  }
+  .panelContent > :global(.content) {
+    padding: 20px;
+  }
+  .zoom {
+    left: 24px;
+    bottom: 24px;
+  }
+}

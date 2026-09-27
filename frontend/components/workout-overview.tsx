@@ -139,7 +139,7 @@ function RoutineWorkout({ routine }: { routine: WorkoutRoutine }) {
     return (
       <Shell className={styles.shell}>
         <Header title="운동" showBrand={false} />
-        <div className={`content stack ${styles.content}`}>
+        <div className={`content stack ${styles.content} ${styles.overview}`}>
           <WorkoutCalendar />
           <section
             className={styles.hero}
@@ -172,7 +172,10 @@ function RoutineWorkout({ routine }: { routine: WorkoutRoutine }) {
               운동 시작 <ArrowRight size={19} aria-hidden="true" />
             </button>
           </section>
-          <section aria-labelledby="routine-list-title">
+          <section
+            className={styles.routine}
+            aria-labelledby="routine-list-title"
+          >
             <div className={styles.sectionHeading}>
               <h2 id="routine-list-title">이 순서로 운동해요</h2>
               <span>세트 사이 30초 휴식</span>

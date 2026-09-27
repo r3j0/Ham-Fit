@@ -317,3 +317,17 @@
     padding-inline: 10px;
   }
 }
+
+@media (min-width: 960px) {
+  .streak,
+  .calendar {
+    padding: 24px;
+  }
+  .weekMark {
+    width: 36px;
+    height: 36px;
+  }
+  .calendarHelp {
+    font-size: 12px;
+  }
+}

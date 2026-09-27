@@ -162,7 +162,10 @@ export function FitnessReport({
   );
   const label = (code: string) => labels[code] ?? code;
   return (
-    <section className="stack" aria-labelledby="fitness-report-title">
+    <section
+      className={`stack ${styles.profile}`}
+      aria-labelledby="fitness-report-title"
+    >
       <h2 id="fitness-report-title">이 기록의 체력 프로필</h2>
       <FitnessRadar axes={evaluation.axes} />
       <p className="caption">

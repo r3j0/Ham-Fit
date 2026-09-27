@@ -17,7 +17,7 @@ export function RecordList() {
     [from, setFrom] = useState(""),
     [to, setTo] = useState("");
   return (
-    <Shell>
+    <Shell className="record-list-shell">
       <h1 className="sr-only">내 측정 기록</h1>
       <div className="content">
         <div className="between list-heading">

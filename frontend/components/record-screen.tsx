@@ -70,7 +70,7 @@ function RecordLoader({
       />
     );
   return (
-    <Shell>
+    <Shell className="record-detail-shell">
       <Header
         title={edit ? "측정 기록 수정" : "측정 기록"}
         back="/measurements"
@@ -148,7 +148,7 @@ function RecordDetail({
     }
   }
   return (
-    <Shell>
+    <Shell className="record-detail-shell">
       <Header title="측정 기록" back="/measurements" />
       <div className="content stack">
         {saved && <Notice tone="success">측정 기록을 저장했어요.</Notice>}

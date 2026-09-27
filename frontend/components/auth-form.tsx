@@ -70,7 +70,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
     }
   }
   return (
-    <Shell>
+    <Shell className="auth-shell">
       <header className="auth-header">
         <Brand />
       </header>
