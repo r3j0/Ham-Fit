@@ -17,6 +17,7 @@ import { AppModule } from '../src/app.module.js';
 import { CurriculaService } from '../src/curricula/curricula.service.js';
 import { DatabaseService } from '../src/database/database.service.js';
 import { configureApp } from '../src/setup-app.js';
+import { UserPreferencesService } from '../src/users/user-preferences.service.js';
 
 const password = 'user preferences integration password';
 const path = '/api/v1/users/me/preferences';
@@ -495,12 +496,16 @@ describe('Personal exercise preferences against PostgreSQL', () => {
     await database.userPreference.delete({
       where: { userId: account.user.id },
     });
-    const response = await read(account).expect(503);
-    expect(response.body).toMatchObject({
+    const missingPreference = {
       statusCode: 503,
-      message: expect.any(String),
-    });
-    await patch(account, { exerciseVolume: 'more' }).expect(503);
+      error: 'Service Unavailable',
+      message: '사용자 운동 설정이 누락되었습니다. 관리자 확인이 필요합니다.',
+    };
+    await read(account).expect(503, missingPreference);
+    await patch(account, { exerciseVolume: 'more' }).expect(
+      503,
+      missingPreference,
+    );
     expect(
       await database.userPreference.count({
         where: { userId: account.user.id },
@@ -642,4 +647,86 @@ describe('Personal exercise preferences against PostgreSQL', () => {
     expect(await stored(other)).toEqual(otherBefore);
     await read(other).expect(200);
   });
+
+  it.each(['GET', 'PATCH'] as const)(
+    'returns 401 when withdrawal completes after %s authentication but before preferences are read',
+    async (method) => {
+      const account = await register();
+      const preferences = app.get(UserPreferencesService);
+      const get = preferences.get.bind(preferences);
+      const update = preferences.update.bind(preferences);
+      let reachedService!: () => void;
+      const authenticated = new Promise<void>((resolve) => {
+        reachedService = resolve;
+      });
+      let release!: () => void;
+      const resume = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const waitForWithdrawal = async (userId: string) => {
+        expect(userId).toBe(account.user.id);
+        // Controller entry proves both real guards have already passed.
+        reachedService();
+        await resume;
+      };
+      const spy =
+        method === 'GET'
+          ? vi.spyOn(preferences, 'get').mockImplementationOnce(async (id) => {
+              await waitForWithdrawal(id);
+              return get(id);
+            })
+          : vi
+              .spyOn(preferences, 'update')
+              .mockImplementationOnce(async (id, input) => {
+                await waitForWithdrawal(id);
+                return update(id, input);
+              });
+      // Calling then starts the HTTP request; the deadline also bounds a
+      // failure to reach the service instead of leaving the barrier pending.
+      const pending = (
+        method === 'GET'
+          ? read(account)
+          : patch(account, { exerciseVolume: 'more' })
+      )
+        .timeout({ deadline: 10_000 })
+        .then((response) => response);
+      try {
+        await Promise.race([
+          authenticated,
+          pending.then((response) => {
+            throw new Error(
+              `Preferences request ended with ${response.status} before reaching the service`,
+            );
+          }),
+        ]);
+        await request(app.getHttpServer())
+          .delete('/api/v1/users/me')
+          .set('Authorization', `Bearer ${account.access_token}`)
+          .set('X-CSRF-Protection', '1')
+          .send({ password })
+          .timeout({ deadline: 5_000 })
+          .expect(204);
+        release();
+        const response = await pending;
+        expect(response.status).toBe(401);
+        expect(response.body).toEqual({
+          statusCode: 401,
+          error: 'Unauthorized',
+          message: '로그인이 필요하거나 세션이 만료되었습니다.',
+        });
+        expect(
+          await database.user.findUnique({ where: { id: account.user.id } }),
+        ).toBeNull();
+        expect(
+          await database.userPreference.findUnique({
+            where: { userId: account.user.id },
+          }),
+        ).toBeNull();
+      } finally {
+        release();
+        await pending.catch(() => undefined);
+        spy.mockRestore();
+      }
+    },
+  );
 });
