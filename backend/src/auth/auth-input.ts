@@ -1,6 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import { z } from 'zod';
 import { parseDateOfBirth } from '../users/date-of-birth.js';
+import { parseNickname } from '../users/nickname.js';
 
 const email = z.string().trim().toLowerCase().max(254).pipe(z.email());
 const loginSchema = z.strictObject({
@@ -11,6 +12,7 @@ const newPassword = z.string().min(15).max(128);
 const registerSchema = loginSchema.extend({
   password: newPassword,
   dateOfBirth: z.string().optional(),
+  nickname: z.unknown().optional(),
 });
 const accountUpdateSchema = z
   .strictObject({
@@ -47,8 +49,15 @@ export function parseCredentials(input: unknown, registration = false) {
     });
   }
   const data = result.data;
-  if (registration && 'dateOfBirth' in data && data.dateOfBirth !== undefined) {
-    return { ...data, dateOfBirth: parseDateOfBirth(data.dateOfBirth) };
-  }
-  return { ...data, dateOfBirth: undefined };
+  return {
+    ...data,
+    dateOfBirth:
+      registration && 'dateOfBirth' in data && data.dateOfBirth !== undefined
+        ? parseDateOfBirth(data.dateOfBirth)
+        : undefined,
+    nickname:
+      registration && 'nickname' in data && data.nickname !== undefined
+        ? parseNickname(data.nickname)
+        : undefined,
+  };
 }
