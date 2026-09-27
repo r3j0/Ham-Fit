@@ -158,7 +158,28 @@ it('backfills populated accounts without inferring goals and preserves saved pre
     for (const snapshot of snapshots)
       expect(
         (await client.query(`SELECT * FROM ${snapshot.table} ORDER BY 1`)).rows,
-      ).toEqual(snapshot.rows);
+      ).toEqual(
+        snapshot.rows.map((row) => ({
+          ...(row as Record<string, unknown>),
+          ...(snapshot.table === 'users' ? { date_of_birth: null } : {}),
+          ...(snapshot.table === 'workout_curricula'
+            ? { catalog_version: null, video_id: null }
+            : {}),
+          ...(snapshot.table === 'user_curriculum_assignments'
+            ? {
+                assignment_date: null,
+                superseded_at: null,
+                algorithm_version: null,
+                input_snapshot: null,
+                intervals: [],
+                position_seconds: 0,
+                revision: 1,
+                result_status: null,
+                performed_at: null,
+              }
+            : {}),
+        })),
+      );
 
     const database = new DatabaseService(
       new ConfigService({ DATABASE_URL: databaseUrl }),

@@ -63,12 +63,13 @@ enum ExerciseGoal {
   general_fitness_improvement
 }
 
-// Account updates change credentials only (2026-09-21 scope correction).
+// Credential updates remain separate from explicit date-of-birth profile input.
 // Onboarding is derived from measurement existence, never stored here.
 model User {
   id                          String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   email                       String                     @unique
   password                    String?
+  dateOfBirth                 DateTime?                  @map("date_of_birth") @db.Date
   createdAt                   DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt                   DateTime                   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   preference                  UserPreference?
@@ -78,6 +79,7 @@ model User {
   measurements                Measurement[]
   sessions                    AuthSession[]
   measurementRequests         MeasurementCreateRequest[]
+  workoutRequests             WorkoutAssignmentRequest[]
 
   @@map("users")
 }
@@ -87,7 +89,7 @@ model User {
 model UserPreference {
   userId         String         @id @map("user_id") @db.Uuid
   exerciseVolume ExerciseVolume @default(standard) @map("exercise_volume")
-  exerciseGoal   ExerciseGoal?   @map("exercise_goal")
+  exerciseGoal   ExerciseGoal?  @map("exercise_goal")
   createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   user           User           @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict)
@@ -195,7 +197,7 @@ model MeasurementItem {
   unit           String
   reportedGrade  String?               @map("reported_grade")
   // Immutable snapshot for this record revision; null on pre-evaluation records.
-  evaluation     Json?                @db.JsonB
+  evaluation     Json?                 @db.JsonB
   measurement    Measurement           @relation(fields: [measurementId, catalogVersion], references: [id, catalogVersion], onDelete: Cascade, onUpdate: Restrict)
   definition     MeasurementDefinition @relation(fields: [catalogVersion, code, unit], references: [catalogVersion, code, unit], onDelete: Restrict, onUpdate: Restrict)
 
@@ -230,16 +232,23 @@ model UserCurrency {
 
 enum CurriculumAssignmentStatus {
   assigned
+  in_progress
+  not_performed
+  interrupted
   completed
 }
 
-// One workout definition. Content authoring and recommendation are future work.
+// Immutable workout definition; daily recommendation definitions reference a versioned video.
 model WorkoutCurriculum {
-  id          String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name        String
-  createdAt   DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
-  assignments UserCurriculumAssignment[]
+  id             String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name           String
+  catalogVersion String?                    @map("catalog_version")
+  videoId        String?                    @map("video_id")
+  video          WorkoutVideo?              @relation(fields: [catalogVersion, videoId], references: [catalogVersion, videoId], onDelete: Restrict, onUpdate: Restrict)
+  createdAt      DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
+  assignments    UserCurriculumAssignment[]
 
+  @@unique([catalogVersion, videoId])
   @@map("workout_curricula")
 }
 
@@ -249,17 +258,100 @@ model UserCurriculumAssignment {
   curriculumId     String                     @map("curriculum_id") @db.Uuid
   requestKey       String                     @map("request_key") @db.Uuid
   // Sole current marker; SQL CHECK enforces equality with the owner.
-  // Completed assignments remain current until an explicit next assignment.
+  // Assignments remain current until an explicit newer assignment; old daily sessions can resume.
   currentForUserId String?                    @unique @map("current_for_user_id") @db.Uuid
   status           CurriculumAssignmentStatus @default(assigned)
   assignedAt       DateTime                   @default(dbgenerated("clock_timestamp()")) @map("assigned_at") @db.Timestamptz(6)
   completedAt      DateTime?                  @map("completed_at") @db.Timestamptz(6)
+  assignmentDate   DateTime?                  @map("assignment_date") @db.Date
+  supersededAt     DateTime?                  @map("superseded_at") @db.Timestamptz(6)
+  algorithmVersion String?                    @map("algorithm_version")
+  inputSnapshot    Json?                      @map("input_snapshot") @db.JsonB
+  intervals        Json                       @default("[]") @db.JsonB
+  positionSeconds  Float                      @default(0) @map("position_seconds")
+  revision         Int                        @default(1)
+  resultStatus     String?                    @map("result_status")
+  performedAt      DateTime?                  @map("performed_at") @db.Timestamptz(6)
+  events           WorkoutProgressEvent[]
+  requests         WorkoutAssignmentRequest[]
   user             User                       @relation("AssignmentOwner", fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict)
   currentForUser   User?                      @relation("CurrentAssignment", fields: [currentForUserId], references: [id], onDelete: Cascade, onUpdate: Restrict)
   curriculum       WorkoutCurriculum          @relation(fields: [curriculumId], references: [id], onDelete: Restrict, onUpdate: Restrict)
 
   @@unique([userId, requestKey])
+  @@unique([userId, assignmentDate])
   @@index([userId, assignedAt(sort: Desc), id])
   @@index([curriculumId])
   @@map("user_curriculum_assignments")
+}
+
+// Catalogs and their video definitions are immutable. Activation is a separate pointer.
+model WorkoutCatalog {
+  version      String                    @id
+  sourceCommit String                    @map("source_commit")
+  sourceUrls   String[]                  @map("source_urls")
+  checkedOn    DateTime                  @map("checked_on") @db.Date
+  contentHash  String                    @map("content_hash") @db.Char(64)
+  createdAt    DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
+  videos       WorkoutVideo[]
+  activation   WorkoutCatalogActivation?
+
+  @@map("workout_catalogs")
+}
+
+model WorkoutCatalogActivation {
+  id             String         @id
+  catalogVersion String         @unique @map("catalog_version")
+  activatedAt    DateTime       @default(now()) @map("activated_at") @db.Timestamptz(6)
+  catalog        WorkoutCatalog @relation(fields: [catalogVersion], references: [version], onDelete: Restrict, onUpdate: Restrict)
+
+  @@map("workout_catalog_activation")
+}
+
+model WorkoutVideo {
+  catalogVersion  String              @map("catalog_version")
+  videoId         String              @map("video_id")
+  title           String
+  originalUrl     String              @map("original_url")
+  ageGroup        String              @map("age_group")
+  equipment       String[]
+  fitnessWeights  Json                @map("fitness_weights") @db.JsonB
+  durationSeconds Float               @map("duration_seconds")
+  catalog         WorkoutCatalog      @relation(fields: [catalogVersion], references: [version], onDelete: Restrict, onUpdate: Restrict)
+  curricula       WorkoutCurriculum[]
+
+  @@id([catalogVersion, videoId])
+  @@map("workout_videos")
+}
+
+model WorkoutAssignmentRequest {
+  userId       String                   @map("user_id") @db.Uuid
+  key          String                   @db.Uuid
+  assignmentId String                   @map("assignment_id") @db.Uuid
+  createdAt    DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  user         User                     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  assignment   UserCurriculumAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+
+  @@id([userId, key])
+  @@map("workout_assignment_requests")
+}
+
+// Audit events and final representative assignment outcomes have separate responsibilities.
+model WorkoutProgressEvent {
+  assignmentId      String                   @map("assignment_id") @db.Uuid
+  key               String                   @db.Uuid
+  requestHash       String                   @map("request_hash") @db.Char(64)
+  deviceId          String                   @map("device_id") @db.Uuid
+  sequence          Int
+  type              String
+  intervals         Json                     @db.JsonB
+  positionSeconds   Float                    @map("position_seconds")
+  clientOccurredAt  DateTime?                @map("client_occurred_at") @db.Timestamptz(6)
+  receivedAt        DateTime                 @map("received_at") @db.Timestamptz(6)
+  resultingRevision Int                      @map("resulting_revision")
+  assignment        UserCurriculumAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+
+  @@id([assignmentId, key])
+  @@unique([assignmentId, deviceId, sequence])
+  @@map("workout_progress_events")
 }

@@ -1,0 +1,24 @@
+{
+  "checkedAt": "2026-09-27T05:32:22.111074+00:00",
+  "scope": "backend only; frontend source restored",
+  "branch": "feat/backend/personalized-recommendation",
+  "baseCommit": "31a0c2fd7bdc95b438377f6f5998c097d326be28",
+  "backendCheck": {
+    "command": "npm run check",
+    "exitCode": 0,
+    "unitPassed": 429,
+    "postgresE2ePassed": 310,
+    "migrations": 13,
+    "isolatedTestDatabase": true
+  },
+  "mediaProbeUnitPassed": 9,
+  "media": {
+    "catalogCount": 731,
+    "httpsRangeMetadataVerified": 729,
+    "sourceError": 2,
+    "fullPlaybackVerified": false
+  },
+  "deploymentPerformed": false,
+  "productionDatabaseChanged": false,
+  "frontendGitDiffEmpty": true
+}

@@ -1,0 +1,28 @@
+{
+  "sourceCommit": "92f3493de704c644d5aeff353488f1aff49f1836",
+  "files": [
+    {
+      "source": "data-analysis/src/recommendation.py",
+      "sha256": "22f5efd3a36b125d95aaf4a5fd7563fc928ecfd865b3c06f18090ac986558f42"
+    },
+    {
+      "source": "data-analysis/02_data_preprocessing.ipynb",
+      "sha256": "71a3f07eb9413da9c908db19db6d2c2cf54c411635423d70f679356937aebcc7"
+    },
+    {
+      "source": "data-analysis/03_recommendation.ipynb",
+      "sha256": "c92ab9424da25db110295155fb8a9ab1982cb1960507dac9aac0c5c1157c8d0c"
+    },
+    {
+      "source": "data-analysis/data/processed/workout_videos.csv",
+      "sha256": "7f5169a8eb1ce296466b8f1cdbc98e97a296e689cc3d70d771bc4071a5db5225"
+    },
+    {
+      "source": "data-analysis/data/processed/workout_videos.json",
+      "sha256": "35cabf0c9303c6cd130ece6212bcadc87e89d977f6c11da673787d9d7177aea0"
+    }
+  ],
+  "catalogHash": "1be888bb7a10fcb4740b4eb8dbcb2c6ea0a956d7725d14cc8241ff03946a72d2",
+  "checkedOn": "2026-09-27",
+  "provenance": "Git blob export, source files preserved byte for byte"
+}

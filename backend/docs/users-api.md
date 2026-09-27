@@ -1,5 +1,7 @@
 # 계정 정보 변경·온보딩·재화·운동 배정·영구 탈퇴
 
+2026-09-27 추가: `/users/me/profile` GET/PATCH에서 생년월일을 별도로 보완하며 `/auth/me`는 `dateOfBirth`, `currentAge`를 추가한다. 이메일·비밀번호 PATCH와 세션 해제는 그대로다. [생년월일 계약](recommendations/birth-profile.md), [일별 추천·진행 API](recommendations/workouts-api.md)를 함께 따른다. 아래 초기 배정/완료 설명은 기존 내부 커리큘럼에 적용하며 일별 추천의 진행 전이는 새 문서에 정의한다.
+
 2026-09-21 사용자 정정: **User UPDATE는 이메일·비밀번호 변경**을 뜻한다. 이전에 추가한 선호 운동·운동 목적·개인별 목표 체력은 폐기하고, `currentFitness` 프로필 응답도 제거한다. 사용자가 확인한 범위에 따라 기존 Measurement·MeasurementItem 측정 CRUD와 실제 저장 데이터는 유지한다. 온보딩 완료 조건도 유지한다.
 
 2026-09-26 추가 결정: 별도 `UserPreference`의 운동량·운동 목적 API를 제공한다. [개인 운동 설정 명세](user-preferences-api.md)의 enum·부분 수정·오류·배포 계약을 따른다. 기존 계정 PATCH와 세션 해제 정책은 그대로다.

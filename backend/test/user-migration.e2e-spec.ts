@@ -181,7 +181,20 @@ it('upgrades populated schemas, removes retired profile data and preserves crede
     });
     expect(
       (await client.query('SELECT * FROM user_curriculum_assignments')).rows,
-    ).toEqual(assignmentsBefore);
+    ).toEqual(
+      assignmentsBefore.map((row) => ({
+        ...(row as Record<string, unknown>),
+        assignment_date: null,
+        superseded_at: null,
+        algorithm_version: null,
+        input_snapshot: null,
+        intervals: [],
+        position_seconds: 0,
+        revision: 1,
+        result_status: null,
+        performed_at: null,
+      })),
+    );
     expect(await database.workoutCurriculum.count()).toBe(1);
     expect(
       (
@@ -198,7 +211,17 @@ it('upgrades populated schemas, removes retired profile data and preserves crede
           [schema],
         )
       ).rows.map((row: { column_name: string }) => row.column_name),
-    ).toEqual(['created_at', 'email', 'id', 'password', 'updated_at']);
+    ).toEqual([
+      'created_at',
+      'date_of_birth',
+      'email',
+      'id',
+      'password',
+      'updated_at',
+    ]);
+    expect(
+      (await client.query('SELECT date_of_birth FROM users ORDER BY id')).rows,
+    ).toEqual([{ date_of_birth: null }, { date_of_birth: null }]);
     await database.measurement.delete({ where: { id: measurementId } });
     expect(await profiles.get(owner)).toMatchObject({ isOnboarded: false });
   } finally {

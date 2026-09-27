@@ -19,6 +19,7 @@ export function configureApp(app: INestApplication): void {
       `${API_V1_BASE_PATH}/auth`,
       `${API_V1_BASE_PATH}/measurements`,
       `${API_V1_BASE_PATH}/users`,
+      `${API_V1_BASE_PATH}/workouts`,
     ],
     (_request: Request, response: Response, next: NextFunction) => {
       response.setHeader('Cache-Control', 'no-store');

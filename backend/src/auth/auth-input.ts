@@ -1,5 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import { z } from 'zod';
+import { parseDateOfBirth } from '../users/date-of-birth.js';
 
 const email = z.string().trim().toLowerCase().max(254).pipe(z.email());
 const loginSchema = z.strictObject({
@@ -7,7 +8,10 @@ const loginSchema = z.strictObject({
   password: z.string().min(1).max(128),
 });
 const newPassword = z.string().min(15).max(128);
-const registerSchema = loginSchema.extend({ password: newPassword });
+const registerSchema = loginSchema.extend({
+  password: newPassword,
+  dateOfBirth: z.string().optional(),
+});
 const accountUpdateSchema = z
   .strictObject({
     currentPassword: z.string().min(1).max(128),
@@ -42,5 +46,9 @@ export function parseCredentials(input: unknown, registration = false) {
         : '유효한 이메일과 비밀번호를 입력해 주세요.',
     });
   }
-  return result.data;
+  const data = result.data;
+  if (registration && 'dateOfBirth' in data && data.dateOfBirth !== undefined) {
+    return { ...data, dateOfBirth: parseDateOfBirth(data.dateOfBirth) };
+  }
+  return { ...data, dateOfBirth: undefined };
 }

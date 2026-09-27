@@ -20,7 +20,7 @@ describe('Account schema', () => {
     await database.onModuleDestroy();
   });
 
-  it('keeps only credential fields and account timestamps after the scope correction', async () => {
+  it('keeps credential fields, timestamps and the explicit nullable birth date', async () => {
     const schema = new URL(process.env.DATABASE_URL!).searchParams.get(
       'schema',
     )!;
@@ -30,6 +30,7 @@ describe('Account schema', () => {
     `;
     expect(columns.map((column) => column.column_name).sort()).toEqual([
       'created_at',
+      'date_of_birth',
       'email',
       'id',
       'password',
