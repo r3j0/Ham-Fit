@@ -1,4 +1,22 @@
-/** Independent body parts for breathing and walking in place. */
+/** The original breathing and walking motions. */
+export const MOTION_PRESETS = [
+  {
+    id: "idle",
+    label: "호흡",
+    cycleSeconds: 5.6,
+    min: 2,
+    max: 20,
+    description: "편안하게 들숨과 날숨",
+  },
+  {
+    id: "walk",
+    label: "걷기",
+    cycleSeconds: 1.2,
+    min: 0.65,
+    max: 3,
+    description: "두 발을 번갈아 내딛기",
+  },
+];
 const clamp = (n, min, max, fallback) =>
   Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : fallback;
 const smoother = (t) => t * t * t * (t * (t * 6 - 15) + 10);
@@ -162,6 +180,12 @@ export function createBreathingRig(svg, initial = {}) {
       .forEach((node) =>
         node.setAttribute("d", nodes["torso-fill"].getAttribute("d")),
       );
+  const originalTransforms = Object.fromEntries(
+    Object.entries(nodes).map(([key, node]) => [
+      key,
+      node.getAttribute("transform"),
+    ]),
+  );
   const media = window.matchMedia("(prefers-reduced-motion: reduce)");
   let options = {
     motion: "idle",
@@ -181,6 +205,7 @@ export function createBreathingRig(svg, initial = {}) {
     !document.hidden;
   function paint() {
     const amount = media.matches ? 0 : options.intensity;
+    svg.dataset.motion = options.motion;
     if (options.motion === "walk") {
       const pose = getWalkPose(phase, amount);
       const spine = `translate(${f(pose.x)} ${f(pose.y)}) rotate(${f(pose.angle)} 400 840)`;
@@ -247,14 +272,15 @@ export function createBreathingRig(svg, initial = {}) {
     const motion =
       next.motion === undefined
         ? options.motion
-        : next.motion === "walk"
+        : MOTION_PRESETS.some((item) => item.id === next.motion)
           ? next.motion
           : "idle";
     const changed = motion !== options.motion;
     if (changed) phase = 0;
-    const defaultCycle = motion === "walk" ? 1.2 : 5.6;
-    const minCycle = motion === "walk" ? 0.65 : 2;
-    const maxCycle = motion === "walk" ? 3 : 20;
+    const preset = MOTION_PRESETS.find((item) => item.id === motion);
+    const defaultCycle = preset.cycleSeconds;
+    const minCycle = preset.min;
+    const maxCycle = preset.max;
     options = {
       motion,
       cycleSeconds: clamp(
@@ -271,6 +297,7 @@ export function createBreathingRig(svg, initial = {}) {
   const visibility = () => schedule();
   media.addEventListener("change", visibility);
   document.addEventListener("visibilitychange", visibility);
+  svg.addEventListener("mascot:outfit-change", visibility);
   update(initial);
   return {
     update,
@@ -286,16 +313,28 @@ export function createBreathingRig(svg, initial = {}) {
       schedule();
     },
     destroy: () => {
+      if (destroyed) return;
       destroyed = true;
       cancelAnimationFrame(frame);
       media.removeEventListener("change", visibility);
       document.removeEventListener("visibilitychange", visibility);
+      svg.removeEventListener("mascot:outfit-change", visibility);
       // Re-initialization (including React Strict Mode) starts from the source.
       // Do not overwrite geometry that React has already replaced for a variant.
       morphs.forEach(({ node, rest }) => {
         if (node.getAttribute("d") === paintedPaths.get(node))
           node.setAttribute("d", rest);
       });
+      Object.entries(nodes).forEach(([key, node]) =>
+        originalTransforms[key] === null
+          ? node.removeAttribute("transform")
+          : node.setAttribute("transform", originalTransforms[key]),
+      );
+      svg
+        .querySelectorAll('[data-follow="body"]')
+        .forEach((node) => node.removeAttribute("transform"));
+      syncWearClip();
+      delete svg.dataset.motion;
     },
   };
 }

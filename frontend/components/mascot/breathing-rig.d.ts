@@ -1,4 +1,12 @@
 export type MascotMotion = "idle" | "walk";
+export const MOTION_PRESETS: {
+  id: MascotMotion;
+  label: string;
+  cycleSeconds: number;
+  min: number;
+  max: number;
+  description: string;
+}[];
 export type RigOptions = {
   motion?: MascotMotion;
   cycleSeconds?: number;
