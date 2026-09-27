@@ -1,5 +1,8 @@
-import { describe, expect, it } from 'vitest';
-import { createMediaResolver } from './media.js';
+import { describe, expect, it, vi } from 'vitest';
+import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { createMediaResolver, loadMediaResolver, mediaFor } from './media.js';
 import { SOURCE_COMMIT } from './catalog.js';
 const id = 'TEST_A.mp4';
 const original = `http://openapi.kspo.or.kr/web/video/${id}`;
@@ -23,6 +26,25 @@ const report = (patch: Record<string, unknown> = {}) => ({
   videos: [{ ...entry, ...patch }],
 });
 describe('verified media selection', () => {
+  it('works without checked-in reports and reads the configured runtime path lazily', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'health-media-test-'));
+    const path = join(directory, 'report.json');
+    try {
+      expect(loadMediaResolver(path)(id, original, 100).playbackStatus).toBe(
+        'unavailable',
+      );
+      writeFileSync(path, 'invalid json');
+      expect(loadMediaResolver(path)(id, original, 100).playbackStatus).toBe(
+        'unavailable',
+      );
+      writeFileSync(path, JSON.stringify(report()));
+      vi.stubEnv('WORKOUT_MEDIA_REPORT_PATH', path);
+      expect(mediaFor(id, original, 100).playbackUrl).toBe(verified);
+    } finally {
+      vi.unstubAllEnvs();
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
   it('enables only the exact independently verified HTTPS endpoint', () =>
     expect(createMediaResolver(report())(id, original, 100)).toEqual({
       playbackUrl: verified,

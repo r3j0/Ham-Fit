@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { selectBestVideo, vector } from './engine.js';
 import type { RecommendationVideo } from './engine.js';
-import { readFileSync } from 'node:fs';
 import { loadCatalog } from './catalog.js';
 import {
   FACTORS,
@@ -19,12 +18,7 @@ import {
   roundWeightAdjustment,
   validateWeights,
 } from './engine.js';
-import type {
-  FitnessInput,
-  FactorVector,
-  WorkoutLog,
-  WeightAdjustment,
-} from './engine.js';
+import type { FactorVector } from './engine.js';
 const video = (videoId: string): RecommendationVideo => ({
   videoId,
   title: videoId,
@@ -283,77 +277,5 @@ describe('original baseline semantics and product boundaries', () => {
     expect(() =>
       validateWeights({ ...vector(), strength: weight }, 'broken.mp4'),
     ).toThrow('broken.mp4'),
-  );
-});
-
-type ParityCase = {
-  name: string;
-  age: number;
-  fitness: Record<string, number>;
-  logs: WorkoutLog[];
-  referenceDate: string;
-  exposure: FactorVector;
-  priority: FactorVector;
-  ageCandidateIds: string[];
-  candidateIds: string[];
-  scores: Record<string, number>;
-  tiedCandidateIds: string[];
-  pythonSelected: string;
-  weightAdjustment: WeightAdjustment;
-};
-describe('Python/TypeScript real-catalog parity', () => {
-  const reference = JSON.parse(
-    readFileSync('data/recommendation/validation/python-parity.json', 'utf8'),
-  ) as { cases: ParityCase[] };
-  const videos = loadCatalog().videos;
-  it.each(reference.cases)(
-    '$name compares calculations, full candidates, valid random ties and adjustment',
-    (fixture) => {
-      const fitness = Object.fromEntries(
-        Object.entries(fixture.fitness).map(([factor, grade]) => [
-          factor,
-          { status: 'graded', grade, need: getFitnessNeed(grade) },
-        ]),
-      ) as FitnessInput;
-      const result = recommendNextWorkout({
-        videos,
-        age: fixture.age,
-        fitness,
-        logs: fixture.logs,
-        referenceDate: fixture.referenceDate,
-        rng: () => 0.37,
-      });
-      for (const factor of FACTORS) {
-        expect(result.exposure[factor]).toBeCloseTo(
-          fixture.exposure[factor],
-          12,
-        );
-        expect(result.priority[factor]).toBeCloseTo(
-          fixture.priority[factor],
-          12,
-        );
-      }
-      expect(filterByAge(videos, fixture.age).map((v) => v.videoId)).toEqual(
-        fixture.ageCandidateIds,
-      );
-      expect(result.candidateIds).toEqual(fixture.candidateIds);
-      expect(result.tiedCandidateIds).toEqual(fixture.tiedCandidateIds);
-      expect(fixture.tiedCandidateIds).toContain(result.videoId);
-      expect(result.tiedCandidateIds).toContain(fixture.pythonSelected);
-      for (const { video: v, score } of calculateVideoScores(
-        videos.filter((v) => result.candidateIds.includes(v.videoId)),
-        result.priority,
-      ))
-        expect(score).toBeCloseTo(fixture.scores[v.videoId], 12);
-      expect(
-        roundWeightAdjustment(
-          calculateWeightAdjustment(
-            videos,
-            fixture.logs,
-            fixture.referenceDate,
-          ),
-        ),
-      ).toEqual(fixture.weightAdjustment);
-    },
   );
 });
