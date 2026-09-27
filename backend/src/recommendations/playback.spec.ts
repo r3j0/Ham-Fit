@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   nextPlaybackStatus,
+  normalizePlaybackProgress,
   parsePlaybackEvent,
   unionIntervals,
   watchedSeconds,
@@ -41,6 +42,85 @@ describe('played interval union and explicit outcome semantics', () => {
     );
     expect(() => nextPlaybackStatus('assigned', 'progress', 50, 100)).toThrow();
     expect(() => nextPlaybackStatus('completed', 'start', 100, 100)).toThrow();
+  });
+  it('recognizes 50% from decimal intervals without rounding a real shortfall up', () => {
+    const intervals = unionIntervals(
+      [
+        { start: 0.1, end: 25.1 },
+        { start: 50.1, end: 75.1 },
+      ],
+      100,
+    );
+    expect(watchedSeconds(intervals)).toBeCloseTo(50, 12);
+    expect(
+      nextPlaybackStatus('in_progress', 'end', watchedSeconds(intervals), 100),
+    ).toBe('interrupted');
+    expect(nextPlaybackStatus('in_progress', 'end', 49.9999999, 100)).toBe(
+      'not_performed',
+    );
+  });
+  it('clips only the verified overrun and ignores its zero-length remainder', () => {
+    expect(
+      normalizePlaybackProgress(
+        {
+          positionSeconds: 100.4,
+          intervals: [{ start: 99.9, end: 100.4 }],
+        },
+        100,
+        100.4,
+      ),
+    ).toEqual({
+      positionSeconds: 100,
+      intervals: [{ start: 99.9, end: 100 }],
+    });
+    expect(
+      normalizePlaybackProgress(
+        {
+          positionSeconds: 100,
+          intervals: [
+            { start: 100, end: 100.4 },
+            { start: 100.1, end: 100.3 },
+          ],
+        },
+        100,
+        100.4,
+      ),
+    ).toEqual({ positionSeconds: 100, intervals: [] });
+    expect(
+      normalizePlaybackProgress(
+        {
+          positionSeconds: 99.6,
+          intervals: [{ start: 0, end: 99.6 }],
+        },
+        100,
+        100,
+      ),
+    ).toEqual({ positionSeconds: 99.6, intervals: [{ start: 0, end: 99.6 }] });
+  });
+  it('rejects invalid raw intervals before normalizing them', () => {
+    for (const interval of [
+      { start: 100.1, end: 100.1 },
+      { start: 100.4, end: 100.1 },
+      { start: 100.1, end: 100.5 },
+      { start: -0.1, end: 100.4 },
+    ])
+      expect(() =>
+        normalizePlaybackProgress(
+          {
+            positionSeconds: 100,
+            intervals: [interval],
+          },
+          100,
+          100.4,
+        ),
+      ).toThrow();
+    expect(() =>
+      normalizePlaybackProgress(
+        { positionSeconds: 100.5, intervals: [] },
+        100,
+        100.4,
+      ),
+    ).toThrow();
   });
   it('rejects nonfinite, negative, out-of-duration and malformed reports', () => {
     for (const interval of [
