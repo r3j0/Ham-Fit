@@ -24,6 +24,7 @@ test("가입 실패는 폼을 유지하고 성공하면 메인 경유 없이 온
     ),
   );
   await page.route("**/auth/register", (route) => {
+    expect(route.request().postDataJSON().dateOfBirth).toBe("2000-02-29");
     attempts++;
     if (attempts === 1)
       return route.fulfill({
@@ -39,6 +40,7 @@ test("가입 실패는 폼을 유지하고 성공하면 메인 경유 없이 온
       destinations.push(new URL(frame.url()).pathname);
   });
   await page.goto("/register?next=%2Faccount");
+  await page.getByLabel("생년월일", { exact: true }).fill("2000-02-29");
   await page
     .getByLabel("이메일", { exact: true })
     .fill("duplicate@example.test");

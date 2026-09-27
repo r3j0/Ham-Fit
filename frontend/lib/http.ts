@@ -18,13 +18,16 @@ export class ApiError extends Error {
     this.code = code;
   }
 }
-export type ApiRequestOptions = RequestInit & { timeoutMs?: number };
+export type ApiRequestOptions = RequestInit & {
+  timeoutMs?: number;
+  allowNull?: boolean;
+};
 export async function request<T>(
   path: string,
   options: ApiRequestOptions = {},
 ): Promise<{ data: T; headers: Headers }> {
   let response: Response;
-  const { timeoutMs = 20000, ...init } = options;
+  const { timeoutMs = 20000, allowNull = false, ...init } = options;
   const headers = new Headers(options.headers);
   if (typeof options.body === "string" && !headers.has("Content-Type"))
     headers.set("Content-Type", "application/json");
@@ -49,8 +52,14 @@ export async function request<T>(
       "서버에 연결하지 못했어요. 연결 상태를 확인하고 다시 시도해 주세요.",
     );
   }
+  let invalidJson = false;
   const body =
-    response.status === 204 ? null : await response.json().catch(() => null);
+    response.status === 204
+      ? null
+      : await response.json().catch(() => {
+          invalidJson = true;
+          return null;
+        });
   if (!response.ok) {
     const fields: Record<string, string> = {};
     if (Array.isArray(body?.errors))
@@ -88,7 +97,7 @@ export async function request<T>(
       typeof body?.code === "string" ? body.code : undefined,
     );
   }
-  if (response.status !== 204 && body === null)
+  if (response.status !== 204 && (invalidJson || (body === null && !allowNull)))
     throw new ApiError(0, "서버 응답을 확인하지 못했어요. 다시 시도해 주세요.");
   return { data: body as T, headers: response.headers };
 }

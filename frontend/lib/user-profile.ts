@@ -22,7 +22,13 @@ export function isUserProfile(value: unknown): value is UserProfile {
     current === null ||
     (object(current) &&
       typeof current.id === "string" &&
-      ["assigned", "completed"].includes(current.status as string) &&
+      [
+        "assigned",
+        "in_progress",
+        "not_performed",
+        "interrupted",
+        "completed",
+      ].includes(current.status as string) &&
       typeof current.assignedAt === "string" &&
       (current.completedAt === null ||
         typeof current.completedAt === "string") &&

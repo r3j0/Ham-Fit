@@ -391,6 +391,31 @@ h3 {
   flex-direction: column;
   gap: 12px;
 }
+.workout-card {
+  padding: 20px;
+  border-radius: 20px;
+  background: var(--canvas);
+  overflow-wrap: anywhere;
+}
+.workout-progress {
+  display: block;
+  width: 100%;
+  height: 10px;
+  accent-color: var(--sky);
+}
+.workout-video {
+  display: block;
+  width: 100%;
+  max-height: 60dvh;
+  aspect-ratio: 16 / 9;
+  border-radius: 16px;
+  background: #0f172a;
+}
+.workout-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
 .row {
   display: flex;
   gap: 12px;

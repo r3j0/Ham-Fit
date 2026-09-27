@@ -1,3 +1,4 @@
+import { testWorkout } from "./integration-fixtures";
 import { prepareAssessment, skipToFlexibility } from "./workout-helpers";
 import { test, expect, type Page, type Route } from "@playwright/test";
 
@@ -46,46 +47,37 @@ test("메인은 미배정·배정·완료를 구분하고 운동 내용을 임�
   await register(page);
   await page.goto("/");
   await expect(
-    page.getByRole("heading", { name: "아직 배정된 운동이 없어요" }),
+    page.getByRole("heading", { name: "오늘의 운동을 받아 보세요" }),
   ).toBeVisible();
   await expect(
     page.getByRole("link", { name: "체력 기록 등록하기" }),
   ).toBeVisible();
   let completed = false;
-  await page.route(`${api}/auth/me`, async (route) => {
-    if (route.request().method() !== "GET") return route.continue();
-    const response = await route.fetch();
-    await route.fulfill({
-      response,
+  await page.route(`${api}/workouts/current`, (route) =>
+    route.fulfill({
       json: {
-        ...(await response.json()),
-        currentCurriculum: {
-          id: "test-assignment",
-          status: completed ? "completed" : "assigned",
-          assignedAt: new Date().toISOString(),
-          completedAt: completed ? new Date().toISOString() : null,
-          curriculum: {
-            id: "test-definition",
-            name: "테스트에 배정한 커리큘럼",
-          },
-        },
+        ...testWorkout,
+        status: completed ? "completed" : "assigned",
+        completedAt: completed ? new Date().toISOString() : null,
       },
-    });
-  });
+      headers: {
+        "Access-Control-Allow-Origin": route.request().headers().origin,
+        "Access-Control-Allow-Credentials": "true",
+      },
+    }),
+  );
   await page.reload();
+  await expect(page.getByText("내 기존 운동", { exact: true })).toBeVisible();
   await expect(
-    page.getByText("테스트에 배정한 커리큘럼", { exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "운동 시작 준비 중" }),
-  ).toBeDisabled();
+    page.getByRole("link", { name: "운동 시작하기", exact: true }),
+  ).toHaveAttribute("href", `/workouts/${testWorkout.id}`);
   completed = true;
   await page.reload();
   await expect(
-    page.getByText("배정된 운동을 완료했어요.", { exact: false }),
+    page.getByText("오늘의 운동을 완료했어요.", { exact: false }),
   ).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "운동 시작 준비 중" }),
+    page.getByRole("link", { name: "운동 시작하기", exact: true }),
   ).toHaveCount(0);
 });
 
@@ -112,7 +104,7 @@ test("구형 사용자 응답은 임의의 초기 상태로 표시하지 않고 
     page.getByRole("button", { name: "다시 불러오기" }),
   ).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: "아직 배정된 운동이 없어요" }),
+    page.getByRole("heading", { name: "오늘의 운동을 받아 보세요" }),
   ).toHaveCount(0);
 });
 
@@ -304,7 +296,9 @@ test("로그아웃하면 간이측정 진행도 함께 지워진다", async ({ p
   await page.goto("/workout?mode=assessment");
   await prepareAssessment(page);
   await page.getByRole("button", { name: "이 항목 건너뛰기" }).click();
-  await page.getByRole("link", { name: "내 프로필", exact: true }).click();
+  // Active assessment deliberately hides navigation; leave via the address bar.
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.goto("/account");
   await page.getByRole("button", { name: "로그아웃", exact: true }).click();
   await page
     .getByRole("dialog")

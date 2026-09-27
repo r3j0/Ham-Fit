@@ -9,6 +9,7 @@ import { logout } from "@/lib/session";
 import { errorMessage } from "@/lib/http";
 import { useUserProfile } from "./user-profile-provider";
 import { Dialog, Loading, Notice, Shell } from "./ui";
+import { BirthProfileForm } from "./birth-profile-form";
 export function Account() {
   const { data: user, error: profileError, reload } = useUserProfile();
   const [logoutError, setLogoutError] = useState(""),
@@ -83,6 +84,10 @@ export function Account() {
             <strong>내 측정 기록</strong>
             <ChevronRight size={20} />
           </Link>
+          <Link href="/workouts" className="menu-row">
+            <strong>내 운동 이력</strong>
+            <ChevronRight size={20} />
+          </Link>
           <Link href="/account/preferences" className="menu-row">
             <strong>운동 설정</strong>
             <ChevronRight size={20} aria-hidden="true" />
@@ -92,6 +97,7 @@ export function Account() {
             <ChevronRight size={20} />
           </Link>
         </div>
+        <BirthProfileForm />
         <button
           className="button secondary"
           onClick={() => setConfirm(true)}

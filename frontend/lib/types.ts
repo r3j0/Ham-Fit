@@ -6,7 +6,8 @@ export interface User {
 }
 export interface CurriculumAssignment {
   id: string;
-  status: "assigned" | "completed";
+  status:
+    "assigned" | "in_progress" | "not_performed" | "interrupted" | "completed";
   assignedAt: string;
   completedAt: string | null;
   curriculum: { id: string; name: string };

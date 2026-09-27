@@ -2,6 +2,7 @@ import { assessmentHref, resolveWorkoutMode } from "./workout-mode.ts";
 /** Keep only known local destinations, including the temporary assessment mode. */
 export function authDestination(next: string): string {
   if (
+    /^\/workouts(?:\/[a-f0-9-]+)?$/.test(next) ||
     /^\/measurements(?:\/new|\/[a-f0-9-]+(?:\/edit)?)?$/.test(next) ||
     [
       "/",

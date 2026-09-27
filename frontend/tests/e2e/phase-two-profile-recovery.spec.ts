@@ -90,7 +90,11 @@ test("저장 응답을 잃어도 메인은 실제 서버의 등록 상태를 반
     page.getByRole("button", { name: "같은 내용으로 다시 확인" }),
   ).toBeVisible();
   page.on("dialog", (dialog) => dialog.accept());
-  await page.getByRole("link", { name: "메인", exact: true }).click();
+  // The onboarding flow hides the main tab. Leave via browser history and
+  // its existing back link while keeping the same client profile provider.
+  await page.goBack();
+  await expect(page).toHaveURL("/onboarding");
+  await page.getByRole("link", { name: "이전 화면", exact: true }).click();
   await expect(
     page.getByRole("img", { name: "편안하게 숨 쉬는 햄스터" }),
   ).toBeVisible();

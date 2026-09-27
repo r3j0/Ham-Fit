@@ -13,12 +13,20 @@ export function BottomNavigation() {
       ? " kspo-orange-theme"
       : "";
   const tabs = [
-    { href: "/", label: "메인", icon: House, active: pathname === "/" },
+    {
+      href: "/",
+      label: "메인",
+      icon: House,
+      active: pathname === "/",
+    },
     {
       href: "/workout",
       label: "운동",
       icon: Dumbbell,
-      active: pathname === "/workout",
+      active:
+        pathname === "/workout" ||
+        pathname === "/workouts" ||
+        pathname.startsWith("/workouts/"),
     },
     {
       href: "/account",

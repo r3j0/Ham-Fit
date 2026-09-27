@@ -1,3 +1,4 @@
+import type { Workout } from "../../lib/workout-types";
 import type { Catalog, Measurement } from "../../lib/types";
 import type { Page } from "@playwright/test";
 export const testUser = {
@@ -15,6 +16,40 @@ export const assignment = {
     id: "00000000-0000-4000-8000-000000000003",
     name: "내 기존 운동",
   },
+};
+export const testWorkout: Workout = {
+  id: "00000000-0000-4000-8000-000000000005",
+  koreanDate: "2026-09-27",
+  serverKoreanDate: "2026-09-27",
+  status: "assigned",
+  resultStatus: null,
+  revision: 1,
+  assignedAt: "2026-09-27T00:00:00Z",
+  performedAt: null,
+  completedAt: null,
+  video: {
+    id: "contract-video",
+    title: "내 기존 운동",
+    originalUrl: "http://example.test/video.mp4",
+    durationSeconds: 60,
+    equipment: [],
+    ageGroup: "adult",
+    catalogVersion: "contract-v1",
+    fitnessWeights: {},
+    playbackUrl: null,
+    playbackStatus: "unavailable",
+    verifiedDurationSeconds: null,
+  },
+  progress: {
+    durationSeconds: 60,
+    watchedSeconds: 0,
+    positionSeconds: 0,
+    intervals: [],
+    ratio: 0,
+  },
+  algorithmVersion: "contract-v1",
+  inputSnapshot: {},
+  weightAdjustment: null,
 };
 export const catalog: Catalog = {
   version: "contract-test-v1",
@@ -168,6 +203,12 @@ export async function installApi(
         currency: { balance: 0 },
         currentCurriculum: assignment,
       });
+    if (path === "/users/me/profile")
+      return send({ dateOfBirth: null, currentAge: null });
+    if (path === "/workouts/current") return send(testWorkout);
+    if (path === "/workouts/history")
+      return send({ items: [testWorkout], nextCursor: null });
+    if (path === `/workouts/${testWorkout.id}`) return send(testWorkout);
     if (path === "/measurement-catalog") return send(initialCatalog);
     if (path === "/measurements" && method === "POST") {
       record = testRecord(request.postDataJSON());

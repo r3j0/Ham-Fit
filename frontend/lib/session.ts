@@ -6,6 +6,7 @@ import {
 } from "./http";
 import type { AuthResponse, User } from "./types";
 import { measurementDrafts } from "./measurement-drafts";
+import { workoutJournal } from "./workout-journal";
 import { setWorkoutOwner } from "./workout-progress";
 type Session = {
   status: "loading" | "authenticated" | "anonymous" | "error";
@@ -41,6 +42,7 @@ function publish(next: Session) {
 function accept(auth: AuthResponse, broadcast = true, newLogin = false) {
   measurementDrafts.setOwner(auth.user.id);
   setWorkoutOwner(auth.user.id);
+  workoutJournal.setOwner(auth.user.id);
   accessToken = auth.access_token;
   publish({
     status: "authenticated",
@@ -57,6 +59,8 @@ function clear(reason: "expired" | "logout" = "expired", broadcast = true) {
   setWorkoutOwner(null, reason === "logout");
   if (reason === "logout") measurementDrafts.clear();
   else measurementDrafts.suspend();
+  if (reason === "logout") workoutJournal.clear();
+  else workoutJournal.suspend();
   accessToken = null;
   publish({
     status: "anonymous",
@@ -137,13 +141,18 @@ export async function authenticate(
   mode: "login" | "register",
   email: string,
   password: string,
+  dateOfBirth?: string,
 ) {
   await startup;
   return locked(async () => {
     const result = await request<AuthResponse>(`/auth/${mode}`, {
       method: "POST",
       headers: { "X-CSRF-Protection": "1" },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({
+        email,
+        password,
+        ...(mode === "register" && dateOfBirth ? { dateOfBirth } : {}),
+      }),
     });
     accept(result.data, true, true);
   });

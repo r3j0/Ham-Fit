@@ -14,6 +14,8 @@ test("인증 후 간이측정 모드와 기존 입력 경로를 복원한다", (
     "/onboarding/photo",
     "/onboarding/manual",
     "/workout",
+    "/workouts",
+    "/workouts/00000000-0000-4000-8000-000000000002",
     "/measurements/1234-abcd/edit",
   ])
     assert.equal(authDestination(path), path);

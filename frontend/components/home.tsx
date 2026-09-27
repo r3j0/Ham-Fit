@@ -3,13 +3,13 @@ import Link from "next/link";
 import { BreathingMascot } from "./mascot/BreathingMascot";
 import { ArrowRight, ClipboardList } from "lucide-react";
 import { Loading, Notice, Shell } from "./ui";
+import { TodayWorkout } from "./today-workout";
 import { WorkoutStreak } from "./workout-streak";
 import { useUserProfile } from "./user-profile-provider";
 
 export function Home() {
   const profile = useUserProfile();
   const user = profile.data;
-  const assignment = user?.currentCurriculum;
   return (
     <Shell className="home-shell">
       <h1 className="sr-only">메인</h1>
@@ -48,37 +48,7 @@ export function Home() {
                 <ClipboardList size={22} />
                 <h2 id="today-title">오늘의 운동</h2>
               </div>
-              {assignment ? (
-                <div className="curriculum-card stack">
-                  <span className="status-badge">
-                    {assignment.status === "completed" ? "완료" : "배정됨"}
-                  </span>
-                  <h3>{assignment.curriculum.name}</h3>
-                  {assignment.status === "completed" ? (
-                    <p className="muted">
-                      배정된 운동을 완료했어요. 다음 운동은 아직 배정되지
-                      않았어요.
-                    </p>
-                  ) : (
-                    <>
-                      <p className="muted" id="curriculum-pending">
-                        배정된 운동의 상세 안내를 준비하고 있어요.
-                      </p>
-                      <button
-                        className="button secondary"
-                        disabled
-                        aria-describedby="curriculum-pending"
-                      >
-                        운동 시작 준비 중
-                      </button>
-                    </>
-                  )}
-                </div>
-              ) : (
-                <div className="curriculum-card stack">
-                  <h3>아직 배정된 운동이 없어요</h3>
-                </div>
-              )}
+              <TodayWorkout embedded />
             </section>
           </>
         )}

@@ -14,8 +14,8 @@ import {
   VolumeX,
 } from "lucide-react";
 import { WorkoutCalendar } from "./workout-calendar";
-import { useUserProfile } from "./user-profile-provider";
-import { Dialog, Header, Loading, Notice, Shell } from "./ui";
+import { TodayWorkout } from "./today-workout";
+import { Dialog, Header, Notice, Shell } from "./ui";
 import { useUnsaved } from "./use-unsaved";
 import {
   useWorkoutSound,
@@ -78,8 +78,6 @@ function ExerciseGuide({ exercise }: { exercise: RoutineExercise }) {
 
 /** Only the routine definition needs replacing when assigned exercises are available. */
 function RoutineWorkout({ routine }: { routine: WorkoutRoutine }) {
-  const profile = useUserProfile();
-  const assignment = profile.data?.currentCurriculum;
   const [started, setStarted] = useState(false);
   const [dialog, setDialog] = useState<"end" | "skip" | null>(null);
   const [state, dispatch] = useReducer(
@@ -209,29 +207,7 @@ function RoutineWorkout({ routine }: { routine: WorkoutRoutine }) {
           </p>
           <section className={styles.assignment} aria-label="현재 배정 정보">
             <span className="caption">내 배정 운동</span>
-            {profile.status === "loading" && (
-              <Loading label="배정 정보를 불러오는 중이에요" />
-            )}
-            {profile.error && (
-              <>
-                <Notice>{profile.error}</Notice>
-                <button className="text-button" onClick={profile.reload}>
-                  다시 불러오기
-                </button>
-              </>
-            )}
-            {profile.data && (
-              <div className="between">
-                <h3>
-                  {assignment?.curriculum.name ?? "아직 배정된 운동이 없어요"}
-                </h3>
-                {assignment && (
-                  <span className="status-badge">
-                    {assignment.status === "completed" ? "완료" : "배정됨"}
-                  </span>
-                )}
-              </div>
-            )}
+            <TodayWorkout embedded />
             <p className="caption">
               위 체험 운동은 배정 운동과 별개이며, 운동 기록에 저장되지 않아요.
               화면을 새로 열면 처음부터 시작해요.
