@@ -14,7 +14,11 @@
 
 배정 응답은 `id`, `koreanDate`(배정일), `serverKoreanDate`(조회 시 서버 KST 날짜), `status`, `resultStatus`, `revision`, `assignedAt`, `performedAt`, `completedAt`, `video`, `progress`, `algorithmVersion`, `inputSnapshot`, `weightAdjustment`를 포함한다. `video`는 `id`, `title`, 원본 URL·카탈로그 버전·장비·연령·가중치·`durationSeconds`와 검증한 `playbackUrl`, `playbackStatus`, `verifiedDurationSeconds`를 제공한다. 검증되지 않은 주소나 길이는 성공으로 대체하지 않는다. 장비 빈 배열은 장비 정보 없음이다.
 
-`progress`는 `{watchedSeconds,positionSeconds,intervals:[{start,end}],ratio}`. 초 단위 실수이며 실제 재생한 구간의 합집합으로 계산한다. 앞으로 이동한 위치 자체는 시청량이 아니다. 구간은 0 이상, end > start, end <= duration이며 유한해야 한다. 반복·겹침·동시 기기 보고는 한 번만 계산한다. 시청은 운동 수행의 대리 지표이고 완료는 사용자 확인이다.
+`progress`는 `{durationSeconds,watchedSeconds,positionSeconds,intervals:[{start,end}],ratio}`. 진행 기준 `progress.durationSeconds`는 배정이 참조하는 불변 카탈로그의 `video.durationSeconds`와 같으며, 실측 메타데이터 `video.verifiedDurationSeconds`와 구분한다. 저장 위치·구간 상한, ratio 분모와 50% 판정은 모두 이 카탈로그 기준을 사용한다. 초 단위 실수이며 실제 재생한 구간의 합집합으로 계산한다. 앞으로 이동한 위치 자체는 시청량이 아니다. 반복·겹침·동시 기기 보고는 한 번만 계산한다. 시청은 운동 수행의 대리 지표이고 완료는 사용자 확인이다.
+
+클라이언트는 플레이어의 실제 위치와 구간을 그대로 전송할 수 있다. 위치는 유한한 0 이상 수, 원본 구간은 유한하고 `0 <= start < end`여야 한다. 입력 상한은 기본적으로 카탈로그 길이이며, **`playbackStatus: verified`이고 실측 길이가 더 긴 경우에만 실측 길이까지** 허용한다. 미디어 검증 자체가 길이 차이 1초 이하를 요구하므로 임의의 1초 초과 입력을 허용하는 정책은 아니다. 원본 유효성을 먼저 검사한 뒤 카탈로그를 넘는 위치·구간 끝점을 카탈로그 길이로 제한하고, 카탈로그 밖에만 있는 구간은 시청량에서 제외한다. 실측 길이가 짧으면 시청량을 늘리거나 비율을 재조정하지 않는다.
+
+예를 들어 카탈로그 100초·검증 실측 100.4초에서 위치 100.4와 구간 `[0,100.4]`는 정상 저장하며, 배정 응답은 위치 100·구간 `[0,100]`·시청량 100·ratio 1이다. 위치 100을 보내면서 구간 끝점만 100.4인 경우도 같은 규칙이다. 실측 100.4를 넘는 입력이나 미검증/길이 불일치 상태에서 카탈로그를 넘는 입력은 400 `INVALID_PLAYBACK_EVENT`이며 저장하지 않는다. 감사 이벤트와 멱등 요청 해시는 정규화 전 원본 입력을 보존하므로 재시도는 원본 본문 그대로 전송한다.
 
 ```json
 {
@@ -39,6 +43,8 @@
 | 명시적 complete         | completed     | 계수 1.0, 별도 시청 비율 조건 없음             |
 
 미시작에는 먼저 start가 필요하다. not_performed/interrupted는 start로 이어갈 수 있다. 종료를 누르지 않은 50% 도달은 확정 결과를 만들지 않는다. completed는 최종 불변이며 새 complete는 중복 확인으로만 처리한다. 완료 후 start/progress/end는 충돌이다. 기기 이벤트 감사 이력과 배정의 대표 resultStatus는 별개다. 중단 후 완료는 같은 대표 행을 갱신하여 0.5+1.0으로 합산하지 않는다.
+
+구간 길이는 보상 합산(Kahan)으로 더하고 내부 소수 정밀도를 유지한다. 50% 경계는 초 단위로 비교하며 `8 * Number.EPSILON * max(시청량, 기준 길이 / 2)`만큼의 실수 연산 오차를 허용한다(100초 영상에서 약 `9e-14`초). 표시용 3자리 반올림은 판정에 사용하지 않는다. `[0.1,25.1]`, `[50.1,75.1]`은 합계 50초로 인정해 interrupted이며, 49.9초와 49.9999999초는 not_performed다.
 
 매일 새로운 **명시적 POST**가 현재 포인터를 해당 KST 날짜 배정으로 전환한다. 전날 미완료 또는 기존 legacy assigned를 완료로 조작하지 않고 포인터만 해제하며 supersededAt을 남긴다. 과거 배정은 ID/이력으로 이어갈 수 있고 현재 포인터를 다시 가져오지 않는다. 자정 이후 접수한 과거 배정 결과는 접수일의 수행으로 기록한다. 오늘 배정과 실제 수행일은 다르다. 동일 배정을 다음 날 이어 완료하면 최종 대표 수행일·결과가 갱신되며 이전 중단 이벤트는 감사 이력에 남는다.
 
@@ -80,4 +86,4 @@ npm run test:e2e -- test/workouts.e2e-spec.ts
 npm run check
 ```
 
-E2E runner는 `TEST_DATABASE_URL`만 사용하고 DATABASE_URL과 동일 DB면 거부한다. 임시 test_* 스키마에 모든 마이그레이션을 두 번 적용한다. 실제 DB에서 소유권·동시 배정·요청키·구간 합집합·50%·중단→완료·미래/역순 입력·자정/지연 결과·기존 미완료·731개 원자 수입/버전 보존을 검증한다.
+E2E runner는 `TEST_DATABASE_URL`만 사용하고 DATABASE_URL과 동일 DB면 거부한다. 임시 test_* 스키마에 모든 마이그레이션을 두 번 적용한다. 실제 DB에서 소유권·동시 배정·요청키·구간 합집합·50%·중단→완료·미래/역순 입력·자정/지연 결과·기존 미완료·731개 원자 수입/버전 보존을 검증한다. 미디어 fixture에서 카탈로그 100초·검증 길이 100.4초의 progress/end/complete 저장, 원본 재전송, 범위 초과 거절과 소수점 구간 50%의 다음 추천 노출도 반영도 검사한다.

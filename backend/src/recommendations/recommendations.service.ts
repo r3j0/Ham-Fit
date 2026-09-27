@@ -29,6 +29,7 @@ import { adaptMeasurement } from './measurement-adapter.js';
 import { mediaFor } from './media.js';
 import {
   nextPlaybackStatus,
+  normalizePlaybackProgress,
   playbackInvalid,
   unionIntervals,
   watchedSeconds,
@@ -344,14 +345,22 @@ export class RecommendationsService {
           '이 기기의 이전 재생 이벤트입니다. 저장된 진행 상태를 다시 조회해 주세요.',
         );
       const video = row.curriculum.video!;
-      if (
-        !Number.isFinite(input.positionSeconds) ||
-        input.positionSeconds < 0 ||
-        input.positionSeconds > video.durationSeconds
-      )
-        playbackInvalid('재생 위치가 영상 길이를 벗어났습니다.');
+      const media = mediaFor(
+        video.videoId,
+        video.originalUrl,
+        video.durationSeconds,
+      );
+      const acceptedDurationSeconds =
+        media.playbackStatus === 'verified'
+          ? Math.max(video.durationSeconds, media.verifiedDurationSeconds!)
+          : video.durationSeconds;
+      const normalized = normalizePlaybackProgress(
+        input,
+        video.durationSeconds,
+        acceptedDurationSeconds,
+      );
       const intervals = unionIntervals(
-        [...(row.intervals as PlaybackInterval[]), ...input.intervals],
+        [...(row.intervals as PlaybackInterval[]), ...normalized.intervals],
         video.durationSeconds,
       );
       const status = nextPlaybackStatus(
@@ -372,7 +381,7 @@ export class RecommendationsService {
             data: {
               status,
               intervals: intervals as Prisma.InputJsonValue,
-              positionSeconds: input.positionSeconds,
+              positionSeconds: normalized.positionSeconds,
               revision: { increment: 1 },
               ...(final ? { resultStatus: status, performedAt: now } : {}),
               ...(status === 'completed' ? { completedAt: now } : {}),
@@ -495,6 +504,7 @@ export class RecommendationsService {
         ...mediaFor(video.videoId, video.originalUrl, video.durationSeconds),
       },
       progress: {
+        durationSeconds: video.durationSeconds,
         watchedSeconds: watched,
         positionSeconds: row.positionSeconds,
         intervals,
