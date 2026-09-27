@@ -65,7 +65,10 @@
 npm run db:migrate:deploy
 npm run build
 node scripts/recommendation-import-catalog.mjs
+# 영상 검증 파일은 Git에 없으므로 아래 미디어 문서의 검사/별도 배포 절차 필요
 ```
+
+재생 URL은 별도 생성한 [미디어 검증 자료](media-verification.md)가 필요하다. 기본 `.local/recommendation/media-verification.json` 또는 `WORKOUT_MEDIA_REPORT_PATH` 경로로 제공하고, 누락 시 API는 `playbackStatus: unavailable`을 반환한다.
 
 수입은 CSV/JSON ID 대응·가중치/합계/길이/출처 전체 검증 후 advisory lock 아래 원자적으로 정의와 영상 731개를 저장하고 활성 포인터를 전환한다. 재수입은 같은 버전·hash를 재사용한다. 같은 버전의 다른 내용은 거부하고 실패하면 기존 활성 버전을 보존한다. 영상·카탈로그·커리큘럼 정의는 불변이며 새 버전 추가로만 바꾼다. 과거 배정이 참조하는 버전은 삭제/덮어쓰지 않는다.
 

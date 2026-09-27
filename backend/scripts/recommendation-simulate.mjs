@@ -1,14 +1,14 @@
 // npm run build && node scripts/recommendation-simulate.mjs
-import { writeFile } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
-import { loadCatalog } from '../dist/src/recommendations/catalog.js';
+import { loadCatalog } from '../dist/recommendations/catalog.js';
 import {
   ALGORITHM_VERSION,
   FACTORS,
   calculateWeightAdjustment,
   nextDate,
   recommendNextWorkout,
-} from '../dist/src/recommendations/engine.js';
+} from '../dist/recommendations/engine.js';
 const catalog = loadCatalog();
 const simulations = [];
 for (const age of [13, 18, 19, 30, 64]) {
@@ -81,8 +81,9 @@ const report = {
   totalDays: simulations.length * 21,
   simulations,
 };
+await mkdir('.local/recommendation', { recursive: true });
 await writeFile(
-  'data/recommendation/validation/typescript-simulations.json',
+  '.local/recommendation/typescript-simulations.json',
   `${JSON.stringify(report, null, 2)}\n`,
 );
 console.log(
