@@ -1,17 +1,12 @@
 "use client";
 import Link from "next/link";
+import { GroupMascots } from "./mascot/mascot-scenes";
 import { BreathingMascot } from "./mascot/BreathingMascot";
 import { ArrowRight, ClipboardList } from "lucide-react";
 import { Loading, Notice, Shell } from "./ui";
 import { TodayWorkout } from "./today-workout";
 import { WorkoutStreak } from "./workout-streak";
 import { useUserProfile } from "./user-profile-provider";
-
-// Temporary visual examples until group membership is available.
-const groupMascots = [
-  { variant: "cream", label: "크림색 그룹 햄스터 (예시)" },
-  { variant: "gray", label: "회색 그룹 햄스터 (예시)" },
-] as const;
 
 export function Home() {
   const profile = useUserProfile();
@@ -49,21 +44,7 @@ export function Home() {
               <div className="home-mascot-stage">
                 <BreathingMascot size={256} label="편안하게 숨 쉬는 햄스터" />
               </div>
-              <div
-                className="home-group-mascots"
-                role="group"
-                aria-label="그룹 햄스터 예시"
-              >
-                {groupMascots.map(({ variant, label }) => (
-                  <BreathingMascot
-                    key={variant}
-                    variant={variant}
-                    size={80}
-                    paused
-                    label={label}
-                  />
-                ))}
-              </div>
+              <GroupMascots />
             </div>
             <div className="home-activity">
               <section className="stack" aria-labelledby="today-title">

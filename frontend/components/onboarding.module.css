@@ -141,3 +141,29 @@
     min-height: 116px;
   }
 }
+
+.intro {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.intro .question {
+  min-width: 0;
+  word-break: keep-all;
+}
+.intro .mascot {
+  width: clamp(96px, 28vw, 144px);
+}
+@media (min-width: 960px) {
+  .intro {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 24px;
+  }
+  .intro .mascot {
+    width: 200px;
+    align-self: center;
+  }
+}

@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Activity, ArrowRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import {
   adultAssessment,
   assessmentInput,
@@ -28,6 +28,7 @@ import { ApiError, errorMessage } from "@/lib/http";
 import type { Catalog, Measurement } from "@/lib/types";
 import { StepAssessmentHelp } from "./step-assessment-help";
 import { WorkoutRunner } from "./workout-runner";
+import { MascotPose } from "./mascot/MascotPose";
 import { OnboardingProgress } from "./onboarding-progress";
 import inputStyles from "./onboarding-inputs.module.css";
 import { useOperationScope } from "./use-operation-scope";
@@ -250,9 +251,12 @@ export function AssessmentWorkout() {
   const setupForm = (
     <>
       <div className="assessment-hero">
-        <span className="assessment-mark">
-          <Activity size={28} />
-        </span>
+        <MascotPose
+          pose="situp"
+          variant="gray"
+          size={128}
+          className="assessment-mascot"
+        />
         <span className="eyebrow">KNOW YOUR BODY</span>
         <h2>
           지금의 내 몸을

@@ -159,13 +159,14 @@
 }
 .home-group-mascots {
   display: flex;
+  isolation: isolate;
   align-items: center;
   justify-content: center;
-  gap: 24px;
-  padding-inline: 16px;
+  gap: clamp(4px, 2vw, 12px);
+  padding-inline: 8px;
 }
 .home-group-mascots > span {
-  width: min(calc(80% / 3), calc(var(--home-mascot-size) / 3));
+  width: min(calc((100% - 36px) / 4), calc(var(--home-mascot-size) / 3));
 }
 .home-intro {
   background: var(--navy);
@@ -543,13 +544,9 @@ h3 {
 .auth-content {
   padding: 24px 24px 36px;
 }
-.login-mascot {
-  display: flex;
-  justify-content: center;
+.auth-illustration {
+  width: 100%;
   margin: 12px auto 0;
-}
-.login-mascot > span {
-  width: min(192px, 24svh);
 }
 .auth-content .intro {
   margin: 28px 0 30px;
@@ -1382,17 +1379,14 @@ fieldset:disabled select {
   color: var(--muted);
   line-height: 1.8;
 }
-.assessment-mark {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 52px;
-  height: 52px;
-  border-radius: var(--radius-card);
-  background: var(--tint);
-  color: var(--navy);
-  margin-bottom: 20px;
+.assessment-hero .assessment-mascot {
+  display: block;
+  margin-bottom: 12px;
 }
+.delete-account-mascot {
+  align-self: center;
+}
+
 .assessment-steps {
   list-style: none;
   display: flex;
@@ -1884,14 +1878,11 @@ fieldset:disabled select {
     font-size: 32px;
     line-height: 1.4;
   }
-  .auth-shell .login-mascot {
+  .auth-shell .auth-illustration {
     grid-column: 1;
     grid-row: 2;
     align-self: center;
     margin: 0;
-  }
-  .auth-shell .login-mascot > span {
-    width: min(100%, 280px);
   }
   .auth-shell form {
     grid-column: 2;

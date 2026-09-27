@@ -1,4 +1,5 @@
 "use client";
+import { MascotPose } from "./mascot/MascotPose";
 import { useEffect, useRef, useState } from "react";
 import {
   AccountChangeUncertainError,
@@ -275,6 +276,12 @@ export function AccountSettings({
           busy={busy}
         >
           <div className="stack">
+            <MascotPose
+              pose="cant-hear"
+              variant="cream"
+              size={112}
+              className="delete-account-mascot"
+            />
             <p>
               계정과 모든 개인 기록이 영구 삭제돼요. 이 작업은 되돌릴 수 없어요.
             </p>

@@ -9,7 +9,7 @@ import { koreaDate } from "@/lib/measurements";
 import { authenticate } from "@/lib/session";
 import { ApiError, errorMessage } from "@/lib/http";
 import { Brand, FieldError, Notice, Shell, SubmitLabel } from "./ui";
-import { BreathingMascot } from "./mascot/BreathingMascot";
+import { SignupMascots, WelcomeMascots } from "./mascot/mascot-scenes";
 import { useSession } from "./session-provider";
 function destination(mode: "login" | "register") {
   if (mode === "register") return "/onboarding";
@@ -91,11 +91,9 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
         <Brand />
       </header>
       <div className="auth-content">
-        {!register && (
-          <div className="login-mascot">
-            <BreathingMascot size={192} label="편안하게 숨 쉬는 햄스터" />
-          </div>
-        )}
+        <div className="auth-illustration">
+          {register ? <SignupMascots /> : <WelcomeMascots />}
+        </div>
         <div className="intro">
           <h1>{register ? "가볍게 시작해요" : "다시 만나 반가워요"}</h1>
           <p>

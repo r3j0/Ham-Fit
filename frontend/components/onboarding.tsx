@@ -1,5 +1,6 @@
 "use client";
 import Image from "next/image";
+import { MascotPose } from "./mascot/MascotPose";
 import Link from "next/link";
 import { assessmentHref } from "@/lib/workout-mode";
 import { Notice, Shell } from "./ui";
@@ -23,12 +24,18 @@ export function Onboarding() {
       </header>
       <OnboardingProgress step={1} label="시작 방법 선택" />
       <div className="content">
-        <div className="intro">
+        <div className={`intro ${styles.intro}`}>
           <h2 className={styles.question}>
             국민체력100
             <br />
             결과표가 있나요?
           </h2>
+          <MascotPose
+            pose="curious"
+            variant="cream"
+            size={200}
+            className={styles.mascot}
+          />
         </div>
         <div className="stack">
           {profile.data?.isOnboarded && (

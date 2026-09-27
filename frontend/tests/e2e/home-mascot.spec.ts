@@ -38,21 +38,21 @@ test("메인은 중앙 캐릭터와 운동을 보여 주고 기록은 내 프로
   const companions = group.getByRole("img");
   await expect(group).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
   await expect(group).toHaveCSS("border-top-width", "0px");
-  await expect(companions).toHaveCount(2);
-  await expect(companions.nth(0)).toHaveAccessibleName(
-    "크림색 그룹 햄스터 (예시)",
-  );
-  await expect(companions.nth(1)).toHaveAccessibleName(
-    "회색 그룹 햄스터 (예시)",
-  );
-  await expect(companions.nth(0).locator("svg image")).toHaveAttribute(
-    "href",
-    "/mascots/cream-belly.svg",
-  );
-  await expect(companions.nth(1).locator("svg image")).toHaveAttribute(
-    "href",
-    "/mascots/gray-belly.svg",
-  );
+  await expect(companions).toHaveCount(4);
+  const expected = [
+    ["cream", "lying", "green-sportswear"],
+    ["gray", "situp", "white-sportswear"],
+    ["gray", "run", "blue-sportswear"],
+    ["cream", "cant-hear", "black-sportswear"],
+  ];
+  for (const [index, [variant, pose, wear]] of expected.entries()) {
+    await expect(companions.nth(index)).toHaveAttribute(
+      "data-variant",
+      variant,
+    );
+    await expect(companions.nth(index)).toHaveAttribute("data-pose", pose);
+    await expect(companions.nth(index)).toHaveAttribute("data-wear", wear);
+  }
   await expect(
     page.getByRole("heading", { name: "운동 스트릭", exact: true }),
   ).toHaveCount(0);
@@ -140,18 +140,18 @@ test("대기 호흡은 동작 줄이기와 숨겨진 탭을 따르고 페이지 
   const head = page
     .getByRole("img", { name: mascotName, exact: true })
     .locator('[data-part="head"]');
-  const groupHeads = page
+  const groupImages = page
     .getByRole("group", { name: "그룹 햄스터 예시" })
-    .locator('[data-part="head"]');
-  await expect(groupHeads).toHaveCount(2);
-  const stillPoses = await groupHeads.evaluateAll((nodes) =>
-    nodes.map((node) => node.getAttribute("transform")),
+    .locator("svg image");
+  await expect(groupImages).toHaveCount(4);
+  const stillPoses = await groupImages.evaluateAll((nodes) =>
+    nodes.map((node) => node.getAttribute("href")),
   );
   const pose = await head.getAttribute("transform");
   await expect.poll(() => head.getAttribute("transform")).not.toBe(pose);
   expect(
-    await groupHeads.evaluateAll((nodes) =>
-      nodes.map((node) => node.getAttribute("transform")),
+    await groupImages.evaluateAll((nodes) =>
+      nodes.map((node) => node.getAttribute("href")),
     ),
   ).toEqual(stillPoses);
   await page.emulateMedia({ reducedMotion: "reduce" });
