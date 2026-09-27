@@ -9,6 +9,7 @@ import { useSession } from "./session-provider";
 import { Dialog, Notice } from "./ui";
 import { useUnsaved } from "./use-unsaved";
 import { WorkoutError } from "./workout-error";
+import { useWorkoutHistory } from "./workout-history-provider";
 import { WorkoutSummary } from "./workout-summary";
 
 export function WorkoutPlayer({ initial }: { initial: Workout }) {
@@ -46,6 +47,10 @@ export function WorkoutPlayer({ initial }: { initial: Workout }) {
   const verified =
     workout.video.playbackStatus === "verified" && !!workout.video.playbackUrl;
   const completed = workout.status === "completed";
+  const { reload: reloadHistory } = useWorkoutHistory();
+  useEffect(() => {
+    if (completed) reloadHistory();
+  }, [completed, reloadHistory]);
   useUnsaved(
     (playing && !completed) || state.pending > 0,
     "운동 진행을 저장하고 있어요. 이 화면을 나가면 재생을 멈추고, 미확정 저장은 돌아온 뒤 다시 확인해요. 나갈까요?",

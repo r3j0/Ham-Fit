@@ -233,6 +233,11 @@ test("actual playback excludes seeks, ends below 50%, resumes after reload and c
   await page.getByRole("button", { name: "완료 확인" }).click();
   await expect.poll(async () => (await read()).status).toBe("completed");
   await expect(video).toHaveAttribute("controls");
+  await expect(
+    page
+      .getByRole("region", { name: "운동 기록", exact: true })
+      .locator('button[aria-current="date"]'),
+  ).toHaveAttribute("data-completed", "true");
   const completed = await read();
   let replayEvents = 0;
   page.on("request", (request) => {
@@ -264,6 +269,9 @@ test("actual playback excludes seeks, ends below 50%, resumes after reload and c
   await expect(
     page.getByRole("button", { name: "오늘 운동 추천받기" }),
   ).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "운동 스트릭" })).toContainText(
+    "1일 연속 운동 중",
+  );
   await page.getByRole("link", { name: "내 운동 이력", exact: true }).click();
   await expect(
     page.getByRole("link", { name: "완료 기록 보기" }),

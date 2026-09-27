@@ -18,14 +18,6 @@
 .heading h2 svg {
   color: var(--orange);
 }
-.previewBadge {
-  padding: 4px 8px;
-  border-radius: var(--radius-pill);
-  color: var(--muted);
-  background: var(--surface);
-  font-size: 11px;
-  white-space: nowrap;
-}
 .streakCount {
   margin-top: 12px;
   color: var(--text-secondary);
@@ -115,9 +107,6 @@
   padding: 20px;
   border-radius: var(--radius-hero);
   background: var(--surface);
-}
-.calendar .previewBadge {
-  background: var(--canvas);
 }
 .monthNavigation {
   display: grid;
@@ -274,32 +263,6 @@
   color: var(--muted);
   font-size: 11px;
 }
-.checkButton {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  min-height: 44px;
-  padding: 10px 12px;
-  border-radius: var(--radius-control);
-  color: var(--surface);
-  background: var(--navy);
-  font-size: 12px;
-  font-weight: 650;
-}
-.checkButton:hover {
-  background: var(--navy-hover);
-}
-.checkButton:active {
-  background: var(--navy-pressed);
-}
-.checkButton[aria-pressed="true"] {
-  background: var(--tint);
-  color: var(--navy);
-}
-.checkButton[aria-pressed="true"]:hover {
-  background: var(--border);
-}
 .calendarHelp {
   margin-top: 16px;
   color: var(--muted);
@@ -312,9 +275,6 @@
   }
   .selectedDay {
     gap: 10px;
-  }
-  .checkButton {
-    padding-inline: 10px;
   }
 }
 

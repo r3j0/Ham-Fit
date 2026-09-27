@@ -1,4 +1,50 @@
-/** Calendar-only preview data. No measurement, curriculum, or API records. */
+import type { Workout, WorkoutPage } from "./workout-types.ts";
+
+/** Completion dates use Korea time, independently of the viewer's timezone. */
+export function koreanDateKey(date: Date): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
+
+export function completedDate(
+  workout: Pick<Workout, "status" | "completedAt">,
+): string | null {
+  if (workout.status !== "completed" || !workout.completedAt) return null;
+  const date = new Date(workout.completedAt);
+  return Number.isFinite(date.getTime()) ? koreanDateKey(date) : null;
+}
+
+/** Assignment order is not completion order. Read all pages before deriving calendar/streak totals. */
+export async function collectWorkoutHistory(
+  read: (cursor?: string) => Promise<WorkoutPage>,
+  signal?: AbortSignal,
+): Promise<Workout[]> {
+  const workouts = new Map<string, Workout>();
+  const cursors = new Set<string>();
+  let cursor: string | undefined;
+  do {
+    signal?.throwIfAborted();
+    const page = await read(cursor);
+    signal?.throwIfAborted();
+    for (const workout of page.items) {
+      const previous = workouts.get(workout.id);
+      if (!previous || workout.revision > previous.revision)
+        workouts.set(workout.id, workout);
+    }
+    cursor = page.nextCursor ?? undefined;
+    if (cursor) {
+      if (cursors.has(cursor))
+        throw new Error("Repeated workout history cursor");
+      cursors.add(cursor);
+    }
+  } while (cursor);
+  return [...workouts.values()];
+}
+
 export function localDateKey(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
@@ -52,12 +98,4 @@ export function workoutStreak(
     day = shiftDay(day, -1);
   }
   return streak;
-}
-
-export function createPreviewHistory(today: string): Set<string> {
-  return new Set(
-    [1, 2, 3, 5, 7, 8, 11, 12, 14, 17, 18, 20, 23, 25, 26, 28, 32, 33].map(
-      (days) => shiftDay(today, -days),
-    ),
-  );
 }

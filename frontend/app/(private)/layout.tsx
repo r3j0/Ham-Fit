@@ -1,17 +1,17 @@
 import { RequireSession } from "@/components/session-provider";
 import { BottomNavigation } from "@/components/bottom-navigation";
 import { UserProfileProvider } from "@/components/user-profile-provider";
-import { WorkoutHistoryPreviewProvider } from "@/components/workout-history-preview-provider";
+import { WorkoutHistoryProvider } from "@/components/workout-history-provider";
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <RequireSession>
       <UserProfileProvider>
-        <WorkoutHistoryPreviewProvider>
+        <WorkoutHistoryProvider>
           <div className="authenticated-app">
             {children}
             <BottomNavigation />
           </div>
-        </WorkoutHistoryPreviewProvider>
+        </WorkoutHistoryProvider>
       </UserProfileProvider>
     </RequireSession>
   );
