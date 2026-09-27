@@ -1,5 +1,7 @@
 # 계정과 사용자 데이터 구조
 
+2026-09-27 추가: 아래 기존 5개 계정 컬럼에 nullable `date_of_birth DATE`를 추가했다. 기존 행은 null로 보존하며 현재 나이는 저장하지 않는다. 별도 [생년월일 프로필 API](recommendations/birth-profile.md)는 세션·측정·계정 변경 정책을 유지한다. [일별 운동 추천](recommendations/workouts-api.md)이 기존 커리큘럼을 확장한다.
+
 2026-09-21 정정: User UPDATE는 이메일·비밀번호 변경이다. 선호 운동·운동 목적·개인별 목표/기준값을 폐기하고, 사용자 프로필의 `currentFitness` 응답을 제거한다. **기존 측정 CRUD와 온보딩 조건은 유지**한다. User의 실제 컬럼은 아래 5개다.
 
 | User 컬럼    | 형태                 | 의미                                |

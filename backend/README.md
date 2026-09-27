@@ -15,6 +15,13 @@ Project Health의 NestJS API 서버입니다. 백엔드 코드·설정·문서·
 - [공식 평가 기준 조사·적용 범위](docs/research-fitness-criteria.md)
 - [국민체력100 사진 추출 API·환경설정·프론트 연동](docs/measurement-extraction-api.md)
 - [DB 설계와 마이그레이션](docs/database.md)
+- [개인 맞춤 일별 추천·수행 결과 API와 카탈로그 수입](docs/recommendations/workouts-api.md)
+- [생년월일 프로필 API와 KST 만 나이](docs/recommendations/birth-profile.md)
+- [추천 알고리즘·실제 731개 데이터의 출처와 대조 검사](docs/recommendations/provenance.md)
+- [영상 HTTPS·Range·메타데이터 검증 범위](docs/recommendations/media-verification.md)
+- [추천 BE 전체 구현·실행 결과와 미검증 범위](docs/recommendations/verification.md)
+
+2026-09-27부터 BE에서 최신 측정 기반 하루 한 영상 배정, 재생 구간 합집합 저장, 종료·명시적 완료, 이력 조회를 제공한다. 아래 이전 단계 설명 중 운동 추천이 후속 범위라는 내용은 위 새 API 문서로 대체한다. 이번 구현 범위는 BE이며 FE 변경은 포함하지 않는다. 운영 DB 적용과 배포는 별도 절차다.
 
 ## 개발 환경
 
