@@ -61,6 +61,7 @@ describe('date-only profile against PostgreSQL', () => {
     await read(account.access_token).expect(200, {
       dateOfBirth: null,
       currentAge: null,
+      nickname: null,
     });
     const measurement = await request(app.getHttpServer())
       .post('/api/v1/measurements')

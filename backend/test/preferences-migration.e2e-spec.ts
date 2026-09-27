@@ -161,7 +161,9 @@ it('backfills populated accounts without inferring goals and preserves saved pre
       ).toEqual(
         snapshot.rows.map((row) => ({
           ...(row as Record<string, unknown>),
-          ...(snapshot.table === 'users' ? { date_of_birth: null } : {}),
+          ...(snapshot.table === 'users'
+            ? { date_of_birth: null, nickname: null }
+            : {}),
           ...(snapshot.table === 'workout_curricula'
             ? { catalog_version: null, video_id: null }
             : {}),

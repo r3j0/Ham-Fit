@@ -1,6 +1,6 @@
 # 이메일 인증 API와 직접 테스트
 
-2026-09-27 호환 확장: `POST /auth/register`는 선택 `dateOfBirth: "YYYY-MM-DD"`를 받는다. 제공된 값은 서버 KST 오늘 기준으로 검증하며 생략은 기존 계약대로 허용한다. `/auth/me`에만 `dateOfBirth`, `currentAge`가 추가되고 가입·로그인·갱신의 user 4필드 응답은 유지한다. [생년월일 프로필 API](recommendations/birth-profile.md)를 참고한다.
+2026-09-27 호환 확장: `POST /auth/register`는 선택 `dateOfBirth: "YYYY-MM-DD"`, `nickname`을 받는다. 생년월일은 서버 KST 오늘 기준으로 검증하고 닉네임은 중복을 허용한다. 생략은 기존 계약대로 허용한다. `/auth/me`에는 `dateOfBirth`, `currentAge`, `nickname`을 추가하고 가입·로그인·갱신의 user 4필드 응답은 유지한다. [생년월일 프로필 API](recommendations/birth-profile.md), [닉네임 입력·프로필 계약](nickname-profile.md)을 참고한다.
 
 현재 범위는 이메일·비밀번호 회원가입, 로그인, 로그아웃, 토큰 갱신, 내 계정 조회다. 카카오·구글 로그인, 이메일 소유 확인, 비밀번호 재설정은 별도 후속 기능이다. 회원가입 성공은 이메일 소유 확인을 의미하지 않는다.
 
@@ -22,13 +22,13 @@ npm run start:dev
 
 아래 표의 경로는 기본 주소 뒤에 붙인다. 버전 없는 `/api/auth/...` 경로는 404다. 버전 변경 기준은 [API 버전 관리](api-versioning.md)를 따른다.
 
-| 메서드·경로           | 입력                                         | 성공 결과                                                |
-| --------------------- | -------------------------------------------- | -------------------------------------------------------- |
-| `POST /auth/register` | JSON `{ "email": "...", "password": "..." }` | 201, 계정·access token·refresh 쿠키. 가입 후 로그인 상태 |
-| `POST /auth/login`    | 동일                                         | 200, 계정·access token·refresh 쿠키                      |
-| `POST /auth/refresh`  | refresh 쿠키                                 | 200, 계정·새 access token·새 refresh 쿠키                |
-| `POST /auth/logout`   | refresh 쿠키 또는 Bearer access token        | 204, 해당 세션 폐기·쿠키 삭제                            |
-| `GET /auth/me`        | `Authorization: Bearer <access_token>`       | 200, 기존 공개 필드와 확장 프로필                        |
+| 메서드·경로           | 입력                                                     | 성공 결과                                                |
+| --------------------- | -------------------------------------------------------- | -------------------------------------------------------- |
+| `POST /auth/register` | JSON `email`, `password`, 선택 `dateOfBirth`, `nickname` | 201, 계정·access token·refresh 쿠키. 가입 후 로그인 상태 |
+| `POST /auth/login`    | JSON `email`, `password`                                 | 200, 계정·access token·refresh 쿠키                      |
+| `POST /auth/refresh`  | refresh 쿠키                                             | 200, 계정·새 access token·새 refresh 쿠키                |
+| `POST /auth/logout`   | refresh 쿠키 또는 Bearer access token                    | 204, 해당 세션 폐기·쿠키 삭제                            |
+| `GET /auth/me`        | `Authorization: Bearer <access_token>`                   | 200, 기존 공개 필드와 확장 프로필                        |
 
 회원가입·로그인·갱신 응답은 `{ "user": { "id", "email", "created_at", "updated_at" }, "access_token", "token_type": "Bearer", "expires_in": 900 }` 형태다. `expires_in`은 초 단위이며 세션 만료가 가까우면 짧아진다. 비밀번호 원문·해시와 refresh token은 JSON 응답에 포함하지 않는다. `GET /auth/me`는 기존 공개 필드를 유지하고 온보딩·재화·현재 배정을 제공한다. 기존 선호 배열·수치 목표·currentFitness 프로필 응답은 폐기했다. 2026-09-26에 추가한 단일 운동량·목적은 별도 [운동 설정 API](user-preferences-api.md)에서 조회·저장하며 로그인 상태를 유지한다. 이메일·비밀번호 변경과 영구 탈퇴는 [사용자 API](users-api.md)를 따른다. 가입·로그인·갱신의 `user` 객체는 기존 형태를 유지한다.
 

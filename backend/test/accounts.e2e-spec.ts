@@ -33,6 +33,7 @@ describe('Account schema', () => {
       'date_of_birth',
       'email',
       'id',
+      'nickname',
       'password',
       'updated_at',
     ]);

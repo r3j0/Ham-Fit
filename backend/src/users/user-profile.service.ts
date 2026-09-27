@@ -6,7 +6,8 @@ import {
 } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service.js';
 import { Prisma } from '../generated/prisma/client.js';
-import { birthProfile, parseDateOfBirth } from './date-of-birth.js';
+import { birthProfile } from './date-of-birth.js';
+import { parseProfileUpdate } from './user-profile-input.js';
 import {
   includeAssignment,
   serializeAssignment,
@@ -18,20 +19,24 @@ export class UserProfileService {
     @Inject(DatabaseService) private readonly database: DatabaseService,
   ) {}
 
-  async birth(userId: string) {
+  async profile(userId: string) {
     const user = await this.database.user.findUnique({
       where: { id: userId },
-      select: { dateOfBirth: true },
+      select: { dateOfBirth: true, nickname: true },
     });
     if (!user)
       throw new UnauthorizedException(
         '로그인이 필요하거나 계정이 삭제되었습니다.',
       );
-    return birthProfile(user.dateOfBirth);
+    return { ...birthProfile(user.dateOfBirth), nickname: user.nickname };
   }
 
-  async updateBirth(userId: string, value: unknown) {
-    const date = parseDateOfBirth(value);
+  async updateProfile(userId: string, value: unknown) {
+    const input = parseProfileUpdate(value);
+    const data: Prisma.UserUpdateInput = {};
+    if (input.dateOfBirth !== undefined)
+      data.dateOfBirth = new Date(`${input.dateOfBirth}T00:00:00.000Z`);
+    if (input.nickname !== undefined) data.nickname = input.nickname;
     return this.database.$transaction(async (tx) => {
       const users = await tx.$queryRaw<
         Array<{ id: string }>
@@ -42,10 +47,10 @@ export class UserProfileService {
         );
       const user = await tx.user.update({
         where: { id: userId },
-        data: { dateOfBirth: new Date(`${date}T00:00:00.000Z`) },
-        select: { dateOfBirth: true },
+        data,
+        select: { dateOfBirth: true, nickname: true },
       });
-      return birthProfile(user.dateOfBirth);
+      return { ...birthProfile(user.dateOfBirth), nickname: user.nickname };
     });
   }
 
@@ -62,6 +67,7 @@ export class UserProfileService {
             createdAt: true,
             updatedAt: true,
             dateOfBirth: true,
+            nickname: true,
             currency: true,
             currentCurriculumAssignment: { include: includeAssignment },
             measurements: { select: { id: true }, take: 1 },
@@ -81,6 +87,7 @@ export class UserProfileService {
           created_at: user.createdAt,
           updated_at: user.updatedAt,
           ...birthProfile(user.dateOfBirth),
+          nickname: user.nickname,
           isOnboarded: user.measurements.length > 0,
           currency: { balance: user.currency.balance },
           currentCurriculum: user.currentCurriculumAssignment

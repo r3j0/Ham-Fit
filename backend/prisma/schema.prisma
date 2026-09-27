@@ -63,13 +63,14 @@ enum ExerciseGoal {
   general_fitness_improvement
 }
 
-// Credential updates remain separate from explicit date-of-birth profile input.
+// Credential updates remain separate from birthday and nickname profile input.
 // Onboarding is derived from measurement existence, never stored here.
 model User {
   id                          String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   email                       String                     @unique
   password                    String?
   dateOfBirth                 DateTime?                  @map("date_of_birth") @db.Date
+  nickname                    String?                    @db.VarChar(20)
   createdAt                   DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt                   DateTime                   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   preference                  UserPreference?

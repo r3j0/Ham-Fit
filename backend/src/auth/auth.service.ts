@@ -10,6 +10,7 @@ import { PasswordService } from './password.service.js';
 import { TokenService } from './token.service.js';
 import type { AccountUpdateInput } from './auth-input.js';
 import { parseDateOfBirth } from '../users/date-of-birth.js';
+import { parseNickname } from '../users/nickname.js';
 
 const publicUserSelect = {
   id: true,
@@ -36,11 +37,18 @@ export class AuthService {
     @Inject(TokenService) private readonly tokens: TokenService,
   ) {}
 
-  async register(email: string, password: string, dateOfBirth?: string) {
+  async register(
+    email: string,
+    password: string,
+    dateOfBirth?: string,
+    nickname?: string,
+  ) {
     const birthday =
       dateOfBirth === undefined
         ? undefined
         : new Date(`${parseDateOfBirth(dateOfBirth)}T00:00:00.000Z`);
+    const displayName =
+      nickname === undefined ? undefined : parseNickname(nickname);
     const passwordHash = await this.passwords.hash(password);
     const refreshToken = this.tokens.newRefreshToken();
     const expiresAt = new Date(Date.now() + this.tokens.refreshTtl * 1000);
@@ -51,6 +59,7 @@ export class AuthService {
           email,
           password: passwordHash,
           dateOfBirth: birthday,
+          nickname: displayName,
           // Nested writes share one transaction: signup cannot commit without
           // its default settings, currency and initial session.
           preference: { create: {} },
