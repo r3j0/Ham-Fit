@@ -6,7 +6,7 @@ import { resolve, dirname } from 'node:path';
 import {
   SOURCE_COMMIT,
   transformCatalog,
-} from '../dist/src/recommendations/catalog.js';
+} from '../dist/recommendations/catalog.js';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const data = resolve(root, 'data/recommendation');
 const sourceFiles = [

@@ -67,15 +67,30 @@ export function createMediaResolver(report: unknown) {
     };
   };
 }
-let report: unknown;
-try {
-  report = JSON.parse(
-    readFileSync(
-      resolve('data/recommendation/media-verification.json'),
-      'utf8',
-    ),
+const mediaReportPath = () =>
+  resolve(
+    process.env.WORKOUT_MEDIA_REPORT_PATH ||
+      '.local/recommendation/media-verification.json',
   );
-} catch {
-  /* Missing evidence is unavailable, never an assumed HTTPS success. */
+export function loadMediaResolver(path = mediaReportPath()) {
+  let report: unknown;
+  try {
+    report = JSON.parse(readFileSync(path, 'utf8'));
+  } catch {
+    /* Missing evidence is unavailable, never an assumed HTTPS success. */
+  }
+  return createMediaResolver(report);
 }
-export const mediaFor = createMediaResolver(report);
+let cache:
+  | { path: string; resolver: ReturnType<typeof createMediaResolver> }
+  | undefined;
+export function mediaFor(
+  videoId: string,
+  originalUrl: string,
+  durationSeconds: number,
+) {
+  // Resolve after Nest has loaded .env. Reloading an updated file requires restart.
+  const path = mediaReportPath();
+  if (cache?.path !== path) cache = { path, resolver: loadMediaResolver(path) };
+  return cache.resolver(videoId, originalUrl, durationSeconds);
+}

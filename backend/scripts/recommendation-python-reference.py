@@ -22,7 +22,8 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "data/recommendation"
-OUTPUT = DATA / "validation"
+OUTPUT = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else ROOT / ".local/recommendation"
+OUTPUT.mkdir(parents=True, exist_ok=True)
 SOURCE = DATA / "source/data-analysis/src/recommendation.py"
 # Do not allow a caller's development CSV override to replace the pinned input.
 os.environ["WORKOUT_VIDEOS_PATH"] = str(DATA / "source/data-analysis/data/processed/workout_videos.csv")

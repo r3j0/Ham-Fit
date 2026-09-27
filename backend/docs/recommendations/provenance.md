@@ -14,7 +14,7 @@
 - 앱 카탈로그: `data/recommendation/catalog.json`
 
 원본 Python과 노트북은 계산 대조 자료이며 런타임 서비스로 실행하지 않는다.
-`.prettierignore`는 원본과 실행 증거를 제외한다. 원본에는 실제로 발견된 미래
+`.prettierignore`는 원본과 로컬 실행 산출물을 제외한다. 원본에는 실제로 발견된 미래
 로그 동점 오류와 가중치 합 검증 누락이 그대로 남아 있다. 과거 검증 디렉터리의
 `snapshot/`, `results.json`, `run_checks.py`, `manifest.json`은 수정하지 않았다.
 기존 검사기만 `data/recommendation/source/run_checks.py`에 그대로 복사했다.
@@ -106,23 +106,28 @@ CSV의 `file_nm`과 JSON의 `videoId`를 일대일로 대응시킨 뒤 제목, U
 원본 URL을 임의의 HTTPS 주소로 바꾸지 않았다. MP4 길이/Range/실제 재생 검증과
 전송 정책은 별도 미디어 문서와 실행 증거를 따른다.
 
-## 실행 증거와 재현
+## 검사와 재현
 
-NumPy 2.3.5, pandas 2.2.3이 있는 Python 3.12 환경을 사용한다.
+실행 결과 JSON·로그·대형 대조 데이터는 Git에 저장하지 않는다. 기본 단위 검사는
+`npm test`, 실제 PostgreSQL 계약 검사는 `npm run test:e2e`로 실행한다.
+
+Python/TypeScript 전체 대조는 Python 3.12, NumPy 2.3.5, pandas 2.2.3 환경에서
+아래 별도 명령으로 실행한다. 필요한 경우 `RECOMMENDATION_PYTHON`에 Python 실행
+파일 경로를 지정한다. Python 의존성이 없거나 계산이 다르면 명령은 실패하며
+검사를 조용히 건너뛰지 않는다.
 
 ```sh
-python3 scripts/recommendation-python-reference.py
-npx vitest run src/recommendations/engine.spec.ts src/recommendations/catalog.spec.ts src/recommendations/measurement-adapter.spec.ts --reporter=json --outputFile=data/recommendation/validation/typescript-results.json
+npm run test:recommendation-parity
+npm run build
 node scripts/recommendation-simulate.mjs
 ```
 
-| 파일 (`data/recommendation/validation/`) | 의미                                                                                   |
-| ---------------------------------------- | -------------------------------------------------------------------------------------- |
-| prerequisite-regressions.json            | 최초 선행 검사 4/4 통과: 미래 로그·합계 0·합계 1.4 + 실제 731행                        |
-| original-reference-results.json          | 원본 검사기를 격리한 임시 경로에서 재실행: 정상 61 통과, 방어 3 실패를 그대로 기록     |
-| python-parity.json                       | 원본 계산으로 만든 127개 대조 사례, 전체 후보/동점 집합·점수·노출도·우선순위·오늘 변화 |
-| typescript-results.json                  | 수정본 단위/회귀/대조 검사 실행 결과                                                   |
-| typescript-simulations.json              | TS 엔진 자체 RNG와 누적 수행 이력으로 실행한 5개 연령 × 21일, 총 105일                 |
+`test:recommendation-parity`는 고정 원본에서 127개 기대값을 임시 디렉터리에 새로
+생성하고 `test/recommendation-parity.check.ts`로 비교한 뒤 성공·실패와 관계없이
+임시 파일을 정리한다. `npm run check`의 Node 기반 검사와 별도로 실행한다.
+독립 TS 시뮬레이션 결과는 Git에서 제외되는 `.local/recommendation/`에 생성한다.
+검사 결과를 직접 살펴보려면 `python3 scripts/recommendation-python-reference.py`로
+같은 로컬 경로에 생성할 수 있다.
 
 Python 대조 생성기는 미래 로그를 진입 시 제거하는 제품 수정만 어댑터로 적용하고
 원본 모듈의 계산은 수정하지 않는다. 13·18·19·30·64세 21일 시뮬레이션과 노출도
@@ -130,5 +135,5 @@ Python 대조 생성기는 미래 로그를 진입 시 제거하는 제품 수�
 후보/동점 집합은 정확히 일치해야 하며 최종 무작위 선택은 유효 집합 포함 여부로
 검사한다. 별도 TS 시뮬레이션도 연령 범위·최근 7일 중복 없음·노출도 상한을 검사한다.
 
-원본의 실패를 성공으로 바꾸지 않았다. 원본 방어 실패 3개는 고정된 증거이며,
-제품에 쓰이는 수정본 엔진/수입 경로가 별도 회귀 검사에서 통과한다.
+원본 검사기의 정상 61개 통과·방어 3개 실패는 실행할 때 그대로 재현한다.
+제품에 쓰이는 수정본 엔진/수입 경로의 세 회귀 검사는 기본 단위 검사에 남긴다.
