@@ -1,4 +1,5 @@
 import { ApiError, errorMessage, request } from "./http";
+import type { RequestOptions } from "./http";
 import type { AuthResponse, User } from "./types";
 import { measurementDrafts } from "./measurement-drafts";
 type Session = {
@@ -146,7 +147,7 @@ export async function logout() {
     clear("logout");
   });
 }
-export async function api<T>(path: string, options: RequestInit = {}) {
+export async function api<T>(path: string, options: RequestOptions = {}) {
   const generation = session.generation,
     userId = session.user?.id,
     token = accessToken;

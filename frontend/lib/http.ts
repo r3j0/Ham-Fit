@@ -1,18 +1,29 @@
 export class ApiError extends Error {
+  public status: number;
+  public fields: Record<string, string>;
+  public retryAfter?: number;
+  public code?: string;
   constructor(
-    public status: number,
+    status: number,
     message: string,
-    public fields: Record<string, string> = {},
-    public retryAfter?: number,
+    fields: Record<string, string> = {},
+    retryAfter?: number,
+    code?: string,
   ) {
     super(message);
     this.name = "ApiError";
+    this.status = status;
+    this.fields = fields;
+    this.retryAfter = retryAfter;
+    this.code = code;
   }
 }
+export type RequestOptions = RequestInit & { allowNull?: boolean };
 export async function request<T>(
   path: string,
-  options: RequestInit = {},
+  options: RequestOptions = {},
 ): Promise<{ data: T; headers: Headers }> {
+  const { allowNull = false, ...init } = options;
   let response: Response;
   try {
     // Direct browser requests keep each client's IP visible to the backend.
@@ -20,7 +31,7 @@ export async function request<T>(
       process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001/api/v1"
     ).replace(/\/$/, "");
     response = await fetch(`${base}${path}`, {
-      ...options,
+      ...init,
       credentials: "include",
       cache: "no-store",
       signal: options.signal
@@ -38,8 +49,14 @@ export async function request<T>(
       "서버에 연결하지 못했어요. 연결 상태를 확인하고 다시 시도해 주세요.",
     );
   }
+  let invalidJson = false;
   const body =
-    response.status === 204 ? null : await response.json().catch(() => null);
+    response.status === 204
+      ? null
+      : await response.json().catch(() => {
+          invalidJson = true;
+          return null;
+        });
   if (!response.ok) {
     const fields: Record<string, string> = {};
     if (Array.isArray(body?.errors))
@@ -69,9 +86,15 @@ export async function request<T>(
           (typeof body?.message === "string"
             ? body.message
             : "입력 내용을 확인해 주세요."));
-    throw new ApiError(response.status, message, fields, retryAfter);
+    throw new ApiError(
+      response.status,
+      message,
+      fields,
+      retryAfter,
+      typeof body?.code === "string" ? body.code : undefined,
+    );
   }
-  if (response.status !== 204 && body === null)
+  if (response.status !== 204 && (invalidJson || (body === null && !allowNull)))
     throw new ApiError(0, "서버 응답을 확인하지 못했어요. 다시 시도해 주세요.");
   return { data: body as T, headers: response.headers };
 }
