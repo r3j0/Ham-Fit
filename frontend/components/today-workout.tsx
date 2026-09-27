@@ -114,12 +114,16 @@ export function TodayWorkout({
   const today = workout?.koreanDate === workout?.serverKoreanDate && !!workout;
   const content = (
     <div className={embedded ? "stack" : "content stack"}>
-      <Link className="text-link" href="/workouts">
-        내 운동 이력
-      </Link>
-      <p className="muted">
-        내 측정 기록과 운동 이력에 맞춰 하루 한 가지 운동을 추천해요.
-      </p>
+      {!playback && (
+        <>
+          <Link className="text-link" href="/workouts">
+            내 운동 이력
+          </Link>
+          <p className="muted">
+            내 측정 기록과 운동 이력에 맞춰 하루 한 가지 운동을 추천해요.
+          </p>
+        </>
+      )}
       {!loaded ? (
         <Loading />
       ) : (
@@ -186,6 +190,11 @@ export function TodayWorkout({
             운동 상태 새로고침
           </button>
         </>
+      )}
+      {playback && (
+        <Link className="text-link" href="/workouts">
+          내 운동 이력
+        </Link>
       )}
     </div>
   );

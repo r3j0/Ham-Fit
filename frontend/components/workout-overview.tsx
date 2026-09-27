@@ -30,12 +30,9 @@ export function WorkoutOverview({
             className={styles.assignment}
             aria-labelledby="today-workout-title"
           >
-            <div className="stack-sm">
-              <p className="eyebrow">국민체력100 맞춤 운동</p>
+            <div className={styles.heading}>
               <h2 id="today-workout-title">내 배정 운동</h2>
-              <p className="muted">
-                배정된 영상을 따라 운동하고, 마친 뒤 완료를 확인해 주세요.
-              </p>
+              <span className="caption">국민체력100</span>
             </div>
             <TodayWorkout embedded playback />
           </section>
