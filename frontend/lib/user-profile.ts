@@ -37,3 +37,14 @@ export function isUserProfile(value: unknown): value is UserProfile {
       typeof current.curriculum.name === "string")
   );
 }
+
+/** Elapsed calendar days in Korea; joining today is day 0, even across UTC midnight. */
+export function daysSinceJoined(createdAt: string, now = new Date()): number {
+  const koreaOffset = 9 * 60 * 60 * 1000;
+  const dayMilliseconds = 24 * 60 * 60 * 1000;
+  const joinedDay = Math.floor(
+    (Date.parse(createdAt) + koreaOffset) / dayMilliseconds,
+  );
+  const today = Math.floor((now.getTime() + koreaOffset) / dayMilliseconds);
+  return Math.max(0, today - joinedDay);
+}

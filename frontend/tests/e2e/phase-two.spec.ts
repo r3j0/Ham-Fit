@@ -356,7 +356,9 @@ test("계정 수정은 비밀번호 오류를 재전송하지 않고 성공하�
   await login(page, email);
   await page.goto("/account");
   await expect(page.getByText(email, { exact: true })).toBeVisible();
-  await expect(page.getByText("보유 재화", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("group", { name: "보유 재화", exact: true }),
+  ).toBeVisible();
 });
 
 test("새 비밀번호 확인 후 변경하고 재로그인하여 영구 탈퇴한다", async ({

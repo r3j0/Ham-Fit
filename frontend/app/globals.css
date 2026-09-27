@@ -1136,9 +1136,7 @@ fieldset:disabled select {
   color: var(--navy);
 }
 .account-shell .profile-avatar {
-  padding: 4px;
-  border-radius: var(--radius-card);
-  background: var(--surface);
+  width: clamp(112px, 20vw, 128px);
 }
 .account-shell .menu-card {
   background: var(--canvas);
@@ -1160,6 +1158,27 @@ fieldset:disabled select {
 .account-shell .radar-point {
   fill: var(--accent);
 }
+.profile-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.profile-toolbar h1 {
+  font-size: 20px;
+}
+.profile-balance {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  background: var(--canvas);
+  font-variant-numeric: tabular-nums;
+}
+.profile-balance img {
+  flex: none;
+}
 .profile-card {
   display: flex;
   align-items: center;
@@ -1171,11 +1190,96 @@ fieldset:disabled select {
 .profile-card p {
   overflow-wrap: anywhere;
 }
-.profile-card .muted {
-  color: var(--text-secondary);
-}
 .profile-copy {
+  flex: 1;
   min-width: 0;
+}
+.profile-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 16px;
+}
+.profile-tenure {
+  margin-left: auto;
+  color: var(--text-secondary);
+  font-size: 12px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.profile-email {
+  margin-top: 8px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+.profile-report {
+  padding: 20px;
+  border-radius: var(--radius-hero);
+  background: var(--canvas);
+}
+.profile-report-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.profile-report-heading h2 {
+  font-size: 17px;
+}
+.profile-report-preview {
+  padding: 3px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--tint);
+  color: var(--navy);
+  font-size: 11px;
+}
+.profile-report-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px 16px;
+  margin-top: 20px;
+}
+.profile-report-metric dt {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  word-break: keep-all;
+}
+.profile-report-metric dt svg {
+  flex: none;
+  color: var(--navy);
+}
+.profile-report-metric dd {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.profile-report-metric dd strong {
+  color: var(--navy);
+  font-size: 28px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.3;
+}
+.profile-report-total {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+.profile-report-total svg,
+.profile-report-total strong {
+  color: var(--navy);
 }
 .menu-card {
   border-radius: var(--radius-card);
@@ -1828,23 +1932,24 @@ fieldset:disabled select {
   .home-content .curriculum-card {
     padding-bottom: 0;
   }
-  .account-shell > .content:has(.latest-fitness) {
+  .account-shell > .content:has(.profile-insights) {
     display: grid;
     grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
     align-items: start;
     gap: 24px 40px;
   }
-  .account-shell > .content > :is(.profile-card, .notice, .loading) {
+  .account-shell
+    > .content
+    > :is(.profile-toolbar, .profile-card, .notice, .loading) {
     grid-column: 1 / -1;
   }
-  .account-shell .latest-fitness {
+  .account-shell .profile-insights {
     grid-column: 1;
-    grid-row: 2 / span 3;
   }
-  .account-shell > .content > :is(.menu-card, .button, .support-copy) {
+  .account-shell .profile-actions {
     grid-column: 2;
   }
-  .account-shell > .content:not(:has(.latest-fitness)) {
+  .account-shell > .content:not(:has(.profile-insights)) {
     max-width: 800px;
     margin-inline: auto;
   }

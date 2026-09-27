@@ -46,15 +46,18 @@ test("다른 탭의 기록 변경은 이전 차트를 숨기고 늦게 도착한
 }) => {
   await installApi(page, storedRecordFixture(), storedCatalogFixture);
   let count = 0;
+  let phase: "initial" | "held" | "updated" = "initial";
   let release = () => {};
   const held = new Promise<void>((resolve) => {
     release = resolve;
   });
   await page.route("**/measurements/latest-polygon", async (route) => {
-    const index = ++count;
-    if (index === 2) await held;
+    count++;
+    // Development Strict Mode may mount twice; hold only an explicit refresh.
+    const responsePhase = phase;
+    if (responsePhase === "held") await held;
     await route
-      .fulfill({ json: index < 3 ? polygon() : empty() })
+      .fulfill({ json: responsePhase === "updated" ? empty() : polygon() })
       .catch(() => {});
   });
   await page.goto("/account");
@@ -72,9 +75,12 @@ test("다른 탭의 기록 변경은 이전 차트를 숨기고 늦게 도착한
     }, testUser.id);
     await other.close();
   };
+  const initialRequests = count;
+  phase = "held";
   await broadcast();
-  await expect.poll(() => count).toBeGreaterThanOrEqual(2);
+  await expect.poll(() => count).toBeGreaterThan(initialRequests);
   await expect(page.locator(".radar-point")).toHaveCount(0);
+  phase = "updated";
   await broadcast();
   await expect(
     page.getByText("아직 등록한 측정 기록이 없어요.", { exact: true }),
