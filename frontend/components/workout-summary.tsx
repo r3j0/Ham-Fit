@@ -1,5 +1,7 @@
+import { Check, Clock3, Minus } from "lucide-react";
 import type { Workout, WorkoutStatus } from "@/lib/workout-types";
 import { displayDate } from "@/lib/measurements";
+import styles from "./workout-summary.module.css";
 
 export const workoutLabels: Record<WorkoutStatus, string> = {
   assigned: "시작 전",
@@ -8,29 +10,60 @@ export const workoutLabels: Record<WorkoutStatus, string> = {
   interrupted: "중단",
   completed: "완료",
 };
+
+function playbackTime(seconds: number) {
+  const wholeSeconds = Math.floor(seconds);
+  return `${Math.floor(wholeSeconds / 60)}:${String(wholeSeconds % 60).padStart(2, "0")}`;
+}
+
 export function WorkoutSummary({ workout }: { workout: Workout }) {
-  const { video, progress } = workout;
+  const { video, progress, status } = workout;
+  const completed = status === "completed";
+  const inProgress = status === "in_progress";
+  const StatusIcon = completed ? Check : inProgress ? Clock3 : Minus;
+  const statusLabel = completed
+    ? "운동 완료"
+    : inProgress
+      ? "운동 진행 중"
+      : `운동 미완료 (${workoutLabels[status]})`;
+  const percent = Math.floor(progress.ratio * 100);
   return (
     <div className="stack-sm">
-      <p className="caption">
-        {displayDate(workout.koreanDate)} 배정 · {workoutLabels[workout.status]}
-      </p>
-      <h2>{video.title}</h2>
+      <time className="caption" dateTime={workout.koreanDate}>
+        {displayDate(workout.koreanDate)}
+      </time>
+      <div className={styles.title}>
+        <span
+          className={`${styles.status} ${completed ? styles.completed : inProgress ? styles.inProgress : styles.incomplete}`}
+          role="img"
+          aria-label={statusLabel}
+        >
+          <StatusIcon size={18} strokeWidth={2.5} aria-hidden="true" />
+        </span>
+        <h2>{video.title}</h2>
+      </div>
       <p className="muted">
         {Math.floor(video.durationSeconds / 60)}분 {video.durationSeconds % 60}
         초 ·{" "}
         {video.equipment.length ? video.equipment.join(", ") : "장비 정보 없음"}
       </p>
-      <progress
-        className="workout-progress"
-        max={1}
-        value={progress.ratio}
-        aria-label="저장된 시청 진행률"
-      />
-      <p className="caption">
-        저장된 시청량 {Math.floor(progress.watchedSeconds)}초 /{" "}
-        {progress.durationSeconds}초 ({Math.floor(progress.ratio * 100)}%)
-      </p>
+      <div className={styles.progressPanel}>
+        <div className={styles.progressHeading}>
+          <span>시청 기록</span>
+          <strong>{percent}%</strong>
+        </div>
+        <progress
+          className={styles.progress}
+          max={1}
+          value={progress.ratio}
+          aria-label="저장된 시청 진행률"
+          aria-valuetext={`${percent}%, ${Math.floor(progress.watchedSeconds)}초 / ${progress.durationSeconds}초`}
+        />
+        <p className={styles.progressTime}>
+          {playbackTime(progress.watchedSeconds)} /{" "}
+          {playbackTime(progress.durationSeconds)}
+        </p>
+      </div>
     </div>
   );
 }

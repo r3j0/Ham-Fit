@@ -180,7 +180,7 @@ export function WorkoutPlayer({
   return (
     <div className="stack">
       <WorkoutSummary workout={workout} />
-      {completed && (
+      {completed && !replay && (
         <Notice tone="success">
           운동을 완료했어요. 영상을 다시 볼 수 있고, 완료한 운동의 기록은
           변경되지 않아요.
@@ -361,13 +361,15 @@ export function WorkoutPlayer({
           )}
         </>
       )}
-      <button
-        className="text-button"
-        disabled={state.saving || playing}
-        onClick={() => void session.refresh()}
-      >
-        저장된 운동 상태 확인
-      </button>
+      {!replay && (
+        <button
+          className="text-button"
+          disabled={state.saving || playing}
+          onClick={() => void session.refresh()}
+        >
+          저장된 운동 상태 확인
+        </button>
+      )}
       {completed && (
         <Link
           className="button primary"

@@ -80,7 +80,7 @@ function CalendarBody({ selectedDate }: { selectedDate?: string }) {
           오늘
         </button>
       </div>
-      <table className={styles.monthGrid} aria-describedby="calendar-help">
+      <table className={styles.monthGrid}>
         <caption className="sr-only">{monthLabel} 운동 기록</caption>
         <thead>
           <tr>
@@ -147,12 +147,7 @@ function CalendarBody({ selectedDate }: { selectedDate?: string }) {
           <i />
           완료 기록 없음
         </span>
-        <span className={styles.todayLegend}>밑줄은 오늘</span>
       </div>
-      <p className={styles.calendarHelp} id="calendar-help">
-        운동 완료를 확인한 날짜에 자동으로 표시돼요. 한국 시간 기준이며, 같은 날
-        여러 운동을 완료해도 하루로 계산해요.
-      </p>
     </>
   );
 }

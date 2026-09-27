@@ -253,7 +253,7 @@ test("날짜 상세의 빈 날짜·잘못된 날짜와 이력 조회 실패를 �
         }),
   );
   await page.goto("/workouts/history/2026-09-27");
-  await expect(page.getByRole("alert")).toBeVisible();
+  await expect(page.getByRole("main").getByRole("alert")).toBeVisible();
   await expect(
     page.getByText("이 날짜에 완료한 운동 기록이 없어요."),
   ).toHaveCount(0);

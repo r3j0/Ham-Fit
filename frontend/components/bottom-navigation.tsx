@@ -8,8 +8,13 @@ export function BottomNavigation() {
   const pathname = usePathname();
   if (pathname === "/onboarding" || pathname.startsWith("/onboarding/"))
     return null;
-  const theme =
-    pathname === "/account" || pathname === "/account/preferences"
+  const workoutRoute =
+    pathname === "/workout" ||
+    pathname === "/workouts" ||
+    pathname.startsWith("/workouts/");
+  const theme = workoutRoute
+    ? " kspo-sky-theme"
+    : pathname === "/account" || pathname === "/account/preferences"
       ? " kspo-orange-theme"
       : "";
   const tabs = [
@@ -23,10 +28,7 @@ export function BottomNavigation() {
       href: "/workout",
       label: "운동",
       icon: Dumbbell,
-      active:
-        pathname === "/workout" ||
-        pathname === "/workouts" ||
-        pathname.startsWith("/workouts/"),
+      active: workoutRoute,
     },
     {
       href: "/account",

@@ -295,7 +295,7 @@ test("actual playback excludes seeks, ends below 50%, resumes after reload and c
   await expect(page.getByText("최근 수행일", { exact: false })).toBeVisible();
   await page.getByRole("link", { name: "운동 다시보기" }).click();
   await expect(
-    page.getByText("운동을 완료했어요.", { exact: false }),
+    page.getByRole("img", { name: "운동 완료", exact: true }),
   ).toBeVisible();
   await expect(page).toHaveURL(`/workouts/${workout.id}/replay`);
   await expect(

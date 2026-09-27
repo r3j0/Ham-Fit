@@ -219,7 +219,7 @@
   align-items: center;
   justify-content: center;
   gap: 12px;
-  margin: 12px 0 20px;
+  margin: 12px 0 0;
   color: var(--muted);
   font-size: 11px;
 }
@@ -237,15 +237,6 @@
   border-radius: 50%;
   background: var(--disabled);
 }
-.todayLegend {
-  margin-left: auto;
-}
-.calendarHelp {
-  margin-top: 16px;
-  color: var(--muted);
-  font-size: 11px;
-  line-height: 1.7;
-}
 @media (max-width: 359px) {
   .calendar {
     padding: 16px;
@@ -260,9 +251,6 @@
   .weekMark {
     width: 36px;
     height: 36px;
-  }
-  .calendarHelp {
-    font-size: 12px;
   }
 }
 

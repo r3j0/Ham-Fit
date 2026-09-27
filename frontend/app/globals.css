@@ -1052,7 +1052,7 @@ fieldset:disabled select {
   font-size: 14px;
   margin-top: 10px;
 }
-/* Route-scoped KSPO Sky Blue colors for onboarding and its nested forms. */
+/* Route-scoped KSPO Sky Blue colors for onboarding and workout screens. */
 .kspo-sky-theme {
   --sky: #1b99c4;
   --accent: var(--sky);
@@ -1079,6 +1079,13 @@ fieldset:disabled select {
 .kspo-sky-theme .button.primary:active:not(:disabled),
 .kspo-sky-theme .segmented button[aria-pressed="true"]:active:not(:disabled) {
   background: #31a3c9;
+}
+.workout-theme {
+  display: flow-root;
+  background: var(--canvas);
+}
+.kspo-sky-theme .bottom-tab[aria-current] > svg {
+  color: var(--sky);
 }
 /* KSPO Orange tokens for the profile screen. */
 .kspo-orange-theme {
