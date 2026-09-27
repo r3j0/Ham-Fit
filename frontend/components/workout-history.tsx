@@ -104,10 +104,14 @@ export function WorkoutHistory() {
                     )}
                     <Link
                       className="button secondary"
-                      href={`/workouts/${row.id}`}
+                      href={
+                        row.status === "completed"
+                          ? `/workouts/${row.id}/replay`
+                          : `/workouts/${row.id}`
+                      }
                     >
                       {row.status === "completed"
-                        ? "완료 기록 보기"
+                        ? "운동 다시보기"
                         : row.status === "assigned"
                           ? "운동 자세히 보기"
                           : "이 운동 이어하기"}

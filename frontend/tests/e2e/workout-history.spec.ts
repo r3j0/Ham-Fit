@@ -27,6 +27,12 @@ async function setup(page: Page) {
   await page.route("**/api/v1/workouts/history?*", (route) =>
     route.fulfill({ json: { items: rows, nextCursor: null } }),
   );
+  await page.route("**/api/v1/workouts/*", (route) => {
+    const row = rows.find((workout) =>
+      route.request().url().endsWith(`/${workout.id}`),
+    );
+    return row ? route.fulfill({ json: row }) : route.fallback();
+  });
   return { ...api, rows };
 }
 
@@ -43,23 +49,63 @@ test("서버 완료일만 달력과 스트릭에 표시하고 같은 날 중복 
   const calendar = page.getByRole("region", { name: "운동 기록", exact: true });
   await expect(calendar.getByText("3일 운동했어요")).toBeVisible();
   await expect(
-    calendar.getByRole("button", {
+    calendar.getByRole("link", {
       name: "9월 27일 오늘, 운동함",
       exact: true,
     }),
   ).toHaveAttribute("data-completed", "true");
   await expect(
     calendar.getByRole("link", { name: /완료 기록 보기/ }),
-  ).toHaveCount(2);
-  await expect(
-    calendar.getByRole("link", { name: /완료 기록 보기/ }).first(),
-  ).toHaveAttribute("href", "/workouts/today");
-  await expect(
-    calendar.getByRole("button", { name: /운동함으로 체크|체크 해제/ }),
   ).toHaveCount(0);
-  await expect(page.getByText("예시 기록", { exact: true })).toHaveCount(0);
+  await expect(
+    page.getByRole("list", { name: "선택한 날짜의 운동 기록" }),
+  ).toHaveCount(0);
+  await calendar
+    .getByRole("link", { name: "9월 27일 오늘, 운동함", exact: true })
+    .click();
+  await expect(page).toHaveURL("/workouts/history/2026-09-27");
+  await expect(
+    page.getByRole("heading", { name: "운동 기록 상세", exact: true }),
+  ).toBeVisible();
+  const records = page.getByRole("list", { name: "선택한 날짜의 운동 기록" });
+  await expect(records.getByRole("listitem")).toHaveCount(2);
+  await expect(records.getByRole("link").first()).toHaveAttribute(
+    "href",
+    "/workouts/today/replay",
+  );
+  const calendarBox = (await calendar.boundingBox())!;
+  expect((await records.boundingBox())!.y).toBeGreaterThanOrEqual(
+    calendarBox.y + calendarBox.height,
+  );
+  await expect(
+    calendar.getByRole("link", { name: "9월 27일 오늘, 운동함", exact: true }),
+  ).toHaveAttribute("data-selected", "true");
+  await calendar
+    .getByRole("link", { name: "9월 26일, 운동함", exact: true })
+    .focus();
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL("/workouts/history/2026-09-26");
+  await expect(records.getByRole("listitem")).toHaveCount(1);
+  await expect(records.getByRole("link")).toHaveAttribute(
+    "href",
+    "/workouts/yesterday/replay",
+  );
   await page.reload();
-  await expect(calendar.getByText("3일 운동했어요")).toBeVisible();
+  await expect(records.getByRole("listitem")).toHaveCount(1);
+  await records.getByRole("link").click();
+  await expect(page).toHaveURL("/workouts/yesterday/replay");
+  await expect(
+    page.getByRole("heading", { name: "운동 다시보기", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "운동 중", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByText("현재 이 영상을 재생할 수 없어요.", { exact: false }),
+  ).toBeVisible();
+  await page.getByRole("link", { name: "운동 기록으로", exact: true }).click();
+  await expect(page).toHaveURL("/workouts/history/2026-09-26");
+  await expect(records.getByRole("listitem")).toHaveCount(1);
   expect(api.mutations).toEqual([]);
 });
 
@@ -85,17 +131,16 @@ test("달력은 이전 달과 빈 달을 키보드로 탐색하며 배정일을 
     name: "8월 1일, 완료 기록 없음",
     exact: true,
   });
-  await date.focus();
-  await page.keyboard.press("Enter");
-  await expect(date).toHaveAttribute("aria-pressed", "true");
-  await expect(calendar.getByText("완료한 운동 기록이 없어요")).toBeVisible();
+  await expect(date).toBeDisabled();
+  await expect(calendar.getByText("완료한 운동 기록이 없어요")).toHaveCount(0);
+  await expect(calendar.locator("tbody a")).toHaveCount(0);
   await calendar.getByRole("button", { name: "오늘", exact: true }).click();
   await expect(
-    calendar.getByRole("button", {
+    calendar.getByRole("link", {
       name: "9월 27일 오늘, 운동함",
       exact: true,
     }),
-  ).toHaveAttribute("aria-pressed", "true");
+  ).toHaveAttribute("href", "/workouts/history/2026-09-27");
   expect(api.mutations).toEqual([]);
 });
 
@@ -151,8 +196,8 @@ for (const width of [320, 390, 430, 1280]) {
       exact: true,
     });
     await expect(calendar.getByRole("table")).toBeVisible();
-    await expect(calendar.locator("tbody button")).toHaveCount(30);
-    for (const button of await calendar.getByRole("button").all()) {
+    await expect(calendar.locator("tbody button, tbody a")).toHaveCount(30);
+    for (const button of await calendar.locator("button, a").all()) {
       const bounds = await button.boundingBox();
       expect(bounds!.height).toBeGreaterThanOrEqual(44);
       expect(bounds!.x).toBeGreaterThanOrEqual(0);
@@ -165,5 +210,78 @@ for (const width of [320, 390, 430, 1280]) {
       path: info.outputPath(`calendar-${width}.png`),
       fullPage: true,
     });
+    await calendar
+      .getByRole("link", { name: "9월 27일 오늘, 운동함", exact: true })
+      .click();
+    const records = page.getByRole("list", { name: "선택한 날짜의 운동 기록" });
+    await expect(records.getByRole("listitem")).toHaveCount(2);
+    const calendarBox = (await calendar.boundingBox())!;
+    expect((await records.boundingBox())!.y).toBeGreaterThanOrEqual(
+      calendarBox.y + calendarBox.height,
+    );
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth),
+    ).toBeLessThanOrEqual(width);
+    await page.screenshot({
+      path: info.outputPath(`history-detail-${width}.png`),
+      fullPage: true,
+    });
   });
 }
+
+test("날짜 상세의 빈 날짜·잘못된 날짜와 이력 조회 실패를 구분한다", async ({
+  page,
+}) => {
+  await setup(page);
+  await page.goto("/workouts/history/2026-08-01");
+  await expect(
+    page.getByRole("heading", { name: "2026년 8월", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("이 날짜에 완료한 운동 기록이 없어요."),
+  ).toBeVisible();
+  await page.goto("/workouts/history/2026-02-30");
+  await expect(
+    page.getByRole("heading", { name: "찾으시는 화면이 없어요" }),
+  ).toBeVisible();
+  let fail = true;
+  await page.route("**/api/v1/workouts/history?*", (route) =>
+    fail
+      ? route.fulfill({ status: 503, json: { message: "Unavailable" } })
+      : route.fulfill({
+          json: { items: [completed("today", "2026-09-27")], nextCursor: null },
+        }),
+  );
+  await page.goto("/workouts/history/2026-09-27");
+  await expect(page.getByRole("alert")).toBeVisible();
+  await expect(
+    page.getByText("이 날짜에 완료한 운동 기록이 없어요."),
+  ).toHaveCount(0);
+  fail = false;
+  await page.getByRole("button", { name: "운동 기록 다시 불러오기" }).click();
+  await expect(
+    page
+      .getByRole("list", { name: "선택한 날짜의 운동 기록" })
+      .getByRole("listitem"),
+  ).toHaveCount(1);
+});
+
+test("미완료 운동의 다시보기 주소에서는 재생·완료 이벤트를 보내지 않는다", async ({
+  page,
+}) => {
+  const api = await setup(page);
+  await page.goto(`/workouts/${testWorkout.id}/replay`);
+  await expect(
+    page.getByText("완료한 운동만 다시 볼 수 있어요."),
+  ).toBeVisible();
+  await expect(page.locator("video")).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "운동 완료", exact: true }),
+  ).toHaveCount(0);
+  await page.getByRole("link", { name: "운동 이어하기", exact: true }).click();
+  await expect(page).toHaveURL(`/workouts/${testWorkout.id}`);
+  await expect(
+    page.getByRole("heading", { name: "운동 중", exact: true }),
+  ).toBeVisible();
+  expect(api.mutations).toEqual([]);
+});

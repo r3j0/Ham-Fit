@@ -2,19 +2,14 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Check, ChevronLeft, ChevronRight } from "lucide-react";
-import {
-  calendarWeeks,
-  completedDate,
-  dateFromKey,
-  shiftMonth,
-} from "@/lib/workout-history";
+import { calendarWeeks, dateFromKey, shiftMonth } from "@/lib/workout-history";
 import {
   useWorkoutHistory,
   WorkoutHistoryFeedback,
 } from "./workout-history-provider";
 import styles from "./workout-history.module.css";
 
-export function WorkoutCalendar() {
+export function WorkoutCalendar({ selectedDate }: { selectedDate?: string }) {
   const { today, ready, error, loading } = useWorkoutHistory();
   return (
     <section
@@ -28,27 +23,26 @@ export function WorkoutCalendar() {
       {!ready || error ? (
         <WorkoutHistoryFeedback />
       ) : (
-        <CalendarBody key={today} />
+        <CalendarBody
+          key={`${today}:${selectedDate ?? ""}`}
+          selectedDate={selectedDate}
+        />
       )}
     </section>
   );
 }
 
-function CalendarBody() {
-  const { today, completed, workouts } = useWorkoutHistory();
+function CalendarBody({ selectedDate }: { selectedDate?: string }) {
+  const { today, completed } = useWorkoutHistory();
   const currentMonth = today.slice(0, 7);
-  const [month, setMonth] = useState(currentMonth);
-  const [selected, setSelected] = useState(today);
+  const [month, setMonth] = useState(selectedDate?.slice(0, 7) ?? currentMonth);
   const [year, monthNumber] = month.split("-").map(Number);
   const monthLabel = `${year}년 ${monthNumber}월`;
   const count = [...completed].filter((day) => day.startsWith(month)).length;
-  const selectedDate = dateFromKey(selected);
-  const done = completed.has(selected);
 
   function changeMonth(direction: number) {
     const next = shiftMonth(month, direction);
     setMonth(next);
-    setSelected(next === currentMonth ? today : `${next}-01`);
   }
 
   return (
@@ -81,7 +75,6 @@ function CalendarBody() {
           type="button"
           onClick={() => {
             setMonth(currentMonth);
-            setSelected(today);
           }}
         >
           오늘
@@ -106,27 +99,38 @@ function CalendarBody() {
                 const dayNumber = dateFromKey(day).getDate();
                 const completedDay = completed.has(day);
                 const future = day > today;
+                const label = `${monthNumber}월 ${dayNumber}일${day === today ? " 오늘" : ""}, ${future ? "아직 오지 않은 날" : completedDay ? "운동함" : "완료 기록 없음"}`;
+                const content = (
+                  <>
+                    <span className={styles.dayNumber} aria-hidden="true">
+                      {dayNumber}
+                    </span>
+                    {completedDay ? (
+                      <Check size={13} strokeWidth={3} aria-hidden="true" />
+                    ) : (
+                      <span className={styles.dayDot} aria-hidden="true" />
+                    )}
+                  </>
+                );
+                const attributes = {
+                  className: styles.day,
+                  "aria-current": day === today ? ("date" as const) : undefined,
+                  "aria-label": label,
+                  "data-completed": completedDay || undefined,
+                  "data-selected": day === selectedDate || undefined,
+                  "data-future": future || undefined,
+                };
                 return (
                   <td key={day}>
-                    <button
-                      type="button"
-                      className={styles.day}
-                      disabled={future}
-                      aria-pressed={selected === day}
-                      aria-current={day === today ? "date" : undefined}
-                      aria-label={`${monthNumber}월 ${dayNumber}일${day === today ? " 오늘" : ""}, ${future ? "아직 오지 않은 날" : completedDay ? "운동함" : "완료 기록 없음"}`}
-                      data-completed={completedDay || undefined}
-                      onClick={() => setSelected(day)}
-                    >
-                      <span className={styles.dayNumber} aria-hidden="true">
-                        {dayNumber}
-                      </span>
-                      {completedDay ? (
-                        <Check size={13} strokeWidth={3} aria-hidden="true" />
-                      ) : (
-                        <span className={styles.dayDot} aria-hidden="true" />
-                      )}
-                    </button>
+                    {completedDay && !future ? (
+                      <Link {...attributes} href={`/workouts/history/${day}`}>
+                        {content}
+                      </Link>
+                    ) : (
+                      <button {...attributes} type="button" disabled>
+                        {content}
+                      </button>
+                    )}
                   </td>
                 );
               })}
@@ -144,28 +148,6 @@ function CalendarBody() {
           완료 기록 없음
         </span>
         <span className={styles.todayLegend}>밑줄은 오늘</span>
-      </div>
-      <div className={styles.selectedDay}>
-        <div aria-live="polite">
-          <h3>
-            <time dateTime={selected}>
-              {selectedDate.getMonth() + 1}월 {selectedDate.getDate()}일
-            </time>
-            {selected === today && <span>오늘</span>}
-          </h3>
-          <p>{done ? "운동 완료" : "완료한 운동 기록이 없어요"}</p>
-        </div>
-        {workouts
-          .filter((workout) => completedDate(workout) === selected)
-          .map((workout) => (
-            <Link
-              key={workout.id}
-              className="text-link"
-              href={`/workouts/${workout.id}`}
-            >
-              {workout.video.title} · 완료 기록 보기
-            </Link>
-          ))}
       </div>
       <p className={styles.calendarHelp} id="calendar-help">
         운동 완료를 확인한 날짜에 자동으로 표시돼요. 한국 시간 기준이며, 같은 날

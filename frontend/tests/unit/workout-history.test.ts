@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   calendarWeeks,
+  isWorkoutDate,
   completedDate,
   collectWorkoutHistory,
   koreanDateKey,
@@ -111,4 +112,21 @@ test("aborting an old user read prevents further page reads and rejects its resu
     { name: "AbortError" },
   );
   assert.equal(calls, 1);
+});
+
+test("history date routes accept real dates and reject normalized or malformed dates", () => {
+  for (const value of ["2026-09-27", "2024-02-29", "2025-12-31"])
+    assert.equal(isWorkoutDate(value), true);
+  for (const value of [
+    "2026-02-29",
+    "2026-02-30",
+    "2026-13-01",
+    "2026-00-01",
+    "2026-09-00",
+    "2026-9-1",
+    "2026-09-27T00:00:00Z",
+    "",
+    "invalid",
+  ])
+    assert.equal(isWorkoutDate(value), false);
 });

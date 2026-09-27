@@ -99,3 +99,11 @@ export function workoutStreak(
   }
   return streak;
 }
+
+/** Validate date route parameters without normalizing impossible calendar days. */
+export function isWorkoutDate(value: string): boolean {
+  return (
+    /^\d{4}-\d{2}-\d{2}$/.test(value) &&
+    localDateKey(dateFromKey(value)) === value
+  );
+}

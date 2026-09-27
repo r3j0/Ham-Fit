@@ -267,7 +267,7 @@ test("actual playback excludes seeks, ends below 50%, resumes after reload and c
   await expect(
     page
       .getByRole("region", { name: "운동 기록", exact: true })
-      .locator('button[aria-current="date"]'),
+      .locator('a[aria-current="date"]'),
   ).toHaveAttribute("data-completed", "true");
   await expect(
     page
@@ -290,13 +290,38 @@ test("actual playback excludes seeks, ends below 50%, resumes after reload and c
     .click();
   await page.getByRole("link", { name: "내 운동 이력", exact: true }).click();
   await expect(
-    page.getByRole("link", { name: "완료 기록 보기" }),
-  ).toHaveAttribute("href", `/workouts/${workout.id}`);
+    page.getByRole("link", { name: "운동 다시보기" }),
+  ).toHaveAttribute("href", `/workouts/${workout.id}/replay`);
   await expect(page.getByText("최근 수행일", { exact: false })).toBeVisible();
-  await page.getByRole("link", { name: "완료 기록 보기" }).click();
+  await page.getByRole("link", { name: "운동 다시보기" }).click();
   await expect(
     page.getByText("운동을 완료했어요.", { exact: false }),
   ).toBeVisible();
+  await expect(page).toHaveURL(`/workouts/${workout.id}/replay`);
+  await expect(
+    page.getByRole("heading", { name: "운동 다시보기", exact: true }),
+  ).toBeVisible();
+  await expect(video).toHaveAttribute("controls");
+  await video.evaluate((v: HTMLVideoElement) => v.play());
+  await expect
+    .poll(() => video.evaluate((v: HTMLVideoElement) => v.currentTime))
+    .toBeGreaterThan(1);
+  await video.evaluate((v: HTMLVideoElement) => v.pause());
+  expect((await read()).revision).toBe(completed.revision);
+  expect((await read()).progress).toEqual(completed.progress);
+  expect(replayEvents).toBe(0);
+  await page.getByRole("link", { name: "운동 기록으로", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "운동 기록 상세", exact: true }),
+  ).toBeVisible();
+  const dailyRecords = page.getByRole("list", {
+    name: "선택한 날짜의 운동 기록",
+  });
+  await expect(dailyRecords.getByRole("listitem")).toHaveCount(1);
+  await expect(dailyRecords.getByRole("link")).toHaveAttribute(
+    "href",
+    `/workouts/${workout.id}/replay`,
+  );
 });
 test("a lost start response survives reload with the original event key and body", async ({
   page,

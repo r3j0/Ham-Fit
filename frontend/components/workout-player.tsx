@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { completedDate } from "@/lib/workout-history";
 import { ApiError } from "@/lib/http";
 import { createPlaybackSession, samplePlayback } from "@/lib/playback-session";
 import { workoutJournal } from "@/lib/workout-journal";
@@ -13,7 +14,13 @@ import { WorkoutError } from "./workout-error";
 import { useWorkoutHistory } from "./workout-history-provider";
 import { WorkoutSummary } from "./workout-summary";
 
-export function WorkoutPlayer({ initial }: { initial: Workout }) {
+export function WorkoutPlayer({
+  initial,
+  replay = false,
+}: {
+  initial: Workout;
+  replay?: boolean;
+}) {
   const userId = useSession().user!.id;
   const [session] = useState(() =>
     createPlaybackSession({
@@ -48,6 +55,7 @@ export function WorkoutPlayer({ initial }: { initial: Workout }) {
   const verified =
     workout.video.playbackStatus === "verified" && !!workout.video.playbackUrl;
   const completed = workout.status === "completed";
+  const completedDay = completedDate(workout);
   const { reload: reloadHistory } = useWorkoutHistory();
   useEffect(() => {
     if (completed) reloadHistory();
@@ -88,7 +96,7 @@ export function WorkoutPlayer({ initial }: { initial: Workout }) {
       document.removeEventListener("visibilitychange", visibility);
     };
   }, [session]);
-  // The current-assignment card can receive a newer revision on focus or manual refresh.
+  // Preserve newer server revisions without recreating an active playback session.
   useEffect(() => {
     if (initial.revision > session.getSnapshot().workout.revision)
       void session.refresh();
@@ -361,8 +369,15 @@ export function WorkoutPlayer({ initial }: { initial: Workout }) {
         저장된 운동 상태 확인
       </button>
       {completed && (
-        <Link className="button primary" href="/workout">
-          운동 목록으로
+        <Link
+          className="button primary"
+          href={
+            replay && completedDay
+              ? `/workouts/history/${completedDay}`
+              : "/workout"
+          }
+        >
+          {replay ? "운동 기록으로" : "운동 목록으로"}
         </Link>
       )}
       {confirm && (

@@ -35,7 +35,10 @@ export function WorkoutHistoryProvider({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const active = pathname === "/" || pathname === "/workout";
+  const active =
+    pathname === "/" ||
+    pathname === "/workout" ||
+    pathname.startsWith("/workouts/history/");
   const [data, setData] = useState<{
     workouts: Workout[];
     today: string;
