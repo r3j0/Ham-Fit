@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { useWorkoutHistoryLinks } from "./use-workout-history-links";
 import { PlayCircle } from "lucide-react";
 import { completedDate } from "@/lib/workout-history";
 import { displayDate } from "@/lib/measurements";
@@ -9,6 +10,8 @@ import { Header, Shell } from "./ui";
 import styles from "./workout-history.module.css";
 
 export function WorkoutHistoryDay({ date }: { date: string }) {
+  const { basePath, overviewHref } = useWorkoutHistoryLinks();
+
   const { workouts, ready, error } = useWorkoutHistory();
   const records = workouts
     .filter((workout) => completedDate(workout) === date)
@@ -19,7 +22,7 @@ export function WorkoutHistoryDay({ date }: { date: string }) {
     );
   return (
     <Shell>
-      <Header title="운동 기록 상세" back="/workout" />
+      <Header title="운동 기록 상세" back={overviewHref} />
       <div className={`content stack ${styles.detail}`}>
         <WorkoutCalendar selectedDate={date} />
         {ready && !error && (
@@ -39,7 +42,7 @@ export function WorkoutHistoryDay({ date }: { date: string }) {
                   <li key={workout.id}>
                     <Link
                       className={styles.recordLink}
-                      href={`/workouts/${workout.id}/replay`}
+                      href={`${basePath}/${workout.id}/replay`}
                       aria-label={`${workout.video.title} 운동 다시보기`}
                     >
                       <div>

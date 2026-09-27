@@ -38,7 +38,8 @@ export function WorkoutHistoryProvider({
   const active =
     pathname === "/" ||
     pathname === "/workout" ||
-    pathname.startsWith("/workouts/history/");
+    pathname.startsWith("/workouts/history/") ||
+    pathname.startsWith("/account/workouts/history/");
   const [data, setData] = useState<{
     workouts: Workout[];
     today: string;

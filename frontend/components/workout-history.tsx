@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { useWorkoutHistoryLinks } from "./use-workout-history-links";
 import { useEffect, useRef, useState } from "react";
 import { getWorkoutHistory } from "@/lib/workouts";
 import type { WorkoutPage } from "@/lib/workout-types";
@@ -9,6 +10,8 @@ import { WorkoutSummary, workoutLabels } from "./workout-summary";
 import { useOperationScope } from "./use-operation-scope";
 
 export function WorkoutHistory() {
+  const { basePath } = useWorkoutHistoryLinks();
+
   const [page, setPage] = useState<WorkoutPage | null>(null);
   const [error, setError] = useState<unknown>();
   const [busy, setBusy] = useState(false);
@@ -106,7 +109,7 @@ export function WorkoutHistory() {
                       className="button secondary"
                       href={
                         row.status === "completed"
-                          ? `/workouts/${row.id}/replay`
+                          ? `${basePath}/${row.id}/replay`
                           : `/workouts/${row.id}`
                       }
                     >

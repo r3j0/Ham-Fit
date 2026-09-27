@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { useWorkoutHistoryLinks } from "./use-workout-history-links";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { completedDate } from "@/lib/workout-history";
 import { ApiError } from "@/lib/http";
@@ -21,6 +22,7 @@ export function WorkoutPlayer({
   initial: Workout;
   replay?: boolean;
 }) {
+  const { basePath, overviewHref } = useWorkoutHistoryLinks();
   const userId = useSession().user!.id;
   const [session] = useState(() =>
     createPlaybackSession({
@@ -375,8 +377,10 @@ export function WorkoutPlayer({
           className="button primary"
           href={
             replay && completedDay
-              ? `/workouts/history/${completedDay}`
-              : "/workout"
+              ? `${basePath}/history/${completedDay}`
+              : replay
+                ? overviewHref
+                : "/workout"
           }
         >
           {replay ? "운동 기록으로" : "운동 목록으로"}

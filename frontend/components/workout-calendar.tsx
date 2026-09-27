@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { useWorkoutHistoryLinks } from "./use-workout-history-links";
 import { useState } from "react";
 import { Check, ChevronLeft, ChevronRight } from "lucide-react";
 import { calendarWeeks, dateFromKey, shiftMonth } from "@/lib/workout-history";
@@ -33,6 +34,8 @@ export function WorkoutCalendar({ selectedDate }: { selectedDate?: string }) {
 }
 
 function CalendarBody({ selectedDate }: { selectedDate?: string }) {
+  const { basePath } = useWorkoutHistoryLinks();
+
   const { today, completed } = useWorkoutHistory();
   const currentMonth = today.slice(0, 7);
   const [month, setMonth] = useState(selectedDate?.slice(0, 7) ?? currentMonth);
@@ -123,7 +126,7 @@ function CalendarBody({ selectedDate }: { selectedDate?: string }) {
                 return (
                   <td key={day}>
                     {completedDay && !future ? (
-                      <Link {...attributes} href={`/workouts/history/${day}`}>
+                      <Link {...attributes} href={`${basePath}/history/${day}`}>
                         {content}
                       </Link>
                     ) : (

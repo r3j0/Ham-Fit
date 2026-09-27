@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { installApi, testUser } from "./integration-fixtures";
+import { installApi, testUser, testWorkout } from "./integration-fixtures";
 import {
   storedRecordFixture,
   storedCatalogFixture,
@@ -247,5 +247,100 @@ test("프로필 조회 오류에는 재화와 리포트를 숨기고 재시도�
     .click();
   await expect(page.getByRole("group", { name: "보유 재화" })).toHaveText("25");
   await expect(page.getByRole("region", { name: "활동 리포트" })).toBeVisible();
+  expect(api.mutations).toEqual([]);
+});
+
+test("프로필의 운동 이력·다시보기·날짜 이동은 Orange와 프로필 메뉴를 유지한다", async ({
+  page,
+}, info) => {
+  const api = await installApi(page);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.clock.setFixedTime(new Date("2026-09-27T12:00:00+09:00"));
+  const completed = {
+    ...testWorkout,
+    status: "completed",
+    completedAt: "2026-09-27T09:00:00+09:00",
+    progress: { ...testWorkout.progress, watchedSeconds: 45, ratio: 0.75 },
+  };
+  const yesterday = {
+    ...completed,
+    id: "yesterday",
+    completedAt: "2026-09-26T09:00:00+09:00",
+  };
+  await page.route("**/api/v1/workouts/history?*", (route) =>
+    route.fulfill({
+      json: { items: [completed, yesterday], nextCursor: null },
+    }),
+  );
+  await page.route(`**/api/v1/workouts/${completed.id}`, (route) =>
+    route.fulfill({ json: completed }),
+  );
+  await page.goto("/account");
+  await page.getByRole("link", { name: "내 운동 이력", exact: true }).click();
+  await expect(page).toHaveURL("/account/workouts");
+  const nav = page.getByRole("navigation", { name: "하단 메뉴" });
+  async function expectProfile() {
+    await expect(page.getByRole("main")).toHaveCSS("color", "rgb(51, 37, 28)");
+    await expect(
+      nav.getByRole("link", { name: "내 프로필", exact: true }),
+    ).toHaveAttribute("aria-current", "location");
+    await expect(nav).toHaveCSS("background-color", "rgb(255, 248, 241)");
+  }
+  await expectProfile();
+  await page
+    .getByRole("link", { name: "운동 다시보기", exact: true })
+    .first()
+    .click();
+  await expect(page).toHaveURL(`/account/workouts/${completed.id}/replay`);
+  await expect(
+    page.getByRole("heading", { name: "운동 다시보기", exact: true }),
+  ).toBeVisible();
+  await expectProfile();
+  await expect(page.getByRole("progressbar")).toHaveCSS(
+    "accent-color",
+    "rgb(255, 127, 0)",
+  );
+  for (const width of [320, 390, 1280]) {
+    await page.setViewportSize({ width, height: 900 });
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth),
+    ).toBeLessThanOrEqual(width);
+    await page.screenshot({
+      path: info.outputPath(`profile-replay-${width}.png`),
+      fullPage: true,
+    });
+  }
+  await page.reload();
+  await expectProfile();
+  await page.getByRole("link", { name: "운동 기록으로", exact: true }).click();
+  await expect(page).toHaveURL("/account/workouts/history/2026-09-27");
+  await expectProfile();
+  const calendar = page.getByRole("region", { name: "운동 기록", exact: true });
+  await calendar
+    .getByRole("link", { name: "9월 26일, 운동함", exact: true })
+    .click();
+  await expect(page).toHaveURL("/account/workouts/history/2026-09-26");
+  await expectProfile();
+  await expect(
+    page
+      .getByRole("list", { name: "선택한 날짜의 운동 기록" })
+      .getByRole("link"),
+  ).toHaveAttribute("href", "/account/workouts/yesterday/replay");
+  await page.reload();
+  await expectProfile();
+  await expect(
+    page
+      .getByRole("list", { name: "선택한 날짜의 운동 기록" })
+      .getByRole("listitem"),
+  ).toHaveCount(1);
+  await page.getByRole("link", { name: "이전 화면", exact: true }).click();
+  await expect(page).toHaveURL("/account/workouts");
+  await expectProfile();
+  await nav.getByRole("link", { name: "운동", exact: true }).click();
+  await expect(page).toHaveURL("/workout");
+  await expect(nav).toHaveClass(/kspo-sky-theme/);
+  await expect(page.getByRole("main")).toHaveCSS("color", "rgb(16, 46, 58)");
+  await page.goBack();
+  await expectProfile();
   expect(api.mutations).toEqual([]);
 });

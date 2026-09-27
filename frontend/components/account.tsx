@@ -32,7 +32,7 @@ export function Account() {
     }
   }
   return (
-    <Shell className="account-shell kspo-orange-theme">
+    <Shell className="account-shell">
       <div className="content stack">
         <header className="profile-toolbar">
           <h1>내 프로필</h1>
@@ -94,7 +94,7 @@ export function Account() {
               <strong>내 측정 기록</strong>
               <ChevronRight size={20} />
             </Link>
-            <Link href="/workouts" className="menu-row">
+            <Link href="/account/workouts" className="menu-row">
               <strong>내 운동 이력</strong>
               <ChevronRight size={20} />
             </Link>

@@ -1112,8 +1112,9 @@ fieldset:disabled select {
   display: flow-root;
   background: var(--canvas);
 }
-/* KSPO Orange tokens for the profile screen. */
+/* Shared KSPO Orange tokens for the profile and all of its subpages. */
 .kspo-orange-theme {
+  --accent: var(--orange);
   --navy: #a64900;
   --navy-hover: #8c3e00;
   --navy-pressed: #733200;
@@ -1124,6 +1125,24 @@ fieldset:disabled select {
   --text: #33251c;
   --text-secondary: #705039;
   --muted: #85624a;
+  --disabled: #e4d6c8;
+  --fitness-grade-2-fill: #bd5200;
+  --fitness-grade-2-tint: #fff0e0;
+  --fitness-grade-2-ink: #a64900;
+  --fitness-grade-1-tint: #ffe4c9;
+  color: var(--text);
+}
+.profile-theme {
+  display: flow-root;
+  min-height: 100dvh;
+  background: var(--canvas);
+}
+.bottom-navigation.kspo-orange-theme {
+  background: var(--canvas);
+}
+.kspo-orange-theme .bottom-tab-workout .bottom-tab-icon {
+  background: var(--tint);
+  color: var(--navy);
 }
 .account-shell,
 .onboarding-shell {
@@ -1153,11 +1172,11 @@ fieldset:disabled select {
 .kspo-orange-theme .bottom-tab[aria-current] .bottom-tab-icon {
   color: var(--accent);
 }
-.account-shell .radar-shape {
+.kspo-orange-theme .radar-shape {
   stroke: var(--accent);
   fill: color-mix(in srgb, var(--accent) 18%, transparent);
 }
-.account-shell .radar-point {
+.kspo-orange-theme .radar-point {
   fill: var(--accent);
 }
 .profile-toolbar {

@@ -238,7 +238,7 @@ export function WorkoutPreferences() {
   }
 
   return (
-    <Shell className="preferences-shell kspo-orange-theme">
+    <Shell className="preferences-shell">
       <Header title="운동 설정" back="/account" />
       <div className={`content ${styles.content}`}>
         <p className="muted">나의 속도와 목표에 맞춰 운동을 준비해요.</p>

@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { useWorkoutHistoryLinks } from "./use-workout-history-links";
 import { completedDate } from "@/lib/workout-history";
 import { useEffect, useState } from "react";
 import { getWorkout } from "@/lib/workouts";
@@ -14,6 +15,7 @@ export function WorkoutScreen({
   id: string;
   replay?: boolean;
 }) {
+  const { basePath, overviewHref } = useWorkoutHistoryLinks();
   const [workout, setWorkout] = useState<Workout | null>(null);
   const [error, setError] = useState<unknown>();
   const [retry, setRetry] = useState(0);
@@ -29,7 +31,7 @@ export function WorkoutScreen({
     return () => controller.abort();
   }, [id, retry]);
   const day = workout && completedDate(workout);
-  const historyHref = day ? `/workouts/history/${day}` : "/workout";
+  const historyHref = day ? `${basePath}/history/${day}` : overviewHref;
   return (
     <Shell>
       <Header

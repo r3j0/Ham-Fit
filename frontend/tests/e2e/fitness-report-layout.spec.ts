@@ -79,8 +79,8 @@ for (const grade of [null, 3, 2, 1] as const) {
         : grade === 3
           ? "rgb(255, 127, 0)"
           : grade === 2
-            ? "rgb(27, 153, 196)"
-            : "rgb(10, 42, 112)",
+            ? "rgb(189, 82, 0)"
+            : "rgb(166, 73, 0)",
     );
     if (grade === null || grade === 3)
       await expect(progress).toContainText("5.3 cm 미만");

@@ -12,9 +12,14 @@ export function BottomNavigation() {
     pathname === "/workout" ||
     pathname === "/workouts" ||
     pathname.startsWith("/workouts/");
+  const profileRoute =
+    pathname === "/account" ||
+    pathname.startsWith("/account/") ||
+    pathname === "/measurements" ||
+    pathname.startsWith("/measurements/");
   const theme = workoutRoute
     ? " kspo-sky-theme"
-    : pathname === "/account" || pathname === "/account/preferences"
+    : profileRoute
       ? " kspo-orange-theme"
       : "";
   const tabs = [
@@ -34,10 +39,7 @@ export function BottomNavigation() {
       href: "/account",
       label: "내 프로필",
       icon: UserRound,
-      active:
-        pathname === "/account" ||
-        pathname.startsWith("/account/") ||
-        pathname.startsWith("/measurements"),
+      active: profileRoute,
     },
   ];
 

@@ -21,16 +21,16 @@
 }
 .progress[data-grade="2"],
 .badge[data-grade="2"] {
-  --grade-fill: var(--sky);
+  --grade-fill: var(--fitness-grade-2-fill, var(--sky));
   --grade-text: #fff;
-  --grade-tint: #ecf7fb;
-  --grade-ink: #076888;
+  --grade-tint: var(--fitness-grade-2-tint, #ecf7fb);
+  --grade-ink: var(--fitness-grade-2-ink, #076888);
 }
 .progress[data-grade="1"],
 .badge[data-grade="1"] {
   --grade-fill: var(--navy);
   --grade-text: var(--surface);
-  --grade-tint: #eef2fb;
+  --grade-tint: var(--fitness-grade-1-tint, #eef2fb);
   --grade-ink: var(--navy);
 }
 .progress {

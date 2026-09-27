@@ -3,11 +3,15 @@ import { assessmentHref, resolveWorkoutMode } from "./workout-mode.ts";
 export function authDestination(next: string): string {
   if (
     /^\/workouts(?:\/[a-f0-9-]+)?$/.test(next) ||
+    /^\/account\/workouts(?:\/history\/\d{4}-\d{2}-\d{2}|\/[a-f0-9-]+\/replay)?$/.test(
+      next,
+    ) ||
     /^\/measurements(?:\/new|\/[a-f0-9-]+(?:\/edit)?)?$/.test(next) ||
     [
       "/",
       "/account",
       "/account/settings",
+      "/account/preferences",
       "/workout",
       "/onboarding",
       "/onboarding/manual",

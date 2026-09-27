@@ -51,11 +51,36 @@ for (const [width, height] of [
       ["/workouts/history/2026-09-27", "운동"],
       ["/account", "내 프로필"],
       ["/account/settings", "내 프로필"],
+      ["/account/settings?tab=nickname", "내 프로필"],
+      ["/account/settings?tab=birth", "내 프로필"],
+      ["/account/preferences", "내 프로필"],
+      ["/account/workouts", "내 프로필"],
+      ["/account/workouts/history/2026-09-27", "내 프로필"],
+      [`/account/workouts/${testWorkout.id}/replay`, "내 프로필"],
       ["/measurements", "내 프로필"],
       [`/measurements/${record.id}`, "내 프로필"],
     ]) {
       await page.goto(path);
       await expectBottomMenu(page, current);
+      if (current === "내 프로필") {
+        await expect(page.getByRole("main")).toHaveCSS(
+          "color",
+          "rgb(51, 37, 28)",
+        );
+        const profileNav = page.getByRole("navigation", { name: "하단 메뉴" });
+        await expect(profileNav).toHaveCSS(
+          "background-color",
+          "rgb(255, 248, 241)",
+        );
+        const circle = profileNav
+          .getByRole("link", { name: "운동", exact: true })
+          .locator(".bottom-tab-icon");
+        await expect(circle).toHaveCSS(
+          "background-color",
+          "rgb(255, 240, 224)",
+        );
+        await expect(circle).toHaveCSS("color", "rgb(166, 73, 0)");
+      }
     }
     await page.goto(`/measurements/${record.id}/edit`);
     const save = page.getByRole("button", {
