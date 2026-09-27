@@ -1,0 +1,112 @@
+.streak {
+  padding: 20px;
+  border-radius: var(--radius-hero);
+  background: var(--canvas);
+}
+.heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.heading h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 18px;
+}
+.heading h2 svg {
+  color: var(--orange);
+}
+.previewBadge {
+  padding: 4px 8px;
+  border-radius: var(--radius-pill);
+  color: var(--muted);
+  background: var(--surface);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.streakCount {
+  margin-top: 12px;
+  color: var(--text-secondary);
+  font-size: 15px;
+}
+.streakCount strong {
+  margin-right: 4px;
+  color: var(--navy);
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+.hint {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.week {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  list-style: none;
+  padding: 0;
+  margin: 20px 0 8px;
+}
+.week li {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+}
+.weekday {
+  color: var(--muted);
+  font-size: 12px;
+}
+.weekMark {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--navy);
+}
+.weekMark[data-completed] {
+  background: var(--tint);
+  color: var(--sky);
+}
+.weekMark[data-today] {
+  outline: 1px solid var(--navy);
+  outline-offset: 2px;
+}
+.emptyDot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--disabled);
+}
+.historyLink {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+  margin-bottom: -8px;
+  border-radius: var(--radius-control);
+  color: var(--navy);
+  font-size: 13px;
+  font-weight: 650;
+}
+.historyLink:hover {
+  background: var(--tint);
+}
+.historyLink:active {
+  background: var(--border);
+}
+@media (max-width: 359px) {
+  .streak {
+    padding: 16px;
+  }
+  .weekMark {
+    width: 28px;
+    height: 28px;
+  }
+}

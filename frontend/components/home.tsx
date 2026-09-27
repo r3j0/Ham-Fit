@@ -3,6 +3,7 @@ import Link from "next/link";
 import { BreathingMascot } from "./mascot/BreathingMascot";
 import { ArrowRight, ClipboardList } from "lucide-react";
 import { Loading, Notice, Shell } from "./ui";
+import { WorkoutStreak } from "./workout-streak";
 import { useUserProfile } from "./user-profile-provider";
 
 export function Home() {
@@ -38,6 +39,7 @@ export function Home() {
                 </Link>
               </section>
             )}
+            <WorkoutStreak />
             <div className="home-mascot-stage">
               <BreathingMascot size={320} label="편안하게 숨 쉬는 햄스터" />
             </div>
