@@ -8,6 +8,7 @@ Project Health의 NestJS API 서버입니다. 백엔드 코드·설정·문서·
 - [계정 정보 변경·온보딩·재화·커리큘럼·영구 탈퇴 API](docs/users-api.md)
 - [개인 운동 설정 API·가입/탈퇴·배포 순서](docs/user-preferences-api.md)
 - [회원가입·로그인·로그아웃·토큰 갱신 API와 직접 테스트](docs/auth-api.md)
+- [회원가입 닉네임·프로필 조회/수정과 프론트 연동](docs/nickname-profile.md)
 - [측정 데이터 명세](docs/measurement-data-spec.md)
 - [측정 기록 CRUD API와 직접 테스트](docs/measurements-api.md)
 - [간이측정·공식 종목 평가·6축 조회 API](docs/measurement-evaluation-api.md)

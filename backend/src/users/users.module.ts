@@ -4,7 +4,7 @@ import { DatabaseModule } from '../database/database.module.js';
 import { UsersController } from './users.controller.js';
 import { UserPreferencesController } from './user-preferences.controller.js';
 import { UserPreferencesService } from './user-preferences.service.js';
-import { BirthProfileController } from './birth-profile.controller.js';
+import { UserProfileController } from './user-profile.controller.js';
 import { UserProfileModule } from './user-profile.module.js';
 
 @Module({
@@ -12,7 +12,7 @@ import { UserProfileModule } from './user-profile.module.js';
   controllers: [
     UsersController,
     UserPreferencesController,
-    BirthProfileController,
+    UserProfileController,
   ],
   providers: [UserPreferencesService],
 })

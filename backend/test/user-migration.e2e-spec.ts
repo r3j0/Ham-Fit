@@ -216,12 +216,16 @@ it('upgrades populated schemas, removes retired profile data and preserves crede
       'date_of_birth',
       'email',
       'id',
+      'nickname',
       'password',
       'updated_at',
     ]);
     expect(
       (await client.query('SELECT date_of_birth FROM users ORDER BY id')).rows,
     ).toEqual([{ date_of_birth: null }, { date_of_birth: null }]);
+    expect(
+      (await client.query('SELECT nickname FROM users ORDER BY id')).rows,
+    ).toEqual([{ nickname: null }, { nickname: null }]);
     await database.measurement.delete({ where: { id: measurementId } });
     expect(await profiles.get(owner)).toMatchObject({ isOnboarded: false });
   } finally {
