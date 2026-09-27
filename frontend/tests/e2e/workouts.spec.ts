@@ -4,14 +4,69 @@ import { readFile } from "node:fs/promises";
 import type { Workout } from "../../lib/workout-types";
 const base = process.env.E2E_API_BASE_URL ?? "http://localhost:3001/api/v1";
 const password = "frontend-workout-test-password-2026!";
+async function waitForLimit(
+  page: Page,
+  response:
+    | import("@playwright/test").APIResponse
+    | import("@playwright/test").Response,
+) {
+  const body = await response.json();
+  await page.waitForTimeout(
+    Math.min(60, Number(body.retry_after) || 60) * 1000,
+  );
+}
+async function openAuthenticated(page: Page, url?: string) {
+  const refreshed = page.waitForResponse((r) =>
+    r.url().endsWith("/auth/refresh"),
+  );
+  if (url) await page.goto(url);
+  else await page.reload();
+  const response = await refreshed;
+  if (response.status() === 429) {
+    await waitForLimit(page, response);
+    const retry = page.waitForResponse((r) =>
+      r.url().endsWith("/auth/refresh"),
+    );
+    await page.getByRole("button", { name: "다시 연결하기" }).click();
+    expect((await retry).status()).toBe(200);
+  } else expect(response.status()).toBe(200);
+}
+async function registerTestUser(page: Page, data: Record<string, string>) {
+  const send = () =>
+    page.request.post(`${base}/auth/register`, {
+      headers: { "X-CSRF-Protection": "1" },
+      data,
+    });
+  let response = await send();
+  if (response.status() === 429) {
+    await waitForLimit(page, response);
+    response = await send();
+  }
+  return response;
+}
+async function saveBirthProfile(page: Page) {
+  const send = async () => {
+    const response = page.waitForResponse(
+      (r) =>
+        r.url().endsWith("/users/me/profile") &&
+        r.request().method() === "PATCH",
+    );
+    await page.getByRole("button", { name: "생년월일 저장" }).click();
+    return response;
+  };
+  let response = await send();
+  if (response.status() === 429) {
+    await waitForLimit(page, response);
+    response = await send();
+  }
+  expect(response.status()).toBe(200);
+  await expect(page.getByText("생년월일을 저장했어요.")).toBeVisible();
+}
 async function prepare(page: Page) {
-  const response = await page.request.post(`${base}/auth/register`, {
-    headers: { "X-CSRF-Protection": "1" },
-    data: {
-      email: `workout-e2e-${crypto.randomUUID()}@example.test`,
-      password,
-      dateOfBirth: "2000-02-29",
-    },
+  const response = await registerTestUser(page, {
+    email: `workout-e2e-${crypto.randomUUID()}@example.test`,
+    password,
+    dateOfBirth: "2000-02-29",
   });
   expect(response.status()).toBe(201);
   const auth = await response.json();
@@ -112,7 +167,7 @@ test("actual playback excludes seeks, ends below 50%, resumes after reload and c
 }, info) => {
   const { workout, read } = await prepare(page);
   await testMedia(page, workout);
-  await page.goto(`/workouts/${workout.id}`);
+  await openAuthenticated(page, `/workouts/${workout.id}`);
   const video = page.getByLabel("운동 영상");
   await expect
     .poll(() => video.evaluate((v: HTMLVideoElement) => v.readyState))
@@ -144,7 +199,7 @@ test("actual playback excludes seeks, ends below 50%, resumes after reload and c
   await page.getByRole("button", { name: "여기서 종료" }).click();
   await page.getByRole("button", { name: "종료 확인" }).click();
   await expect.poll(async () => (await read()).status).toBe("not_performed");
-  await page.reload();
+  await openAuthenticated(page);
   await expect(
     page.getByRole("button", { name: "이어서 운동하기" }),
   ).toBeEnabled();
@@ -211,13 +266,13 @@ test("a lost start response survives reload with the original event key and body
       await route.abort("failed");
     } else await route.fallback();
   });
-  await page.goto(`/workouts/${workout.id}`);
+  await openAuthenticated(page, `/workouts/${workout.id}`);
   await page.getByRole("button", { name: "운동 시작", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "저장 다시 확인하기" }),
   ).toBeVisible();
   page.once("dialog", (dialog) => dialog.accept());
-  await page.reload();
+  await openAuthenticated(page);
   await expect.poll(() => requests.length).toBe(2);
   expect(requests[0]).toEqual(requests[1]);
   await expect(
@@ -244,7 +299,7 @@ test("unavailable media has an explicit retry and never uses originalUrl", async
       },
     });
   });
-  await page.goto(`/workouts/${workout.id}`);
+  await openAuthenticated(page, `/workouts/${workout.id}`);
   await expect(
     page.getByText("현재 이 영상을 재생할 수 없어요.", { exact: false }),
   ).toBeVisible();
@@ -281,7 +336,7 @@ test("a saved 50% session ends as interrupted and can be explicitly completed af
     expect(saved.status()).toBe(200);
   }
   await testMedia(page, workout);
-  await page.goto(`/workouts/${workout.id}`);
+  await openAuthenticated(page, `/workouts/${workout.id}`);
   await page.getByRole("button", { name: "여기서 종료" }).click();
   await page.getByRole("button", { name: "종료 확인" }).click();
   await expect.poll(async () => (await read()).status).toBe("interrupted");
@@ -296,7 +351,7 @@ test("another device's completion is recovered without overwriting it", async ({
 }) => {
   const { workout, headers, read } = await prepare(page);
   await testMedia(page, workout);
-  await page.goto(`/workouts/${workout.id}`);
+  await openAuthenticated(page, `/workouts/${workout.id}`);
   await page.getByRole("button", { name: "운동 시작", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "운동 완료", exact: true }),
@@ -338,22 +393,18 @@ test("another device's completion is recovered without overwriting it", async ({
 test("legacy users are guided to a birth profile, measurement, or unsupported-age notice", async ({
   page,
 }) => {
-  const registered = await page.request.post(`${base}/auth/register`, {
-    headers: { "X-CSRF-Protection": "1" },
-    data: {
-      email: `legacy-workout-${crypto.randomUUID()}@example.test`,
-      password,
-    },
+  const registered = await registerTestUser(page, {
+    email: `legacy-workout-${crypto.randomUUID()}@example.test`,
+    password,
   });
   expect(registered.status()).toBe(201);
-  await page.goto("/workouts");
+  await openAuthenticated(page, "/workouts");
   await expect(page.getByText("아직 운동 이력이 없어요")).toBeVisible();
   await page.getByRole("link", { name: "오늘 운동 받으러 가기" }).click();
   await page.getByRole("button", { name: "오늘 운동 추천받기" }).click();
   await page.getByRole("link", { name: "생년월일 입력하기" }).click();
   await page.getByLabel("생년월일 입력", { exact: true }).fill("2000-01-01");
-  await page.getByRole("button", { name: "생년월일 저장" }).click();
-  await expect(page.getByText("생년월일을 저장했어요.")).toBeVisible();
+  await saveBirthProfile(page);
   await page
     .getByRole("navigation")
     .getByRole("link", { name: "메인", exact: true })
@@ -367,8 +418,7 @@ test("legacy users are guided to a birth profile, measurement, or unsupported-ag
     .getByRole("link", { name: "내 프로필", exact: true })
     .click();
   await page.getByLabel("생년월일 입력", { exact: true }).fill("1950-01-01");
-  await page.getByRole("button", { name: "생년월일 저장" }).click();
-  await expect(page.getByText("생년월일을 저장했어요.")).toBeVisible();
+  await saveBirthProfile(page);
   await page
     .getByRole("navigation")
     .getByRole("link", { name: "메인", exact: true })
@@ -419,7 +469,7 @@ test("history retains its first page on failure and retries the same cursor with
       },
     });
   });
-  await page.goto("/workouts");
+  await openAuthenticated(page, "/workouts");
   await expect(page.locator(".workout-list > li")).toHaveCount(1);
   await page.getByRole("button", { name: "이전 운동 더 보기" }).click();
   await expect(page.getByRole("main").getByRole("alert")).toBeVisible();

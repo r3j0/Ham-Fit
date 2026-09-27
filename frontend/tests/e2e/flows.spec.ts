@@ -16,14 +16,37 @@ function failApi(route: Route, status: number, extra = {}) {
 async function login(page: Page, email: string) {
   await page.getByLabel("이메일", { exact: true }).fill(email);
   await page.getByLabel("비밀번호", { exact: true }).fill(password);
+  const response = page.waitForResponse((r) => r.url().endsWith("/auth/login"));
   await page.getByRole("button", { name: "로그인", exact: true }).click();
+  if ((await response).status() === 429) {
+    await expect(
+      page.getByRole("button", { name: "로그인", exact: true }),
+    ).toBeEnabled({ timeout: 65000 });
+    await page.getByRole("button", { name: "로그인", exact: true }).click();
+  }
 }
 async function signout(page: Page) {
+  const response = page.waitForResponse((r) =>
+    r.url().endsWith("/auth/logout"),
+  );
   await page.getByRole("button", { name: "로그아웃", exact: true }).click();
   await page
     .getByRole("dialog")
     .getByRole("button", { name: "로그아웃", exact: true })
     .click();
+  const result = await response;
+  if (result.status() === 429) {
+    const body = await result.json();
+    // The full suite shares a client IP. Respect the real server's wait; never disable rate limiting.
+    await page.waitForTimeout(
+      Math.min(60, Number(body.retry_after) || 60) * 1000,
+    );
+    await page.getByRole("button", { name: "로그아웃", exact: true }).click();
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: "로그아웃", exact: true })
+      .click();
+  }
   await expect(page).toHaveURL(/\/login/);
 }
 async function openRecords(page: Page) {
@@ -399,18 +422,18 @@ test("API 인증 만료 응답을 받으면 갱신 후 본인 계정을 다시 �
   page,
 }) => {
   const email = await signup(page);
-  let expired = false;
   let refreshes = 0;
   page.on("request", (request) => {
     if (request.url().endsWith("/auth/refresh")) refreshes++;
   });
   await page.route("**/api/v1/auth/me", async (route) => {
-    if (!expired) {
-      expired = true;
+    // Keep the active read expired even if Strict Mode cancels its first request.
+    if (refreshes === 0) {
       await failApi(route, 401);
     } else await route.continue();
   });
   await page.getByRole("link", { name: "내 프로필", exact: true }).click();
+  await expect.poll(() => refreshes).toBe(1);
   await expect(page.getByText(email, { exact: true })).toBeVisible();
   expect(refreshes).toBe(1);
 });
