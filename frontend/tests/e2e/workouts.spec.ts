@@ -2,7 +2,6 @@ import { test, expect, type Page } from "@playwright/test";
 import path from "node:path";
 import { readFile } from "node:fs/promises";
 import type { PlaybackEvent, Workout } from "../../lib/workout-types";
-import { workoutPreviewSegment } from "../../lib/workout-preview";
 import { installApi, testRecord, testWorkout } from "./integration-fixtures";
 const base = process.env.E2E_API_BASE_URL ?? "http://localhost:3001/api/v1";
 const password = "frontend-workout-test-password-2026!";
@@ -186,18 +185,7 @@ test("actual playback excludes seeks, ends below 50%, resumes after reload and c
     .getByRole("link", { name: "운동", exact: true })
     .click();
   await expect(page).toHaveURL("/workout");
-  const preview = page.locator('video[aria-hidden="true"]');
-  await expect(preview).toHaveCount(1);
-  await expect
-    .poll(() => preview.evaluate((v: HTMLVideoElement) => v.readyState))
-    .toBeGreaterThanOrEqual(1);
-  expect(
-    await preview.evaluate((v: HTMLVideoElement) => ({
-      controls: v.controls,
-      muted: v.muted,
-      playsInline: v.playsInline,
-    })),
-  ).toEqual({ controls: false, muted: true, playsInline: true });
+  await expect(page.locator("video")).toHaveCount(0);
   await page.getByRole("link", { name: "운동 시작하기", exact: true }).click();
   await expect(page).toHaveURL(`/workouts/${workout.id}`);
   const video = page.getByLabel("운동 영상");
@@ -625,51 +613,6 @@ test("여러 운동은 각자의 영상과 기록으로 완료하고 목록에�
   await expect(list.getByRole("link", { name: "운동 시작하기" })).toHaveCount(
     2,
   );
-  const previews = list.locator('video[aria-hidden="true"]');
-  await expect(previews).toHaveCount(2);
-  await expect
-    .poll(() =>
-      previews.evaluateAll(
-        (videos) =>
-          videos.filter((video) => (video as HTMLVideoElement).currentSrc)
-            .length,
-      ),
-    )
-    .toBe(1);
-  const activePreview = list.locator('video[aria-hidden="true"][src]');
-  await expect
-    .poll(() =>
-      activePreview.evaluate((video: HTMLVideoElement) => video.readyState),
-    )
-    .toBeGreaterThanOrEqual(1);
-  const previewTiming = await activePreview.evaluate(
-    (video: HTMLVideoElement) => ({
-      currentTime: video.currentTime,
-      duration: video.duration,
-      muted: video.muted,
-      controls: video.controls,
-    }),
-  );
-  const segment = workoutPreviewSegment(previewTiming.duration);
-  expect(previewTiming.currentTime).toBeGreaterThanOrEqual(segment.start);
-  expect(previewTiming.currentTime).toBeLessThan(segment.end);
-  expect(previewTiming).toMatchObject({ muted: true, controls: false });
-  await expect
-    .poll(() =>
-      previews.evaluateAll(
-        (videos) =>
-          videos.filter((video) => !(video as HTMLVideoElement).paused).length,
-      ),
-    )
-    .toBe(1);
-  await activePreview.evaluate((video: HTMLVideoElement, end) => {
-    video.currentTime = end;
-  }, segment.end);
-  await expect
-    .poll(() =>
-      activePreview.evaluate((video: HTMLVideoElement) => video.currentTime),
-    )
-    .toBeLessThan(segment.end);
   for (let index = 0; index < rows.length; index++) {
     const row = rows[index];
     await list
