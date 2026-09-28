@@ -11,8 +11,8 @@ import { useEffect, useId, useRef } from "react";
 import { useViewEntrance } from "./use-view-entrance";
 export function Brand() {
   return (
-    <Link href="/" className="brand" aria-label="모두채력 시작 화면">
-      모두채력
+    <Link href="/" className="brand" aria-label="햄피트 시작 화면">
+      햄피트
       <span className="brand-dot" aria-hidden="true" />
     </Link>
   );
@@ -75,8 +75,8 @@ export function Header({
           <ArrowLeft size={22} />
         </Link>
       ) : showBrand ? (
-        <Link className="mini-brand" href="/" aria-label="모두채력 메인">
-          모두<span>채력</span>
+        <Link className="mini-brand" href="/" aria-label="햄피트 메인">
+          햄<span>피트</span>
         </Link>
       ) : (
         <span aria-hidden="true" />
