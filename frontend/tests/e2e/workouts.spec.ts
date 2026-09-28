@@ -232,9 +232,9 @@ test("actual playback excludes seeks, ends below 50%, resumes after reload and c
     v.currentTime = 11.8;
     return v.play();
   });
-  await expect(
-    page.getByText("영상이 끝났어요.", { exact: false }),
-  ).toBeVisible();
+  await expect
+    .poll(() => video.evaluate((v: HTMLVideoElement) => v.ended))
+    .toBe(true);
   expect((await read()).status).toBe("in_progress");
   await page.getByRole("button", { name: "운동 완료", exact: true }).click();
   expect((await read()).status).toBe("in_progress");
@@ -289,13 +289,13 @@ test("actual playback excludes seeks, ends below 50%, resumes after reload and c
   await page.getByRole("link", { name: "내 운동 이력", exact: true }).click();
   await expect(
     page.getByRole("link", { name: "운동 다시보기" }),
-  ).toHaveAttribute("href", `/workouts/${workout.id}/replay`);
+  ).toHaveAttribute("href", `/account/workouts/${workout.id}/replay`);
   await expect(page.getByText("최근 수행일", { exact: false })).toBeVisible();
   await page.getByRole("link", { name: "운동 다시보기" }).click();
   await expect(
     page.getByRole("img", { name: "운동 완료", exact: true }),
   ).toBeVisible();
-  await expect(page).toHaveURL(`/workouts/${workout.id}/replay`);
+  await expect(page).toHaveURL(`/account/workouts/${workout.id}/replay`);
   await expect(
     page.getByRole("heading", { name: "운동 다시보기", exact: true }),
   ).toBeVisible();
@@ -318,7 +318,7 @@ test("actual playback excludes seeks, ends below 50%, resumes after reload and c
   await expect(dailyRecords.getByRole("listitem")).toHaveCount(1);
   await expect(dailyRecords.getByRole("link")).toHaveAttribute(
     "href",
-    `/workouts/${workout.id}/replay`,
+    `/account/workouts/${workout.id}/replay`,
   );
 });
 test("a lost start response survives reload with the original event key and body", async ({
@@ -381,7 +381,7 @@ test("unavailable media has an explicit retry and never uses originalUrl", async
   ).toBeVisible();
   await expect(page.locator("video")).toHaveCount(0);
   await expect(
-    page.getByRole("button", { name: "저장된 운동 상태 확인" }),
+    page.getByRole("button", { name: "영상 다시 확인하기" }),
   ).toBeEnabled();
   await expect(
     page.getByRole("button", { name: "운동 시작", exact: true }),

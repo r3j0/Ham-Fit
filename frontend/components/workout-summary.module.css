@@ -30,33 +30,34 @@
 }
 .progressPanel {
   display: grid;
-  gap: 10px;
+  grid-template-columns: auto minmax(24px, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
   margin-top: 4px;
-  padding: 16px;
+  padding: 10px 12px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-card);
+  border-radius: var(--radius-control);
   background: var(--canvas);
   font-variant-numeric: tabular-nums;
 }
-.progressHeading {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
+.progressLabel {
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
+  white-space: nowrap;
 }
-.progressHeading strong {
+.progressPercent {
   color: var(--navy);
-  font-size: 22px;
+  font-size: 14px;
   line-height: 1.2;
+  white-space: nowrap;
 }
 .progress {
   display: block;
   appearance: none;
+  min-width: 0;
   width: 100%;
-  height: 10px;
+  height: 6px;
   border: 0;
   border-radius: var(--radius-pill);
   overflow: hidden;
@@ -79,5 +80,7 @@
 .progressTime {
   color: var(--muted);
   font-size: 12px;
+  margin: 0;
   text-align: right;
+  white-space: nowrap;
 }

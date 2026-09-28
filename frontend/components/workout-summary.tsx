@@ -48,10 +48,7 @@ export function WorkoutSummary({ workout }: { workout: Workout }) {
         {video.equipment.length ? video.equipment.join(", ") : "장비 정보 없음"}
       </p>
       <div className={styles.progressPanel}>
-        <div className={styles.progressHeading}>
-          <span>시청 기록</span>
-          <strong>{percent}%</strong>
-        </div>
+        <span className={styles.progressLabel}>시청 기록</span>
         <progress
           className={styles.progress}
           max={1}
@@ -59,6 +56,7 @@ export function WorkoutSummary({ workout }: { workout: Workout }) {
           aria-label="저장된 시청 진행률"
           aria-valuetext={`${percent}%, ${Math.floor(progress.watchedSeconds)}초 / ${progress.durationSeconds}초`}
         />
+        <strong className={styles.progressPercent}>{percent}%</strong>
         <p className={styles.progressTime}>
           {playbackTime(progress.watchedSeconds)} /{" "}
           {playbackTime(progress.durationSeconds)}

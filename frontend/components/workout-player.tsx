@@ -44,7 +44,6 @@ export function WorkoutPlayer({
   const suppressPause = useRef(false);
   const [playing, setPlaying] = useState(false);
   const [mediaError, setMediaError] = useState("");
-  const [ended, setEnded] = useState(false);
   const [confirm, setConfirm] = useState<"end" | "complete" | "reset" | null>(
     null,
   );
@@ -156,7 +155,6 @@ export function WorkoutPlayer({
       session.getSnapshot().workout.status !== "in_progress"
     )
       return;
-    setEnded(false);
     const media = video.current;
     if (media && media.readyState >= 1 && Number.isFinite(media.duration)) {
       media.currentTime = Math.min(
@@ -217,12 +215,21 @@ export function WorkoutPlayer({
         </button>
       )}
       {!verified ? (
-        <Notice tone="info">
-          {workout.video.playbackStatus === "duration_mismatch"
-            ? "영상 길이를 확인하지 못해 재생할 수 없어요."
-            : "현재 이 영상을 재생할 수 없어요."}{" "}
-          잠시 후 다시 확인해 주세요.
-        </Notice>
+        <>
+          <Notice tone="info">
+            {workout.video.playbackStatus === "duration_mismatch"
+              ? "영상 길이를 확인하지 못해 재생할 수 없어요."
+              : "현재 이 영상을 재생할 수 없어요."}{" "}
+            잠시 후 다시 확인해 주세요.
+          </Notice>
+          <button
+            className="button secondary"
+            disabled={state.saving}
+            onClick={() => void session.refresh()}
+          >
+            영상 다시 확인하기
+          </button>
+        </>
       ) : (
         <>
           <video
@@ -258,7 +265,6 @@ export function WorkoutPlayer({
                 return;
               }
               setPlaying(true);
-              setEnded(false);
               lastSave.current = performance.now();
             }}
             onPause={() => {
@@ -280,7 +286,6 @@ export function WorkoutPlayer({
             }}
             onEnded={() => {
               setPlaying(false);
-              setEnded(true);
               capture("pause");
             }}
             onError={() => {
@@ -305,11 +310,6 @@ export function WorkoutPlayer({
               </button>
             </>
           )}
-          {ended && !completed && (
-            <Notice tone="info">
-              영상이 끝났어요. 운동을 마쳤다면 아래에서 완료를 확인해 주세요.
-            </Notice>
-          )}
           {!completed && workout.status !== "in_progress" && (
             <button
               className="button primary"
@@ -326,45 +326,30 @@ export function WorkoutPlayer({
             </button>
           )}
           {!completed && workout.status === "in_progress" && (
-            <>
-              <p className="caption">
-                영상의 재생·일시정지 버튼으로 이어갈 수 있어요. 건너뛴 구간은
-                시청량에 포함되지 않아요.
-              </p>
-              <div className="button-row">
-                <button
-                  className="button secondary"
-                  disabled={actionBlocked}
-                  onClick={() => {
-                    video.current?.pause();
-                    setConfirm("end");
-                  }}
-                >
-                  여기서 종료
-                </button>
-                <button
-                  className="button primary"
-                  disabled={actionBlocked}
-                  onClick={() => {
-                    video.current?.pause();
-                    setConfirm("complete");
-                  }}
-                >
-                  운동 완료
-                </button>
-              </div>
-            </>
+            <div className="button-row">
+              <button
+                className="button secondary"
+                disabled={actionBlocked}
+                onClick={() => {
+                  video.current?.pause();
+                  setConfirm("end");
+                }}
+              >
+                여기서 종료
+              </button>
+              <button
+                className="button primary"
+                disabled={actionBlocked}
+                onClick={() => {
+                  video.current?.pause();
+                  setConfirm("complete");
+                }}
+              >
+                운동 완료
+              </button>
+            </div>
           )}
         </>
-      )}
-      {!replay && (
-        <button
-          className="text-button"
-          disabled={state.saving || playing}
-          onClick={() => void session.refresh()}
-        >
-          저장된 운동 상태 확인
-        </button>
       )}
       {completed && (
         <Link
