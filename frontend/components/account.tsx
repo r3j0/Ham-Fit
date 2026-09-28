@@ -68,6 +68,11 @@ export function Account() {
                 <p className="profile-email">{user.email}</p>
               </div>
             </div>
+            {user.isOnboarded && (
+              <div className="profile-insights stack">
+                <LatestFitness />
+              </div>
+            )}
             <ProfileActivityReport createdAt={user.created_at} />
           </div>
         ) : profileError ? (
@@ -79,11 +84,6 @@ export function Account() {
           </>
         ) : (
           <Loading />
-        )}
-        {user?.isOnboarded && (
-          <div className="profile-insights stack">
-            <LatestFitness />
-          </div>
         )}
         <div className="profile-actions stack">
           <div className="menu-card">

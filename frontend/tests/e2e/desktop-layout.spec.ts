@@ -155,7 +155,7 @@ for (const width of [960, 1280, 1440]) {
   });
 }
 
-test("데스크톱의 메인·운동·프로필·리포트는 기존 내용을 두 열로 배치한다", async ({
+test("데스크톱의 메인·운동·리포트는 두 열, 프로필은 세 열로 배치한다", async ({
   page,
 }) => {
   await installDesktopApi(page);
@@ -177,7 +177,11 @@ test("데스크톱의 메인·운동·프로필·리포트는 기존 내용을 �
     '[aria-labelledby="workout-history-title"]',
   );
   await page.goto("/account");
-  await sideBySide(".latest-fitness", ".menu-card");
+  await sideBySide(".profile-identity", ".profile-insights");
+  await sideBySide(".profile-insights", ".profile-report");
+  const card = (await page.locator(".profile-card").boundingBox())!;
+  const menu = (await page.locator(".menu-card").boundingBox())!;
+  expect(menu.y).toBeGreaterThanOrEqual(card.y + card.height);
   await page.locator('a[href="/measurements"]').click();
   await page.locator(".record-card").click();
   await sideBySide(".fitness-radar", '[aria-label="측정 상세 리포트"]');

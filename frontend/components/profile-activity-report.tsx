@@ -58,10 +58,9 @@ export function ProfileActivityReport({ createdAt }: { createdAt: string }) {
   return (
     <section className="profile-report" aria-label="활동 리포트">
       <dl className="profile-report-metrics">
-        {metrics.map(({ label, value, unit, Icon }, index) => (
+        {metrics.map(({ label, value, unit, Icon }) => (
           <div
             className={`profile-report-metric${label === "가입한지" ? " profile-tenure" : ""}`}
-            data-summary={index >= activityMetrics.length || undefined}
             title={
               label === "가입한지"
                 ? `가입일: ${new Date(createdAt).toLocaleDateString("ko-KR", { timeZone: "Asia/Seoul" })}`

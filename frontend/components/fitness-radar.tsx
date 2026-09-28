@@ -84,7 +84,7 @@ export function FitnessRadar({
                 className="radar-grade"
                 data-factor={f.code}
                 x={label.x}
-                y={labelY + 22}
+                y={labelY + (compact ? 28 : 22)}
                 textAnchor="middle"
                 dominantBaseline="middle"
               >

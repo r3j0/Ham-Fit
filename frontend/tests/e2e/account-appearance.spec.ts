@@ -143,11 +143,21 @@ test("프로필은 재화·가입 경과일·활동 리포트와 얼굴 모션�
     await expect(avatar).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
     const chart = (await page.locator(".fitness-radar svg").boundingBox())!;
     const reportBox = (await report.boundingBox())!;
-    expect(reportBox.y).toBeGreaterThanOrEqual(avatarBox.y + avatarBox.height);
+    if (width < 960) {
+      expect(reportBox.y).toBeGreaterThanOrEqual(
+        avatarBox.y + avatarBox.height,
+      );
+    } else {
+      const identity = (await page.locator(".profile-identity").boundingBox())!;
+      const insights = (await page.locator(".profile-insights").boundingBox())!;
+      expect(identity.x + identity.width).toBeLessThanOrEqual(insights.x);
+    }
+    expect(chart.x + chart.width).toBeLessThanOrEqual(reportBox.x);
     expect(reportBox.y + reportBox.height).toBeLessThanOrEqual(
       card.y + card.height,
     );
-    expect(card.y + card.height).toBeLessThanOrEqual(chart.y);
+    expect(chart.y).toBeGreaterThanOrEqual(card.y);
+    expect(chart.y + chart.height).toBeLessThanOrEqual(card.y + card.height);
     for (const metric of await report.locator(".profile-report-metric").all()) {
       const box = (await metric.boundingBox())!;
       expect(box.x).toBeGreaterThanOrEqual(reportBox.x);
