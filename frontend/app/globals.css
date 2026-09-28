@@ -324,18 +324,25 @@ body:has(.authenticated-app) {
   );
 }
 .bottom-navigation {
+  --bottom-navigation-accent: #0a2a70;
+  --bottom-navigation-tint: #f0f2f6;
   position: fixed;
   inset: auto 0 0;
   z-index: 20;
+  width: 100%;
+  height: calc(var(--bottom-navigation-height) + env(safe-area-inset-bottom));
+  padding: 8px 0 calc(8px + env(safe-area-inset-bottom));
+  background: var(--bottom-navigation-tint);
+  box-shadow: inset 0 1px 0 var(--border);
+}
+.bottom-navigation-inner {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   width: 100%;
   max-width: 560px;
-  height: calc(var(--bottom-navigation-height) + env(safe-area-inset-bottom));
+  height: 56px;
   margin-inline: auto;
-  padding: 8px 16px calc(8px + env(safe-area-inset-bottom));
-  background: var(--surface);
-  box-shadow: inset 0 1px 0 var(--border);
+  padding-inline: 16px;
 }
 .bottom-tab {
   display: flex;
@@ -343,27 +350,44 @@ body:has(.authenticated-app) {
   justify-content: center;
   min-height: 44px;
   border-radius: var(--radius-control);
-  color: var(--muted);
+  color: #94a3b8;
 }
-.bottom-tab[aria-current] {
-  color: var(--navy);
+.bottom-tab svg {
+  fill: none;
+  stroke: currentColor;
+  transition:
+    fill 160ms ease,
+    stroke 160ms ease;
+}
+.bottom-tab[aria-current] .bottom-tab-icon {
+  color: var(--bottom-navigation-accent);
+}
+.bottom-tab[aria-current] svg {
+  fill: currentColor;
+  stroke-width: 2.5;
 }
 .bottom-tab-icon {
   display: grid;
   place-items: center;
   width: 44px;
   height: 44px;
+  transition:
+    color 160ms ease,
+    background-color 160ms ease,
+    box-shadow 160ms ease;
 }
-.bottom-tab-workout .bottom-tab-icon {
+.bottom-tab-main .bottom-tab-icon {
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: #e6f5fa;
-  color: #126580;
+  background: #e2e8f0;
+  color: #64748b;
 }
-.bottom-tab-workout[aria-current] .bottom-tab-icon {
-  background: #1b99c4;
-  color: #062b3a;
+.bottom-tab-main[aria-current] .bottom-tab-icon {
+  background: var(--bottom-navigation-accent);
+  color: var(--surface);
+  box-shadow: 0 6px 16px
+    color-mix(in srgb, var(--bottom-navigation-accent) 28%, transparent);
 }
 .page-header {
   min-height: 80px;
@@ -1141,12 +1165,13 @@ fieldset:disabled select {
   min-height: 100dvh;
   background: var(--surface);
 }
-.bottom-navigation.kspo-orange-theme {
-  background: var(--canvas);
+.bottom-navigation.kspo-sky-theme {
+  --bottom-navigation-accent: var(--sky);
+  --bottom-navigation-tint: var(--canvas);
 }
-.kspo-orange-theme .bottom-tab-workout .bottom-tab-icon {
-  background: var(--tint);
-  color: var(--navy);
+.bottom-navigation.kspo-orange-theme {
+  --bottom-navigation-accent: var(--orange);
+  --bottom-navigation-tint: var(--canvas);
 }
 .account-shell,
 .onboarding-shell {
@@ -1174,8 +1199,7 @@ fieldset:disabled select {
 .account-shell a.menu-row:hover {
   background: var(--tint);
 }
-.account-shell .menu-row > svg,
-.kspo-orange-theme .bottom-tab[aria-current] .bottom-tab-icon {
+.account-shell .menu-row > svg {
   color: var(--accent);
 }
 .kspo-orange-theme .radar-shape {
@@ -1806,7 +1830,10 @@ fieldset:disabled select {
     min-height: calc(100dvh - 64px);
   }
   .bottom-navigation {
-    max-width: none;
+    padding-inline: 0;
+  }
+  .bottom-navigation-inner {
+    max-width: 640px;
     grid-template-columns: repeat(3, minmax(140px, 180px));
     justify-content: center;
     gap: 16px;
