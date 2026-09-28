@@ -5,7 +5,3 @@ package-lock.json
 docs/notion-context.md
 .local/
 src/generated/
-data/recommendation/source/
-data/recommendation/validation/
-data/recommendation/catalog.json
-data/recommendation/media-verification.json

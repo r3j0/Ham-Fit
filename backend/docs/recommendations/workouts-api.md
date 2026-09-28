@@ -1,6 +1,6 @@
 # 개인 맞춤 하루 운동 API와 저장 계약
 
-2026-09-27 사용자 결정. 추천 계산·원본 데이터 출처는 [출처 문서](provenance.md), 측정 원본은 [측정 평가 API](../measurement-evaluation-api.md)를 따른다. 아래 `/api/v1` API는 모두 기존 Bearer 인증·소유권·개인 응답 캐시 금지 규칙을 사용한다. 로그인, `/auth/me`, GET은 추천을 생성하지 않는다.
+2026-09-28 정정: API·DB 설계는 유지하고 데이터 팀 알고리즘 연결만 제거했다. 실제 계산이 필요한 요청은 503 `RECOMMENDATION_NOT_CONNECTED`다. [연결 상태](provenance.md)를 따른다. 기존 2026-09-27 계약의 측정 원본은 [측정 평가 API](../measurement-evaluation-api.md)를 따른다. 아래 `/api/v1` API는 모두 기존 Bearer 인증·소유권·개인 응답 캐시 금지 규칙을 사용한다. 로그인, `/auth/me`, GET은 추천을 생성하지 않는다.
 
 ## API
 
@@ -54,29 +54,19 @@
 
 ## 일관성과 출처
 
-기존 UserCurriculumAssignment·WorkoutCurriculum·currentForUserId를 확장한다. 변경 요청은 Read Committed 트랜잭션에서 사용자 행을 먼저 잠가 앞선 요청이 저장한 당일 배정을 확인한 후에만 추천·RNG를 호출한다. 최신 측정 한 건은 정렬 조회의 FOR SHARE 잠금 후 항목을 읽어 수정·삭제와 일관되게 처리한다. 선택 이후 새로 등록된 측정은 다음 선택에 반영된다. 카탈로그 정의는 불변이고 수행 결과 쓰기는 같은 사용자 잠금을 따른다. 순수 조회는 Repeatable Read 스냅샷을 유지한다. `(user_id,assignment_date)` DB UNIQUE와 사용자별 요청 키 별칭 테이블이 일일 한 배정을 보장한다. 기존 완료 정의/정체성 불변 트리거는 유지·확장하고 legacy complete 경로로 새 운동의 상태 검사를 우회하지 못하게 한다.
+기존 UserCurriculumAssignment·WorkoutCurriculum·currentForUserId를 확장한다. 변경 요청은 Read Committed 트랜잭션에서 사용자 행을 먼저 잠가 앞선 요청이 저장한 당일 배정을 확인한 후에만 계산기 호출를 호출한다. 최신 측정 한 건은 정렬 조회의 FOR SHARE 잠금 후 항목을 읽어 수정·삭제와 일관되게 처리한다. 선택 이후 새로 등록된 측정은 다음 선택에 반영된다. 카탈로그 정의는 불변이고 수행 결과 쓰기는 같은 사용자 잠금을 따른다. 순수 조회는 Repeatable Read 스냅샷을 유지한다. `(user_id,assignment_date)` DB UNIQUE와 사용자별 요청 키 별칭 테이블이 일일 한 배정을 보장한다. 기존 완료 정의/정체성 불변 트리거는 유지·확장하고 legacy complete 경로로 새 운동의 상태 검사를 우회하지 못하게 한다.
 
-측정은 `measuredOn DESC,createdAt DESC,id ASC` 최신 한 건만 선택하고 serializeRecord의 저장 평가를 재사용한다. 빈 요인을 과거 측정으로 채우지 않는다. snapshot에는 측정 ID/revision·평가 근거·측정 카탈로그·생년월일/현재 나이·추천 기준일·알고리즘 버전·영상 카탈로그와 계산 입력을 보존한다. 측정이 수정/삭제되더라도 이미 저장된 배정과 snapshot은 변경하지 않는다.
+측정은 `measuredOn DESC,createdAt DESC,id ASC` 최신 한 건만 선택하고 serializeRecord의 저장 평가를 재사용한다. 빈 요인을 과거 측정으로 채우지 않는다. snapshot에는 측정 ID/revision·측정 카탈로그·생년월일/현재 나이·기준일·알고리즘 버전·영상 카탈로그와 향후 연결된 계산기가 제공하는 스냅샷을 보존한다. 현재는 원본 평가를 다른 등급/need로 변환하지 않고 인터페이스에 전달한다. 측정이 수정/삭제되더라도 이미 저장된 배정과 snapshot은 변경하지 않는다.
 
-엔진에는 interrupted/completed 대표 행만 전달한다. 오늘 배정 계산은 D를 사용하고 과거 1~14일만 노출도 계산에 사용하지만 동점 판정용 오래된 이력은 유지한다. 서버 시각 이후 수행은 조회와 입력에서 모두 제외한다. WeightAdjustment는 조회 시점의 오늘 노출도 전후 변화로 확정 대표 결과에서 재계산하며 실제 체력 개선 점수가 아니다. 내부 정밀도는 유지하고 응답만 3자리로 반올림한다. 완료 응답은 내일 배정을 만들거나 현재 영상을 교체하지 않는다.
+BE는 interrupted/completed 대표 행을 계산 인터페이스에 전달한다. 미진행 제외와 중단 후 완료의 단일 대표 결과는 기존 저장 정책이다. 원본을 옮긴 노출도·우선순위·동점·날짜 감쇠 계산은 제거했으며, 현재 인터페이스의 기본 구현은 결과를 생성하지 않는다. 성공 응답의 WeightAdjustment 설계는 유지하지만 값이 필요한 요청은 미연결 상태에서 503이 된다. 빈 current/history 조회는 null/빈 목록을 반환한다. 계산 실패 시 배정/이벤트의 미완료 트랜잭션은 롤백된다.
 
 ## 마이그레이션과 데이터 수입
 
 `20260927000100_daily_workouts`는 nullable DATE 생년월일, 카탈로그/활성 포인터/영상/요청키/이벤트 테이블과 기존 배정의 nullable 일자·진행 필드를 추가한다. 기존 사용자 생년월일은 null, 과거 측정 나이와 평가·커리큘럼은 그대로다. 새 상태 enum 추가는 명시적 트랜잭션 밖, 나머지 DDL은 하나의 트랜잭션으로 적용한다. 기존 마이그레이션·원본 검증 증거는 수정하지 않는다.
 
-배포는 별도 승인 후 대상 DB 확인·백업·마이그레이션·코드 교체 절차를 따른다. 이 작업에서는 격리된 테스트 DB만 사용한다. 카탈로그는 GET/앱 시작 때 자동 수입하지 않는다.
+이번 연결 제거에서는 스키마와 과거 마이그레이션을 수정하지 않았고 DB에 변경을 적용하지 않았다. `WorkoutCatalogService`의 명시적인 카탈로그 저장·활성화 계약은 유지한다. 코드에 데이터 파일 경로·특정 커밋·731개 개수를 고정하지 않으며 자동 수입하지 않는다. 기존 데이터 전용 생성/수입 스크립트는 제거했다. main 병합과 BE rebase 이후 새 데이터 코드를 확인하여 별도로 연결한다.
 
-```bash
-# backend/에서, 검토한 대상 DATABASE_URL로만 실행
-npm run db:migrate:deploy
-npm run build
-node scripts/recommendation-import-catalog.mjs
-# 영상 검증 파일은 Git에 없으므로 아래 미디어 문서의 검사/별도 배포 절차 필요
-```
-
-재생 URL은 별도 생성한 [미디어 검증 자료](media-verification.md)가 필요하다. 기본 `.local/recommendation/media-verification.json` 또는 `WORKOUT_MEDIA_REPORT_PATH` 경로로 제공하고, 누락 시 API는 `playbackStatus: unavailable`을 반환한다.
-
-수입은 CSV/JSON ID 대응·가중치/합계/길이/출처 전체 검증 후 advisory lock 아래 원자적으로 정의와 영상 731개를 저장하고 활성 포인터를 전환한다. 재수입은 같은 버전·hash를 재사용한다. 같은 버전의 다른 내용은 거부하고 실패하면 기존 활성 버전을 보존한다. 영상·카탈로그·커리큘럼 정의는 불변이며 새 버전 추가로만 바꾼다. 과거 배정이 참조하는 버전은 삭제/덮어쓰지 않는다.
+재생 URL은 별도 [미디어 검증 자료](media-verification.md)가 필요하다. 검증 자료가 없으면 `playbackStatus: unavailable`을 반환한다.
 
 ## 검증 명령
 
@@ -86,4 +76,4 @@ npm run test:e2e -- test/workouts.e2e-spec.ts
 npm run check
 ```
 
-E2E runner는 `TEST_DATABASE_URL`만 사용하고 DATABASE_URL과 동일 DB면 거부한다. 임시 test_* 스키마에 모든 마이그레이션을 두 번 적용한다. 실제 DB에서 소유권·동시 배정·요청키·구간 합집합·50%·중단→완료·미래/역순 입력·자정/지연 결과·기존 미완료·731개 원자 수입/버전 보존을 검증한다. 미디어 fixture에서 카탈로그 100초·검증 길이 100.4초의 progress/end/complete 저장, 원본 재전송, 범위 초과 거절과 소수점 구간 50%의 다음 추천 노출도 반영도 검사한다.
+E2E runner는 `TEST_DATABASE_URL`만 사용하고 DATABASE_URL과 동일 DB면 거부한다. 임시 test_* 스키마에서 기존 마이그레이션 적용/재적용, 소유권·동시 배정·요청 키·구간 합집합·50%·중단→완료·자정·미디어 끝점 계약을 확인한다. 추천 결과는 테스트에서만 명시적인 대역을 주입하며 실제 데이터 알고리즘은 실행하지 않는다. 실제 앱 모듈의 미연결 503과 배정이 생성되지 않는지도 검사한다.
