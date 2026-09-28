@@ -30,11 +30,6 @@ export function WorkoutStreak() {
                 <strong>{streak}일</strong>
                 <span> 연속 운동 중</span>
               </p>
-              <p className={styles.hint}>
-                {completed.has(today)
-                  ? "오늘의 운동을 완료했어요!"
-                  : "오늘의 운동으로 꾸준함을 이어가요."}
-              </p>
             </div>
             <ol className={styles.week} aria-label="최근 7일 운동 기록">
               {days.map((day) => {
@@ -66,13 +61,22 @@ export function WorkoutStreak() {
             </ol>
           </div>
         )}
-        <Link
-          className={styles.historyLink}
-          href="/workout#workout-history-title"
-        >
-          운동 기록 보기
-          <ChevronRight size={18} aria-hidden="true" />
-        </Link>
+        <div className={styles.streakFooter}>
+          {ready && !error && (
+            <p className={styles.hint}>
+              {completed.has(today)
+                ? "오늘의 운동을 완료했어요!"
+                : "오늘의 운동으로 꾸준함을 이어가요."}
+            </p>
+          )}
+          <Link
+            className={styles.historyLink}
+            href="/workout#workout-history-title"
+          >
+            운동 기록 보기
+            <ChevronRight size={18} aria-hidden="true" />
+          </Link>
+        </div>
       </div>
     </section>
   );

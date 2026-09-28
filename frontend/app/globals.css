@@ -153,6 +153,7 @@
   display: grid;
   place-items: center;
   min-height: 224px;
+  margin-top: 24px;
 }
 .home-mascot-stage > span {
   width: min(80%, var(--home-mascot-size));
@@ -1934,6 +1935,7 @@ fieldset:disabled select {
   }
   .home-mascot-stage {
     min-height: 320px;
+    margin-top: 0;
   }
   .home-content .curriculum-card {
     padding-bottom: 0;
