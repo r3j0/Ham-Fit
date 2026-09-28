@@ -1,7 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { z } from 'zod';
-import { SOURCE_COMMIT } from './catalog.js';
 
 const entrySchema = z.object({
   videoId: z.string(),
@@ -17,15 +16,18 @@ const entrySchema = z.object({
 });
 const reportSchema = z.object({
   schemaVersion: z.literal(2),
-  sourceCommit: z.literal(SOURCE_COMMIT),
+  sourceCommit: z.string().min(1),
   durationToleranceSeconds: z.literal(1),
   videos: z.array(entrySchema),
 });
 
 /** Only a matching, structurally verified entry can enable its exact HTTPS URL. */
-export function createMediaResolver(report: unknown) {
+export function createMediaResolver(report: unknown, sourceCommit: string) {
   const parsed = reportSchema.safeParse(report);
-  const entries = parsed.success ? parsed.data.videos : [];
+  const entries =
+    parsed.success && parsed.data.sourceCommit === sourceCommit
+      ? parsed.data.videos
+      : [];
   const indexed = new Map(entries.map((entry) => [entry.videoId, entry]));
   if (indexed.size !== entries.length) indexed.clear();
   return (videoId: string, originalUrl: string, durationSeconds: number) => {
@@ -72,25 +74,38 @@ const mediaReportPath = () =>
     process.env.WORKOUT_MEDIA_REPORT_PATH ||
       '.local/recommendation/media-verification.json',
   );
-export function loadMediaResolver(path = mediaReportPath()) {
+export function loadMediaResolver(
+  sourceCommit: string,
+  path = mediaReportPath(),
+) {
   let report: unknown;
   try {
     report = JSON.parse(readFileSync(path, 'utf8'));
   } catch {
     /* Missing evidence is unavailable, never an assumed HTTPS success. */
   }
-  return createMediaResolver(report);
+  return createMediaResolver(report, sourceCommit);
 }
 let cache:
-  | { path: string; resolver: ReturnType<typeof createMediaResolver> }
+  | {
+      path: string;
+      sourceCommit: string;
+      resolver: ReturnType<typeof createMediaResolver>;
+    }
   | undefined;
 export function mediaFor(
   videoId: string,
   originalUrl: string,
   durationSeconds: number,
+  sourceCommit: string,
 ) {
   // Resolve after Nest has loaded .env. Reloading an updated file requires restart.
   const path = mediaReportPath();
-  if (cache?.path !== path) cache = { path, resolver: loadMediaResolver(path) };
+  if (cache?.path !== path || cache.sourceCommit !== sourceCommit)
+    cache = {
+      path,
+      sourceCommit,
+      resolver: loadMediaResolver(sourceCommit, path),
+    };
   return cache.resolver(videoId, originalUrl, durationSeconds);
 }
