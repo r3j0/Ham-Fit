@@ -1189,7 +1189,7 @@ fieldset:disabled select {
   color: var(--text);
 }
 .account-shell .profile-card {
-  box-shadow: inset 0 0 0 1px var(--border);
+  background: transparent;
 }
 .account-shell .profile-copy h2 {
   min-width: 0;
