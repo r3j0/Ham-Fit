@@ -5,7 +5,6 @@ import Image from "next/image";
 import { BreathingMascot } from "./mascot/BreathingMascot";
 import { LatestFitness } from "./latest-fitness";
 import { ProfileActivityReport } from "./profile-activity-report";
-import { daysSinceJoined } from "@/lib/user-profile";
 import { useRouter } from "next/navigation";
 import { ChevronRight, LogOut } from "lucide-react";
 import { logout } from "@/lib/session";
@@ -65,19 +64,11 @@ export function Account() {
               <div className="profile-copy">
                 <div className="profile-heading">
                   <h2>{user.nickname ?? "닉네임"}</h2>
-                  <p
-                    className="profile-tenure"
-                    title={`가입일: ${new Date(user.created_at).toLocaleDateString("ko-KR", { timeZone: "Asia/Seoul" })}`}
-                  >
-                    가입한지{" "}
-                    {String(daysSinceJoined(user.created_at)).padStart(2, "0")}{" "}
-                    일
-                  </p>
                 </div>
                 <p className="profile-email">{user.email}</p>
               </div>
             </div>
-            <ProfileActivityReport />
+            <ProfileActivityReport createdAt={user.created_at} />
           </div>
         ) : profileError ? (
           <>

@@ -1230,20 +1230,13 @@ fieldset:disabled select {
   justify-content: space-between;
   gap: 6px 16px;
 }
-.profile-tenure {
-  margin-left: auto;
-  color: var(--text-secondary);
-  font-size: 12px;
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
-}
 .profile-email {
   margin-top: 8px;
   color: var(--text-secondary);
   font-size: 13px;
 }
 .profile-report {
-  --profile-report-accent: #b84e00;
+  --profile-report-accent: var(--accent);
   margin-top: 12px;
   padding-top: 12px;
   border-top: 1px solid var(--border);
@@ -1282,24 +1275,50 @@ fieldset:disabled select {
   font-variant-numeric: tabular-nums;
   line-height: 1.3;
 }
-.profile-report-total {
+.profile-report-metric[data-summary] {
   display: flex;
+  grid-column: span 2;
   align-items: center;
-  justify-content: center;
-  gap: 8px;
-  margin-top: 12px;
+  justify-content: space-between;
+  gap: 12px;
   padding-top: 12px;
   border-top: 1px solid var(--border);
-  color: var(--profile-report-accent);
-  font-size: 14px;
-  font-weight: 600;
 }
-.profile-report-total svg,
-.profile-report-total strong {
-  color: var(--profile-report-accent);
-}
-.profile-report-total strong {
-  font-weight: 800;
+@media (max-width: 959px) {
+  .account-shell .profile-avatar {
+    width: 80px;
+  }
+  .account-shell .latest-fitness .fitness-radar svg {
+    width: 92%;
+    max-width: 380px;
+  }
+  .profile-report-metrics {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+  }
+  .profile-report-metric {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 24px;
+  }
+  .profile-report-metric dt {
+    min-width: 0;
+  }
+  .profile-report-metric dd {
+    flex: none;
+    margin-top: 0;
+  }
+  .profile-report-metric dd strong {
+    font-size: 20px;
+    line-height: 1.2;
+  }
+  .profile-report-metric[data-summary] {
+    grid-column: auto;
+    padding-top: 0;
+    border-top: 0;
+  }
 }
 .menu-card {
   border-radius: var(--radius-card);

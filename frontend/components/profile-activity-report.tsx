@@ -1,4 +1,12 @@
-import { CalendarCheck, Flame, Images, Star, Trophy } from "lucide-react";
+import {
+  CalendarCheck,
+  CalendarDays,
+  Flame,
+  Images,
+  Star,
+  Trophy,
+} from "lucide-react";
+import { daysSinceJoined } from "@/lib/user-profile";
 
 // Profile-only preview until activity, level, and collection APIs are available.
 // These values never participate in workout progress, rewards, or recommendations.
@@ -9,7 +17,7 @@ const mockActivity = {
   collectionCount: 2,
   totalWorkoutDays: 28,
 };
-const metrics = [
+const activityMetrics = [
   {
     label: "현재 연속 스트릭",
     value: mockActivity.currentStreak,
@@ -31,12 +39,36 @@ const metrics = [
   },
 ];
 
-export function ProfileActivityReport() {
+export function ProfileActivityReport({ createdAt }: { createdAt: string }) {
+  const metrics = [
+    ...activityMetrics,
+    {
+      label: "총 운동 일수",
+      value: mockActivity.totalWorkoutDays,
+      unit: "일",
+      Icon: CalendarCheck,
+    },
+    {
+      label: "가입한지",
+      value: String(daysSinceJoined(createdAt)).padStart(2, "0"),
+      unit: "일",
+      Icon: CalendarDays,
+    },
+  ];
   return (
     <section className="profile-report" aria-label="활동 리포트">
       <dl className="profile-report-metrics">
-        {metrics.map(({ label, value, unit, Icon }) => (
-          <div className="profile-report-metric" key={label}>
+        {metrics.map(({ label, value, unit, Icon }, index) => (
+          <div
+            className={`profile-report-metric${label === "가입한지" ? " profile-tenure" : ""}`}
+            data-summary={index >= activityMetrics.length || undefined}
+            title={
+              label === "가입한지"
+                ? `가입일: ${new Date(createdAt).toLocaleDateString("ko-KR", { timeZone: "Asia/Seoul" })}`
+                : undefined
+            }
+            key={label}
+          >
             <dt>
               <Icon size={18} aria-hidden="true" />
               {label}
@@ -48,12 +80,6 @@ export function ProfileActivityReport() {
           </div>
         ))}
       </dl>
-      <p className="profile-report-total">
-        <CalendarCheck size={20} aria-hidden="true" />
-        <span>
-          총 <strong>{mockActivity.totalWorkoutDays}일</strong> 운동함
-        </span>
-      </p>
     </section>
   );
 }

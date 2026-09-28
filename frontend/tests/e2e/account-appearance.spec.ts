@@ -53,27 +53,28 @@ test("프로필은 재화·가입 경과일·활동 리포트와 얼굴 모션�
       ),
     )
     .toBe(true);
-  await expect(page.locator(".profile-tenure")).toHaveText("가입한지 26 일");
+  await expect(page.locator(".profile-tenure dd")).toHaveText("26일");
   const report = page.getByRole("region", { name: "활동 리포트" });
   await expect(report.getByText("예시", { exact: true })).toHaveCount(0);
   await expect(report.getByRole("heading")).toHaveCount(0);
   for (const emphasis of await report.locator("strong, svg").all())
-    await expect(emphasis).toHaveCSS("color", "rgb(184, 78, 0)");
+    await expect(emphasis).toHaveCSS("color", "rgb(255, 127, 0)");
   await expect(report.locator("dt")).toHaveText([
     "현재 연속 스트릭",
     "최장 연속 스트릭",
     "현재 레벨",
     "캐릭터 보유 컬렉션",
+    "총 운동 일수",
+    "가입한지",
   ]);
   await expect(report.locator("dd")).toHaveText([
     "3일",
     "12일",
     "4레벨",
     "2개",
+    "28일",
+    "26일",
   ]);
-  await expect(
-    report.getByText("총 28일 운동함", { exact: true }),
-  ).toBeVisible();
   await expect(report.getByText(/EXP/)).toHaveCount(0);
   const avatar = page.getByRole("img", {
     name: "편안하게 숨 쉬는 햄스터 얼굴",
@@ -138,11 +139,8 @@ test("프로필은 재화·가입 경과일·활동 리포트와 얼굴 모션�
       0,
     );
     const avatarBox = (await avatar.boundingBox())!;
-    expect(avatarBox.width).toBeGreaterThanOrEqual(112);
+    expect(avatarBox.width).toBe(width < 960 ? 80 : 128);
     await expect(avatar).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
-    const tenure = (await page.locator(".profile-tenure").boundingBox())!;
-    expect(tenure.x).toBeGreaterThan(avatarBox.x + avatarBox.width);
-    expect(tenure.x + tenure.width).toBeLessThanOrEqual(card.x + card.width);
     const chart = (await page.locator(".fitness-radar svg").boundingBox())!;
     const reportBox = (await report.boundingBox())!;
     expect(reportBox.y).toBeGreaterThanOrEqual(avatarBox.y + avatarBox.height);
@@ -202,7 +200,7 @@ test("미측정 계정도 가입 당일 표시와 예시 리포트를 보되 실
   await expect(
     page.getByRole("heading", { name: "닉네임", exact: true }),
   ).toBeVisible();
-  await expect(page.locator(".profile-tenure")).toHaveText("가입한지 00 일");
+  await expect(page.locator(".profile-tenure dd")).toHaveText("00일");
   await expect(page.getByRole("group", { name: "보유 재화" })).toHaveText("0");
   await expect(page.getByRole("region", { name: "활동 리포트" })).toBeVisible();
   await expect(page.locator(".fitness-radar")).toHaveCount(0);
