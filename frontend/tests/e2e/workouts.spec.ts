@@ -662,3 +662,182 @@ test("여러 운동은 각자의 영상과 기록으로 완료하고 목록에�
   await expect(list.getByText("완료", { exact: true })).toHaveCount(2);
   await expect(list.getByRole("link")).toHaveCount(0);
 });
+
+// Hold real video progress responses across multiple ticks to catch layout/reload regressions.
+test("background progress saves preserve the video, layout and playback controls", async ({
+  page,
+}) => {
+  await installApi(page, testRecord());
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  const mediaUrl = await serveTestMedia(page);
+  let current: Workout = {
+    ...testWorkout,
+    status: "in_progress",
+    video: {
+      ...testWorkout.video,
+      durationSeconds: 12,
+      verifiedDurationSeconds: 12,
+      playbackStatus: "verified",
+      playbackUrl: mediaUrl,
+    },
+    progress: { ...testWorkout.progress, durationSeconds: 12 },
+  };
+  const held: { release: () => void; finished: Promise<void> }[] = [];
+  const events: { key: string; body: string; type: string }[] = [];
+  let failNext = false;
+  await page.route(`**/api/v1/workouts/${current.id}`, (route) =>
+    route.fulfill({ json: current }),
+  );
+  await page.route(`**/api/v1/workouts/${current.id}/events`, async (route) => {
+    const event = route.request().postDataJSON() as PlaybackEvent;
+    events.push({
+      key: route.request().headers()["idempotency-key"],
+      body: route.request().postData()!,
+      type: event.type,
+    });
+    if (
+      event.type === "progress" &&
+      event.positionSeconds > 0.5 &&
+      held.length < 2
+    ) {
+      let release!: () => void;
+      let finish!: () => void;
+      const waiting = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const finished = new Promise<void>((resolve) => {
+        finish = resolve;
+      });
+      held.push({ release, finished });
+      await waiting;
+      current = {
+        ...current,
+        revision: current.revision + 1,
+        progress: {
+          ...current.progress,
+          positionSeconds: event.positionSeconds,
+          watchedSeconds: event.positionSeconds,
+          intervals: event.intervals,
+          ratio: event.positionSeconds / 12,
+        },
+      };
+      await route.fulfill({ json: current });
+      finish();
+      return;
+    }
+    if (failNext && event.type === "pause") {
+      failNext = false;
+      await route.abort("failed");
+      return;
+    }
+    current = {
+      ...current,
+      revision: current.revision + 1,
+      status: event.type === "complete" ? "completed" : "in_progress",
+      resultStatus: event.type === "complete" ? "completed" : null,
+      completedAt: event.type === "complete" ? "2026-09-27T03:00:00Z" : null,
+    };
+    await route.fulfill({ json: current });
+  });
+  await page.goto(`/workouts/${current.id}`);
+  const video = page.getByLabel("운동 영상");
+  await expect(video).toHaveAttribute("controls");
+  await expect
+    .poll(() => video.evaluate((v: HTMLVideoElement) => v.readyState))
+    .toBeGreaterThanOrEqual(2);
+  // A real HTMLVideoElement must stay mounted; a reload/seek would restart its media lifecycle.
+  const original = await video.elementHandle();
+  const lifecycle = { loads: 0, pauses: 0 };
+  await page.exposeFunction(
+    "recordVideoLifecycle",
+    (event: "loads" | "pauses") => {
+      lifecycle[event]++;
+    },
+  );
+  await video.evaluate((v: HTMLVideoElement) => {
+    const report = (
+      window as unknown as {
+        recordVideoLifecycle: (event: string) => Promise<void>;
+      }
+    ).recordVideoLifecycle;
+    v.addEventListener("loadstart", () => {
+      void report("loads");
+    });
+    v.addEventListener("pause", () => {
+      void report("pauses");
+    });
+    return v.play();
+  });
+  const documentTop = () =>
+    video.evaluate((v) => v.getBoundingClientRect().top + window.scrollY);
+  const top = await documentTop();
+  for (let index = 0; index < 2; index++) {
+    await expect.poll(() => held.length, { timeout: 15000 }).toBe(index + 1);
+    const before = await video.evaluate((v: HTMLVideoElement) => v.currentTime);
+    expect(await documentTop()).toBeCloseTo(top, 1);
+    await expect(
+      page.getByRole("button", { name: "운동 완료", exact: true }),
+    ).toBeEnabled();
+    await expect(
+      page.getByRole("button", { name: "여기서 종료", exact: true }),
+    ).toBeEnabled();
+    await expect(
+      page.getByText("운동 진행을 저장하고 있어요.", { exact: true }),
+    ).toHaveCount(0);
+    await expect
+      .poll(() => video.evaluate((v: HTMLVideoElement) => v.currentTime))
+      .toBeGreaterThan(before + 0.15);
+    held[index].release();
+    await held[index].finished;
+    await expect(
+      page.getByRole("progressbar", { name: "저장된 시청 진행률" }),
+    ).toHaveAttribute("value", String(current.progress.ratio));
+    expect(await documentTop()).toBeCloseTo(top, 1);
+    expect(
+      await original!.evaluate(
+        (node) => node === document.querySelector("video"),
+      ),
+    ).toBe(true);
+    expect(await video.evaluate((v: HTMLVideoElement) => v.paused)).toBe(false);
+    if (index === 0) {
+      const refreshed = page.waitForResponse(
+        (response) =>
+          response.url().endsWith(`/workouts/${current.id}`) &&
+          response.request().method() === "GET",
+      );
+      await page.evaluate(() =>
+        document.dispatchEvent(new Event("visibilitychange")),
+      );
+      expect((await refreshed).status()).toBe(200);
+      expect(
+        await original!.evaluate(
+          (node) => node === document.querySelector("video"),
+        ),
+      ).toBe(true);
+      expect(await documentTop()).toBeCloseTo(top, 1);
+    }
+  }
+  expect(lifecycle).toEqual({ loads: 0, pauses: 0 });
+  // Fail a normal pause save, then verify the same journal request is retried and completion remains usable.
+  failNext = true;
+  await video.evaluate((v: HTMLVideoElement) => v.pause());
+  const retry = page.getByRole("button", {
+    name: "저장 다시 확인하기",
+    exact: true,
+  });
+  await expect(retry).toBeVisible();
+  await expect(page.getByRole("main").getByRole("alert")).toBeVisible();
+  const failed = events.at(-1)!;
+  await retry.click();
+  await expect(retry).toBeHidden();
+  await expect
+    .poll(() => events.filter((event) => event.key === failed.key).length)
+    .toBe(2);
+  expect(events.findLast((event) => event.key === failed.key)).toEqual(failed);
+  await page.getByRole("button", { name: "운동 완료", exact: true }).click();
+  await page.getByRole("button", { name: "완료 확인", exact: true }).click();
+  await expect(
+    page.getByRole("img", { name: "운동 완료", exact: true }),
+  ).toBeVisible();
+  expect(current.status).toBe("completed");
+});

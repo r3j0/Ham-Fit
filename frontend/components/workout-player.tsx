@@ -48,12 +48,14 @@ export function WorkoutPlayer({
   const [confirm, setConfirm] = useState<"end" | "complete" | "reset" | null>(
     null,
   );
+  const actionBlocked =
+    !state.connected ||
+    state.recovering ||
+    state.error !== undefined ||
+    state.terminalPending;
   const canPlay =
-    state.connected &&
-    !state.recovering &&
-    (workout.status === "in_progress" || workout.status === "completed") &&
-    state.error === undefined &&
-    !state.terminalPending;
+    !actionBlocked &&
+    (workout.status === "in_progress" || workout.status === "completed");
   const verified =
     workout.video.playbackStatus === "verified" && !!workout.video.playbackUrl;
   const completed = workout.status === "completed";
@@ -189,10 +191,10 @@ export function WorkoutPlayer({
         </Notice>
       )}
       {state.error !== undefined && <WorkoutError error={state.error} />}
-      {state.pending > 0 && (
+      {state.pending > 0 && (state.recovering || state.error !== undefined) && (
         <Notice tone="info">
-          {state.saving
-            ? "운동 진행을 저장하고 있어요."
+          {state.recovering && state.saving
+            ? "이전에 저장하지 못한 운동 진행을 복구하고 있어요."
             : "아직 확인하지 못한 저장 요청이 있어요. 같은 내용으로 다시 확인해 주세요."}
         </Notice>
       )}
@@ -332,11 +334,7 @@ export function WorkoutPlayer({
               <div className="button-row">
                 <button
                   className="button secondary"
-                  disabled={
-                    state.saving ||
-                    state.pending > 0 ||
-                    state.error !== undefined
-                  }
+                  disabled={actionBlocked}
                   onClick={() => {
                     video.current?.pause();
                     setConfirm("end");
@@ -346,11 +344,7 @@ export function WorkoutPlayer({
                 </button>
                 <button
                   className="button primary"
-                  disabled={
-                    state.saving ||
-                    state.pending > 0 ||
-                    state.error !== undefined
-                  }
+                  disabled={actionBlocked}
                   onClick={() => {
                     video.current?.pause();
                     setConfirm("complete");
