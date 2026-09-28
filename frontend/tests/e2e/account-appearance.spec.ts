@@ -210,7 +210,7 @@ test("미측정 계정도 가입 당일 표시와 예시 리포트를 보되 실
   await expect(
     page.getByRole("heading", { name: "닉네임", exact: true }),
   ).toBeVisible();
-  await expect(page.locator(".profile-tenure dd")).toHaveText("00일");
+  await expect(page.locator(".profile-tenure dd")).toHaveText("0일");
   await expect(page.getByRole("group", { name: "보유 재화" })).toHaveText("0");
   await expect(page.getByRole("region", { name: "활동 리포트" })).toBeVisible();
   await expect(page.locator(".fitness-radar")).toHaveCount(0);

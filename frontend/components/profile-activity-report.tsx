@@ -50,7 +50,7 @@ export function ProfileActivityReport({ createdAt }: { createdAt: string }) {
     },
     {
       label: "가입한지",
-      value: String(daysSinceJoined(createdAt)).padStart(2, "0"),
+      value: daysSinceJoined(createdAt),
       unit: "일",
       Icon: CalendarDays,
     },

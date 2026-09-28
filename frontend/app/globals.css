@@ -1237,7 +1237,7 @@ fieldset:disabled select {
   gap: 6px 16px;
 }
 .profile-email {
-  margin-top: 8px;
+  margin-top: 0;
   color: var(--text-secondary);
   font-size: 13px;
 }
