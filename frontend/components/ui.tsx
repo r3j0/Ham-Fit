@@ -8,7 +8,6 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useId, useRef } from "react";
-import { useViewEntrance } from "./use-view-entrance";
 export function Brand() {
   return (
     <Link href="/" className="brand" aria-label="햄피트 시작 화면">
@@ -36,9 +35,8 @@ export function Shell({
   children: React.ReactNode;
   className?: string;
 }) {
-  const entrance = useViewEntrance();
   return (
-    <main ref={entrance} id="main" className={`app-shell ${className}`}>
+    <main id="main" className={`app-shell view-entrance ${className}`}>
       {children}
     </main>
   );
