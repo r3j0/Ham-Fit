@@ -14,18 +14,12 @@ import {
   serializeRecord,
 } from '../measurements/measurements.service.js';
 import { ageOnDate, koreaDate } from '../users/date-of-birth.js';
-import {
-  ALGORITHM_VERSION,
-  calculateWeightAdjustment,
-  recommendNextWorkout,
-  roundWeightAdjustment,
-} from './engine.js';
 import type {
   FactorVector,
   RecommendationVideo,
   WorkoutLog,
-} from './engine.js';
-import { adaptMeasurement } from './measurement-adapter.js';
+} from './workout-contracts.js';
+import { WorkoutAlgorithm } from './workout-algorithm.js';
 import { mediaFor } from './media.js';
 import {
   nextPlaybackStatus,
@@ -38,15 +32,18 @@ import {
 import type { PlaybackEventInput, PlaybackInterval } from './playback.js';
 
 export const WORKOUT_CLOCK = Symbol('WORKOUT_CLOCK');
-export const WORKOUT_RNG = Symbol('WORKOUT_RNG');
 export const includeWorkout = {
-  curriculum: { include: { video: true } },
+  curriculum: {
+    include: {
+      video: { include: { catalog: { select: { sourceCommit: true } } } },
+    },
+  },
 } satisfies Prisma.UserCurriculumAssignmentInclude;
 type Assignment = Prisma.UserCurriculumAssignmentGetPayload<{
   include: typeof includeWorkout;
 }>;
 const videoInput = (
-  video: NonNullable<Assignment['curriculum']['video']>,
+  video: Omit<NonNullable<Assignment['curriculum']['video']>, 'catalog'>,
 ): RecommendationVideo => ({
   videoId: video.videoId,
   title: video.title,
@@ -71,8 +68,8 @@ function unavailable(message: string): never {
 export class RecommendationsService {
   constructor(
     @Inject(DatabaseService) private readonly database: DatabaseService,
+    @Inject(WorkoutAlgorithm) private readonly algorithm: WorkoutAlgorithm,
     @Optional() @Inject(WORKOUT_CLOCK) private readonly clock?: () => Date,
-    @Optional() @Inject(WORKOUT_RNG) private readonly rng?: () => number,
   ) {}
 
   private async now(tx: Prisma.TransactionClient) {
@@ -99,7 +96,7 @@ export class RecommendationsService {
             return work(tx, await this.now(tx));
           },
           {
-            // The waiter must see a committed same-day assignment before RNG.
+            // The waiter must see a committed same-day assignment before calculation.
             isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
             timeout: 15000,
           },
@@ -125,7 +122,7 @@ export class RecommendationsService {
 
   async today(userId: string, key: string) {
     return this.locked(userId, async (tx, now) => {
-      // Replay comes before readiness, catalog reads and RNG, including cross-midnight retries.
+      // Replay precedes calculation, including cross-midnight retries.
       const request = await tx.workoutAssignmentRequest.findUnique({
         where: { userId_key: { userId, key } },
       });
@@ -190,7 +187,6 @@ export class RecommendationsService {
         where: { id: selectedMeasurement.id },
         include: includeRecord,
       });
-      const adapted = adaptMeasurement(serializeRecord(measurement));
       const active = await tx.workoutCatalogActivation.findUnique({
         where: { id: 'current' },
         include: {
@@ -201,13 +197,12 @@ export class RecommendationsService {
         unavailable('검증된 운동 영상 카탈로그가 아직 활성화되지 않았습니다.');
       const videos = active.catalog.videos.map(videoInput);
       const logs = await this.logs(tx, userId, now);
-      const decision = recommendNextWorkout({
+      const decision = await this.algorithm.recommend({
         age,
-        fitness: adapted.fitness,
+        measurement: serializeRecord(measurement),
         logs,
-        referenceDate: now.toISOString(),
+        referenceInstant: now.toISOString(),
         videos,
-        rng: this.rng,
       });
       const curriculum = await tx.workoutCurriculum.findUnique({
         where: {
@@ -235,17 +230,19 @@ export class RecommendationsService {
           currentForUserId: userId,
           assignmentDate,
           assignedAt: now,
-          algorithmVersion: ALGORITHM_VERSION,
+          algorithmVersion: decision.algorithmVersion,
           inputSnapshot: {
-            ...adapted.snapshot,
+            ...decision.snapshot,
+            measurementId: measurement.id,
+            measurementRevision: measurement.revision,
+            measuredOn: measurement.measuredOn.toISOString().slice(0, 10),
+            measurementCatalogVersion: measurement.catalogVersion,
             currentAge: age,
             dateOfBirth: user.dateOfBirth.toISOString().slice(0, 10),
             referenceDate: day,
             referenceInstant: now.toISOString(),
-            algorithmVersion: ALGORITHM_VERSION,
+            algorithmVersion: decision.algorithmVersion,
             catalogVersion: active.catalogVersion,
-            exposure: decision.exposure,
-            priority: decision.priority,
           } as Prisma.InputJsonValue,
         },
       });
@@ -349,6 +346,7 @@ export class RecommendationsService {
         video.videoId,
         video.originalUrl,
         video.durationSeconds,
+        video.catalog.sourceCommit,
       );
       const acceptedDurationSeconds =
         media.playbackStatus === 'verified'
@@ -501,7 +499,12 @@ export class RecommendationsService {
         ageGroup: video.ageGroup,
         catalogVersion: video.catalogVersion,
         fitnessWeights: video.fitnessWeights,
-        ...mediaFor(video.videoId, video.originalUrl, video.durationSeconds),
+        ...mediaFor(
+          video.videoId,
+          video.originalUrl,
+          video.durationSeconds,
+          video.catalog.sourceCommit,
+        ),
       },
       progress: {
         durationSeconds: video.durationSeconds,
@@ -512,9 +515,11 @@ export class RecommendationsService {
       },
       algorithmVersion: row.algorithmVersion,
       inputSnapshot: row.inputSnapshot,
-      weightAdjustment: roundWeightAdjustment(
-        calculateWeightAdjustment([videoInput(video)], logs, now.toISOString()),
-      ),
+      weightAdjustment: await this.algorithm.weightAdjustment({
+        videos: [videoInput(video)],
+        logs,
+        referenceInstant: now.toISOString(),
+      }),
     };
   }
 }

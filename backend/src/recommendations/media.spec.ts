@@ -3,7 +3,7 @@ import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createMediaResolver, loadMediaResolver, mediaFor } from './media.js';
-import { SOURCE_COMMIT } from './catalog.js';
+const SOURCE_COMMIT = 'test-fixture';
 const id = 'TEST_A.mp4';
 const original = `http://openapi.kspo.or.kr/web/video/${id}`;
 const verified = `https://openapi.kspo.or.kr/web/video/${id}`;
@@ -30,29 +30,41 @@ describe('verified media selection', () => {
     const directory = mkdtempSync(join(tmpdir(), 'health-media-test-'));
     const path = join(directory, 'report.json');
     try {
-      expect(loadMediaResolver(path)(id, original, 100).playbackStatus).toBe(
-        'unavailable',
-      );
+      expect(
+        loadMediaResolver(SOURCE_COMMIT, path)(id, original, 100)
+          .playbackStatus,
+      ).toBe('unavailable');
       writeFileSync(path, 'invalid json');
-      expect(loadMediaResolver(path)(id, original, 100).playbackStatus).toBe(
-        'unavailable',
-      );
+      expect(
+        loadMediaResolver(SOURCE_COMMIT, path)(id, original, 100)
+          .playbackStatus,
+      ).toBe('unavailable');
       writeFileSync(path, JSON.stringify(report()));
       vi.stubEnv('WORKOUT_MEDIA_REPORT_PATH', path);
-      expect(mediaFor(id, original, 100).playbackUrl).toBe(verified);
+      expect(mediaFor(id, original, 100, SOURCE_COMMIT).playbackUrl).toBe(
+        verified,
+      );
+      expect(
+        mediaFor(id, original, 100, 'another-catalog-source').playbackStatus,
+      ).toBe('unavailable');
+      expect(mediaFor(id, original, 100, SOURCE_COMMIT).playbackUrl).toBe(
+        verified,
+      );
     } finally {
       vi.unstubAllEnvs();
       rmSync(directory, { recursive: true, force: true });
     }
   });
   it('enables only the exact independently verified HTTPS endpoint', () =>
-    expect(createMediaResolver(report())(id, original, 100)).toEqual({
+    expect(
+      createMediaResolver(report(), SOURCE_COMMIT)(id, original, 100),
+    ).toEqual({
       playbackUrl: verified,
       playbackStatus: 'verified',
       verifiedDurationSeconds: 100.4,
     }));
   it('rejects changed source URL or catalog duration and unknown video IDs', () => {
-    const resolve = createMediaResolver(report());
+    const resolve = createMediaResolver(report(), SOURCE_COMMIT);
     for (const result of [
       resolve(id, `${original}?changed=1`, 100),
       resolve(id, original, 101),
@@ -75,9 +87,10 @@ describe('verified media selection', () => {
   ])(
     'missing, old, wrong-version or duplicated evidence fails closed (%j)',
     (bad) =>
-      expect(createMediaResolver(bad)(id, original, 100).playbackStatus).toBe(
-        'unavailable',
-      ),
+      expect(
+        createMediaResolver(bad, SOURCE_COMMIT)(id, original, 100)
+          .playbackStatus,
+      ).toBe('unavailable'),
   );
   it.each([
     { mp4Validated: false },
@@ -92,13 +105,15 @@ describe('verified media selection', () => {
     { status: 'unavailable' },
   ])('does not substitute success for insufficient evidence (%j)', (patch) =>
     expect(
-      createMediaResolver(report(patch))(id, original, 100).playbackUrl,
+      createMediaResolver(report(patch), SOURCE_COMMIT)(id, original, 100)
+        .playbackUrl,
     ).toBeNull(),
   );
   it('returns an explicit verified length mismatch without a playable replacement URL', () =>
     expect(
       createMediaResolver(
         report({ status: 'duration_mismatch', actualDurationSeconds: 104 }),
+        SOURCE_COMMIT,
       )(id, original, 100),
     ).toEqual({
       playbackUrl: null,

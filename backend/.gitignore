@@ -17,7 +17,3 @@ src/generated/
 *.log
 .DS_Store
 .idea/
-
-# Generated recommendation validation reports (regenerate locally, never commit)
-data/recommendation/validation/
-data/recommendation/media-verification.json

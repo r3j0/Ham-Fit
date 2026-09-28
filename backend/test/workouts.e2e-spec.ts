@@ -22,34 +22,22 @@ import { DatabaseService } from '../src/database/database.service.js';
 import { configureApp } from '../src/setup-app.js';
 import { RecommendationsService } from '../src/recommendations/recommendations.service.js';
 import { WorkoutCatalogService } from '../src/recommendations/workout-catalog.service.js';
+import { catalogHash } from '../src/recommendations/catalog.js';
 import {
-  catalogHash,
-  loadCatalog,
-  SOURCE_COMMIT,
-} from '../src/recommendations/catalog.js';
-import type { RecommendationCatalog } from '../src/recommendations/catalog.js';
-import { vector } from '../src/recommendations/engine.js';
+  DisconnectedWorkoutAlgorithm,
+  WorkoutAlgorithm,
+} from '../src/recommendations/workout-algorithm.js';
+import { fixtureAdjustment, fixtureCatalog } from './fixtures/workouts.js';
 import { MeasurementsService } from '../src/measurements/measurements.service.js';
 import { parseCreate } from '../src/measurements/measurement-input.js';
 
 type Account = { user: { id: string }; access_token: string };
 type Workout = Awaited<ReturnType<RecommendationsService['get']>>;
-const videos = ['TEST_A.mp4', 'TEST_B.mp4'].map((videoId) => ({
-  videoId,
-  title: `[TEST ONLY] ${videoId}`,
-  originalUrl: `http://openapi.kspo.or.kr/web/video/${videoId}`,
-  ageGroup: '공통',
-  equipment: [],
-  fitnessWeights: { ...vector(), strength: 1 },
-  durationSeconds: 100,
-}));
-const catalog: RecommendationCatalog = {
-  version: `test-workouts-${randomUUID()}`,
-  sourceCommit: 'test-fixture',
-  sourceUrls: ['https://example.test/fixture'],
-  checkedOn: '2026-09-27',
-  contentHash: catalogHash(videos),
-  videos,
+const catalog = fixtureCatalog(`test-workouts-${randomUUID()}`);
+const videos = catalog.videos;
+const algorithm = {
+  recommend: vi.fn<WorkoutAlgorithm['recommend']>(),
+  weightAdjustment: vi.fn<WorkoutAlgorithm['weightAdjustment']>(),
 };
 
 describe('Daily workouts API against isolated PostgreSQL', () => {
@@ -61,7 +49,6 @@ describe('Daily workouts API against isolated PostgreSQL', () => {
   let owner: Account;
   let other: Account;
   let now = new Date('2026-09-26T14:59:59Z');
-  let rngCalls = 0;
   let mediaDirectory: string;
   const users: string[] = [];
   const devices = new Map<string, { id: string; sequence: number }>();
@@ -71,14 +58,7 @@ describe('Daily workouts API against isolated PostgreSQL', () => {
       .overrideProvider(RecommendationsService)
       .useFactory({
         factory: (db: DatabaseService) =>
-          new RecommendationsService(
-            db,
-            () => now,
-            () => {
-              rngCalls++;
-              return 0.25;
-            },
-          ),
+          new RecommendationsService(db, algorithm, () => now),
         inject: [DatabaseService],
       })
       .compile();
@@ -98,7 +78,16 @@ describe('Daily workouts API against isolated PostgreSQL', () => {
       join(mediaDirectory, 'missing.json'),
     );
     now = new Date('2026-09-26T14:59:59Z');
-    rngCalls = 0;
+    algorithm.recommend.mockReset().mockImplementation((input) =>
+      Promise.resolve({
+        videoId: input.videos[0].videoId,
+        algorithmVersion: 'test-only-provider',
+        snapshot: { testOnly: true },
+      }),
+    );
+    algorithm.weightAdjustment
+      .mockReset()
+      .mockResolvedValue(fixtureAdjustment());
     devices.clear();
     await database.userCurriculumAssignment.deleteMany({
       where: { userId: { in: users } },
@@ -122,7 +111,7 @@ describe('Daily workouts API against isolated PostgreSQL', () => {
       path,
       JSON.stringify({
         schemaVersion: 2,
-        sourceCommit: SOURCE_COMMIT,
+        sourceCommit: catalog.sourceCommit,
         durationToleranceSeconds: 1,
         videos: videos.map((video) => ({
           videoId: video.videoId,
@@ -248,6 +237,68 @@ describe('Daily workouts API against isolated PostgreSQL', () => {
     ).toBe(0);
     await today(randomUUID(), owner, { date: '2026-09-25' }).expect(400);
   });
+  it('keeps the real provider disconnected and never writes a fallback recommendation', async () => {
+    await measure();
+    const module = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
+    const disconnectedApp = module.createNestApplication();
+    configureApp(disconnectedApp);
+    await disconnectedApp.listen(0, '127.0.0.1');
+    try {
+      expect(disconnectedApp.get(WorkoutAlgorithm)).toBeInstanceOf(
+        DisconnectedWorkoutAlgorithm,
+      );
+      const result = await request(disconnectedApp.getHttpServer())
+        .post('/api/v1/workouts/today')
+        .set('Authorization', `Bearer ${owner.access_token}`)
+        .set('Idempotency-Key', randomUUID())
+        .send({})
+        .expect(503);
+      expect(result.body).toMatchObject({
+        code: 'RECOMMENDATION_NOT_CONNECTED',
+      });
+      expect(
+        await database.userCurriculumAssignment.count({
+          where: { userId: owner.user.id },
+        }),
+      ).toBe(0);
+      expect(algorithm.recommend).not.toHaveBeenCalled();
+      const existing = await assign();
+      await request(disconnectedApp.getHttpServer())
+        .get(`/api/v1/workouts/${existing.id}`)
+        .set('Authorization', `Bearer ${owner.access_token}`)
+        .expect(503);
+      const failedEvent = await request(disconnectedApp.getHttpServer())
+        .post(`/api/v1/workouts/${existing.id}/events`)
+        .set('Authorization', `Bearer ${owner.access_token}`)
+        .set('Idempotency-Key', randomUUID())
+        .send({
+          type: 'start',
+          deviceId: randomUUID(),
+          sequence: 1,
+          intervals: [],
+          positionSeconds: 0,
+        })
+        .expect(503);
+      expect(failedEvent.body).toMatchObject({
+        code: 'RECOMMENDATION_NOT_CONNECTED',
+      });
+      expect(
+        await database.userCurriculumAssignment.findUniqueOrThrow({
+          where: { id: existing.id },
+        }),
+      ).toMatchObject({ status: 'assigned', revision: 1 });
+      expect(
+        await database.workoutProgressEvent.count({
+          where: { assignmentId: existing.id },
+        }),
+      ).toBe(0);
+    } finally {
+      await disconnectedApp.close();
+    }
+  });
+
   it('serializes distinct concurrent request keys and snapshots the latest single measurement', async () => {
     await measure({
       measuredOn: '2026-09-19',
@@ -260,7 +311,7 @@ describe('Daily workouts API against isolated PostgreSQL', () => {
     expect(responses.map((r) => r.status).sort((a, b) => a - b)).toEqual([
       200, 200, 200, 200, 201,
     ]);
-    expect(rngCalls).toBe(1);
+    expect(algorithm.recommend).toHaveBeenCalledTimes(1);
     const first = responses[0].body as Workout;
     expect(new Set(responses.map((r) => (r.body as Workout).id)).size).toBe(1);
     expect(first.inputSnapshot).toMatchObject({
@@ -270,23 +321,25 @@ describe('Daily workouts API against isolated PostgreSQL', () => {
       referenceDate: '2026-09-26',
       catalogVersion: catalog.version,
     });
-    expect((first.inputSnapshot as { factors: unknown[] }).factors).toEqual(
+    expect(first.inputSnapshot).toMatchObject({ testOnly: true });
+    const rawMeasurement = algorithm.recommend.mock.calls[0][0].measurement;
+    expect(rawMeasurement.id).toBe(selected.id);
+    expect(rawMeasurement.axes).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          factor: 'flexibility',
+          axis: 'flexibility',
           status: 'not_measured',
         }),
         expect.objectContaining({
-          factor: 'muscularEndurance',
+          axis: 'muscular_endurance',
           status: 'below_standard',
           grade: null,
-          need: 1,
         }),
       ]),
     );
     await measure({ measuredOn: '2026-09-21' });
     expect((await today().expect(200)).body).toEqual(first);
-    expect(rngCalls).toBe(1);
+    expect(algorithm.recommend).toHaveBeenCalledTimes(1);
     expect(
       await database.userCurriculumAssignment.count({
         where: { userId: owner.user.id },
@@ -324,7 +377,8 @@ describe('Daily workouts API against isolated PostgreSQL', () => {
     const ended = (await event(first.id, 'end').expect(200)).body as Workout;
     expect(ended.status).toBe('not_performed');
     expect(ended.progress.watchedSeconds).toBeCloseTo(49.9);
-    expect(ended.weightAdjustment.strength.delta).toBe(0);
+    expect(ended.weightAdjustment).toEqual(fixtureAdjustment());
+    expect(algorithm.weightAdjustment.mock.lastCall?.[0].logs).toEqual([]);
     expect((await today().expect(200)).body).toEqual(ended);
     await event(first.id, 'start').expect(200);
     await event(first.id, 'progress', [{ start: 39.9, end: 40 }]).expect(200);
@@ -332,13 +386,21 @@ describe('Daily workouts API against isolated PostgreSQL', () => {
       .body as Workout;
     expect(interrupted.status).toBe('interrupted');
     expect(interrupted.progress.watchedSeconds).toBe(50);
-    expect(interrupted.weightAdjustment.strength.delta).toBe(0.15);
+    expect(interrupted.weightAdjustment).toEqual(fixtureAdjustment());
+    expect(algorithm.weightAdjustment.mock.lastCall?.[0].logs).toHaveLength(1);
+    expect(algorithm.weightAdjustment.mock.lastCall?.[0].logs[0]).toMatchObject(
+      { completed: false },
+    );
     await event(first.id, 'start').expect(200);
     const completed = (await event(first.id, 'complete').expect(200))
       .body as Workout;
     expect(completed.status).toBe('completed');
     expect(completed.progress.watchedSeconds).toBe(50);
-    expect(completed.weightAdjustment.strength.delta).toBe(0.3);
+    expect(completed.weightAdjustment).toEqual(fixtureAdjustment());
+    expect(algorithm.weightAdjustment.mock.lastCall?.[0].logs).toHaveLength(1);
+    expect(algorithm.weightAdjustment.mock.lastCall?.[0].logs[0]).toMatchObject(
+      { completed: true },
+    );
     expect(
       await database.userCurriculumAssignment.count({
         where: { userId: owner.user.id, resultStatus: 'completed' },
@@ -355,7 +417,7 @@ describe('Daily workouts API against isolated PostgreSQL', () => {
     ]);
     expect(
       repeated.map((r) => (r.body as Workout).weightAdjustment.strength.delta),
-    ).toEqual([0.3, 0.3]);
+    ).toEqual([0.222, 0.222]);
     await event(first.id, 'start').expect(409);
     await get(first.id).expect(200, completed);
   });
@@ -463,9 +525,9 @@ describe('Daily workouts API against isolated PostgreSQL', () => {
       positionSeconds: 100,
       intervals: [{ start: 0, end: 49.9 }],
     });
-    expect(saved.weightAdjustment.strength.delta).toBe(0);
+    expect(algorithm.weightAdjustment.mock.lastCall?.[0].logs).toEqual([]);
   });
-  it('stores decimal 50% as interrupted and includes it in the next recommendation exposure', async () => {
+  it('stores decimal 50% as one interrupted record for a future provider', async () => {
     verifiedMedia();
     const first = await assign();
     await event(first.id, 'start').expect(200);
@@ -477,14 +539,20 @@ describe('Daily workouts API against isolated PostgreSQL', () => {
     ).body as Workout;
     expect(saved.status).toBe('interrupted');
     expect(saved.resultStatus).toBe('interrupted');
-    expect(saved.weightAdjustment.strength.delta).toBe(0.15);
+    expect(algorithm.weightAdjustment.mock.lastCall?.[0].logs).toEqual([
+      expect.objectContaining({ videoId: first.video.id, completed: false }),
+    ]);
     await get(first.id).expect(200, saved);
     now = new Date('2026-09-26T15:00:01Z');
     const next = (await today().expect(201)).body as Workout;
-    expect(
-      (next.inputSnapshot as { exposure: { strength: number } }).exposure
-        .strength,
-    ).toBeCloseTo(0.15 * 0.5 ** (1 / 7), 12);
+    expect(next.algorithmVersion).toBe('test-only-provider');
+    expect(algorithm.recommend.mock.lastCall?.[0].logs).toEqual([
+      expect.objectContaining({
+        videoId: first.video.id,
+        completed: false,
+        date: '2026-09-26T14:59:59.000Z',
+      }),
+    ]);
   });
   it('deduplicates event retries/concurrent devices and rejects stale, swapped and future inputs', async () => {
     const first = await assign();
@@ -645,38 +713,37 @@ describe('Daily workouts API against isolated PostgreSQL', () => {
     expect(ended.video.playbackStatus).toBe('unavailable');
   });
 
-  it('excludes not-performed from tomorrow exposure and uses interrupted with one-day decay', async () => {
+  it('passes only one representative interrupted record and excludes not-performed', async () => {
     const first = await assign();
     await event(first.id, 'start').expect(200);
     await event(first.id, 'end', [{ start: 0, end: 49.9 }]).expect(200);
     now = new Date('2026-09-26T15:00:01Z');
     const second = (await today().expect(201)).body as Workout;
-    expect(second.inputSnapshot).toMatchObject({ exposure: { strength: 0 } });
+    expect(algorithm.recommend.mock.lastCall?.[0].logs).toEqual([]);
     await event(second.id, 'start').expect(200);
     await event(second.id, 'end', [{ start: 0, end: 50 }]).expect(200);
     now = new Date('2026-09-27T15:00:01Z');
     const third = (await today().expect(201)).body as Workout;
-    expect(
-      (third.inputSnapshot as { exposure: { strength: number } }).exposure
-        .strength,
-    ).toBeCloseTo(0.15 * 0.5 ** (1 / 7), 12);
-    expect(third.video.id).not.toBe(second.video.id);
+    expect(third.algorithmVersion).toBe('test-only-provider');
+    expect(algorithm.recommend.mock.lastCall?.[0].logs).toEqual([
+      expect.objectContaining({ videoId: second.video.id, completed: false }),
+    ]);
   });
 
-  it('atomically imports all actual 731 videos, deduplicates reimport and preserves old versions', async () => {
-    const real = loadCatalog();
-    expect(await catalogs.activate(real)).toMatchObject({ videoCount: 731 });
+  it('persists supplied catalog definitions atomically, deduplicates and preserves old versions', async () => {
+    const real = fixtureCatalog(`test-new-catalog-${randomUUID()}`);
+    expect(await catalogs.activate(real)).toMatchObject({ videoCount: 2 });
     expect(await catalogs.activate(real)).toMatchObject({ reused: true });
     expect(
       await database.workoutVideo.count({
         where: { catalogVersion: real.version },
       }),
-    ).toBe(731);
+    ).toBe(2);
     const bad = structuredClone(real);
     bad.version += '-bad';
-    bad.videos[0].fitnessWeights = vector();
+    bad.videos[0].durationSeconds = 0;
     bad.contentHash = catalogHash(bad.videos);
-    await expect(catalogs.activate(bad)).rejects.toThrow(/weight sum/);
+    await expect(catalogs.activate(bad)).rejects.toThrow(/durationSeconds/);
     expect(
       (
         await database.workoutCatalogActivation.findUniqueOrThrow({
@@ -692,7 +759,7 @@ describe('Daily workouts API against isolated PostgreSQL', () => {
     await measure();
     const assigned = (await today().expect(201)).body as Workout;
     expect(assigned.video.catalogVersion).toBe(real.version);
-    expect(assigned.video.durationSeconds).toBeGreaterThanOrEqual(32);
+    expect(assigned.video.durationSeconds).toBe(100);
     await catalogs.activate(catalog);
     expect(
       ((await get(assigned.id).expect(200)).body as Workout).video.id,
@@ -701,6 +768,6 @@ describe('Daily workouts API against isolated PostgreSQL', () => {
       await database.workoutVideo.count({
         where: { catalogVersion: real.version },
       }),
-    ).toBe(731);
+    ).toBe(2);
   });
 });
