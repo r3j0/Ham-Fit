@@ -145,6 +145,19 @@
   min-width: 0;
   gap: 32px;
 }
+.home-activity [aria-labelledby="today-title"] .loading {
+  min-height: 90px;
+}
+.home-activity [aria-labelledby="workout-streak-title"] .loading {
+  min-height: 69px;
+}
+@media (max-width: 480px) {
+  .home-activity[data-current-workout]
+    [aria-labelledby="today-title"]
+    .loading {
+    min-height: 158px;
+  }
+}
 .home-companions {
   --home-mascot-size: min(256px, 32svh);
   gap: 4px;

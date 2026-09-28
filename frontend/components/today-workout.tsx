@@ -114,9 +114,10 @@ export function TodayWorkout({ embedded = false }: { embedded?: boolean }) {
     [...history.workouts, ...(workout ? [workout] : [])],
     workout?.serverKoreanDate ?? history.today,
   );
+  const listReady = loaded || history.ready;
   const content = (
     <div className={embedded ? "stack" : "content stack"}>
-      {!loaded ? (
+      {!listReady ? (
         <Loading />
       ) : (
         <>

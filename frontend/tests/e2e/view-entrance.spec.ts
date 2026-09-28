@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { installApi, testRecord } from "./integration-fixtures";
+import { installApi, testRecord, testWorkout } from "./integration-fixtures";
 
 type EntranceCall = {
   id: string | undefined;
@@ -48,6 +48,90 @@ test("페이지 진입은 최초 페인트의 CSS 페이드로 처리하고 이�
   expect(
     await main.evaluate((element) => element.getAnimations()[0]?.startTime),
   ).toBe(initialStart);
+});
+
+test("메인 전환은 준비된 이력으로 운동을 즉시 표시하고 현재 운동 재조회로 흔들리지 않는다", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await installApi(page, testRecord());
+  let releaseCurrent!: () => void;
+  const currentGate = new Promise<void>((resolve) => {
+    releaseCurrent = resolve;
+  });
+  await page.route("**/api/v1/workouts/current", async (route) => {
+    await currentGate;
+    await route.fulfill({ json: testWorkout });
+  });
+
+  await page.goto("/account");
+  await expect(page.getByRole("heading", { name: "내 프로필" })).toBeVisible();
+  await page.getByRole("link", { name: "메인", exact: true }).click();
+  await expect(page).toHaveURL("/");
+  const today = page.getByRole("region", {
+    name: "오늘의 운동",
+    exact: true,
+  });
+  await expect(
+    today.getByRole("heading", { name: "내 기존 운동" }),
+  ).toBeVisible();
+  await expect(today.locator(".loading")).toHaveCount(0);
+  const before = (await today.boundingBox())!;
+
+  const currentResponse = page.waitForResponse((response) =>
+    response.url().endsWith("/workouts/current"),
+  );
+  releaseCurrent();
+  await currentResponse;
+  await expect(today.locator(".loading")).toHaveCount(0);
+  const after = (await today.boundingBox())!;
+  expect(after.height).toBeCloseTo(before.height, 1);
+  expect(after.y).toBeCloseTo(before.y, 1);
+});
+
+test("메인의 초기 로딩 슬롯은 실제 운동 영역과 같은 높이를 유지한다", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await installApi(page, testRecord());
+  let releaseWorkouts!: () => void;
+  const workoutGate = new Promise<void>((resolve) => {
+    releaseWorkouts = resolve;
+  });
+  await page.route("**/api/v1/workouts/current", async (route) => {
+    await workoutGate;
+    await route.fulfill({ json: testWorkout });
+  });
+  await page.route("**/api/v1/workouts/history?**", async (route) => {
+    await workoutGate;
+    await route.fulfill({ json: { items: [testWorkout], nextCursor: null } });
+  });
+
+  await page.goto("/account");
+  await expect(page.getByRole("heading", { name: "내 프로필" })).toBeVisible();
+  await page.getByRole("link", { name: "메인", exact: true }).click();
+  await expect(page).toHaveURL("/");
+  const activity = page.locator(".home-activity");
+  await expect(activity.locator(".loading")).toHaveCount(2);
+  const before = (await activity.boundingBox())!;
+
+  const responses = Promise.all([
+    page.waitForResponse((response) =>
+      response.url().endsWith("/workouts/current"),
+    ),
+    page.waitForResponse((response) =>
+      response.url().includes("/workouts/history?"),
+    ),
+  ]);
+  releaseWorkouts();
+  await responses;
+  await expect(
+    activity.getByRole("heading", { name: "내 기존 운동" }),
+  ).toBeVisible();
+  await expect(activity.locator(".loading")).toHaveCount(0);
+  const after = (await activity.boundingBox())!;
+  expect(Math.abs(after.height - before.height)).toBeLessThan(1);
+  expect(Math.abs(after.y - before.y)).toBeLessThan(1);
 });
 
 test("움직임 감소 설정에서는 페이지 진입 애니메이션을 만들지 않는다", async ({
