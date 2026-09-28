@@ -1157,6 +1157,8 @@ fieldset:disabled select {
 }
 .account-shell .profile-copy h2 {
   min-width: 0;
+  font-size: 24px;
+  line-height: 1.35;
   overflow-wrap: anywhere;
   color: var(--navy);
 }
@@ -1205,12 +1207,14 @@ fieldset:disabled select {
   flex: none;
 }
 .profile-card {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 20px;
+  padding: 12px 16px;
   border-radius: var(--radius-hero);
   background: var(--tint);
+}
+.profile-identity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 .profile-card p {
   overflow-wrap: anywhere;
@@ -1239,22 +1243,24 @@ fieldset:disabled select {
   font-size: 13px;
 }
 .profile-report {
-  --profile-report-accent: #bd5200;
-  padding: 20px;
-  border-radius: var(--radius-hero);
-  background: var(--canvas);
+  --profile-report-accent: #b84e00;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  color: var(--profile-report-accent);
 }
 .profile-report-metrics {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 20px 16px;
+  gap: 12px 16px;
 }
 .profile-report-metric dt {
   display: flex;
   align-items: center;
   gap: 6px;
-  color: var(--text-secondary);
+  color: var(--profile-report-accent);
   font-size: 12px;
+  font-weight: 650;
   word-break: keep-all;
 }
 .profile-report-metric dt svg {
@@ -1265,8 +1271,8 @@ fieldset:disabled select {
   display: flex;
   align-items: baseline;
   gap: 5px;
-  margin-top: 6px;
-  color: var(--muted);
+  margin-top: 4px;
+  color: var(--profile-report-accent);
   font-size: 12px;
 }
 .profile-report-metric dd strong {
@@ -1281,11 +1287,12 @@ fieldset:disabled select {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  margin-top: 20px;
-  padding-top: 16px;
+  margin-top: 12px;
+  padding-top: 12px;
   border-top: 1px solid var(--border);
-  color: var(--text-secondary);
+  color: var(--profile-report-accent);
   font-size: 14px;
+  font-weight: 600;
 }
 .profile-report-total svg,
 .profile-report-total strong {
@@ -1953,6 +1960,9 @@ fieldset:disabled select {
   }
   .account-shell .profile-insights {
     grid-column: 1;
+  }
+  .profile-report-metrics {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
   .account-shell .profile-actions {
     grid-column: 2;

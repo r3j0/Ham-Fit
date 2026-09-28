@@ -55,22 +55,29 @@ export function Account() {
         {logoutError && <Notice>{logoutError}</Notice>}
         {user ? (
           <div className="profile-card">
-            <BreathingMascot
-              framing="face"
-              size={128}
-              label="편안하게 숨 쉬는 햄스터 얼굴"
-              className="profile-avatar"
-            />
-            <div className="profile-copy">
-              <div className="profile-heading">
-                <h2>{user.nickname ?? "닉네임"}</h2>
-                <p className="profile-tenure">
-                  가입한지{" "}
-                  {String(daysSinceJoined(user.created_at)).padStart(2, "0")} 일
-                </p>
+            <div className="profile-identity">
+              <BreathingMascot
+                framing="face"
+                size={128}
+                label="편안하게 숨 쉬는 햄스터 얼굴"
+                className="profile-avatar"
+              />
+              <div className="profile-copy">
+                <div className="profile-heading">
+                  <h2>{user.nickname ?? "닉네임"}</h2>
+                  <p
+                    className="profile-tenure"
+                    title={`가입일: ${new Date(user.created_at).toLocaleDateString("ko-KR", { timeZone: "Asia/Seoul" })}`}
+                  >
+                    가입한지{" "}
+                    {String(daysSinceJoined(user.created_at)).padStart(2, "0")}{" "}
+                    일
+                  </p>
+                </div>
+                <p className="profile-email">{user.email}</p>
               </div>
-              <p className="profile-email">{user.email}</p>
             </div>
+            <ProfileActivityReport />
           </div>
         ) : profileError ? (
           <>
@@ -82,10 +89,9 @@ export function Account() {
         ) : (
           <Loading />
         )}
-        {user && (
+        {user?.isOnboarded && (
           <div className="profile-insights stack">
-            {user.isOnboarded && <LatestFitness />}
-            <ProfileActivityReport />
+            <LatestFitness />
           </div>
         )}
         <div className="profile-actions stack">

@@ -58,7 +58,7 @@ test("프로필은 재화·가입 경과일·활동 리포트와 얼굴 모션�
   await expect(report.getByText("예시", { exact: true })).toHaveCount(0);
   await expect(report.getByRole("heading")).toHaveCount(0);
   for (const emphasis of await report.locator("strong, svg").all())
-    await expect(emphasis).toHaveCSS("color", "rgb(189, 82, 0)");
+    await expect(emphasis).toHaveCSS("color", "rgb(184, 78, 0)");
   await expect(report.locator("dt")).toHaveText([
     "현재 연속 스트릭",
     "최장 연속 스트릭",
@@ -145,7 +145,11 @@ test("프로필은 재화·가입 경과일·활동 리포트와 얼굴 모션�
     expect(tenure.x + tenure.width).toBeLessThanOrEqual(card.x + card.width);
     const chart = (await page.locator(".fitness-radar svg").boundingBox())!;
     const reportBox = (await report.boundingBox())!;
-    expect(reportBox.y).toBeGreaterThanOrEqual(chart.y + chart.height);
+    expect(reportBox.y).toBeGreaterThanOrEqual(avatarBox.y + avatarBox.height);
+    expect(reportBox.y + reportBox.height).toBeLessThanOrEqual(
+      card.y + card.height,
+    );
+    expect(card.y + card.height).toBeLessThanOrEqual(chart.y);
     for (const metric of await report.locator(".profile-report-metric").all()) {
       const box = (await metric.boundingBox())!;
       expect(box.x).toBeGreaterThanOrEqual(reportBox.x);
