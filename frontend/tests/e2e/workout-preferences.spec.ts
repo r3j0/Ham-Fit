@@ -38,9 +38,7 @@ test("저장된 설정을 조회하고 변경 필드만 저장해 다른 곳의 
     exerciseGoal: "body_composition_management",
   });
   await page.goto("/account/preferences");
-  await expect(
-    page.getByRole("radio", { name: "더 적게 운동하기" }),
-  ).toBeChecked();
+  await expect(page.getByRole("radio", { name: "가볍게" })).toBeChecked();
   await expect(
     page.getByRole("radio", { name: "체형 관리", exact: true }),
   ).toBeChecked();
@@ -59,7 +57,7 @@ test("저장된 설정을 조회하고 변경 필드만 저장해 다른 곳의 
   }
   // A concurrent change to the untouched goal must not be overwritten.
   state.value.exerciseGoal = "fitness_grade_improvement";
-  await page.getByText("더 많이 운동하기", { exact: true }).click();
+  await page.getByText("충분히", { exact: true }).click();
   await page.getByRole("button", { name: "저장하기", exact: true }).click();
   await expect(page.getByRole("status")).toHaveText("운동 설정을 저장했어요.");
   expect(state.patches).toEqual([{ exerciseVolume: "more" }]);
@@ -67,9 +65,7 @@ test("저장된 설정을 조회하고 변경 필드만 저장해 다른 곳의 
     page.getByRole("radio", { name: "국민체력100 등급 개선", exact: true }),
   ).toBeChecked();
   await page.reload();
-  await expect(
-    page.getByRole("radio", { name: "더 많이 운동하기" }),
-  ).toBeChecked();
+  await expect(page.getByRole("radio", { name: "충분히" })).toBeChecked();
   await expect(
     page.getByRole("radio", { name: "국민체력100 등급 개선", exact: true }),
   ).toBeChecked();
@@ -89,7 +85,7 @@ test("목적 미선택을 유지하면서 운동량을 저장하고 키보드로
   await expect(
     page.getByRole("group", { name: "운동 목적" }).locator(":checked"),
   ).toHaveCount(0);
-  await page.getByText("더 적게 운동하기", { exact: true }).click();
+  await page.getByText("가볍게", { exact: true }).click();
   await page.getByRole("button", { name: "저장하기", exact: true }).click();
   await expect(page.getByRole("status")).toHaveText("운동 설정을 저장했어요.");
   expect(state.patches).toEqual([{ exerciseVolume: "less" }]);
@@ -211,14 +207,12 @@ test("응답 유실은 동일한 변경분으로 재시도하고 저장 중 중�
     return route.fallback();
   });
   await page.goto("/account/preferences");
-  await page.getByText("더 많이 운동하기", { exact: true }).click();
+  await page.getByText("충분히", { exact: true }).click();
   await page.getByRole("button", { name: "저장하기", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "저장 중이에요" }),
   ).toBeDisabled();
-  await expect(
-    page.getByRole("radio", { name: "더 적게 운동하기" }),
-  ).toBeDisabled();
+  await expect(page.getByRole("radio", { name: "가볍게" })).toBeDisabled();
   await page
     .getByRole("form", { name: "운동 설정" })
     .evaluate((form: HTMLFormElement) => form.requestSubmit());
@@ -227,9 +221,7 @@ test("응답 유실은 동일한 변경분으로 재시도하고 저장 중 중�
   await expect(page.getByRole("main").getByRole("alert")).toContainText(
     "저장 결과를 확인하지 못했어요",
   );
-  await expect(
-    page.getByRole("radio", { name: "더 적게 운동하기" }),
-  ).toBeDisabled();
+  await expect(page.getByRole("radio", { name: "가볍게" })).toBeDisabled();
   state.value.exerciseGoal = "body_composition_management";
   await page.getByRole("button", { name: "다시 저장하기" }).click();
   await expect(page.getByRole("status")).toHaveText("운동 설정을 저장했어요.");
@@ -245,20 +237,18 @@ test("응답 유실은 동일한 변경분으로 재시도하고 저장 중 중�
 test("저장 전 이탈을 확인하고 저장 후 재수정도 보호한다", async ({ page }) => {
   const state = await installPreferences(page);
   await page.goto("/account/preferences");
-  await page.getByText("더 많이 운동하기", { exact: true }).click();
+  await page.getByText("충분히", { exact: true }).click();
   page.once("dialog", (dialog) => dialog.dismiss());
   await page.getByRole("link", { name: "이전 화면" }).click();
   await expect(page).toHaveURL("/account/preferences");
   await page.getByRole("button", { name: "저장하기", exact: true }).click();
   await expect(page.getByRole("status")).toHaveText("운동 설정을 저장했어요.");
-  await page.getByText("더 적게 운동하기", { exact: true }).click();
+  await page.getByText("가볍게", { exact: true }).click();
   page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("link", { name: "이전 화면" }).click();
   await expect(page).toHaveURL("/account");
   await page.getByRole("link", { name: "운동 설정" }).click();
-  await expect(
-    page.getByRole("radio", { name: "더 많이 운동하기" }),
-  ).toBeChecked();
+  await expect(page.getByRole("radio", { name: "충분히" })).toBeChecked();
   expect(state.patches).toEqual([{ exerciseVolume: "more" }]);
 });
 
@@ -267,7 +257,7 @@ test("저장 중 세션이 만료되면 기존 로그인 복귀 경로로 이동
 }) => {
   const state = await installPreferences(page);
   await page.goto("/account/preferences");
-  await page.getByText("더 많이 운동하기", { exact: true }).click();
+  await page.getByText("충분히", { exact: true }).click();
   await page.route("**/api/v1/auth/refresh", (route) =>
     route.fulfill({ status: 401, json: { message: "expired" } }),
   );

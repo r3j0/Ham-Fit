@@ -47,7 +47,7 @@ test("실제 PR #8: 운동량·목적 저장, 새로고침·재로그인 복원�
   await expect(
     page.getByRole("radio", { name: "기본", exact: true }),
   ).toBeChecked();
-  await page.getByText("더 적게 운동하기", { exact: true }).click();
+  await page.getByText("가볍게", { exact: true }).click();
   const waiting = page.waitForResponse(
     (response) =>
       response.url() === `${api}/users/me/preferences` &&
@@ -63,9 +63,7 @@ test("실제 PR #8: 운동량·목적 저장, 새로고침·재로그인 복원�
   });
   await expect(page.getByRole("status")).toHaveText("운동 설정을 저장했어요.");
   await page.reload();
-  await expect(
-    page.getByRole("radio", { name: "더 적게 운동하기" }),
-  ).toBeChecked();
+  await expect(page.getByRole("radio", { name: "가볍게" })).toBeChecked();
   await page.getByText("체형 관리", { exact: true }).click();
   await page.getByRole("button", { name: "저장하기", exact: true }).click();
   await expect(page.getByRole("status")).toHaveText("운동 설정을 저장했어요.");
@@ -103,9 +101,7 @@ test("실제 PR #8: 운동량·목적 저장, 새로고침·재로그인 복원�
   await expect(page).toHaveURL("/");
   await page.getByRole("link", { name: "내 프로필", exact: true }).click();
   await page.getByRole("link", { name: "운동 설정" }).click();
-  await expect(
-    page.getByRole("radio", { name: "더 적게 운동하기" }),
-  ).toBeChecked();
+  await expect(page.getByRole("radio", { name: "가볍게" })).toBeChecked();
   await expect(
     page.getByRole("radio", { name: "체형 관리", exact: true }),
   ).toBeChecked();
@@ -135,7 +131,7 @@ test("실제 PR #8: 두 사용자의 설정 격리와 변경하지 않은 목적
     await expect(
       page.getByRole("radio", { name: "기본", exact: true }),
     ).toBeChecked();
-    await page.getByText("더 많이 운동하기", { exact: true }).click();
+    await page.getByText("충분히", { exact: true }).click();
     const concurrent = await page.request.patch(`${api}/users/me/preferences`, {
       headers,
       data: { exerciseGoal: "general_fitness_improvement" },
@@ -171,9 +167,7 @@ test("실제 PR #8: 두 사용자의 설정 격리와 변경하지 않은 목적
     });
     expect(changed.status()).toBe(200);
     await page.reload();
-    await expect(
-      page.getByRole("radio", { name: "더 많이 운동하기" }),
-    ).toBeChecked();
+    await expect(page.getByRole("radio", { name: "충분히" })).toBeChecked();
     await expect(
       page.getByRole("radio", { name: "기본 체력 증진", exact: true }),
     ).toBeChecked();

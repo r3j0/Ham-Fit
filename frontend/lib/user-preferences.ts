@@ -1,7 +1,7 @@
 export const exerciseVolumeOptions = [
-  { value: "less", label: "더 적게 운동하기" },
+  { value: "less", label: "가볍게" },
   { value: "standard", label: "기본" },
-  { value: "more", label: "더 많이 운동하기" },
+  { value: "more", label: "충분히" },
 ] as const;
 
 export const exerciseGoalOptions = [
