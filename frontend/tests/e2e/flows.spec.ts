@@ -1,4 +1,14 @@
 import { test, expect, type Page, type Route } from "@playwright/test";
+// Keep actual authentication limits enabled. This large file can otherwise
+// exhaust the shared IP window halfway through a successful scenario.
+let authGroup = 0;
+test.beforeEach(async () => {
+  if (authGroup++ % 15 !== 0) return;
+  test.setTimeout(test.info().timeout + 65000);
+  await new Promise((resolve) =>
+    setTimeout(resolve, 60000 - (Date.now() % 60000) + 250),
+  );
+});
 const password = "frontend-test-password-2026!";
 const apiOrigin = new URL(
   process.env.E2E_API_BASE_URL ?? "http://localhost:3001/api/v1",
@@ -16,14 +26,37 @@ function failApi(route: Route, status: number, extra = {}) {
 async function login(page: Page, email: string) {
   await page.getByLabel("이메일", { exact: true }).fill(email);
   await page.getByLabel("비밀번호", { exact: true }).fill(password);
+  const response = page.waitForResponse((r) => r.url().endsWith("/auth/login"));
   await page.getByRole("button", { name: "로그인", exact: true }).click();
+  if ((await response).status() === 429) {
+    await expect(
+      page.getByRole("button", { name: "로그인", exact: true }),
+    ).toBeEnabled({ timeout: 65000 });
+    await page.getByRole("button", { name: "로그인", exact: true }).click();
+  }
 }
 async function signout(page: Page) {
+  const response = page.waitForResponse((r) =>
+    r.url().endsWith("/auth/logout"),
+  );
   await page.getByRole("button", { name: "로그아웃", exact: true }).click();
   await page
     .getByRole("dialog")
     .getByRole("button", { name: "로그아웃", exact: true })
     .click();
+  const result = await response;
+  if (result.status() === 429) {
+    const body = await result.json();
+    // The full suite shares a client IP. Respect the real server's wait; never disable rate limiting.
+    await page.waitForTimeout(
+      Math.min(60, Number(body.retry_after) || 60) * 1000,
+    );
+    await page.getByRole("button", { name: "로그아웃", exact: true }).click();
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: "로그아웃", exact: true })
+      .click();
+  }
   await expect(page).toHaveURL(/\/login/);
 }
 async function openRecords(page: Page) {
@@ -39,6 +72,7 @@ async function signup(page: Page, destination: "records" | "main" = "records") {
   await page.getByLabel("이메일", { exact: true }).fill(email);
   await page.getByLabel("비밀번호", { exact: true }).fill(password);
   await page.getByLabel("비밀번호 확인", { exact: true }).fill(password);
+  await page.getByLabel("생년월일", { exact: true }).fill("2000-02-29");
   const registration = page.waitForResponse((response) =>
     response.url().endsWith("/auth/register"),
   );
@@ -50,17 +84,38 @@ async function signup(page: Page, destination: "records" | "main" = "records") {
     ).toBeEnabled({ timeout: 65000 });
     await page.getByRole("button", { name: "가입하고 시작하기" }).click();
   }
-  await expect(page).toHaveURL(new URL("/", page.url()).href);
+  await expect(page).toHaveURL("/onboarding");
+  await expect(page.getByRole("navigation", { name: "하단 메뉴" })).toHaveCount(
+    0,
+  );
   if (destination === "records") {
+    await page.getByRole("link", { name: "이전 화면", exact: true }).click();
     await openRecords(page);
     await expect(page.getByText("첫 기록을 기다리고 있어요")).toBeVisible();
+  } else {
+    await page.getByRole("link", { name: "이전 화면", exact: true }).click();
+    await expect(page).toHaveURL("/");
   }
   return email;
 }
-async function startRecord(page: Page, age = "25") {
+async function openManualRecord(page: Page) {
   await page.getByRole("link", { name: "새 기록 등록", exact: true }).click();
+  await expect(page).toHaveURL(/\/onboarding$/);
+  await expect(
+    page.getByRole("heading", { name: "체력 기록 시작", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("link", { name: "직접 입력하기" }).click();
+}
+async function openSavedRecord(page: Page) {
+  await expect(page).toHaveURL(/\/onboarding\/complete\?record=/);
+  await page.getByRole("link", { name: "측정 기록 보기", exact: true }).click();
+  await expect(page.getByRole("link", { name: "기록 수정" })).toBeVisible();
+}
+async function startRecord(page: Page, age = "25") {
+  await openManualRecord(page);
   await page.getByLabel("측정일", { exact: true }).fill("2026-09-17");
   await page.getByLabel("측정 당시 만 나이", { exact: true }).fill(age);
+  await page.getByLabel("성별", { exact: true }).selectOption("male");
   await page.getByRole("button", { name: "측정값 입력하기" }).click();
   await expect(
     page.getByRole("heading", { name: "측정한 항목만 입력해요" }),
@@ -80,18 +135,26 @@ async function add(page: Page, label: string, value: string) {
 }
 async function save(page: Page, count = 1) {
   await page.getByRole("button", { name: `${count}개 항목 저장하기` }).click();
-  await expect(
-    page.getByText("측정 기록을 저장했어요.", { exact: true }),
-  ).toBeVisible();
+  await openSavedRecord(page);
 }
 test("가입 → 정확한 부분 저장 → 새로고침 → 수정 → 삭제 → 로그아웃 → 로그인", async ({
   page,
 }, testInfo) => {
   const email = await signup(page);
+  await page.goto("/measurements/new");
+  await expect(page).toHaveURL(/\/onboarding$/);
+  await expect(
+    page.getByRole("link", { name: "결과표가 있어요" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "결과표가 없어요" }),
+  ).toBeVisible();
+  await page.getByRole("link", { name: "이전 화면", exact: true }).click();
+  await openRecords(page);
   await startRecord(page);
   await page.getByRole("button", { name: "변경", exact: true }).click();
   await page.getByText("추가 정보", { exact: false }).click();
-  await page.getByLabel("결과표의 성별").selectOption("female");
+  await page.getByLabel("성별", { exact: true }).selectOption("female");
   await page.getByLabel("측정 유형", { exact: true }).selectOption("standard");
   await page
     .getByLabel("측정 센터", { exact: true })
@@ -105,16 +168,24 @@ test("가입 → 정확한 부분 저장 → 새로고침 → 수정 → 삭제 
   await page.getByLabel("신장 등급", { exact: true }).fill("참가");
   await save(page, 3);
   await expect(
-    page.getByText("170.1234567890123456789 cm", { exact: true }),
+    page
+      .locator(".result-card")
+      .getByText("170.1234567890123456789 cm", { exact: true }),
   ).toBeVisible();
-  await expect(page.getByText("-3.25 cm", { exact: true })).toBeVisible();
-  await expect(page.getByText("0 회", { exact: true })).toBeVisible();
+  await expect(
+    page.locator(".result-card").getByText("-3.25 cm", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.locator(".result-card").getByText("0 회", { exact: true }),
+  ).toBeVisible();
   await page.getByText("미입력 항목 보기", { exact: false }).click();
   await expect(page.getByText("체중 · 미입력", { exact: true })).toBeVisible();
   await expect(page.getByText("BMI · 미입력", { exact: true })).toBeVisible();
   await page.reload();
   await expect(
-    page.getByText("170.1234567890123456789 cm", { exact: true }),
+    page
+      .locator(".result-card")
+      .getByText("170.1234567890123456789 cm", { exact: true }),
   ).toBeVisible();
   await page.screenshot({
     path: testInfo.outputPath("record-mobile.png"),
@@ -123,10 +194,16 @@ test("가입 → 정확한 부분 저장 → 새로고침 → 수정 → 삭제 
   await page.getByRole("link", { name: "기록 수정" }).click();
   await page.getByLabel("신장", { exact: true }).fill("171.25");
   await page.getByRole("button", { name: "수정 내용 저장" }).click();
-  await expect(page.getByText("171.25 cm", { exact: true })).toBeVisible();
-  await expect(page.getByText("-3.25 cm", { exact: true })).toBeVisible();
   await expect(
-    page.getByText("결과표 등급: 참가", { exact: true }),
+    page.locator(".result-card").getByText("171.25 cm", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.locator(".result-card").getByText("-3.25 cm", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page
+      .locator(".result-card")
+      .getByText("결과표 등급: 참가", { exact: true }),
   ).toBeVisible();
   await expect(
     page.getByText("테스트 체력인증센터", { exact: true }),
@@ -158,6 +235,124 @@ test("가입 → 정확한 부분 저장 → 새로고침 → 수정 → 삭제 
   await openRecords(page);
   await expect(page.getByText("첫 기록을 기다리고 있어요")).toBeVisible();
 });
+test("생년월일은 계정 설정에서 수정·복원하고 조회·저장 실패와 미저장 이탈을 처리한다", async ({
+  page,
+}) => {
+  await signup(page, "main");
+  await page.getByRole("link", { name: "내 프로필", exact: true }).click();
+  const input = page.getByLabel("생년월일 입력", { exact: true });
+  await expect(input).toHaveCount(0);
+  await page.getByRole("link", { name: "계정 설정", exact: true }).click();
+  await expect(page).toHaveURL(/\/account\/settings$/);
+  await page.getByRole("button", { name: "생년월일", exact: true }).click();
+  await expect(input).toHaveValue("2000-02-29");
+  await input.fill("1999-03-01");
+  const saved = page.waitForResponse(
+    (r) =>
+      r.url().endsWith("/users/me/profile") && r.request().method() === "PATCH",
+  );
+  await page.getByRole("button", { name: "생년월일 저장" }).click();
+  expect((await saved).status()).toBe(200);
+  await expect(page.getByText("생년월일을 저장했어요.")).toBeVisible();
+  await page.reload();
+  await expect(input).toHaveValue("1999-03-01");
+  let failRead = true;
+  await page.route("**/users/me/profile", (route) =>
+    route.request().method() === "PATCH" || failRead
+      ? failApi(route, 503)
+      : route.continue(),
+  );
+  await page.reload();
+  await expect(
+    page.getByRole("button", { name: "생년월일 다시 불러오기" }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "이메일 변경", exact: true })
+    .first()
+    .click();
+  await expect(page.getByLabel("새 이메일", { exact: true })).toBeEnabled();
+  await page.getByRole("button", { name: "생년월일", exact: true }).click();
+  failRead = false;
+  await page.getByRole("button", { name: "생년월일 다시 불러오기" }).click();
+  await expect(input).toHaveValue("1999-03-01");
+  await input.fill("1998-03-01");
+  await page.getByRole("button", { name: "생년월일 저장" }).click();
+  await expect(page.getByRole("main").getByRole("alert")).toBeVisible();
+  await expect(input).toHaveValue("1998-03-01");
+  await page
+    .getByRole("button", { name: "이메일 변경", exact: true })
+    .first()
+    .click();
+  await page
+    .getByLabel("새 이메일", { exact: true })
+    .fill("unsaved@example.test");
+  let prompts = 0;
+  const cancel = async (dialog: import("@playwright/test").Dialog) => {
+    prompts++;
+    await dialog.dismiss();
+  };
+  page.on("dialog", cancel);
+  await page.getByRole("link", { name: "이전 화면", exact: true }).click();
+  await expect(page).toHaveURL(/\/account\/settings\?tab=email$/);
+  expect(prompts).toBe(1);
+  await expect(page.locator("#profile-birth")).toHaveValue("1998-03-01");
+  await expect(page.getByLabel("새 이메일", { exact: true })).toHaveValue(
+    "unsaved@example.test",
+  );
+  page.off("dialog", cancel);
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.getByRole("link", { name: "이전 화면", exact: true }).click();
+  await expect(page).toHaveURL(/\/account$/);
+  await expect(input).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "로그아웃", exact: true }),
+  ).toBeEnabled();
+});
+test("오늘 운동은 측정 입력을 안내하고 응답 유실·새로고침 후 같은 배정을 복구한다", async ({
+  page,
+}) => {
+  await signup(page, "main");
+  await expect(page.getByRole("button", { name: "운동하기" })).toBeVisible();
+  await expect(page.getByRole("main").getByRole("alert")).toHaveCount(0);
+  await page.getByRole("button", { name: "운동하기" }).click();
+  await expect(
+    page.getByRole("link", { name: "측정 기록 등록하기" }),
+  ).toBeVisible();
+  await openRecords(page);
+  await startRecord(page);
+  await add(page, "신장", "170");
+  await save(page);
+  await page
+    .getByRole("navigation")
+    .getByRole("link", { name: "메인", exact: true })
+    .click();
+  let assignmentId = "";
+  const keys: string[] = [];
+  await page.route("**/workouts/today", async (route) => {
+    keys.push(route.request().headers()["idempotency-key"]);
+    expect(route.request().postDataJSON()).toEqual({});
+    const response = await route.fetch();
+    if (!assignmentId) {
+      assignmentId = (await response.json()).id;
+      await route.abort("failed");
+    } else await route.fulfill({ response });
+  });
+  await page.getByRole("button", { name: "운동하기" }).click();
+  await expect(
+    page.getByRole("button", { name: "이전 추천 요청 확인하기" }),
+  ).toBeVisible();
+  await page.reload();
+  await page.getByRole("button", { name: "이전 추천 요청 확인하기" }).click();
+  await expect(
+    page.getByRole("button", { name: "이전 추천 요청 확인하기" }),
+  ).toHaveCount(0);
+  expect(keys).toHaveLength(2);
+  expect(keys[0]).toBe(keys[1]);
+  await expect(
+    page.getByRole("link", { name: "운동 시작하기" }),
+  ).toHaveAttribute("href", `/workouts/${assignmentId}`);
+  await expect(page.getByRole("button", { name: "운동하기" })).toHaveCount(0);
+});
 test("실제 저장 응답 유실 후 같은 키로 재시도해 중복 생성하지 않는다", async ({
   page,
 }) => {
@@ -182,7 +377,10 @@ test("실제 저장 응답 유실 후 같은 키로 재시도해 중복 생성�
   ).toBeVisible();
   await expect(page.getByLabel("신장", { exact: true })).toBeDisabled();
   await page.getByRole("button", { name: "같은 내용으로 다시 확인" }).click();
-  await expect(page.getByText("170 cm", { exact: true })).toBeVisible();
+  await openSavedRecord(page);
+  await expect(
+    page.locator(".result-card").getByText("170 cm", { exact: true }),
+  ).toBeVisible();
   expect(keys).toHaveLength(2);
   expect(keys[0]).toBe(keys[1]);
   await page.getByRole("link", { name: "이전 화면", exact: true }).click();
@@ -203,7 +401,9 @@ test("두 탭에서의 수정 충돌은 입력을 유지하고 최신 기록을 
   await second.goto(url + "/edit");
   await second.getByLabel("신장", { exact: true }).fill("180");
   await second.getByRole("button", { name: "수정 내용 저장" }).click();
-  await expect(second.getByText("180 cm", { exact: true })).toBeVisible();
+  await expect(
+    second.locator(".result-card").getByText("180 cm", { exact: true }),
+  ).toBeVisible();
   await page.getByRole("button", { name: "수정 내용 저장" }).click();
   await expect(
     page.getByRole("dialog", { name: "최신 기록을 확인해 주세요" }),
@@ -217,7 +417,9 @@ test("두 탭에서의 수정 충돌은 입력을 유지하고 최신 기록을 
     .click();
   await expect(page.getByLabel("신장", { exact: true })).toHaveValue("171");
   await second.reload();
-  await expect(second.getByText("180 cm", { exact: true })).toBeVisible();
+  await expect(
+    second.locator(".result-card").getByText("180 cm", { exact: true }),
+  ).toBeVisible();
 });
 test("동시 새로고침 후 인증 유지, 한 탭의 로그아웃이 다른 탭도 비운다", async ({
   page,
@@ -319,18 +521,19 @@ test("API 인증 만료 응답을 받으면 갱신 후 본인 계정을 다시 �
   page,
 }) => {
   const email = await signup(page);
-  let expired = false;
   let refreshes = 0;
   page.on("request", (request) => {
     if (request.url().endsWith("/auth/refresh")) refreshes++;
   });
   await page.route("**/api/v1/auth/me", async (route) => {
-    if (!expired) {
-      expired = true;
+    // Keep the active read expired even if Strict Mode cancels its first request.
+    if (refreshes === 0) {
       await failApi(route, 401);
     } else await route.continue();
   });
   await page.getByRole("link", { name: "내 프로필", exact: true }).click();
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await expect.poll(() => refreshes).toBe(1);
   await expect(page.getByText(email, { exact: true })).toBeVisible();
   expect(refreshes).toBe(1);
 });
@@ -338,9 +541,10 @@ test("카탈로그 장애 시 기본 정보를 유지하며 다시 불러올 수
   page,
 }) => {
   await signup(page);
-  await page.getByRole("link", { name: "새 기록 등록", exact: true }).click();
+  await openManualRecord(page);
   await page.getByLabel("측정일", { exact: true }).fill("2026-09-17");
   await page.getByLabel("측정 당시 만 나이", { exact: true }).fill("25");
+  await page.getByLabel("성별", { exact: true }).selectOption("male");
   await page.route("**/api/v1/measurement-catalog", (route) =>
     failApi(route, 503),
   );
@@ -386,7 +590,9 @@ test("수정된 기록은 최신 내용 확인 전 삭제하지 않는다", asyn
   await second.goto(url + "/edit");
   await second.getByLabel("신장", { exact: true }).fill("180");
   await second.getByRole("button", { name: "수정 내용 저장" }).click();
-  await expect(second.getByText("180 cm", { exact: true })).toBeVisible();
+  await expect(
+    second.locator(".result-card").getByText("180 cm", { exact: true }),
+  ).toBeVisible();
   await page.getByRole("button", { name: "기록 삭제", exact: true }).click();
   await page
     .getByRole("dialog")
@@ -401,7 +607,9 @@ test("수정된 기록은 최신 내용 확인 전 삭제하지 않는다", asyn
   await page
     .getByRole("button", { name: "최신 기록 불러오기", exact: true })
     .click();
-  await expect(page.getByText("180 cm", { exact: true })).toBeVisible();
+  await expect(
+    page.locator(".result-card").getByText("180 cm", { exact: true }),
+  ).toBeVisible();
   await page.getByRole("button", { name: "기록 삭제", exact: true }).click();
   await page
     .getByRole("dialog")
@@ -419,7 +627,7 @@ test("뒤로가기·앞으로가기·새로고침 후 측정 입력을 복원한
   await page.getByText("항목별 결과표 등급", { exact: false }).click();
   await page.getByLabel("신장 등급", { exact: true }).fill("참가");
   await page.goBack();
-  await expect(page).toHaveURL(/\/measurements$/);
+  await expect(page).toHaveURL(/\/onboarding$/);
   await page.goForward();
   await expect(page.getByLabel("신장", { exact: true })).toHaveValue(
     "170.1234567890123456789",
@@ -487,13 +695,16 @@ test("저장 응답 유실 뒤 갱신 429와 새로고침에도 원래 키·본�
   await expect(page.getByLabel("신장", { exact: true })).toHaveValue("170");
   await expect(page.getByLabel("신장", { exact: true })).toBeDisabled();
   await page.getByRole("button", { name: "같은 내용으로 다시 확인" }).click();
-  await expect(page.getByText("170 cm", { exact: true })).toBeVisible();
+  await openSavedRecord(page);
+  await expect(
+    page.locator(".result-card").getByText("170 cm", { exact: true }),
+  ).toBeVisible();
   expect(new Set(keys).size).toBe(1);
   expect(new Set(bodies).size).toBe(1);
   expect(keys).toHaveLength(3);
   await page.getByRole("link", { name: "이전 화면", exact: true }).click();
   await expect(page.locator(".record-card")).toHaveCount(1);
-  await page.getByRole("link", { name: "새 기록 등록", exact: true }).click();
+  await openManualRecord(page);
   await expect(page.getByLabel("측정일", { exact: true })).toHaveValue("");
 });
 
@@ -521,7 +732,10 @@ test("세션 만료 후 같은 계정으로 로그인하면 입력과 생성 요
   await login(page, email);
   await expect(page.getByLabel("신장", { exact: true })).toHaveValue("170");
   await page.getByRole("button", { name: "같은 내용으로 다시 확인" }).click();
-  await expect(page.getByText("170 cm", { exact: true })).toBeVisible();
+  await openSavedRecord(page);
+  await expect(
+    page.locator(".result-card").getByText("170 cm", { exact: true }),
+  ).toBeVisible();
   expect(keys).toHaveLength(2);
   expect(keys[0]).toBe(keys[1]);
 });
@@ -589,7 +803,7 @@ test("만료 후 다른 계정으로 바꾸면 이전 계정의 임시 입력을
   await expect(
     page.getByRole("link", { name: "새 기록 등록", exact: true }),
   ).toBeVisible();
-  await page.getByRole("link", { name: "새 기록 등록", exact: true }).click();
+  await openManualRecord(page);
   await expect(page.getByLabel("측정일", { exact: true })).toHaveValue("");
 });
 
@@ -608,7 +822,9 @@ test("복원한 수정 입력은 원래 ETag를 유지하여 최신 기록을 �
   await second.goto(url + "/edit");
   await second.getByLabel("신장", { exact: true }).fill("180");
   await second.getByRole("button", { name: "수정 내용 저장" }).click();
-  await expect(second.getByText("180 cm", { exact: true })).toBeVisible();
+  await expect(
+    second.locator(".result-card").getByText("180 cm", { exact: true }),
+  ).toBeVisible();
   page.on("dialog", (dialog) => dialog.accept());
   await page.reload();
   await expect(page.getByLabel("신장", { exact: true })).toHaveValue("171");
@@ -706,11 +922,15 @@ for (const outcome of ["success", "network", "server"] as const) {
     await page.getByRole("button", { name: "1개 항목 저장하기" }).click();
     await held.ready;
     page.on("dialog", (dialog) => dialog.accept());
-    await page.getByRole("link", { name: "이전 화면", exact: true }).click();
-    await page.getByRole("link", { name: "새 기록 등록", exact: true }).click();
+    await page.goBack();
+    await expect(page).toHaveURL(/\/onboarding$/);
+    await page.getByRole("link", { name: "직접 입력하기" }).click();
     await expect(page.getByLabel("신장", { exact: true })).toBeDisabled();
     await page.getByRole("button", { name: "같은 내용으로 다시 확인" }).click();
-    await expect(page.getByText("170 cm", { exact: true })).toBeVisible();
+    await openSavedRecord(page);
+    await expect(
+      page.locator(".result-card").getByText("170 cm", { exact: true }),
+    ).toBeVisible();
     expect(held.requests).toHaveLength(2);
     expect(held.requests[0]).toEqual(held.requests[1]);
     await page.getByRole("link", { name: "이전 화면", exact: true }).click();
@@ -721,7 +941,7 @@ for (const outcome of ["success", "network", "server"] as const) {
     expect(before).toHaveLength(1);
     await held.finish(outcome);
     expect(await storedDrafts(page)).toEqual(before);
-    await expect(page).toHaveURL(/\/measurements\/new$/);
+    await expect(page).toHaveURL(/\/onboarding\/manual$/);
     await page.reload();
     await expect(page.getByLabel("신장", { exact: true })).toHaveValue(
       "181.25",
@@ -739,6 +959,7 @@ for (const status of [503, 0]) {
       status ? failApi(route, status) : route.abort(),
     );
     await page.getByRole("link", { name: "내 프로필", exact: true }).click();
+    await page.evaluate(() => window.dispatchEvent(new Event("focus")));
     await expect(
       page.getByRole("button", { name: "다시 불러오기" }),
     ).toBeVisible();
@@ -776,6 +997,7 @@ test("계정 조회 응답을 기다리는 동안에도 로그아웃할 수 있�
   const pending = Promise.withResolvers<Route>();
   await page.route("**/api/v1/auth/me", (route) => pending.resolve(route));
   await page.getByRole("link", { name: "내 프로필", exact: true }).click();
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
   const route = await pending.promise;
   await expect(
     page.getByRole("button", { name: "로그아웃", exact: true }),
@@ -818,7 +1040,9 @@ for (const outcome of ["success", "network"] as const) {
     );
     await expect(page.getByLabel("신장", { exact: true })).toBeEnabled();
     await page.getByRole("button", { name: "수정 내용 저장" }).click();
-    await expect(page.getByText("181.25 cm", { exact: true })).toBeVisible();
+    await expect(
+      page.locator(".result-card").getByText("181.25 cm", { exact: true }),
+    ).toBeVisible();
   });
 }
 
@@ -829,6 +1053,11 @@ test("이전 삭제의 늦은 성공 응답은 새 입력 화면을 이동시키
   await startRecord(page);
   await add(page, "신장", "170");
   await save(page);
+  // Re-enter from the record list so browser Back still exercises navigation
+  // while deletion is pending, after the newer onboarding completion route.
+  await page.getByRole("link", { name: "이전 화면", exact: true }).click();
+  await expect(page).toHaveURL(/\/measurements$/);
+  await page.locator(".record-card").first().click();
   const held = await holdMutation(page, "DELETE", "**/api/v1/measurements/*");
   await page.getByRole("button", { name: "기록 삭제", exact: true }).click();
   await page
@@ -843,7 +1072,7 @@ test("이전 삭제의 늦은 성공 응답은 새 입력 화면을 이동시키
   await add(page, "신장", "181.25");
   await held.finish("success");
   await expect(page.getByLabel("신장", { exact: true })).toHaveValue("181.25");
-  await expect(page).toHaveURL(/\/measurements\/new$/);
+  await expect(page).toHaveURL(/\/onboarding\/manual$/);
 });
 
 test("로그아웃 401에서도 모든 탭의 인증과 임시 입력을 정리한다", async ({
@@ -871,18 +1100,26 @@ test("로그아웃 401에서도 모든 탭의 인증과 임시 입력을 정리�
   expect(await draftKeys(page)).toEqual([]);
 });
 
-test("빈 메인과 내 프로필 탭을 오가며 기록을 관리하고 입력 이탈을 확인한다", async ({
+test("메인과 내 프로필 탭을 오가며 기록을 관리하고 입력 이탈을 확인한다", async ({
   page,
 }) => {
   const email = await signup(page, "main");
   const nav = page.getByRole("navigation", { name: "하단 메뉴" });
   const mainTab = nav.getByRole("link", { name: "메인", exact: true });
   const profileTab = nav.getByRole("link", { name: "내 프로필", exact: true });
-  await expect(nav.getByRole("link")).toHaveText(["메인", "내 프로필"]);
+  await expect(nav.getByRole("link")).toHaveText(["", "", ""]);
+  for (const label of ["메인", "운동", "내 프로필"]) {
+    await expect(
+      nav.getByRole("link", { name: label, exact: true }),
+    ).toBeVisible();
+  }
   await expect(mainTab).toHaveAttribute("aria-current", "page");
-  // The only main-page element is an accessible, visually hidden heading.
-  await expect(page.getByRole("main").locator(":scope > *")).toHaveCount(1);
-  await expect(page.getByRole("main").locator("h1")).toHaveClass("sr-only");
+  await expect(
+    page.getByRole("heading", { name: "내 체력 기록부터 시작해요" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "체력 기록 등록하기" }),
+  ).toBeVisible();
   await page.reload();
   await expect(mainTab).toHaveAttribute("aria-current", "page");
 
@@ -899,15 +1136,21 @@ test("빈 메인과 내 프로필 탭을 오가며 기록을 관리하고 입력
   await page.getByRole("link", { name: "내 측정 기록", exact: true }).click();
   await startRecord(page);
   await add(page, "신장", "170");
+  await expect(nav).toBeHidden();
+  await page.getByRole("button", { name: "이전 단계", exact: true }).click();
   page.once("dialog", (dialog) => dialog.dismiss());
-  await mainTab.click();
-  await expect(page).toHaveURL(/\/measurements\/new$/);
-  await expect(page.getByLabel("신장", { exact: true })).toHaveValue("170");
+  await page.getByRole("link", { name: "이전 화면", exact: true }).click();
+  await expect(page).toHaveURL(/\/onboarding\/manual$/);
+  await expect(
+    page.getByLabel("측정 당시 만 나이", { exact: true }),
+  ).toHaveValue("25");
   page.once("dialog", (dialog) => dialog.accept());
-  await mainTab.click();
+  await page.getByRole("link", { name: "이전 화면", exact: true }).click();
+  await page.getByRole("link", { name: "이전 화면", exact: true }).click();
   await expect(mainTab).toHaveAttribute("aria-current", "page");
   await openRecords(page);
-  await page.getByRole("link", { name: "새 기록 등록", exact: true }).click();
+  await openManualRecord(page);
+  await page.getByRole("button", { name: "측정값 입력하기" }).click();
   await expect(page.getByLabel("신장", { exact: true })).toHaveValue("170");
   await save(page);
 

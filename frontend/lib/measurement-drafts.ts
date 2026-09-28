@@ -10,6 +10,7 @@ export interface MeasurementDraft {
   uncertain: boolean;
   gone: boolean;
   dirty: boolean;
+  extractionNotes?: string[];
 }
 const prefix = "modu-measurement-draft:v1:";
 export const draftLifetime = 24 * 60 * 60 * 1000;
@@ -48,6 +49,12 @@ function validDraft(value: unknown): value is MeasurementDraft {
     typeof d.uncertain === "boolean" &&
     (!d.uncertain || !!d.pending || !!d.etag) &&
     typeof d.gone === "boolean" &&
+    (d.extractionNotes === undefined ||
+      (Array.isArray(d.extractionNotes) &&
+        d.extractionNotes.length <= 100 &&
+        d.extractionNotes.every(
+          (n) => typeof n === "string" && n.length <= 5000,
+        ))) &&
     typeof d.dirty === "boolean"
   );
 }
@@ -69,11 +76,16 @@ export function createDraftStore(
     }
   }
   function remove(key: string) {
-    memory.delete(key);
+    // Keep a tombstone so a failed removal cannot resurrect a discarded draft.
+    memory.set(key, "");
     try {
       persisted()?.removeItem(key);
     } catch {
-      /* memory fallback */
+      try {
+        persisted()?.setItem(key, "");
+      } catch {
+        /* This document remains cleared even if storage is entirely blocked. */
+      }
     }
   }
   function keys() {

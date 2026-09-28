@@ -1,0 +1,16 @@
+.mascot {
+  display: inline-block;
+  width: var(--pose-size, 160px);
+  max-width: 100%;
+  aspect-ratio: 4 / 5;
+  line-height: 0;
+  vertical-align: middle;
+  flex-shrink: 0;
+  mix-blend-mode: multiply;
+}
+.mascot svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: hidden;
+}

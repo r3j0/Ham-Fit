@@ -4,6 +4,20 @@ export interface User {
   created_at: string;
   updated_at: string;
 }
+export interface CurriculumAssignment {
+  id: string;
+  status:
+    "assigned" | "in_progress" | "not_performed" | "interrupted" | "completed";
+  assignedAt: string;
+  completedAt: string | null;
+  curriculum: { id: string; name: string };
+}
+export interface UserProfile extends User {
+  nickname: string | null;
+  isOnboarded: boolean;
+  currency: { balance: number };
+  currentCurriculum: CurriculumAssignment | null;
+}
 export interface AuthResponse {
   user: User;
   access_token: string;
@@ -30,11 +44,15 @@ export interface Catalog {
   age: number | null;
   definitions: Definition[];
 }
-export interface MeasurementItem {
+export interface MeasurementItemInput {
   measurementCode: string;
   value: string;
   unit: string;
   reportedGrade: string | null;
+}
+/** Runtime-validated separately so malformed evaluations never hide raw values. */
+export interface MeasurementItem extends MeasurementItemInput {
+  evaluation?: unknown;
 }
 export interface MeasurementMetadata {
   measuredOn: string;
@@ -57,15 +75,18 @@ export interface MeasurementSummary extends MeasurementMetadata {
 export interface Measurement extends Omit<MeasurementSummary, "itemCount"> {
   items: MeasurementItem[];
   missingMeasurementCodes: string[];
-  evaluation: { status: "not_evaluated"; reason: string };
+  /** Validated at the evaluation adapter boundary; raw records remain readable. */
+  evaluation: unknown;
+  axes?: unknown;
 }
 export interface MeasurementPage {
   items: MeasurementSummary[];
   nextCursor: string | null;
 }
 export interface MeasurementInput extends MeasurementMetadata {
+  entryMethod?: "manual" | "self_assessment";
   catalogVersion: string;
-  items: MeasurementItem[];
+  items: MeasurementItemInput[];
 }
 export interface RecordResponse {
   data: Measurement;

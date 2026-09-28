@@ -5,13 +5,19 @@ import Link from "next/link";
 import { Pencil, Trash2 } from "lucide-react";
 import { getCatalog, getRecord, displayDate } from "@/lib/measurements";
 import { api } from "@/lib/session";
+import { isRetiredMeasurement } from "@/lib/measurement-form";
 import { ApiError, errorMessage } from "@/lib/http";
 import type { Catalog, RecordResponse } from "@/lib/types";
 import { RecordForm } from "./record-form";
+import { FitnessReport } from "./fitness-report";
 import { RecordValues } from "./record-values";
 import { useOperationScope } from "./use-operation-scope";
 import { Dialog, Header, Loading, Notice, Shell } from "./ui";
-export function RecordScreen({
+type RecordScreenProps = { id: string; edit?: boolean; saved?: boolean };
+export function RecordScreen(props: RecordScreenProps) {
+  return <RecordLoader key={`${props.id}:${!!props.edit}`} {...props} />;
+}
+function RecordLoader({
   id,
   edit = false,
   saved = false,
@@ -64,7 +70,7 @@ export function RecordScreen({
       />
     );
   return (
-    <Shell>
+    <Shell className="record-detail-shell">
       <Header
         title={edit ? "측정 기록 수정" : "측정 기록"}
         back="/measurements"
@@ -106,6 +112,9 @@ function RecordDetail({
 }) {
   const r = record.data,
     router = useRouter();
+  const missingCodes = r.missingMeasurementCodes.filter(
+    (code) => !isRetiredMeasurement(code),
+  );
   const [confirm, setConfirm] = useState(false),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
@@ -139,32 +148,35 @@ function RecordDetail({
     }
   }
   return (
-    <Shell>
+    <Shell className="record-detail-shell">
       <Header title="측정 기록" back="/measurements" />
       <div className="content stack">
         {saved && <Notice tone="success">측정 기록을 저장했어요.</Notice>}
         <section>
-          <p className="eyebrow">국민체력100</p>
+          <p className="eyebrow">
+            {r.entryMethod === "self_assessment" ? "간이측정" : "국민체력100"}
+          </p>
           <h2 style={{ fontSize: 26 }}>{displayDate(r.measuredOn)}</h2>
           <div className="record-meta">
             <span>만 {r.ageAtMeasurement}세</span>
-            <span>직접 입력</span>
+            <span>
+              {r.entryMethod === "self_assessment" ? "자가측정" : "직접 입력"}
+            </span>
             {r.centerName && <span>{r.centerName}</span>}
           </div>
         </section>
+        <FitnessReport record={r} catalog={catalog} />
         <RecordValues record={r} catalog={catalog} />
         <details className="accordion">
           <summary>
             미입력 항목 보기{" "}
-            <span className="optional-label">
-              ({r.missingMeasurementCodes.length})
-            </span>
+            <span className="optional-label">({missingCodes.length})</span>
           </summary>
           <p className="caption summary-hint">
             측정하지 않은 검사는 입력하지 않아도 괜찮아요.
           </p>
           <ul className="missing-list">
-            {r.missingMeasurementCodes.map((code) => (
+            {missingCodes.map((code) => (
               <li key={code}>
                 {catalog.definitions.find((d) => d.code === code)?.label ??
                   code}{" "}
@@ -172,7 +184,7 @@ function RecordDetail({
               </li>
             ))}
           </ul>
-          {!r.missingMeasurementCodes.length && (
+          {!missingCodes.length && (
             <p className="caption">미입력 항목이 없어요.</p>
           )}
         </details>
@@ -180,7 +192,11 @@ function RecordDetail({
           r.reportKind !== "unknown" ||
           r.reportedOverallGrade) && (
           <details className="accordion">
-            <summary>결과표 추가 정보</summary>
+            <summary>
+              {r.entryMethod === "self_assessment"
+                ? "측정 정보"
+                : "결과표 추가 정보"}
+            </summary>
             <dl className="value-list">
               {r.sexAtMeasurement && (
                 <div className="value-row">
@@ -192,9 +208,11 @@ function RecordDetail({
                 <div className="value-row">
                   <dt>측정 유형</dt>
                   <dd>
-                    {r.reportKind === "standard"
-                      ? "일반 체력측정"
-                      : "공식 간편측정"}
+                    {r.entryMethod === "self_assessment"
+                      ? "성인 간이측정"
+                      : r.reportKind === "standard"
+                        ? "일반 체력측정"
+                        : "공식 간편측정"}
                   </dd>
                 </div>
               )}
@@ -211,9 +229,9 @@ function RecordDetail({
           </details>
         )}
         <p className="caption">
-          결과표에 적힌 값을 그대로 보관했어요.
-          <br />
-          점수와 등급은 자동으로 계산하지 않아요.
+          {r.entryMethod === "self_assessment"
+            ? "직접 측정한 값을 보관했어요."
+            : "결과표에 적힌 값을 그대로 보관했어요."}
         </p>
         {error && <Notice>{error}</Notice>}
         {stale && (

@@ -1,5 +1,5 @@
-import { RecordForm } from "@/components/record-form";
-export const metadata = { title: "새 측정 기록" };
+import { redirect } from "next/navigation";
+
 export default function Page() {
-  return <RecordForm />;
+  redirect("/onboarding");
 }

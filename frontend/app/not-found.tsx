@@ -1,7 +1,8 @@
 import Link from "next/link";
+import { Shell } from "@/components/ui";
 export default function NotFound() {
   return (
-    <main id="main" className="app-shell">
+    <Shell>
       <div className="content empty-state">
         <p className="eyebrow">404</p>
         <h1>찾으시는 화면이 없어요</h1>
@@ -12,6 +13,6 @@ export default function NotFound() {
           내 기록으로
         </Link>
       </div>
-    </main>
+    </Shell>
   );
 }

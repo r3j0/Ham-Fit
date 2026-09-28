@@ -17,21 +17,21 @@ export function RecordList() {
     [from, setFrom] = useState(""),
     [to, setTo] = useState("");
   return (
-    <Shell>
+    <Shell className="record-list-shell">
       <h1 className="sr-only">내 측정 기록</h1>
-      <div className="list-intro">
-        <p className="eyebrow">MY FITNESS RECORD</p>
-        <h2>차곡차곡, 나의 체력 기록</h2>
-        <p className="muted" style={{ marginTop: 8 }}>
-          국민체력100 결과를 한곳에 모아보세요.
-        </p>
-        <Link href="/measurements/new" className="button primary">
-          <Plus size={20} />새 기록 등록
-        </Link>
-      </div>
       <div className="content">
         <div className="between list-heading">
-          <h2>최근 기록</h2>
+          <div className="row">
+            <h2>최근 기록</h2>
+            <Link
+              href="/onboarding"
+              className="icon-button"
+              aria-label="새 기록 등록"
+              title="새 기록 등록"
+            >
+              <Plus size={20} aria-hidden="true" />
+            </Link>
+          </div>
           <button
             className="button secondary inline"
             onClick={() => setOpen((v) => !v)}
@@ -188,7 +188,7 @@ function RecordFeed({ filters }: { filters: { from: string; to: string } }) {
             : "측정한 항목 하나부터 가볍게 시작해요. 나머지는 나중에 채워도 괜찮아요."}
         </p>
         {!filters.from && !filters.to && (
-          <Link href="/measurements/new" className="button secondary">
+          <Link href="/onboarding" className="button secondary">
             첫 측정 기록 등록
           </Link>
         )}
@@ -204,7 +204,11 @@ function RecordFeed({ filters }: { filters: { from: string; to: string } }) {
                 <span className="date-chip">
                   {record.measuredOn.replaceAll("-", ".")}
                 </span>
-                <h2>{record.centerName || "국민체력100 측정"}</h2>
+                <h2>
+                  {record.entryMethod === "self_assessment"
+                    ? "간이측정"
+                    : record.centerName || "국민체력100 측정"}
+                </h2>
                 <p>
                   만 {record.ageAtMeasurement}세 · {record.itemCount}개 항목
                   입력

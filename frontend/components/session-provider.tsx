@@ -25,7 +25,9 @@ export function RequireSession({ children }: { children: React.ReactNode }) {
     path = usePathname();
   useEffect(() => {
     if (session.status === "anonymous")
-      router.replace(`/login?next=${encodeURIComponent(path)}`);
+      router.replace(
+        `/login?next=${encodeURIComponent(path + window.location.search)}`,
+      );
   }, [session.status, router, path]);
   if (session.status === "error")
     return (

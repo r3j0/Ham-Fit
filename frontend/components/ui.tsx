@@ -8,6 +8,7 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useId, useRef } from "react";
+import { useViewEntrance } from "./use-view-entrance";
 export function Brand() {
   return (
     <Link href="/" className="brand" aria-label="모두채력 시작 화면">
@@ -35,8 +36,9 @@ export function Shell({
   children: React.ReactNode;
   className?: string;
 }) {
+  const entrance = useViewEntrance();
   return (
-    <main id="main" className={`app-shell ${className}`}>
+    <main ref={entrance} id="main" className={`app-shell ${className}`}>
       {children}
     </main>
   );
@@ -44,22 +46,40 @@ export function Shell({
 export function Header({
   title,
   back,
+  onBack,
+  backDisabled = false,
+  showBrand = true,
   right,
 }: {
   title: string;
   back?: string;
+  onBack?: () => void;
+  backDisabled?: boolean;
+  showBrand?: boolean;
   right?: React.ReactNode;
 }) {
   return (
     <header className="page-header">
-      {back ? (
+      {onBack ? (
+        <button
+          type="button"
+          className="icon-button"
+          onClick={onBack}
+          disabled={backDisabled}
+          aria-label="이전 단계"
+        >
+          <ArrowLeft size={22} />
+        </button>
+      ) : back ? (
         <Link className="icon-button" href={back} aria-label="이전 화면">
           <ArrowLeft size={22} />
         </Link>
-      ) : (
+      ) : showBrand ? (
         <Link className="mini-brand" href="/" aria-label="모두채력 메인">
           모두<span>채력</span>
         </Link>
+      ) : (
+        <span aria-hidden="true" />
       )}
       <h1>{title}</h1>
       <div className="header-right">{right}</div>

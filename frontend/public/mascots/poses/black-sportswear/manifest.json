@@ -1,0 +1,1315 @@
+{
+  "basic": {
+    "file": "black-sportswear/basic.png",
+    "sourceName": "image-gen-1(20260927-114155).png",
+    "width": 1536,
+    "height": 1024,
+    "background": "white",
+    "backgroundEdited": false,
+    "sha256": "aad229bba3652896ec053d0725ac53868805ebbfd9b3266b3a69539508155fd6",
+    "bounds": {
+      "cream": [
+        56,
+        55,
+        656,
+        837
+      ],
+      "gray": [
+        843,
+        54,
+        617,
+        836
+      ]
+    },
+    "clips": {
+      "cream": [
+        0,
+        0,
+        768,
+        1024
+      ],
+      "gray": [
+        768,
+        0,
+        768,
+        1024
+      ]
+    },
+    "viewports": {
+      "cream": [
+        -6.9083,
+        -12.7585,
+        780.9098,
+        976.1373
+      ],
+      "gray": [
+        761.1167,
+        -12.0222,
+        781.2482,
+        976.5603
+      ]
+    },
+    "alignment": {
+      "cream": {
+        "method": "eye-distance-and-midpoint",
+        "eyes": [
+          [
+            281.5,
+            354.5
+          ],
+          [
+            488,
+            354
+          ]
+        ],
+        "baseEyes": [
+          [
+            294,
+            369.5
+          ],
+          [
+            508.5,
+            369
+          ]
+        ],
+        "sourceScale": 0.9627041692789544
+      },
+      "gray": {
+        "method": "eye-distance-and-midpoint",
+        "eyes": [
+          [
+            1040.5,
+            372
+          ],
+          [
+            1262.5,
+            372
+          ]
+        ],
+        "baseEyes": [
+          [
+            1085,
+            386.5
+          ],
+          [
+            1315.5,
+            387
+          ]
+        ],
+        "sourceScale": 0.963121378310272
+      }
+    }
+  },
+  "curious": {
+    "file": "black-sportswear/curious.png",
+    "sourceName": "ChatGPT 이미지 2026년 9월 27일 오후 07_07_39-4.png",
+    "width": 1254,
+    "height": 1254,
+    "background": "white",
+    "backgroundEdited": false,
+    "sha256": "991eb04b7505b5084620364585abedb701d4528cce88d00ed08f508b186f4e6c",
+    "bounds": {
+      "cream": [
+        89,
+        319,
+        504,
+        613
+      ],
+      "gray": [
+        654,
+        340,
+        518,
+        592
+      ]
+    },
+    "clips": {
+      "cream": [
+        0,
+        0,
+        627,
+        1254
+      ],
+      "gray": [
+        627,
+        0,
+        627,
+        1254
+      ]
+    },
+    "viewports": {
+      "cream": [
+        50.3023,
+        261.6279,
+        581.3953,
+        726.7442
+      ],
+      "gray": [
+        613.9143,
+        262.4815,
+        597.0975,
+        746.3719
+      ]
+    },
+    "alignment": {
+      "cream": {
+        "method": "eye-distance-and-midpoint",
+        "eyes": [
+          [
+            302.5,
+            563
+          ],
+          [
+            442.5,
+            513
+          ]
+        ],
+        "baseEyes": [
+          [
+            302.5,
+            563
+          ],
+          [
+            442.5,
+            513
+          ]
+        ],
+        "sourceScale": 1
+      },
+      "gray": {
+        "method": "eye-distance-and-midpoint",
+        "eyes": [
+          [
+            803,
+            529
+          ],
+          [
+            945.5,
+            571.5
+          ]
+        ],
+        "baseEyes": [
+          [
+            803.5,
+            529
+          ],
+          [
+            946,
+            572
+          ]
+        ],
+        "sourceScale": 0.9990347515340978
+      }
+    }
+  },
+  "a-plus": {
+    "file": "black-sportswear/a-plus.png",
+    "sourceName": "ChatGPT 이미지 2026년 9월 27일 오후 07_07_35-1.png",
+    "width": 1254,
+    "height": 1254,
+    "background": "white",
+    "backgroundEdited": false,
+    "sha256": "2d257f351b6d3ffa47cba225bfe65379739d214181ebb2938bfcadab4cddf64a",
+    "bounds": {
+      "cream": [
+        48,
+        292,
+        570,
+        690
+      ],
+      "gray": [
+        655,
+        290,
+        552,
+        697
+      ]
+    },
+    "clips": {
+      "cream": [
+        0,
+        0,
+        627,
+        1254
+      ],
+      "gray": [
+        627,
+        0,
+        627,
+        1254
+      ]
+    },
+    "viewports": {
+      "cream": [
+        3.4266,
+        225.9094,
+        658.1466,
+        822.6833
+      ],
+      "gray": [
+        609.6756,
+        239.0268,
+        640.4261,
+        800.5327
+      ]
+    },
+    "alignment": {
+      "cream": {
+        "method": "eye-distance-and-midpoint",
+        "eyes": [
+          [
+            248.5,
+            537
+          ],
+          [
+            435,
+            538
+          ]
+        ],
+        "baseEyes": [
+          [
+            249,
+            536.5
+          ],
+          [
+            435.5,
+            537
+          ]
+        ],
+        "sourceScale": 1.0000107812255743
+      },
+      "gray": {
+        "method": "eye-distance-and-midpoint",
+        "eyes": [
+          [
+            811,
+            550.5
+          ],
+          [
+            1005.5,
+            550.5
+          ]
+        ],
+        "baseEyes": [
+          [
+            811.5,
+            549.5
+          ],
+          [
+            1007,
+            550
+          ]
+        ],
+        "sourceScale": 0.9948816567132941
+      }
+    }
+  },
+  "drink": {
+    "file": "black-sportswear/drink.png",
+    "sourceName": "ChatGPT 이미지 2026년 9월 27일 오후 07_07_40-5.png",
+    "width": 1254,
+    "height": 1254,
+    "background": "white",
+    "backgroundEdited": false,
+    "sha256": "b18580dbe3579beb5ea0cf28244b6706d73962765d0b7324340e0f9e90533f22",
+    "bounds": {
+      "cream": [
+        75,
+        292,
+        523,
+        688
+      ],
+      "gray": [
+        657,
+        292,
+        511,
+        691
+      ]
+    },
+    "clips": {
+      "cream": [
+        0,
+        0,
+        627,
+        1254
+      ],
+      "gray": [
+        627,
+        0,
+        627,
+        1254
+      ]
+    },
+    "viewports": {
+      "cream": [
+        19.2907,
+        239.4884,
+        634.4186,
+        793.0233
+      ],
+      "gray": [
+        592.127,
+        236.5248,
+        640.7294,
+        800.9117
+      ]
+    },
+    "alignment": {
+      "cream": {
+        "method": "eye-distance-and-midpoint",
+        "eyes": [
+          [
+            248.5,
+            532
+          ],
+          [
+            418.5,
+            532.5
+          ]
+        ],
+        "baseEyes": [
+          [
+            248.5,
+            532
+          ],
+          [
+            418.5,
+            532.5
+          ]
+        ],
+        "sourceScale": 1
+      },
+      "gray": {
+        "method": "eye-distance-and-midpoint",
+        "eyes": [
+          [
+            823,
+            550.5
+          ],
+          [
+            1005,
+            548.5
+          ]
+        ],
+        "baseEyes": [
+          [
+            824,
+            550.5
+          ],
+          [
+            1005,
+            548.5
+          ]
+        ],
+        "sourceScale": 1.0055241892478375
+      }
+    }
+  },
+  "lying": {
+    "file": "black-sportswear/lying.png",
+    "sourceName": "ChatGPT 이미지 2026년 9월 27일 오후 07_19_26-1.png",
+    "width": 1254,
+    "height": 1254,
+    "background": "white",
+    "backgroundEdited": false,
+    "sha256": "fe50e0f8aa7b39c27a0499bd686354551c618eeadfa05e08551738cd433d60dd",
+    "bounds": {
+      "cream": [
+        80,
+        313,
+        515,
+        552
+      ],
+      "gray": [
+        638,
+        324,
+        512,
+        546
+      ]
+    },
+    "clips": {
+      "cream": [
+        0,
+        0,
+        627,
+        1254
+      ],
+      "gray": [
+        627,
+        0,
+        627,
+        1254
+      ]
+    },
+    "viewports": {
+      "cream": [
+        44.7901,
+        220.7686,
+        587.0206,
+        733.7757
+      ],
+      "gray": [
+        600.01,
+        229.3572,
+        589.1853,
+        736.4817
+      ]
+    },
+    "alignment": {
+      "cream": {
+        "method": "eye-distance-and-midpoint",
+        "eyes": [
+          [
+            299.5,
+            474
+          ],
+          [
+            431,
+            514
+          ]
+        ],
+        "baseEyes": [
+          [
+            401,
+            434.5
+          ],
+          [
+            524.5,
+            471
+          ]
+        ],
+        "sourceScale": 1.0673101772687696
+      },
+      "gray": {
+        "method": "eye-distance-and-midpoint",
+        "eyes": [
+          [
+            852,
+            485
+          ],
+          [
+            996.5,
+            528
+          ]
+        ],
+        "baseEyes": [
+          [
+            945.5,
+            444.5
+          ],
+          [
+            1079.5,
+            484.5
+          ]
+        ],
+        "sourceScale": 1.0780838455673225
+      }
+    }
+  },
+  "stretch": {
+    "file": "black-sportswear/stretch.png",
+    "sourceName": "ChatGPT 이미지 2026년 9월 27일 오후 07_19_33-6.png",
+    "width": 1254,
+    "height": 1254,
+    "background": "white",
+    "backgroundEdited": false,
+    "sha256": "34706b47656dccb94f11d20162a991ec93e82fab5cbcffc39af2d95e3ae74a66",
+    "bounds": {
+      "cream": [
+        65,
+        299,
+        531,
+        625
+      ],
+      "gray": [
+        651,
+        299,
+        535,
+        624
+      ]
+    },
+    "clips": {
+      "cream": [
+        0,
+        0,
+        627,
+        1254
+      ],
+      "gray": [
+        627,
+        0,
+        627,
+        1254
+      ]
+    },
+    "viewports": {
+      "cream": [
+        25.3105,
+        228.8967,
+        611.0912,
+        763.8641
+      ],
+      "gray": [
+        610.769,
+        226.9756,
+        613.6115,
+        767.0143
+      ]
+    },
+    "alignment": {
+      "cream": {
+        "method": "eye-distance-and-midpoint",
+        "eyes": [
+          [
+            303,
+            509.5
+          ],
+          [
+            435,
+            589
+          ]
+        ],
+        "baseEyes": [
+          [
+            302.5,
+            509.5
+          ],
+          [
+            435,
+            589
+          ]
+        ],
+        "sourceScale": 0.9972266948789557
+      },
+      "gray": {
+        "method": "eye-distance-and-midpoint",
+        "eyes": [
+          [
+            811,
+            593.5
+          ],
+          [
+            943.5,
+            504.5
+          ]
+        ],
+        "baseEyes": [
+          [
+            811,
+            594
+          ],
+          [
+            944,
+            504.5
+          ]
+        ],
+        "sourceScale": 0.9956714395880554
+      }
+    }
+  },
+  "run": {
+    "file": "black-sportswear/run.png",
+    "sourceName": "image-gen-2(20260927-121509).png",
+    "width": 1448,
+    "height": 1086,
+    "background": "white",
+    "backgroundEdited": false,
+    "sha256": "303026d1de1fab01462f2dfeea3af0ca297b407dc66f6e59f4a4d6c195855b8a",
+    "bounds": {
+      "cream": [
+        213,
+        258,
+        460,
+        570
+      ],
+      "gray": [
+        739,
+        261,
+        448,
+        568
+      ]
+    },
+    "clips": {
+      "cream": [
+        0,
+        0,
+        724,
+        1086
+      ],
+      "gray": [
+        724,
+        0,
+        724,
+        1086
+      ]
+    },
+    "viewports": {
+      "cream": [
+        178.9182,
+        212.0324,
+        529.1705,
+        661.463
+      ],
+      "gray": [
+        700.148,
+        216.2456,
+        526.3391,
+        657.9239
+      ]
+    },
+    "alignment": {
+      "cream": {
+        "method": "eye-distance-and-midpoint",
+        "eyes": [
+          [
+            354,
+            465.5
+          ],
+          [
+            496.5,
+            473.5
+          ]
+        ],
+        "baseEyes": [
+          [
+            354,
+            466
+          ],
+          [
+            496.5,
+            473.5
+          ]
+        ],
+        "sourceScale": 1.0001902826942837
+      },
+      "gray": {
+        "method": "eye-distance-and-midpoint",
+        "eyes": [
+          [
+            864.5,
+            476.5
+          ],
+          [
+            1020,
+            484.5
+          ]
+        ],
+        "baseEyes": [
+          [
+            865,
+            476.5
+          ],
+          [
+            1020,
+            484.5
+          ]
+        ],
+        "sourceScale": 1.003217249825097
+      }
+    }
+  },
+  "passion": {
+    "file": "black-sportswear/passion.png",
+    "sourceName": "ChatGPT 이미지 2026년 9월 27일 오후 07_19_26-2.png",
+    "width": 1254,
+    "height": 1254,
+    "background": "white",
+    "backgroundEdited": false,
+    "sha256": "f0adc257cbd63160c37fa302c51334b1e6d63dc37b9c7c03628ce7293240f61c",
+    "bounds": {
+      "cream": [
+        31,
+        205,
+        579,
+        778
+      ],
+      "gray": [
+        635,
+        205,
+        588,
+        778
+      ]
+    },
+    "clips": {
+      "cream": [
+        0,
+        0,
+        627,
+        1254
+      ],
+      "gray": [
+        627,
+        0,
+        627,
+        1254
+      ]
+    },
+    "viewports": {
+      "cream": [
+        -39.0349,
+        145.5814,
+        719.0698,
+        898.8372
+      ],
+      "gray": [
+        568.6949,
+        144.7577,
+        721.1361,
+        901.42
+      ]
+    },
+    "alignment": {
+      "cream": {
+        "method": "eye-distance-and-midpoint",
+        "eyes": [
+          [
+            242.5,
+            594.5
+          ],
+          [
+            410,
+            595.5
+          ]
+        ],
+        "baseEyes": [
+          [
+            242.5,
+            594
+          ],
+          [
+            410,
+            595
+          ]
+        ],
+        "sourceScale": 1
+      },
+      "gray": {
+        "method": "eye-distance-and-midpoint",
+        "eyes": [
+          [
+            837.5,
+            607
+          ],
+          [
+            1012,
+            606.5
+          ]
+        ],
+        "baseEyes": [
+          [
+            837.5,
+            606
+          ],
+          [
+            1011.5,
+            605.5
+          ]
+        ],
+        "sourceScale": 1.0028735395245185
+      }
+    }
+  },
+  "victory": {
+    "file": "black-sportswear/victory.png",
+    "sourceName": "ChatGPT 이미지 2026년 9월 27일 오후 07_19_34-7.png",
+    "width": 1254,
+    "height": 1254,
+    "background": "white",
+    "backgroundEdited": false,
+    "sha256": "0a2292f40788542e6662406e2b1893de66d3fef03d67040a1bc702dac0427c8b",
+    "bounds": {
+      "cream": [
+        35,
+        290,
+        573,
+        705
+      ],
+      "gray": [
+        631,
+        299,
+        586,
+        696
+      ]
+    },
+    "clips": {
+      "cream": [
+        0,
+        0,
+        627,
+        1254
+      ],
+      "gray": [
+        627,
+        0,
+        627,
+        1254
+      ]
+    },
+    "viewports": {
+      "cream": [
+        -6.907,
+        231.3895,
+        656.1894,
+        820.2368
+      ],
+      "gray": [
+        585.6279,
+        224.0349,
+        676.7442,
+        845.9302
+      ]
+    },
+    "alignment": {
+      "cream": {
+        "method": "eye-distance-and-midpoint",
+        "eyes": [
+          [
+            273.5,
+            485
+          ],
+          [
+            426.5,
+            493.5
+          ]
+        ],
+        "baseEyes": [
+          [
+            273,
+            485
+          ],
+          [
+            427,
+            493.5
+          ]
+        ],
+        "sourceScale": 0.9935262799282005
+      },
+      "gray": {
+        "method": "eye-distance-and-midpoint",
+        "eyes": [
+          [
+            818.5,
+            498
+          ],
+          [
+            979,
+            515
+          ]
+        ],
+        "baseEyes": [
+          [
+            818.5,
+            498
+          ],
+          [
+            979,
+            515
+          ]
+        ],
+        "sourceScale": 1
+      }
+    }
+  },
+  "pushup": {
+    "file": "black-sportswear/pushup.png",
+    "sourceName": "ChatGPT 이미지 2026년 9월 27일 오후 08_59_08-2.png",
+    "width": 1484,
+    "height": 1060,
+    "background": "white",
+    "backgroundEdited": false,
+    "sha256": "b438ad07e87fab09b5c3c684171b2e5c2af6c8e654bd6929abe64b26375db55a",
+    "bounds": {
+      "cream": [
+        148,
+        366,
+        576,
+        431
+      ],
+      "gray": [
+        761,
+        355,
+        566,
+        441
+      ]
+    },
+    "clips": {
+      "cream": [
+        0,
+        0,
+        742,
+        1060
+      ],
+      "gray": [
+        742,
+        0,
+        742,
+        1060
+      ]
+    },
+    "viewports": {
+      "cream": [
+        101.6345,
+        163.4079,
+        668.6695,
+        835.8369
+      ],
+      "gray": [
+        717.9108,
+        167.0744,
+        652.632,
+        815.79
+      ]
+    },
+    "alignment": {
+      "cream": {
+        "method": "eye-distance-and-midpoint",
+        "eyes": [
+          [
+            419,
+            594.5
+          ],
+          [
+            580.5,
+            598.5
+          ]
+        ],
+        "baseEyes": [
+          [
+            409,
+            610.5
+          ],
+          [
+            566,
+            614
+          ]
+        ],
+        "sourceScale": 1.0287222912115304
+      },
+      "gray": {
+        "method": "eye-distance-and-midpoint",
+        "eyes": [
+          [
+            1011,
+            597.5
+          ],
+          [
+            1194,
+            601
+          ]
+        ],
+        "baseEyes": [
+          [
+            986,
+            612.5
+          ],
+          [
+            1165,
+            616
+          ]
+        ],
+        "sourceScale": 1.0223379217585873
+      }
+    }
+  },
+  "situp": {
+    "file": "black-sportswear/situp.png",
+    "sourceName": "ChatGPT 이미지 2026년 9월 27일 오후 09_11_42-2.png",
+    "width": 1484,
+    "height": 1060,
+    "background": "white",
+    "backgroundEdited": false,
+    "sha256": "1bdcba2ec3333c3684d6fd04e0778d7c64441c7c30aa3b2090f7d9489b032bad",
+    "bounds": {
+      "cream": [
+        208,
+        261,
+        495,
+        571
+      ],
+      "gray": [
+        777,
+        263,
+        487,
+        568
+      ]
+    },
+    "clips": {
+      "cream": [
+        0,
+        0,
+        742,
+        1060
+      ],
+      "gray": [
+        742,
+        0,
+        742,
+        1060
+      ]
+    },
+    "viewports": {
+      "cream": [
+        169.7838,
+        189.1671,
+        572.3001,
+        715.3752
+      ],
+      "gray": [
+        740.8138,
+        198.2312,
+        559.2435,
+        699.0543
+      ]
+    },
+    "alignment": {
+      "cream": {
+        "method": "eye-distance-and-midpoint",
+        "eyes": [
+          [
+            377.5,
+            489.5
+          ],
+          [
+            519.5,
+            474.5
+          ]
+        ],
+        "baseEyes": [
+          [
+            368.5,
+            511
+          ],
+          [
+            507,
+            496.5
+          ]
+        ],
+        "sourceScale": 1.0253710767537707
+      },
+      "gray": {
+        "method": "eye-distance-and-midpoint",
+        "eyes": [
+          [
+            957,
+            476.5
+          ],
+          [
+            1111.5,
+            486.5
+          ]
+        ],
+        "baseEyes": [
+          [
+            933,
+            499
+          ],
+          [
+            1084,
+            508.5
+          ]
+        ],
+        "sourceScale": 1.0232965915988212
+      }
+    }
+  },
+  "droopy": {
+    "file": "black-sportswear/droopy.png",
+    "sourceName": "ChatGPT 이미지 2026년 9월 27일 오후 07_07_38-3.png",
+    "width": 1254,
+    "height": 1254,
+    "background": "white",
+    "backgroundEdited": false,
+    "sha256": "a092b2e827b40a24d6d97d998475b3e5450a78765782ea7077807110cadf90fd",
+    "bounds": {
+      "cream": [
+        92,
+        364,
+        474,
+        602
+      ],
+      "gray": [
+        670,
+        361,
+        485,
+        605
+      ]
+    },
+    "clips": {
+      "cream": [
+        0,
+        0,
+        627,
+        1254
+      ],
+      "gray": [
+        627,
+        0,
+        627,
+        1254
+      ]
+    },
+    "viewports": {
+      "cream": [
+        50.8605,
+        317.3256,
+        556.2791,
+        695.3488
+      ],
+      "gray": [
+        632.8488,
+        313.936,
+        559.3023,
+        699.1279
+      ]
+    },
+    "alignment": {
+      "cream": {
+        "method": "eye-distance-and-midpoint",
+        "eyes": [
+          [
+            224,
+            687.5
+          ],
+          [
+            381.5,
+            680
+          ]
+        ],
+        "baseEyes": [
+          [
+            224,
+            687.5
+          ],
+          [
+            381.5,
+            680
+          ]
+        ],
+        "sourceScale": 1
+      },
+      "gray": {
+        "method": "eye-distance-and-midpoint",
+        "eyes": [
+          [
+            797.5,
+            692.5
+          ],
+          [
+            962,
+            689
+          ]
+        ],
+        "baseEyes": [
+          [
+            797.5,
+            692.5
+          ],
+          [
+            962,
+            689
+          ]
+        ],
+        "sourceScale": 1
+      }
+    }
+  },
+  "cant-hear": {
+    "file": "black-sportswear/cant-hear.png",
+    "sourceName": "ChatGPT 이미지 2026년 9월 27일 오후 07_07_41-6.png",
+    "width": 1254,
+    "height": 1254,
+    "background": "white",
+    "backgroundEdited": false,
+    "sha256": "ee4319c175376b075a9bae07390c8afce4cec11e6d6b4a64fc5f5960e41ab906",
+    "bounds": {
+      "cream": [
+        67,
+        291,
+        533,
+        666
+      ],
+      "gray": [
+        645,
+        282,
+        538,
+        675
+      ]
+    },
+    "clips": {
+      "cream": [
+        0,
+        0,
+        627,
+        1254
+      ],
+      "gray": [
+        627,
+        0,
+        627,
+        1254
+      ]
+    },
+    "viewports": {
+      "cream": [
+        25.357,
+        238.7417,
+        616.7969,
+        770.9961
+      ],
+      "gray": [
+        601.3396,
+        229.679,
+        624.858,
+        781.0725
+      ]
+    },
+    "alignment": {
+      "cream": {
+        "method": "eye-distance-and-midpoint",
+        "eyes": [
+          [
+            240,
+            536.5
+          ],
+          [
+            423.5,
+            536
+          ]
+        ],
+        "baseEyes": [
+          [
+            240,
+            536.5
+          ],
+          [
+            423,
+            536
+          ]
+        ],
+        "sourceScale": 1.0027322200685473
+      },
+      "gray": {
+        "method": "eye-distance-and-midpoint",
+        "eyes": [
+          [
+            809,
+            536.5
+          ],
+          [
+            1004,
+            536
+          ]
+        ],
+        "baseEyes": [
+          [
+            809,
+            536.5
+          ],
+          [
+            1003.5,
+            536
+          ]
+        ],
+        "sourceScale": 1.0025706771209455
+      }
+    }
+  }
+}

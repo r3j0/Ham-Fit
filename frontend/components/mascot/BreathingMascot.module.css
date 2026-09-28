@@ -1,0 +1,26 @@
+.mascot {
+  position: relative;
+  display: inline-block;
+  width: var(--idle-size, 240px);
+  max-width: 100%;
+  aspect-ratio: 4 / 5;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+.rig {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+/* The engine reads prefers-reduced-motion and paints the rest pose. */
+
+/* Keep the same head rig and crop only its presentation for profile avatars. */
+.face {
+  aspect-ratio: 1;
+  border-radius: 50%;
+  overflow: hidden;
+}
+.face .rig > :not([data-part="head"]) {
+  visibility: hidden;
+}

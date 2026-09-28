@@ -1,0 +1,338 @@
+.streak {
+  padding: 20px;
+  border-radius: var(--radius-hero);
+  background: var(--canvas);
+}
+.heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.heading h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 18px;
+}
+.streakColumns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.85fr);
+  align-items: center;
+  gap: 16px;
+}
+.summary {
+  min-width: 0;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+.streakCount {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+.streakCount span {
+  display: block;
+}
+.streakCount strong {
+  color: var(--navy);
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+.streakFooter {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  margin: 12px 0 -8px;
+}
+.hint {
+  min-width: 0;
+  margin: 0;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.week {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 2px;
+  list-style: none;
+  padding: 2px;
+  margin: 0;
+}
+.week li {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+}
+.weekday {
+  color: var(--muted);
+  font-size: 12px;
+}
+.weekMark {
+  display: grid;
+  place-items: center;
+  width: min(100%, 32px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--navy);
+}
+.weekMark svg {
+  width: 75%;
+  height: 75%;
+}
+.weekMark[data-completed] {
+  background: var(--tint);
+  color: var(--sky);
+}
+.weekMark[data-today] {
+  outline: 1px solid var(--navy);
+  outline-offset: 2px;
+}
+.emptyDot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--disabled);
+}
+.historyLink {
+  display: flex;
+  grid-column: 2;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 4px;
+  width: fit-content;
+  min-height: 44px;
+  white-space: nowrap;
+  border-radius: var(--radius-control);
+  color: var(--navy);
+  font-size: 13px;
+  font-weight: 650;
+}
+.historyLink:hover {
+  background: var(--tint);
+}
+.historyLink:active {
+  background: var(--border);
+}
+@media (max-width: 359px) {
+  .streak {
+    padding: 16px;
+  }
+  .streakColumns {
+    gap: 12px;
+  }
+  .weekday {
+    font-size: 10px;
+  }
+}
+
+.calendar {
+  padding: 20px;
+  border-radius: var(--radius-hero);
+  background: var(--surface);
+}
+.monthNavigation {
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
+  align-items: center;
+  margin: 16px -8px 0;
+}
+.monthNavigation h3 {
+  text-align: center;
+  font-size: 19px;
+}
+.monthNavigation button:disabled {
+  color: var(--disabled);
+  cursor: default;
+}
+.monthSummary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--muted);
+  font-size: 13px;
+}
+.monthSummary strong {
+  color: var(--navy);
+  font-weight: 750;
+}
+.monthSummary button {
+  min-height: 44px;
+  min-width: 44px;
+  color: var(--navy);
+  border-radius: var(--radius-chip);
+}
+.monthSummary button:hover {
+  background: var(--tint);
+}
+.monthGrid {
+  width: calc(100% + 16px);
+  margin-inline: -8px;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0 4px;
+}
+.monthGrid th {
+  height: 28px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+  text-align: center;
+}
+.monthGrid td {
+  padding: 0 1px;
+}
+.day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  width: 100%;
+  min-height: 48px;
+  border-radius: var(--radius-control);
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 550;
+  font-variant-numeric: tabular-nums;
+}
+.dayNumber {
+  line-height: 22px;
+}
+.day svg {
+  color: var(--sky);
+}
+.day[data-completed] {
+  background: var(--tint);
+  color: var(--navy);
+}
+.day[aria-current="date"] .dayNumber {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  font-weight: 800;
+}
+.day[data-selected] {
+  box-shadow: inset 0 0 0 1.5px var(--navy);
+  color: var(--navy);
+}
+.day:hover:not(:disabled) {
+  background: var(--tint);
+}
+.day:active:not(:disabled) {
+  background: var(--border);
+}
+.day:disabled {
+  cursor: default;
+}
+.day[data-future] {
+  color: var(--disabled);
+}
+.day[data-future] .dayDot {
+  visibility: hidden;
+}
+.dayDot {
+  width: 4px;
+  height: 4px;
+  margin-block: 4.5px;
+  border-radius: 50%;
+  background: var(--disabled);
+}
+.legend {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+.legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.legend svg {
+  color: var(--sky);
+}
+.legend i {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--disabled);
+}
+@media (max-width: 359px) {
+  .calendar {
+    padding: 16px;
+  }
+}
+
+@media (min-width: 960px) {
+  .streak,
+  .calendar {
+    padding: 24px;
+  }
+  .weekMark {
+    width: min(100%, 36px);
+  }
+}
+
+.detail {
+  max-width: 760px;
+  margin-inline: auto;
+}
+.records {
+  padding: 20px;
+}
+.records h2 {
+  font-size: 18px;
+}
+.recordList {
+  display: grid;
+  gap: 12px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.recordLink {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px;
+  border-radius: var(--radius-control);
+  background: var(--canvas);
+  text-decoration: none;
+}
+.recordLink:hover {
+  background: var(--tint);
+}
+.recordLink > div {
+  min-width: 0;
+}
+.recordLink h3 {
+  font-size: 16px;
+  overflow-wrap: anywhere;
+}
+.recordLink p {
+  margin-top: 6px;
+}
+.recordLink svg {
+  flex-shrink: 0;
+  color: var(--navy);
+}
+.recordEmpty {
+  margin-top: 16px;
+  color: var(--muted);
+}
+@media (max-width: 359px) {
+  .records,
+  .recordLink {
+    padding: 16px;
+  }
+}

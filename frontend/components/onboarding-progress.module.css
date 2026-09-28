@@ -1,0 +1,38 @@
+.progress:global(.content) {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-block: 0 20px;
+  background: var(--surface);
+}
+.label {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 10px;
+}
+.label span:first-child {
+  color: var(--sky);
+  font-weight: 700;
+}
+.track {
+  height: 5px;
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  background: var(--border);
+}
+.fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--sky);
+}
+
+@media (min-width: 960px) {
+  .label {
+    font-size: 12px;
+  }
+  .track {
+    height: 6px;
+  }
+}

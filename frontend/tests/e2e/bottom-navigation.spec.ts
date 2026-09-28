@@ -1,0 +1,150 @@
+import { expect, test, type Page } from "@playwright/test";
+import { installApi, testRecord, testWorkout } from "./integration-fixtures";
+
+async function expectBottomMenu(page: Page, current: string) {
+  const nav = page.getByRole("navigation", { name: "하단 메뉴" });
+  await expect(nav).toBeVisible();
+  await expect(nav.getByRole("link")).toHaveText(["", "", ""]);
+  await expect(
+    nav.getByRole("link", { name: current, exact: true }),
+  ).toHaveAttribute("aria-current", /page|location/);
+  const box = (await nav.boundingBox())!;
+  expect(box.y + box.height).toBeCloseTo(page.viewportSize()!.height, 1);
+  await expect(nav).toHaveCSS("position", "fixed");
+  for (const label of ["메인", "운동", "내 프로필"]) {
+    const link = nav.getByRole("link", { name: label, exact: true });
+    await expect(link).toBeVisible();
+    const target = (await link.boundingBox())!;
+    expect(target.height).toBeGreaterThanOrEqual(44);
+    expect(target.width).toBeGreaterThanOrEqual(44);
+    expect(target.y).toBeGreaterThanOrEqual(box.y);
+    expect(target.y + target.height).toBeLessThanOrEqual(box.y + box.height);
+  }
+  const main = page.getByRole("main");
+  const reserve = await main.evaluate((el) =>
+    parseFloat(getComputedStyle(el).paddingBottom),
+  );
+  expect(reserve).toBeGreaterThanOrEqual(box.height);
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth),
+  ).toBeLessThanOrEqual(page.viewportSize()!.width);
+}
+
+for (const [width, height] of [
+  [320, 640],
+  [390, 844],
+  [1280, 900],
+]) {
+  test(`${width}px 아이콘 메뉴는 하단에 고정되고 원형 운동 강조·키보드 이동·저장 버튼 접근을 유지한다`, async ({
+    page,
+  }, info) => {
+    const record = testRecord();
+    const api = await installApi(page, record);
+    await page.setViewportSize({ width, height });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    for (const [path, current] of [
+      ["/", "메인"],
+      ["/workout", "운동"],
+      ["/workouts", "운동"],
+      [`/workouts/${testWorkout.id}`, "운동"],
+      [`/workouts/${testWorkout.id}/replay`, "운동"],
+      ["/workouts/history/2026-09-27", "운동"],
+      ["/account", "내 프로필"],
+      ["/account/settings", "내 프로필"],
+      ["/account/settings?tab=nickname", "내 프로필"],
+      ["/account/settings?tab=birth", "내 프로필"],
+      ["/account/preferences", "내 프로필"],
+      ["/account/workouts", "내 프로필"],
+      ["/account/workouts/history/2026-09-27", "내 프로필"],
+      [`/account/workouts/${testWorkout.id}/replay`, "내 프로필"],
+      ["/measurements", "내 프로필"],
+      [`/measurements/${record.id}`, "내 프로필"],
+    ]) {
+      await page.goto(path);
+      await expectBottomMenu(page, current);
+      if (current === "내 프로필") {
+        await expect(page.getByRole("main")).toHaveCSS(
+          "color",
+          "rgb(51, 37, 28)",
+        );
+        const profileNav = page.getByRole("navigation", { name: "하단 메뉴" });
+        await expect(profileNav).toHaveCSS(
+          "background-color",
+          "rgb(255, 248, 241)",
+        );
+        const circle = profileNav
+          .getByRole("link", { name: "운동", exact: true })
+          .locator(".bottom-tab-icon");
+        await expect(circle).toHaveCSS(
+          "background-color",
+          "rgb(255, 240, 224)",
+        );
+        await expect(circle).toHaveCSS("color", "rgb(166, 73, 0)");
+      }
+    }
+    await page.goto(`/measurements/${record.id}/edit`);
+    const save = page.getByRole("button", {
+      name: "수정 내용 저장",
+      exact: true,
+    });
+    await expect(save).toBeVisible();
+    await save.scrollIntoViewIfNeeded();
+    await expectBottomMenu(page, "내 프로필");
+    const nav = page.getByRole("navigation", { name: "하단 메뉴" });
+    const footer = (await nav.boundingBox())!;
+    const action = (await save.boundingBox())!;
+    expect(action.y + action.height).toBeLessThanOrEqual(footer.y);
+    await save.click({ trial: true });
+
+    const home = nav.getByRole("link", { name: "메인", exact: true });
+    const workout = nav.getByRole("link", { name: "운동", exact: true });
+    const account = nav.getByRole("link", { name: "내 프로필", exact: true });
+    await home.focus();
+    await home.press("Enter");
+    await expect(page).toHaveURL("/");
+    await expectBottomMenu(page, "메인");
+    const circle = workout.locator(".bottom-tab-icon");
+    await expect(circle).toHaveCSS("border-radius", "50%");
+    const circleBox = (await circle.boundingBox())!;
+    expect(circleBox.width).toBe(circleBox.height);
+    expect((await workout.locator("svg").boundingBox())!.width).toBeGreaterThan(
+      (await home.locator("svg").boundingBox())!.width,
+    );
+    for (const link of [home, account]) {
+      await expect(link.locator(".bottom-tab-icon")).toHaveCSS(
+        "background-color",
+        "rgba(0, 0, 0, 0)",
+      );
+    }
+    await expect(circle).toHaveCSS("background-color", "rgb(230, 245, 250)");
+    await home.focus();
+    await page.keyboard.press("Tab");
+    await expect(workout).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL("/workout");
+    await expect(circle).toHaveCSS("background-color", "rgb(27, 153, 196)");
+    await account.click();
+    await expectBottomMenu(page, "내 프로필");
+    await page.goBack();
+    await expectBottomMenu(page, "운동");
+    await page.goForward();
+    await expectBottomMenu(page, "내 프로필");
+    await page.screenshot({ path: info.outputPath(`navigation-${width}.png`) });
+
+    for (const path of [
+      "/onboarding",
+      "/onboarding/manual",
+      "/workout?mode=assessment",
+    ]) {
+      await page.goto(path);
+      await expect(page.getByRole("main")).toBeVisible();
+      await expect(nav).toBeHidden();
+      expect(
+        await page
+          .getByRole("main")
+          .evaluate((el) => parseFloat(getComputedStyle(el).paddingBottom)),
+      ).toBe(0);
+    }
+    expect(api.mutations).toEqual([]);
+  });
+}

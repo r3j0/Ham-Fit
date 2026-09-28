@@ -1,0 +1,169 @@
+.shell {
+  display: flex;
+  flex-direction: column;
+  background: var(--canvas);
+}
+.header {
+  background: var(--surface);
+}
+.header h1 {
+  color: var(--text);
+  font-weight: 700;
+  letter-spacing: normal;
+  text-align: center;
+}
+.manual {
+  border-radius: var(--radius-control);
+  color: var(--muted);
+  font-weight: 500;
+}
+.question {
+  color: var(--text);
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: normal;
+}
+.choice {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 108px;
+  padding: 20px 28px;
+  border-radius: var(--radius-hero);
+  background: var(--surface);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--text) 6%, transparent);
+  cursor: pointer;
+  transition:
+    background-color 150ms ease,
+    box-shadow 150ms ease;
+}
+.primaryChoice {
+  background: var(--tint);
+}
+.iconBox {
+  display: flex;
+  flex: 0 0 56px;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-card);
+  background: var(--canvas);
+}
+.primaryChoice .iconBox {
+  background: var(--sky);
+}
+.choiceTitle {
+  flex: 1;
+  min-width: 0;
+  color: var(--text);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.4;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+.chevron {
+  flex-shrink: 0;
+}
+.manual {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  align-self: center;
+  gap: 7px;
+  padding-inline: 12px;
+  font-size: 12px;
+}
+@media (max-width: 359px) {
+  .choice {
+    gap: 12px;
+    padding-inline: 24px;
+  }
+  .iconBox {
+    flex-basis: 52px;
+    width: 52px;
+    height: 52px;
+  }
+  .choiceTitle {
+    font-size: 18px;
+  }
+}
+@media (hover: hover) {
+  .choice:hover {
+    background: color-mix(in srgb, var(--surface) 65%, var(--tint));
+    box-shadow: 0 3px 12px color-mix(in srgb, var(--text) 10%, transparent);
+  }
+  .primaryChoice:hover {
+    background: color-mix(in srgb, var(--tint) 92%, var(--sky));
+  }
+  .back:hover,
+  .manual:hover {
+    background: var(--tint);
+    color: var(--navy);
+  }
+}
+.choice:active {
+  background: color-mix(in srgb, var(--tint) 85%, var(--sky));
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--sky) 35%, transparent);
+}
+.back:active,
+.manual:active {
+  background: var(--border);
+  color: var(--navy);
+}
+@media (prefers-reduced-motion: reduce) {
+  .choice {
+    transition: none;
+  }
+}
+
+@media (min-width: 960px) {
+  .shell > :global(.content) {
+    max-width: 1040px;
+    background: transparent;
+  }
+  .shell > :global(.content):last-child {
+    display: grid;
+    grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+    align-items: start;
+    max-width: 1040px;
+    gap: 48px;
+    padding-block: 56px;
+  }
+  .question {
+    font-size: 34px;
+    line-height: 1.4;
+  }
+  .choice {
+    min-height: 116px;
+  }
+}
+
+.intro {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.intro .question {
+  min-width: 0;
+  word-break: keep-all;
+}
+.intro .mascot {
+  width: clamp(96px, 28vw, 144px);
+}
+@media (min-width: 960px) {
+  .intro {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 24px;
+  }
+  .intro .mascot {
+    width: 200px;
+    align-self: center;
+  }
+}

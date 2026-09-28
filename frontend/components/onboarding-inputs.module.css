@@ -1,0 +1,97 @@
+/* Shared density for assessment setup and the floating photo form only. */
+.compact:global(.stack),
+.compact :global(.stack) {
+  gap: 14px;
+}
+.compact :global(.feature-card) {
+  padding: 16px;
+}
+.compact :global(.field) {
+  display: grid;
+  grid-template-columns: minmax(76px, 0.8fr) minmax(0, 1.4fr);
+  align-items: center;
+  gap: 6px 12px;
+}
+.compact :global(.field label) {
+  line-height: 1.45;
+  word-break: keep-all;
+}
+.compact :global(.field > .caption),
+.compact :global(.field > .field-error) {
+  grid-column: 1 / -1;
+}
+.compact :global(.field input),
+.compact :global(.field select),
+.compact :global(.input) {
+  min-height: 44px;
+  padding: 8px 12px;
+}
+.compact :global(.input-wrap) {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.compact :global(.input-wrap input) {
+  flex: 1;
+  width: 0;
+}
+.compact :global(.input-unit) {
+  position: static;
+  flex-shrink: 0;
+  min-height: 44px;
+  padding: 0;
+}
+.compact :global(details .field) {
+  grid-template-columns: 1fr;
+}
+.compact :global(.intro),
+.compact :global(.summary-strip) {
+  margin-bottom: 16px;
+}
+.compact :global(.form-items) {
+  gap: 12px;
+}
+.compact :global(.measurement-field) {
+  padding-bottom: 0;
+}
+.compact :global(.measurement-field > .stack-sm) {
+  gap: 8px;
+  margin-top: 6px;
+}
+.compact :global(.bmi-preview) {
+  align-items: center;
+  min-height: 44px;
+  padding: 8px 0;
+}
+.assessment :global(.assessment-result) {
+  padding: 12px 16px;
+}
+.assessment :global(.assessment-result > div) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 2px 12px;
+  flex: 1;
+  min-width: 0;
+}
+.assessment :global(.assessment-result .caption),
+.assessment :global(.assessment-result h3) {
+  grid-column: 1;
+}
+.assessment :global(.assessment-result h3) {
+  margin: 0;
+  word-break: keep-all;
+}
+.assessment :global(.assessment-result strong) {
+  grid-column: 2;
+  grid-row: 1 / 3;
+  max-width: 8ch;
+  font-size: 18px;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.assessment :global(.value-row) {
+  gap: 12px;
+  padding-block: 10px;
+}

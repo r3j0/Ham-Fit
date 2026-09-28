@@ -208,3 +208,35 @@ test("reauthentication does not revive a previous form's write access", () => {
   assert.equal(store.save("alice", "new", draft, version), false);
   assert.deepEqual(store.read("alice", "new"), draft);
 });
+
+for (const blockWrites of [false, true]) {
+  test(`failed removal cannot resurrect a discarded measurement draft (writes blocked: ${blockWrites})`, () => {
+    const tab = storage();
+    let blocked = false;
+    const store = createDraftStore(() => ({
+      ...tab,
+      get length() {
+        return tab.length;
+      },
+      setItem: (key: string, value: string) => {
+        if (blocked && blockWrites) throw new Error("Storage blocked");
+        tab.setItem(key, value);
+      },
+      removeItem: (key: string) => {
+        if (blocked) throw new Error("Storage blocked");
+        tab.removeItem(key);
+      },
+    }));
+    store.setOwner("alice");
+    store.save("alice", "new", draft, store.acquire("alice", "new")!);
+    blocked = true;
+    store.clear();
+    store.setOwner("alice");
+    assert.equal(store.read("alice", "new"), undefined);
+    if (!blockWrites) {
+      const reloaded = createDraftStore(() => tab);
+      reloaded.setOwner("alice");
+      assert.equal(reloaded.read("alice", "new"), undefined);
+    }
+  });
+}

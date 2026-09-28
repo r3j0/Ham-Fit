@@ -3,30 +3,25 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Eye, EyeOff } from "lucide-react";
+import { authDestination } from "@/lib/auth-destination";
+import { birthDateError } from "@/lib/birth-profile";
+import { koreaDate } from "@/lib/measurements";
 import { authenticate } from "@/lib/session";
 import { ApiError, errorMessage } from "@/lib/http";
-import {
-  ArtworkSlot,
-  Brand,
-  FieldError,
-  Notice,
-  Shell,
-  SubmitLabel,
-} from "./ui";
+import { Brand, FieldError, Notice, Shell, SubmitLabel } from "./ui";
+import { SignupMascots, WelcomeMascots } from "./mascot/mascot-scenes";
 import { useSession } from "./session-provider";
-function destination() {
+function destination(mode: "login" | "register") {
+  if (mode === "register") return "/onboarding";
   const next = new URLSearchParams(window.location.search).get("next") ?? "";
-  return /^\/measurements(?:\/new|\/[a-f0-9-]+(?:\/edit)?)?$/.test(next) ||
-    next === "/account" ||
-    next === "/"
-    ? next
-    : "/";
+  return authDestination(next);
 }
 export function AuthForm({ mode }: { mode: "login" | "register" }) {
   const register = mode === "register",
     router = useRouter(),
     session = useSession();
   const [email, setEmail] = useState(""),
+    [dateOfBirth, setDateOfBirth] = useState(""),
     [password, setPassword] = useState(""),
     [confirm, setConfirm] = useState("");
   const [visible, setVisible] = useState(false),
@@ -36,8 +31,8 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
     [remaining, setRemaining] = useState(0);
   const guard = useRef(false);
   useEffect(() => {
-    if (session.status === "authenticated") router.replace(destination());
-  }, [session.status, router]);
+    if (session.status === "authenticated") router.replace(destination(mode));
+  }, [session.status, router, mode]);
   useEffect(() => {
     if (!remaining) return;
     const timer = setTimeout(
@@ -56,19 +51,32 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
       next.password = "비밀번호는 15~128자로 입력해 주세요.";
     if (register && password !== confirm)
       next.confirm = "비밀번호가 일치하지 않아요.";
+    if (register) {
+      const error = birthDateError(dateOfBirth, koreaDate());
+      if (error) next.dateOfBirth = error;
+    }
     setFields(next);
     setError("");
     if (Object.keys(next).length) return;
     guard.current = true;
     setBusy(true);
     try {
-      await authenticate(mode, email.trim(), password);
-      router.replace(destination());
+      await authenticate(
+        mode,
+        email.trim(),
+        password,
+        register ? dateOfBirth : undefined,
+      );
+      router.replace(destination(mode));
     } catch (e) {
       if (e instanceof ApiError && e.status === 401)
         setError("이메일 또는 비밀번호를 확인해 주세요.");
       else if (e instanceof ApiError && e.status === 409 && register)
         setError("이미 가입된 이메일이에요. 로그인해 주세요.");
+      else if (e instanceof ApiError && e.code === "INVALID_DATE_OF_BIRTH")
+        setFields({
+          dateOfBirth: "미래가 아닌 실제 생년월일을 입력해 주세요.",
+        });
       else setError(errorMessage(e));
       if (e instanceof ApiError && e.status === 429)
         setRemaining(e.retryAfter ?? 60);
@@ -78,12 +86,14 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
     }
   }
   return (
-    <Shell>
+    <Shell className="auth-shell">
       <header className="auth-header">
         <Brand />
       </header>
       <div className="auth-content">
-        {!register && <ArtworkSlot />}
+        <div className="auth-illustration">
+          {register ? <SignupMascots /> : <WelcomeMascots />}
+        </div>
         <div className="intro">
           <h1>{register ? "가볍게 시작해요" : "다시 만나 반가워요"}</h1>
           <p>
@@ -93,6 +103,28 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
           </p>
         </div>
         <form onSubmit={submit} className="stack">
+          {register && (
+            <div className="field">
+              <label htmlFor="dateOfBirth">생년월일</label>
+              <input
+                id="dateOfBirth"
+                name="dateOfBirth"
+                type="date"
+                autoComplete="bday"
+                required
+                value={dateOfBirth}
+                onChange={(e) => setDateOfBirth(e.target.value)}
+                disabled={busy}
+                aria-invalid={!!fields.dateOfBirth}
+                aria-describedby="birth-hint birth-error"
+              />
+              <p id="birth-hint" className="caption">
+                맞춤 운동 추천에 사용해요. 운동 추천은 현재 만 13~64세를
+                지원해요.
+              </p>
+              <FieldError id="birth-error" message={fields.dateOfBirth} />
+            </div>
+          )}
           <div className="field">
             <label htmlFor="email">이메일</label>
             <input

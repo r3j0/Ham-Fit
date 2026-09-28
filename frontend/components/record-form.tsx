@@ -5,6 +5,7 @@ import Link from "next/link";
 import { CircleMinus, Plus } from "lucide-react";
 import { ApiError, errorMessage } from "@/lib/http";
 import { api, getSession } from "@/lib/session";
+import { calculateBodyItems, bmiFrom } from "@/lib/assessment";
 import {
   measurementDrafts,
   type MeasurementDraft,
@@ -12,6 +13,7 @@ import {
 import { getCatalog, getRecord, koreaDate } from "@/lib/measurements";
 import {
   buildInput,
+  isRetiredMeasurement,
   emptyMetadata,
   metadataFrom,
   validateMetadata,
@@ -28,21 +30,52 @@ import {
   Shell,
   SubmitLabel,
 } from "./ui";
+import { StepAssessmentHelp } from "./step-assessment-help";
 import { CatalogPicker } from "./catalog-picker";
 import { RecordValues } from "./record-values";
+import { OnboardingProgress } from "./onboarding-progress";
+import { PhotoInputWorkspace } from "./photo-input-workspace";
+import photoStyles from "./photo-input-workspace.module.css";
 import { useUnsaved } from "./use-unsaved";
 import { useOperationScope } from "./use-operation-scope";
 export function RecordForm({
   initial,
   initialCatalog,
+  onboarding = false,
+  requireSex = false,
+  reference,
+  draftKey = "new",
+  seed,
+  onDiscard,
 }: {
   initial?: RecordResponse;
   initialCatalog?: Catalog;
+  onboarding?: boolean;
+  requireSex?: boolean;
+  reference?: React.ReactNode;
+  draftKey?: string;
+  onDiscard?: () => void;
+  seed?: {
+    meta: FormMetadata;
+    items: FormItem[];
+    catalogVersion: string;
+    extractionNotes: string[];
+  };
 }) {
+  const selfAssessment = initial?.data.entryMethod === "self_assessment";
+  const selfCodes = [
+    "height",
+    "weight",
+    "bmi",
+    "waist_circumference",
+    "cross_sit_up",
+    "ymca_recovery_heart_rate",
+    "sit_and_reach",
+  ];
   const router = useRouter();
   const [owner] = useState(() => getSession().user!.id);
   const [sessionGeneration] = useState(() => getSession().generation);
-  const draftId = initial?.data.id ?? "new";
+  const draftId = initial?.data.id ?? draftKey;
   const beginOperation = useOperationScope();
   const draftVersion = useRef<symbol | undefined>(undefined);
   useEffect(() => {
@@ -84,17 +117,29 @@ export function RecordForm({
     ),
     [meta, setMeta] = useState<FormMetadata>(
       restored?.meta ??
-        (initial ? metadataFrom(initial.data) : { ...emptyMetadata }),
+        (initial
+          ? metadataFrom(initial.data)
+          : (seed?.meta ?? { ...emptyMetadata })),
     );
-  const [items, setItems] = useState<FormItem[]>(
+  const sourceItems =
     restored?.items ??
-      (initial
-        ? initial.data.items.map((i) => ({
-            code: i.measurementCode,
-            value: i.value,
-            grade: i.reportedGrade ?? "",
-          }))
-        : []),
+    (initial
+      ? initial.data.items.map((i) => ({
+          code: i.measurementCode,
+          value: i.value,
+          grade: i.reportedGrade ?? "",
+        }))
+      : (seed?.items ?? []));
+  // Stored records and uncertain requests retain their original values.
+  const excludeRetired = !initial && !restored?.pending && !restored?.uncertain;
+  const [removedRetiredItems] = useState(
+    () =>
+      excludeRetired && sourceItems.some((i) => isRetiredMeasurement(i.code)),
+  );
+  const [items, setItems] = useState<FormItem[]>(() =>
+    excludeRetired
+      ? sourceItems.filter((i) => !isRetiredMeasurement(i.code))
+      : sourceItems,
   );
   const [catalog, setCatalog] = useState(initialCatalog),
     [step, setStep] = useState(restored?.step ?? (initial ? 2 : 1)),
@@ -103,11 +148,12 @@ export function RecordForm({
   const [errors, setErrors] = useState<Record<string, string>>({}),
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false),
-    [dirty, setDirty] = useState(restored?.dirty ?? false);
+    [dirty, setDirty] = useState(restored?.dirty ?? !!seed);
   const [uncertain, setUncertain] = useState(restored?.uncertain ?? false),
     [gone, setGone] = useState(restored?.gone ?? false),
     [latest, setLatest] = useState<RecordResponse | null>(null),
     [conflict, setConflict] = useState(false);
+  const extractionNotes = restored?.extractionNotes ?? seed?.extractionNotes;
   const pending = useRef<{ body: string; key: string } | null>(
       restored?.pending ?? null,
     ),
@@ -120,14 +166,28 @@ export function RecordForm({
       meta,
       items,
       step,
-      catalogVersion: catalog?.version ?? restored?.catalogVersion,
+      catalogVersion:
+        catalog?.version ?? restored?.catalogVersion ?? seed?.catalogVersion,
       etag: base?.etag,
       pending: pending.current,
       uncertain: uncertain || saving || saveInFlight.current,
       gone,
       dirty: dirty || saving,
+      extractionNotes,
     }),
-    [meta, items, step, catalog, restored, base, uncertain, gone, dirty],
+    [
+      meta,
+      items,
+      step,
+      catalog,
+      restored,
+      base,
+      uncertain,
+      gone,
+      dirty,
+      seed,
+      extractionNotes,
+    ],
   );
   useEffect(() => {
     if (!savedRef.current && (dirty || uncertain || saveInFlight.current))
@@ -156,9 +216,12 @@ export function RecordForm({
     setDirty(true);
   }
   function updateItem(code: string, key: "value" | "grade", value: string) {
-    setItems((current) =>
-      current.map((i) => (i.code === code ? { ...i, [key]: value } : i)),
-    );
+    setItems((current) => {
+      const next = current.map((i) =>
+        i.code === code ? { ...i, [key]: value } : i,
+      );
+      return selfAssessment ? calculateBodyItems(next) : next;
+    });
     setDirty(true);
   }
   function scrollError() {
@@ -170,7 +233,9 @@ export function RecordForm({
   async function advance(event: React.FormEvent) {
     event.preventDefault();
     if (guard.current) return;
-    const next = validateMetadata(meta, koreaDate());
+    const next = validateMetadata(meta, koreaDate(), { requireSex });
+    if (selfAssessment && Number(meta.age) < 19)
+      next.ageAtMeasurement = "성인 간이측정은 만 19~64세를 지원해요.";
     setErrors(next);
     setMessage("");
     if (Object.keys(next).length) {
@@ -184,7 +249,9 @@ export function RecordForm({
     try {
       if (!catalog) {
         const value = await getCatalog(
-          base?.data.catalogVersion ?? restored?.catalogVersion,
+          base?.data.catalogVersion ??
+            restored?.catalogVersion ??
+            seed?.catalogVersion,
         );
         if (!isCurrent()) return;
         setCatalog(value);
@@ -219,11 +286,28 @@ export function RecordForm({
   }
   async function submit(event: React.FormEvent) {
     event.preventDefault();
-    if (guard.current || !catalog || gone) return;
-    const built = buildInput(meta, items, catalog, koreaDate());
+    if (guard.current || savedRef.current || !catalog || gone) return;
+    const built = buildInput(
+      meta,
+      selfAssessment ? calculateBodyItems(items) : items,
+      catalog,
+      koreaDate(),
+      // Reconfirm an already-sent request with its original body and key.
+      { requireSex: requireSex && !uncertain },
+    );
+    if (selfAssessment) {
+      const height = items.find((i) => i.code === "height")?.value ?? "";
+      const weight = items.find((i) => i.code === "weight")?.value ?? "";
+      if (height && weight && !bmiFrom(height, weight))
+        built.errors.items =
+          "BMI를 계산할 수 없어요. 신장과 체중을 확인해 주세요.";
+    }
+    if (selfAssessment && Number(meta.age) < 19)
+      built.errors.ageAtMeasurement = "성인 간이측정은 만 19~64세를 지원해요.";
     setErrors(built.errors);
     setMessage("");
     if (Object.keys(built.errors).length) {
+      if (built.errors.sexAtMeasurement) setStep(1);
       setMessage("입력한 항목을 확인해 주세요.");
       scrollError();
       return;
@@ -263,7 +347,11 @@ export function RecordForm({
       savedRef.current = true;
       setDirty(false);
       setUncertain(false);
-      router.replace(`/measurements/${result.data.id}?saved=1`);
+      router.replace(
+        onboarding
+          ? `/onboarding/complete?record=${encodeURIComponent(result.data.id)}`
+          : `/measurements/${result.data.id}?saved=1`,
+      );
     } catch (e) {
       if (!isCurrent()) return;
       setMessage(errorMessage(e));
@@ -364,15 +452,27 @@ export function RecordForm({
       busy ||
       uncertain ||
       !window.confirm(
-        "작성 중인 임시 입력을 지울까요? 서버에 저장된 기록은 바뀌지 않아요.",
+        onDiscard
+          ? "저장하지 않은 입력을 버리고 사진 선택 화면으로 돌아갈까요?"
+          : "작성 중인 임시 입력을 지울까요? 서버에 저장된 기록은 바뀌지 않아요.",
       )
     )
       return;
-    removeDraft();
+    if (!removeDraft()) return;
     pending.current = null;
+    if (onDiscard) {
+      // Do not let the departing form restore the discarded photo draft.
+      savedRef.current = true;
+      onDiscard();
+      return;
+    }
     setRestored(undefined);
     setBase(initial);
-    setMeta(initial ? metadataFrom(initial.data) : { ...emptyMetadata });
+    setMeta(
+      initial
+        ? metadataFrom(initial.data)
+        : (seed?.meta ?? { ...emptyMetadata }),
+    );
     setItems(
       initial
         ? initial.data.items.map((item) => ({
@@ -388,6 +488,11 @@ export function RecordForm({
     setGone(false);
     setMessage("");
     setErrors({});
+  }
+  function backToMetadata() {
+    setStep(1);
+    setMessage("");
+    window.scrollTo({ top: 0 });
   }
   const textField = (
     id: string,
@@ -408,11 +513,47 @@ export function RecordForm({
       <FieldError message={errors[field]} />
     </div>
   );
+  const sexField = (
+    <div className="field">
+      <label htmlFor="sex">
+        {requireSex
+          ? "성별"
+          : selfAssessment
+            ? "측정 당시 성별"
+            : "결과표의 성별"}
+      </label>
+      <select
+        id="sex"
+        required={requireSex}
+        value={meta.sex}
+        onChange={(e) => update("sex", e.target.value)}
+        aria-invalid={!!errors.sexAtMeasurement}
+        aria-describedby="sex-error"
+      >
+        <option value="">{requireSex ? "선택해 주세요" : "선택 안 함"}</option>
+        <option value="male">남성</option>
+        <option value="female">여성</option>
+      </select>
+      <FieldError id="sex-error" message={errors.sexAtMeasurement} />
+    </div>
+  );
   if (step === 2 && !catalog)
     return (
-      <Shell>
-        <Header title="입력 복원" back="/measurements" />
-        <div className="content stack">
+      <Shell
+        className={`record-form-shell ${onboarding ? "onboarding-shell" : ""} ${reference ? photoStyles.shell : ""}`}
+      >
+        <Header
+          title="입력 복원"
+          back="/measurements"
+          onBack={onboarding ? backToMetadata : undefined}
+          backDisabled={locked}
+        />
+        {onboarding && <OnboardingProgress step={3} label="측정값 확인" />}
+        <RecordFormContent
+          reference={reference}
+          step={step}
+          attention={message}
+        >
           {message ? (
             <>
               <Notice>{message}</Notice>
@@ -429,27 +570,74 @@ export function RecordForm({
           ) : (
             <Loading label="작성 중이던 입력을 불러오고 있어요" />
           )}
-        </div>
+        </RecordFormContent>
       </Shell>
     );
   return (
-    <Shell>
+    <Shell
+      className={`record-form-shell ${onboarding ? "onboarding-shell" : ""} ${reference ? photoStyles.shell : ""}`}
+    >
       <Header
+        onBack={
+          onboarding && step === 2
+            ? backToMetadata
+            : onDiscard
+              ? discardDraft
+              : undefined
+        }
+        backDisabled={locked}
         title={
           base ? "측정 기록 수정" : step === 1 ? "새 측정 기록" : "측정값 입력"
         }
-        back={base ? `/measurements/${base.data.id}` : "/measurements"}
+        back={
+          base
+            ? `/measurements/${base.data.id}`
+            : onboarding
+              ? "/onboarding"
+              : "/measurements"
+        }
       />
-      <div className="content">
-        <div className="stepper" aria-label={`${step}단계 / 2단계`}>
-          <span className={`step ${step === 1 ? "active" : ""}`}>
-            <b>1</b>기본 정보
-          </span>
-          <span className="step-line" />
-          <span className={`step ${step === 2 ? "active" : ""}`}>
-            <b>2</b>측정값
-          </span>
-        </div>
+      {onboarding && (
+        <OnboardingProgress
+          step={step === 1 ? 2 : 3}
+          label={step === 1 ? "기본 정보 입력" : "측정값 확인"}
+        />
+      )}
+      <RecordFormContent reference={reference} step={step} attention={message}>
+        {reference && (
+          <p className="caption" style={{ marginBottom: 20 }}>
+            결과표와 기본 정보·측정값을 비교하고 저장해 주세요.
+          </p>
+        )}
+        {removedRetiredItems && (
+          <Notice tone="info">
+            성인 윗몸말아올리기는 새 기록에서 지원하지 않아 임시 입력에서
+            제외했어요.
+          </Notice>
+        )}
+        {!!extractionNotes?.length && (
+          <details className="accordion" open>
+            <summary>
+              사진에서 확인이 필요한 항목 ({extractionNotes.length})
+            </summary>
+            <ul>
+              {extractionNotes.map((note, index) => (
+                <li key={index}>{note}</li>
+              ))}
+            </ul>
+          </details>
+        )}
+        {!onboarding && (
+          <div className="stepper" aria-label={`${step}단계 / 2단계`}>
+            <span className={`step ${step === 1 ? "active" : ""}`}>
+              <b>1</b>기본 정보
+            </span>
+            <span className="step-line" />
+            <span className={`step ${step === 2 ? "active" : ""}`}>
+              <b>2</b>측정값
+            </span>
+          </div>
+        )}
         <div
           ref={notice}
           tabIndex={-1}
@@ -459,13 +647,13 @@ export function RecordForm({
           {restored && (
             <Notice tone="info">이전에 작성하던 입력을 복원했어요.</Notice>
           )}
-          {(restored || gone) && !uncertain && !busy && (
+          {(restored || gone || onDiscard) && !uncertain && !busy && (
             <button
               type="button"
               className="text-button"
               onClick={discardDraft}
             >
-              임시 입력 지우기
+              {onDiscard ? "입력 지우고 다른 사진 선택" : "임시 입력 지우기"}
             </button>
           )}
           {message && <Notice>{message}</Notice>}
@@ -520,61 +708,66 @@ export function RecordForm({
                   <span className="input-unit">세</span>
                 </div>
                 <p className="caption" id="age-hint">
-                  만 13~64세의 기록을 등록할 수 있어요.
+                  {selfAssessment
+                    ? "성인 간이측정은 만 19~64세를 지원해요."
+                    : "만 13~64세의 기록을 등록할 수 있어요."}
                 </p>
                 <FieldError id="age-error" message={errors.ageAtMeasurement} />
               </div>
+              {requireSex && sexField}
               <details className="accordion">
                 <summary>
                   추가 정보 <span className="optional-label">(선택)</span>
                 </summary>
                 <p className="caption summary-hint">
-                  성별 · 측정 유형 · 센터 · 결과표 종합등급
+                  {selfAssessment
+                    ? "측정 당시 성별"
+                    : requireSex
+                      ? "측정 유형 · 센터 · 결과표 종합등급"
+                      : "성별 · 측정 유형 · 센터 · 결과표 종합등급"}
                 </p>
                 <div className="stack">
-                  <div className="field">
-                    <label htmlFor="sex">결과표의 성별</label>
-                    <select
-                      id="sex"
-                      value={meta.sex}
-                      onChange={(e) => update("sex", e.target.value)}
-                    >
-                      <option value="">선택 안 함</option>
-                      <option value="male">남성</option>
-                      <option value="female">여성</option>
-                    </select>
-                  </div>
-                  <div className="field">
-                    <label htmlFor="kind">측정 유형</label>
-                    <select
-                      id="kind"
-                      value={meta.kind}
-                      onChange={(e) =>
-                        update("kind", e.target.value as FormMetadata["kind"])
-                      }
-                    >
-                      <option value="unknown">모름 / 선택 안 함</option>
-                      <option value="standard">일반 체력측정</option>
-                      <option value="simple">공식 간편측정</option>
-                    </select>
-                  </div>
-                  {textField(
-                    "center",
-                    "측정 센터",
-                    "center",
-                    200,
-                    "centerName",
+                  {!requireSex && sexField}
+                  {!selfAssessment && (
+                    <>
+                      <div className="field">
+                        <label htmlFor="kind">측정 유형</label>
+                        <select
+                          id="kind"
+                          value={meta.kind}
+                          onChange={(e) =>
+                            update(
+                              "kind",
+                              e.target.value as FormMetadata["kind"],
+                            )
+                          }
+                        >
+                          <option value="unknown">모름 / 선택 안 함</option>
+                          <option value="standard">일반 체력측정</option>
+                          <option value="simple">공식 간편측정</option>
+                        </select>
+                      </div>
+                      {textField(
+                        "center",
+                        "측정 센터",
+                        "center",
+                        200,
+                        "centerName",
+                      )}
+                    </>
                   )}
-                  {textField(
-                    "grade",
-                    "결과표 종합등급",
-                    "grade",
-                    100,
-                    "reportedOverallGrade",
-                  )}
+                  {!selfAssessment &&
+                    textField(
+                      "grade",
+                      "결과표 종합등급",
+                      "grade",
+                      100,
+                      "reportedOverallGrade",
+                    )}
                   <p className="caption">
-                    결과표에 적힌 그대로 입력해 주세요. 서비스가 계산한 등급이
-                    아니에요.
+                    {selfAssessment
+                      ? "측정 당시 성별은 등급 판정에 사용돼요."
+                      : "결과표에 적힌 그대로 입력해 주세요. 서비스가 계산한 등급이 아니에요."}
                   </p>
                 </div>
               </details>
@@ -599,10 +792,7 @@ export function RecordForm({
               <button
                 type="button"
                 className="text-button"
-                onClick={() => {
-                  setStep(1);
-                  setMessage("");
-                }}
+                onClick={backToMetadata}
                 disabled={locked}
               >
                 변경
@@ -632,15 +822,21 @@ export function RecordForm({
                           type="button"
                           className="icon-button"
                           aria-label={`${label} 항목 삭제`}
+                          disabled={selfAssessment && item.code === "bmi"}
                           onClick={() => {
                             if (
                               (item.value || item.grade) &&
                               !window.confirm(`${label}의 입력값을 삭제할까요?`)
                             )
                               return;
-                            setItems((old) =>
-                              old.filter((i) => i.code !== item.code),
-                            );
+                            setItems((old) => {
+                              const next = old.filter(
+                                (i) => i.code !== item.code,
+                              );
+                              return selfAssessment
+                                ? calculateBodyItems(next)
+                                : next;
+                            });
                             setDirty(true);
                           }}
                         >
@@ -651,6 +847,7 @@ export function RecordForm({
                         <input
                           className="input"
                           id={`value-${item.code}`}
+                          readOnly={selfAssessment && item.code === "bmi"}
                           type="text"
                           inputMode={
                             definition?.minValue === null
@@ -667,10 +864,105 @@ export function RecordForm({
                             updateItem(item.code, "value", e.target.value)
                           }
                           aria-invalid={!!errors[`item.${item.code}`]}
-                          aria-describedby={`error-${item.code}`}
+                          aria-describedby={`error-${item.code}${item.code === "absolute_grip_strength" ? " grip-help" : item.code === "ymca_recovery_heart_rate" ? " step-help" : ""}`}
                         />
                         <span className="input-unit">{definition?.unit}</span>
                       </div>
+                      {item.code === "ymca_recovery_heart_rate" && (
+                        <div id="step-help" className="stack-sm">
+                          <p className="caption">
+                            1분 회복 후 10초간 센 맥박에 6을 곱한 분당
+                            심박수(bpm)를 입력해 주세요.
+                          </p>
+                          <StepAssessmentHelp
+                            sex={meta.sex}
+                            height={
+                              items.find((i) => i.code === "height")?.value ??
+                              ""
+                            }
+                            weight={
+                              items.find((i) => i.code === "weight")?.value ??
+                              ""
+                            }
+                          />
+                          {(
+                            [
+                              ["height", "신장"],
+                              ["weight", "체중"],
+                            ] as const
+                          )
+                            .filter(
+                              ([code]) =>
+                                !items.some((i) => i.code === code) &&
+                                catalog?.definitions.some(
+                                  (d) => d.code === code,
+                                ),
+                            )
+                            .map(([code, label]) => (
+                              <button
+                                key={code}
+                                type="button"
+                                className="text-link"
+                                onClick={() => {
+                                  setItems((old) =>
+                                    old.some((i) => i.code === code)
+                                      ? old
+                                      : [
+                                          ...old,
+                                          { code, value: "", grade: "" },
+                                        ],
+                                  );
+                                  setDirty(true);
+                                }}
+                              >
+                                측정 당시 {label} 추가
+                              </button>
+                            ))}
+                        </div>
+                      )}
+                      {item.code === "absolute_grip_strength" && (
+                        <div id="grip-help" className="stack-sm caption">
+                          <p>
+                            결과표의 대표 악력을 kg으로 입력해 주세요. 같은 측정
+                            기록의 체중으로 상대악력(%)을 환산해 근력 등급에
+                            반영해요.
+                          </p>
+                          {!items.some(
+                            (i) => i.code === "weight" && i.value !== "",
+                          ) && (
+                            <p>
+                              체중이 없으면 절대악력만 저장되고 이 항목의 등급은
+                              평가할 수 없어요.
+                            </p>
+                          )}
+                          {!items.some((i) => i.code === "weight") &&
+                            catalog?.definitions.some(
+                              (d) => d.code === "weight",
+                            ) && (
+                              <button
+                                type="button"
+                                className="text-link"
+                                onClick={() => {
+                                  setItems((old) =>
+                                    old.some((i) => i.code === "weight")
+                                      ? old
+                                      : [
+                                          ...old,
+                                          {
+                                            code: "weight",
+                                            value: "",
+                                            grade: "",
+                                          },
+                                        ],
+                                  );
+                                  setDirty(true);
+                                }}
+                              >
+                                측정 당시 체중 추가
+                              </button>
+                            )}
+                        </div>
+                      )}
                       <FieldError
                         id={`error-${item.code}`}
                         message={errors[`item.${item.code}`]}
@@ -688,7 +980,7 @@ export function RecordForm({
                 측정 항목 추가
               </button>
               <FieldError message={errors.items} />
-              {!!items.length && (
+              {!selfAssessment && !!items.length && (
                 <details className="accordion">
                   <summary>
                     항목별 결과표 등급{" "}
@@ -744,7 +1036,16 @@ export function RecordForm({
           <CatalogPicker
             definitions={catalog.definitions.filter(
               (d) =>
-                Number(meta.age) >= d.minAge && Number(meta.age) <= d.maxAge,
+                !isRetiredMeasurement(d.code) &&
+                Number(meta.age) >= d.minAge &&
+                Number(meta.age) <= d.maxAge &&
+                (!selfAssessment ||
+                  (selfCodes.includes(d.code) &&
+                    d.code !== "bmi" &&
+                    !(
+                      d.code === "cross_sit_up" &&
+                      items.some((i) => i.code === "self_curl_up")
+                    ))),
             )}
             selected={items.map((i) => i.code)}
             onSelect={(code) => {
@@ -797,7 +1098,28 @@ export function RecordForm({
             </div>
           </Dialog>
         )}
-      </div>
+      </RecordFormContent>
     </Shell>
+  );
+}
+
+function RecordFormContent({
+  reference,
+  step,
+  attention,
+  children,
+}: {
+  reference?: React.ReactNode;
+  step: number;
+  attention: string;
+  children: React.ReactNode;
+}) {
+  const content = <div className="content">{children}</div>;
+  return reference ? (
+    <PhotoInputWorkspace photo={reference} step={step} attention={attention}>
+      {content}
+    </PhotoInputWorkspace>
+  ) : (
+    content
   );
 }

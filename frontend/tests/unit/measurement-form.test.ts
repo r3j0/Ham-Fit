@@ -148,3 +148,28 @@ test("optional original strings trimmed, blank fields become null", () => {
   assert.equal(result.input.reportedOverallGrade, "6등급");
   assert.equal(result.input.items[0].reportedGrade, "참가");
 });
+
+test("manual-entry sex is required for both metadata and final payload validation", () => {
+  const items = [{ code: "height", value: "170", grade: "" }];
+  for (const sex of ["", "unknown"]) {
+    assert.equal(
+      validateMetadata({ ...meta, sex }, "2026-09-19", { requireSex: true })
+        .sexAtMeasurement,
+      "성별을 선택해 주세요.",
+    );
+    assert.equal(
+      buildInput({ ...meta, sex }, items, catalog, "2026-09-19", {
+        requireSex: true,
+      }).errors.sexAtMeasurement,
+      "성별을 선택해 주세요.",
+    );
+  }
+  for (const sex of ["male", "female"]) {
+    const result = buildInput({ ...meta, sex }, items, catalog, "2026-09-19", {
+      requireSex: true,
+    });
+    assert.deepEqual(result.errors, {});
+    assert.equal(result.input.sexAtMeasurement, sex);
+  }
+  assert.deepEqual(buildInput(meta, items, catalog, "2026-09-19").errors, {});
+});
