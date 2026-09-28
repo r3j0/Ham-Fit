@@ -314,6 +314,9 @@ h3 {
   background: var(--surface);
   padding-bottom: env(safe-area-inset-bottom);
 }
+body:has(.authenticated-app) {
+  background: var(--surface);
+}
 .authenticated-app .app-shell {
   padding-bottom: calc(
     var(--bottom-navigation-height) + env(safe-area-inset-bottom)
@@ -1105,9 +1108,12 @@ fieldset:disabled select {
 .kspo-sky-theme .segmented button[aria-pressed="true"]:active:not(:disabled) {
   background: #31a3c9;
 }
+.button.primary.workout-request:not(:disabled) {
+  color: var(--surface);
+}
 .workout-theme {
   display: flow-root;
-  background: var(--canvas);
+  background: var(--surface);
 }
 /* Shared KSPO Orange tokens for the profile and all of its subpages. */
 .kspo-orange-theme {
@@ -1132,7 +1138,7 @@ fieldset:disabled select {
 .profile-theme {
   display: flow-root;
   min-height: 100dvh;
-  background: var(--canvas);
+  background: var(--surface);
 }
 .bottom-navigation.kspo-orange-theme {
   background: var(--canvas);

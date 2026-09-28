@@ -278,9 +278,7 @@ test("actual playback excludes seeks, ends below 50%, resumes after reload and c
     .getByRole("navigation")
     .getByRole("link", { name: "메인", exact: true })
     .click();
-  await expect(
-    page.getByRole("button", { name: "오늘 운동 추천받기" }),
-  ).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "운동하기" })).toHaveCount(0);
   await expect(page.getByRole("region", { name: "연속 운동" })).toContainText(
     "1일 연속 운동 중",
   );
@@ -479,7 +477,7 @@ test("legacy users are guided to a birth profile, measurement, or unsupported-ag
   await openAuthenticated(page, "/workouts");
   await expect(page.getByText("아직 운동 이력이 없어요")).toBeVisible();
   await page.getByRole("link", { name: "오늘 운동 받으러 가기" }).click();
-  await page.getByRole("button", { name: "오늘 운동 추천받기" }).click();
+  await page.getByRole("button", { name: "운동하기" }).click();
   await page.getByRole("link", { name: "생년월일 입력하기" }).click();
   await expect(page).toHaveURL(/\/account\/settings\?tab=birth$/);
   await page.getByLabel("생년월일 입력", { exact: true }).fill("2000-01-01");
@@ -488,7 +486,7 @@ test("legacy users are guided to a birth profile, measurement, or unsupported-ag
     .getByRole("navigation")
     .getByRole("link", { name: "메인", exact: true })
     .click();
-  await page.getByRole("button", { name: "오늘 운동 추천받기" }).click();
+  await page.getByRole("button", { name: "운동하기" }).click();
   await expect(
     page.getByRole("link", { name: "측정 기록 등록하기" }),
   ).toBeVisible();
@@ -504,7 +502,7 @@ test("legacy users are guided to a birth profile, measurement, or unsupported-ag
     .getByRole("navigation")
     .getByRole("link", { name: "메인", exact: true })
     .click();
-  await page.getByRole("button", { name: "오늘 운동 추천받기" }).click();
+  await page.getByRole("button", { name: "운동하기" }).click();
   await expect(
     page.getByRole("link", { name: "생년월일 확인하기" }),
   ).toHaveAttribute("href", "/account/settings?tab=birth");

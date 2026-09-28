@@ -138,7 +138,7 @@ export function TodayWorkout({ embedded = false }: { embedded?: boolean }) {
               )}
               {(!workouts.length || pending) && (
                 <button
-                  className="button primary"
+                  className="button primary workout-request"
                   onClick={() => void create()}
                   disabled={busy}
                 >
@@ -146,7 +146,7 @@ export function TodayWorkout({ embedded = false }: { embedded?: boolean }) {
                     ? "추천을 확인하고 있어요"
                     : pending
                       ? "이전 추천 요청 확인하기"
-                      : "오늘 운동 추천받기"}
+                      : "운동하기"}
                 </button>
               )}
             </>

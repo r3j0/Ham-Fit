@@ -312,11 +312,9 @@ test("오늘 운동은 측정 입력을 안내하고 응답 유실·새로고침
   page,
 }) => {
   await signup(page, "main");
-  await expect(
-    page.getByRole("button", { name: "오늘 운동 추천받기" }),
-  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "운동하기" })).toBeVisible();
   await expect(page.getByRole("main").getByRole("alert")).toHaveCount(0);
-  await page.getByRole("button", { name: "오늘 운동 추천받기" }).click();
+  await page.getByRole("button", { name: "운동하기" }).click();
   await expect(
     page.getByRole("link", { name: "측정 기록 등록하기" }),
   ).toBeVisible();
@@ -339,7 +337,7 @@ test("오늘 운동은 측정 입력을 안내하고 응답 유실·새로고침
       await route.abort("failed");
     } else await route.fulfill({ response });
   });
-  await page.getByRole("button", { name: "오늘 운동 추천받기" }).click();
+  await page.getByRole("button", { name: "운동하기" }).click();
   await expect(
     page.getByRole("button", { name: "이전 추천 요청 확인하기" }),
   ).toBeVisible();
@@ -353,9 +351,7 @@ test("오늘 운동은 측정 입력을 안내하고 응답 유실·새로고침
   await expect(
     page.getByRole("link", { name: "운동 시작하기" }),
   ).toHaveAttribute("href", `/workouts/${assignmentId}`);
-  await expect(
-    page.getByRole("button", { name: "오늘 운동 추천받기" }),
-  ).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "운동하기" })).toHaveCount(0);
 });
 test("실제 저장 응답 유실 후 같은 키로 재시도해 중복 생성하지 않는다", async ({
   page,

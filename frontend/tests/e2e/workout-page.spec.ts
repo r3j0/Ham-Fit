@@ -101,7 +101,7 @@ test("오늘 배정이 없으면 이전 운동을 오늘 목록으로 표시하�
     page.getByRole("list", { name: "오늘 배정된 운동" }),
   ).toHaveCount(0);
   expect(requests).toBe(0);
-  await page.getByRole("button", { name: "오늘 운동 추천받기" }).click();
+  await page.getByRole("button", { name: "운동하기" }).click();
   await expect(
     page.getByRole("list", { name: "오늘 배정된 운동" }).getByRole("listitem"),
   ).toHaveCount(1);
