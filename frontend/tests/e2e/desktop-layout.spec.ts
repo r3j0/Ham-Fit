@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import {
   installApi,
+  testRecord,
   catalog as assessmentCatalog,
 } from "./integration-fixtures";
 import {
@@ -70,6 +71,65 @@ async function noOverflow(page: Page) {
     expect(reserved).toBeGreaterThanOrEqual(box.height);
   }
 }
+
+test("메인의 알림은 전체 콘텐츠 우측 상단에 두고 미등록 안내는 데스크톱 오른쪽 열에 배치한다", async ({
+  page,
+}, info) => {
+  const api = await installApi(page);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  for (const onboarded of [false, true]) {
+    api.setRecord(onboarded ? testRecord() : undefined);
+    for (const width of [320, 702, 959, 960, 1280, 1456]) {
+      await page.setViewportSize({ width, height: 786 });
+      await page.goto("/");
+      const companions = page.locator(".home-companions"),
+        activity = page.locator(".home-activity"),
+        intro = page.locator(".home-intro"),
+        bell = page.getByRole("link", { name: "알림", exact: true });
+      await expect(companions).toBeVisible();
+      await expect(activity).toBeVisible();
+      const content = await page.locator(".home-content").evaluate((el) => {
+        const box = el.getBoundingClientRect(),
+          style = getComputedStyle(el);
+        return {
+          right: box.right - parseFloat(style.paddingRight),
+          top: box.top + parseFloat(style.paddingTop),
+        };
+      });
+      const bellBox = (await bell.boundingBox())!;
+      expect(bellBox.x + bellBox.width).toBeCloseTo(content.right, 1);
+      expect(bellBox.y).toBeCloseTo(content.top, 1);
+      const left = (await companions.boundingBox())!,
+        right = (await activity.boundingBox())!;
+      if (onboarded) {
+        await expect(intro).toHaveCount(0);
+        if (width >= 960) expect(left.y).toBeCloseTo(right.y, 1);
+      } else {
+        await expect(intro).toBeVisible();
+        const card = (await intro.boundingBox())!;
+        if (width >= 960) {
+          expect(card.x).toBeCloseTo(right.x, 1);
+          expect(card.width).toBeCloseTo(right.width, 1);
+          expect(card.x).toBeGreaterThanOrEqual(left.x + left.width);
+          expect(card.y).toBeCloseTo(left.y, 1);
+          expect(right.y).toBeGreaterThanOrEqual(card.y + card.height);
+        } else {
+          expect(card.y + card.height).toBeLessThanOrEqual(left.y);
+        }
+      }
+      await noOverflow(page);
+      if (width === 1456 || (!onboarded && width === 702)) {
+        await page.evaluate(() => window.scrollTo(0, 0));
+        await page.screenshot({
+          path: info.outputPath(
+            `home-${onboarded ? "ready" : "onboarding"}-${width}.png`,
+          ),
+          fullPage: true,
+        });
+      }
+    }
+  }
+});
 
 for (const width of [960, 1280, 1440]) {
   test(`${width}px 모든 기존 페이지는 넓은 레이아웃에서 메뉴와 겹치거나 가로로 넘치지 않는다`, async ({

@@ -2005,12 +2005,19 @@ fieldset:disabled select {
   .home-content {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    align-content: center;
+    align-content: start;
     align-items: start;
     gap: 32px 48px;
     min-height: calc(100dvh - var(--bottom-navigation-height) - 64px);
   }
-  .home-content > .home-intro,
+  .home-content > .home-toolbar {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+  .home-content > .home-intro {
+    grid-column: 2;
+    grid-row: 2;
+  }
   .home-content > .loading,
   .home-content > div.stack {
     grid-column: 1 / -1;
@@ -2021,9 +2028,17 @@ fieldset:disabled select {
   .home-companions {
     --home-mascot-size: 288px;
     grid-column: 1;
+    grid-row: 2;
   }
   .home-activity {
     grid-column: 2;
+    grid-row: 2;
+  }
+  .home-content:has(> .home-intro) > .home-companions {
+    grid-row: 2 / span 2;
+  }
+  .home-content:has(> .home-intro) > .home-activity {
+    grid-row: 3;
   }
   .home-mascot-stage {
     min-height: 320px;
