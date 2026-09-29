@@ -2,6 +2,9 @@
 
 Project Health의 NestJS API 서버입니다. 백엔드 코드·설정·문서·테스트는 이 디렉토리에서 관리합니다.
 
+- [그룹·가입 신청·알림 API](docs/groups-api.md)
+- [그룹 미션 연동 경계·미정 정책](docs/group-missions.md)
+- [그룹 기능 검증·변경 파일](docs/groups-verification.md)
 - [개발 원칙](AGENTS.md)
 - [API 버전 관리](docs/api-versioning.md): 현재 `/api/v1`, DB·측정 기준·기록 수정 버전과 구분
 - [계정 스키마](docs/account-schema.md): 이메일·비밀번호 등 계정 필드와 사용자 관계

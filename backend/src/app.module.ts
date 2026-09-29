@@ -1,3 +1,4 @@
+import { GroupsModule } from './groups/groups.module.js';
 import { Module } from '@nestjs/common';
 import { UsersModule } from './users/users.module.js';
 import { CurriculaModule } from './curricula/curricula.module.js';
@@ -23,6 +24,7 @@ import { RecommendationsModule } from './recommendations/recommendations.module.
     UsersModule,
     CurriculaModule,
     RecommendationsModule,
+    GroupsModule,
   ],
 })
 export class AppModule {}

@@ -83,6 +83,11 @@ model User {
   workoutRequests             WorkoutAssignmentRequest[]
   workoutRoutines             WorkoutRoutine[]
   routineRequests             WorkoutRoutineRequest[]
+  ledGroups                   Group[]                    @relation("GroupLeader")
+  groupMemberships            GroupMembership[]
+  groupApplications           GroupJoinRequest[]
+  notifications               GroupNotification[]
+  groupCreations              GroupCreateRequest[]
 
   @@map("users")
 }
@@ -446,4 +451,83 @@ model WorkoutRoutineEvent {
   @@id([itemId, key])
   @@unique([itemId, deviceId, sequence])
   @@map("workout_routine_events")
+}
+
+// Roles are derived from this single leader pointer, never independently stored.
+// SQL also enforces a deferred (id, leader_user_id) FK to group_memberships.
+model Group {
+  id            String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name          String               @db.VarChar(50)
+  description   String               @db.VarChar(500)
+  maxMembers    Int                  @map("max_members")
+  leaderUserId  String               @map("leader_user_id") @db.Uuid
+  inviteCode    String               @unique @map("invite_code") @db.VarChar(43)
+  createdAt     DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  leader        User                 @relation("GroupLeader", fields: [leaderUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  members       GroupMembership[]
+  applications  GroupJoinRequest[]
+  notifications GroupNotification[]
+  creations     GroupCreateRequest[]
+
+  @@index([leaderUserId])
+  @@map("groups")
+}
+
+model GroupMembership {
+  groupId  String   @map("group_id") @db.Uuid
+  userId   String   @map("user_id") @db.Uuid
+  joinedAt DateTime @default(now()) @map("joined_at") @db.Timestamptz(6)
+  group    Group    @relation(fields: [groupId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+
+  @@id([groupId, userId])
+  @@index([userId, groupId])
+  @@map("group_memberships")
+}
+
+model GroupCreateRequest {
+  userId      String @map("user_id") @db.Uuid
+  key         String @db.Uuid
+  requestHash String @map("request_hash") @db.Char(64)
+  groupId     String @map("group_id") @db.Uuid
+  user        User   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  group       Group  @relation(fields: [groupId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+
+  @@id([userId, key])
+  @@map("group_create_requests")
+}
+
+model GroupJoinRequest {
+  id            String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  groupId       String              @map("group_id") @db.Uuid
+  userId        String              @map("user_id") @db.Uuid
+  requestKey    String              @map("request_key") @db.Uuid
+  status        String              @default("pending")
+  createdAt     DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  processedAt   DateTime?           @map("processed_at") @db.Timestamptz(6)
+  group         Group               @relation(fields: [groupId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  user          User                @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  notifications GroupNotification[]
+
+  @@unique([userId, requestKey])
+  @@index([groupId, status, id])
+  @@map("group_join_requests")
+}
+
+// Minimal durable in-app inbox, committed with the corresponding application.
+model GroupNotification {
+  id        String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String           @map("user_id") @db.Uuid
+  groupId   String           @map("group_id") @db.Uuid
+  requestId String           @map("request_id") @db.Uuid
+  type      String
+  createdAt DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  readAt    DateTime?        @map("read_at") @db.Timestamptz(6)
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  group     Group            @relation(fields: [groupId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  request   GroupJoinRequest @relation(fields: [requestId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+
+  @@unique([requestId, type])
+  @@index([userId, id])
+  @@map("group_notifications")
 }
