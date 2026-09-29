@@ -79,10 +79,6 @@ export function ProfileActivityReport({ createdAt }: { createdAt: string }) {
           </div>
         ))}
       </dl>
-      <p className="caption">
-        연속 운동에는 기존 운동 이력이 반영되며, 새 루틴 완료는 아직 포함되지
-        않아요.
-      </p>
     </section>
   );
 }

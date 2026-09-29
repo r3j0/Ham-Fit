@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { House, UserRound, Dumbbell } from "lucide-react";
+import { House, UserRound, UsersRound, Dumbbell } from "lucide-react";
 
 export function BottomNavigation() {
   const pathname = usePathname();
@@ -13,16 +13,15 @@ export function BottomNavigation() {
     pathname.startsWith("/workout-routines/") ||
     pathname === "/workouts" ||
     pathname.startsWith("/workouts/");
+  const groupRoute = pathname === "/groups" || pathname.startsWith("/groups/");
   const profileRoute =
-    pathname === "/groups" ||
-    pathname.startsWith("/groups/") ||
     pathname === "/account" ||
     pathname.startsWith("/account/") ||
     pathname === "/measurements" ||
     pathname.startsWith("/measurements/");
   const theme = workoutRoute
     ? " kspo-sky-theme"
-    : profileRoute
+    : profileRoute || groupRoute
       ? " kspo-orange-theme"
       : "";
   const tabs = [
@@ -37,6 +36,12 @@ export function BottomNavigation() {
       label: "메인",
       icon: House,
       active: pathname === "/",
+    },
+    {
+      href: "/groups",
+      label: "내 그룹",
+      icon: UsersRound,
+      active: groupRoute,
     },
     {
       href: "/account",

@@ -95,14 +95,6 @@ export function Account() {
               <strong>내 운동 이력</strong>
               <ChevronRight size={20} />
             </Link>
-            <Link href="/account/notifications" className="menu-row">
-              <strong>알림</strong>
-              <ChevronRight size={20} />
-            </Link>
-            <Link href="/groups" className="menu-row">
-              <strong>내 그룹</strong>
-              <ChevronRight size={20} />
-            </Link>
             <Link href="/account/preferences" className="menu-row">
               <strong>운동 설정</strong>
               <ChevronRight size={20} aria-hidden="true" />

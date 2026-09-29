@@ -1128,8 +1128,8 @@ test("메인과 내 프로필 탭을 오가며 기록을 관리하고 입력 이
   const nav = page.getByRole("navigation", { name: "하단 메뉴" });
   const mainTab = nav.getByRole("link", { name: "메인", exact: true });
   const profileTab = nav.getByRole("link", { name: "내 프로필", exact: true });
-  await expect(nav.getByRole("link")).toHaveText(["", "", ""]);
-  for (const label of ["메인", "운동", "내 프로필"]) {
+  await expect(nav.getByRole("link")).toHaveText(["", "", "", ""]);
+  for (const label of ["메인", "운동", "내 그룹", "내 프로필"]) {
     await expect(
       nav.getByRole("link", { name: label, exact: true }),
     ).toBeVisible();
@@ -1147,7 +1147,7 @@ test("메인과 내 프로필 탭을 오가며 기록을 관리하고 입력 이
   await profileTab.click();
   await expect(
     page.getByRole("heading", { name: "내 프로필", exact: true }),
-  ).toHaveClass("sr-only");
+  ).toBeVisible();
   await expect(page.getByText(email, { exact: true })).toBeVisible();
   await expect(profileTab).toHaveAttribute("aria-current", "page");
   await page.goBack();

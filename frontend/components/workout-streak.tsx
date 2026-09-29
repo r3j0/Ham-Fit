@@ -83,10 +83,6 @@ export function WorkoutStreak() {
             있어요.
           </Notice>
         )}
-        <p className="caption">
-          연속 운동에는 기존 운동 이력이 반영되며, 새 루틴 완료는 아직 포함되지
-          않아요.
-        </p>
         <div className={styles.streakFooter}>
           {ready && !error && !legacyUnavailable && (
             <p className={styles.hint}>
