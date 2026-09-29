@@ -101,3 +101,7 @@ Prisma Client·PostgreSQL 어댑터·CLI를 7.10.0으로 맞췄다. 이 버전�
 2026-09-29 후속 `20260929000200_owned_tools`: 기존 `user_preferences`에 `owned_tools` enum 배열과 빈 배열 기본값·NOT NULL·null 원소 금지 제약을 추가한다. 기존 설정·생성/수정 시각·루틴을 보존하며 추가 가입 백필은 필요 없다. [보유 도구 계약](owned-tools.md)을 따른다.
 
 후속 `20260929000300_home_training_tools`는 `OwnedTool`에 ball·cone·agility_ladder·bosu를 추가해 홈트 소도구 10종을 지원한다. 기존 배열·기본값·수정 시각은 변경하지 않는다.
+
+## 그룹·가입 신청·알림 (2026-09-29)
+
+`20260929000400_groups`는 그룹·멤버십·생성 재시도 키·가입 신청·알림 테이블을 추가한다. 단일 그룹장 포인터와 지연 검사 멤버십 FK, 대기 신청 partial unique, 정원 검사 trigger는 SQL 마이그레이션의 일부다. 기존 계정·운동 데이터는 변경하지 않는다. 그룹장이 계정 영구 삭제로 그룹을 고아 상태로 만들 수 없도록 RESTRICT하며 먼저 위임/탈퇴 또는 그룹 삭제가 필요하다. [모델·삭제 정책·배포·API 계약](groups-api.md)을 참고한다. 그룹 미션/씨앗/성장은 [정책 확정 후 구현](group-missions.md)한다.

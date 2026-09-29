@@ -24,6 +24,7 @@ export class DatabaseService
   table(
     name:
       | 'users'
+      | 'groups'
       | 'user_curriculum_assignments'
       | 'measurements'
       | 'user_preferences',
@@ -79,6 +80,11 @@ export class DatabaseService
         this.workoutRoutineItem.findFirst({ select: { id: true } }),
         this.workoutRoutineRequest.findFirst({ select: { key: true } }),
         this.workoutRoutineEvent.findFirst({ select: { key: true } }),
+        this.group.findFirst({ select: { id: true } }),
+        this.groupMembership.findFirst({ select: { groupId: true } }),
+        this.groupJoinRequest.findFirst({ select: { id: true } }),
+        this.groupCreateRequest.findFirst({ select: { key: true } }),
+        this.groupNotification.findFirst({ select: { id: true } }),
       ]);
       return definitions > 0;
     } catch {

@@ -1,3 +1,4 @@
+import { memberProfiles } from './member-profile.js';
 import {
   Inject,
   Injectable,
@@ -18,6 +19,17 @@ export class UserProfileService {
   constructor(
     @Inject(DatabaseService) private readonly database: DatabaseService,
   ) {}
+
+  async activity(userId: string) {
+    return this.database.$transaction(
+      async (tx) => {
+        const profile = (await memberProfiles(tx, [userId])).get(userId);
+        if (!profile) throw new UnauthorizedException('계정이 삭제되었습니다.');
+        return profile;
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
+    );
+  }
 
   async profile(userId: string) {
     const user = await this.database.user.findUnique({

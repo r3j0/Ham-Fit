@@ -23,6 +23,10 @@ export class UserProfileController {
   get(@Req() request: AuthenticatedRequest) {
     return this.profiles.profile(request.user.id);
   }
+  @Get('activity')
+  activity(@Req() request: AuthenticatedRequest) {
+    return this.profiles.activity(request.user.id);
+  }
   @Patch()
   update(@Req() request: AuthenticatedRequest, @Body() body: unknown) {
     if (!request.is('application/json'))
