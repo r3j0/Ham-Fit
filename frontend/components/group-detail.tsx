@@ -72,7 +72,11 @@ function Applications({
   return (
     <section className="stack" aria-label="가입 신청 관리">
       <h2>가입 신청 관리</h2>
-      <div className="segmented" role="group" aria-label="신청 상태">
+      <div
+        className={`segmented ${styles.statusFilter}`}
+        role="group"
+        aria-label="신청 상태"
+      >
         {(Object.keys(statusLabels) as RequestStatus[]).map((value) => (
           <button
             key={value}
@@ -373,22 +377,24 @@ function GroupView({ row, refresh }: { row: Detail; refresh: () => void }) {
             탈퇴하려면 다른 그룹원에게 그룹장을 먼저 위임해 주세요.
           </p>
         )}
-        <button
-          className="button secondary"
-          disabled={busy || (leader && row.currentMembers > 1)}
-          onClick={() => setAction({ kind: "leave" })}
-        >
-          그룹 탈퇴
-        </button>
-        {leader && (
+        <div className={styles.actions}>
           <button
             className="button secondary"
-            disabled={busy}
-            onClick={() => setAction({ kind: "delete" })}
+            disabled={busy || (leader && row.currentMembers > 1)}
+            onClick={() => setAction({ kind: "leave" })}
           >
-            그룹 삭제
+            그룹 탈퇴
           </button>
-        )}
+          {leader && (
+            <button
+              className="button secondary"
+              disabled={busy}
+              onClick={() => setAction({ kind: "delete" })}
+            >
+              그룹 삭제
+            </button>
+          )}
+        </div>
       </div>
       {editing && leader && (
         <Dialog

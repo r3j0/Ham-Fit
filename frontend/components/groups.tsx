@@ -177,7 +177,10 @@ function GroupRequestForm({
     }
   }
   return (
-    <section className={styles.card}>
+    <section
+      className={styles.card}
+      aria-label={kind === "create" ? "그룹 만들기" : "초대 코드로 가입 신청"}
+    >
       <h2>{kind === "create" ? "그룹 만들기" : "초대 코드로 가입 신청"}</h2>
       <form className="stack" onSubmit={(e) => void submit(e)}>
         {pending ? (
@@ -257,7 +260,7 @@ export function Groups() {
   const resource = useApiResource(getGroups);
   return (
     <Shell>
-      <Header title="내 그룹" back="/account" />
+      <Header title="내 그룹" back="/" />
       <div className="content stack">
         {resource.error !== undefined ? (
           <>
@@ -289,8 +292,10 @@ export function Groups() {
         ) : (
           <Loading />
         )}
-        <GroupRequestForm kind="create" onSuccess={resource.reload} />
-        <GroupRequestForm kind="join" onSuccess={resource.reload} />
+        <div className={styles.requestGrid}>
+          <GroupRequestForm kind="create" onSuccess={resource.reload} />
+          <GroupRequestForm kind="join" onSuccess={resource.reload} />
+        </div>
       </div>
     </Shell>
   );

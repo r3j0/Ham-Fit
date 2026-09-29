@@ -23,9 +23,48 @@
   justify-content: space-between;
 }
 .actions {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
+}
+.actions > * {
+  min-width: 0;
+}
+.actions :global(.button) {
+  min-height: 44px;
+  padding: 10px 8px;
+  font-size: 14px;
+}
+.statusFilter {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.requestGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 12px;
+}
+.requestGrid .card {
+  padding: 12px;
+  gap: 12px;
+}
+.requestGrid h2 {
+  font-size: 16px;
+}
+.requestGrid :global(.stack),
+.requestGrid .fields {
+  gap: 12px;
+}
+.requestGrid input {
+  min-width: 0;
+  min-height: 44px;
+  padding: 10px;
+}
+.requestGrid :global(.button) {
+  min-height: 44px;
+  padding: 10px 8px;
+  font-size: 14px;
 }
 .code {
   width: 100%;
