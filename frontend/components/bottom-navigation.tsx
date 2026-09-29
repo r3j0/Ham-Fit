@@ -14,6 +14,8 @@ export function BottomNavigation() {
     pathname === "/workouts" ||
     pathname.startsWith("/workouts/");
   const profileRoute =
+    pathname === "/groups" ||
+    pathname.startsWith("/groups/") ||
     pathname === "/account" ||
     pathname.startsWith("/account/") ||
     pathname === "/measurements" ||

@@ -46,6 +46,9 @@ export function Home() {
               </div>
               <GroupMascots />
             </div>
+            <Link className="button secondary" href="/groups">
+              내 그룹과 함께 운동하기
+            </Link>
             <div
               className="home-activity"
               data-current-workout={
