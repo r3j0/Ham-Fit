@@ -66,11 +66,22 @@ test("실제 알림: 신청·거절·승인 알림과 읽음 상태를 계정별
       ).status(),
     ).toBe(404);
     await page.getByRole("button", { name: "읽음으로 표시" }).click();
-    await expect(page.getByText("읽음", { exact: true })).toBeVisible();
+    await expect(page.getByText("새 그룹 가입 신청이 도착했어요.")).toHaveCount(
+      0,
+    );
+    await expect(page.getByText("아직 알림이 없어요.")).toBeVisible();
+    expect(
+      (
+        await (
+          await page.request.get(`${api}/notifications`, { headers })
+        ).json()
+      ).items[0].readAt,
+    ).not.toBeNull();
     await page.reload();
     await expect(
       page.getByRole("button", { name: "읽음으로 표시" }),
     ).toHaveCount(0);
+    await expect(page.getByRole("listitem")).toHaveCount(0);
     expect(
       (
         await page.request.post(
@@ -102,8 +113,10 @@ test("실제 알림: 신청·거절·승인 알림과 읽음 상태를 계정별
       .getByRole("listitem")
       .filter({ hasText: "그룹 가입이 승인됐어요." });
     await approved.getByRole("button", { name: "읽음으로 표시" }).click();
+    await expect(approved).toHaveCount(0);
     await other.reload();
-    await expect(approved.getByText("읽음", { exact: true })).toBeVisible();
+    await expect(approved).toHaveCount(0);
+    await expect(other.getByText("그룹 가입 신청이 거절됐어요.")).toBeVisible();
     await other.setViewportSize({ width: 320, height: 800 });
     expect(
       await other.evaluate(
