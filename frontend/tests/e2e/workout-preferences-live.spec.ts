@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { ownedToolOptions } from "../../lib/user-preferences";
+import { respectRateLimit } from "./live-api-fixtures";
 const api = process.env.E2E_API_BASE_URL ?? "http://localhost:3001/api/v1";
 const password = "preferences-live-test-2026!";
 let email: string;
@@ -14,19 +15,25 @@ test.beforeEach(async ({ page }) => {
     Origin: new URL(test.info().project.use.baseURL as string).origin,
     "X-CSRF-Protection": "1",
   };
-  const response = await page.request.post(`${api}/auth/register`, {
-    headers,
-    data: { email, password },
-  });
+  const response = await respectRateLimit(() =>
+    page.request.post(`${api}/auth/register`, {
+      headers,
+      data: { email, password },
+    }),
+  );
   expect(response.status()).toBe(201);
   headers.Authorization = `Bearer ${(await response.json()).access_token}`;
 });
 test.afterEach(async ({ page }) => {
-  const response = await page.request.delete(`${api}/users/me`, {
-    headers,
-    data: { password },
-  });
-  expect(response.status()).toBe(204);
+  if (headers.Authorization) {
+    const response = await respectRateLimit(() =>
+      page.request.delete(`${api}/users/me`, {
+        headers,
+        data: { password },
+      }),
+    );
+    expect(response.status()).toBe(204);
+  }
   expect(pageErrors).toEqual([]);
 });
 
@@ -168,13 +175,13 @@ test("실제 API: 두 사용자의 도구 설정 격리와 변경하지 않은 �
     Authorization: "",
   };
   try {
-    const registered = await other.post(`${api}/auth/register`, {
-      headers: { Origin: headers.Origin, "X-CSRF-Protection": "1" },
-      data: {
-        email: `preferences-other-${crypto.randomUUID()}@example.test`,
-        password,
-      },
-    });
+    const otherEmail = `preferences-other-${crypto.randomUUID()}@example.test`;
+    const registered = await respectRateLimit(() =>
+      other.post(`${api}/auth/register`, {
+        headers: { Origin: headers.Origin, "X-CSRF-Protection": "1" },
+        data: { email: otherEmail, password },
+      }),
+    );
     expect(registered.status()).toBe(201);
     otherHeaders.Authorization = `Bearer ${(await registered.json()).access_token}`;
     await page.goto("/account/preferences");
@@ -232,10 +239,12 @@ test("실제 API: 두 사용자의 도구 설정 격리와 변경하지 않은 �
     ).toEqual(mine);
   } finally {
     if (otherHeaders.Authorization) {
-      const removed = await other.delete(`${api}/users/me`, {
-        headers: otherHeaders,
-        data: { password },
-      });
+      const removed = await respectRateLimit(() =>
+        other.delete(`${api}/users/me`, {
+          headers: otherHeaders,
+          data: { password },
+        }),
+      );
       expect(removed.status()).toBe(204);
     }
     await other.dispose();

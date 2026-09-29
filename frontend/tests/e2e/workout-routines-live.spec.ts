@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { parseRoutine } from "../../lib/workout-routine";
 import { shiftDay } from "../../lib/workout-history";
+import { respectRateLimit } from "./live-api-fixtures";
 
 const api = process.env.E2E_API_BASE_URL ?? "http://localhost:3001/api/v1";
 test("실제 추천 엔진: 준비 조건, 내일 루틴 생성, 중복 방지와 저장된 처방 복원", async ({
@@ -12,14 +13,13 @@ test("실제 추천 엔진: 준비 조건, 내일 루틴 생성, 중복 방지�
     "X-CSRF-Protection": "1",
     Authorization: "",
   };
-  const register = await page.request.post(`${api}/auth/register`, {
-    headers,
-    data: {
-      email: `routine-${crypto.randomUUID()}@example.test`,
-      password,
-      dateOfBirth: "2000-02-29",
-    },
-  });
+  const email = `routine-${crypto.randomUUID()}@example.test`;
+  const register = await respectRateLimit(() =>
+    page.request.post(`${api}/auth/register`, {
+      headers,
+      data: { email, password, dateOfBirth: "2000-02-29" },
+    }),
+  );
   expect(register.status()).toBe(201);
   headers.Authorization = `Bearer ${(await register.json()).access_token}`;
   try {
@@ -110,10 +110,12 @@ test("실제 추천 엔진: 준비 조건, 내일 루틴 생성, 중복 방지�
   } finally {
     expect(
       (
-        await page.request.delete(`${api}/users/me`, {
-          headers,
-          data: { password },
-        })
+        await respectRateLimit(() =>
+          page.request.delete(`${api}/users/me`, {
+            headers,
+            data: { password },
+          }),
+        )
       ).status(),
     ).toBe(204);
   }
