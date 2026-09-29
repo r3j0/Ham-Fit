@@ -29,10 +29,12 @@ export function useApiResource<T>(load: (signal: AbortSignal) => Promise<T>) {
     const focus = () => {
       if (document.visibilityState === "visible") void read();
     };
+    const interval = setInterval(focus, 60000);
     void read();
     window.addEventListener("focus", focus);
     document.addEventListener("visibilitychange", focus);
     return () => {
+      clearInterval(interval);
       controller.abort();
       window.removeEventListener("focus", focus);
       document.removeEventListener("visibilitychange", focus);

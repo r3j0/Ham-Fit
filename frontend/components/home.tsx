@@ -46,6 +46,9 @@ export function Home() {
               </div>
               <GroupMascots />
             </div>
+            <Link className="text-link" href="/account/notifications">
+              그룹 알림 확인하기
+            </Link>
             <Link className="button secondary" href="/groups">
               내 그룹과 함께 운동하기
             </Link>
