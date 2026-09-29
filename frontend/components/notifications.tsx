@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useRef, useState } from "react";
+import { RefreshCw } from "lucide-react";
 import { getNotifications, readNotification } from "@/lib/notifications";
 import { errorMessage } from "@/lib/http";
 import { useApiResource } from "./use-api-resource";
@@ -45,9 +46,22 @@ export function Notifications() {
   }
   return (
     <Shell>
-      <Header title="알림" back="/" />
+      <Header
+        title="알림"
+        back="/"
+        right={
+          <button
+            className="icon-button"
+            aria-label="알림 새로고침"
+            title="알림 새로고침"
+            onClick={resource.reload}
+            disabled={resource.loading || busy}
+          >
+            <RefreshCw size={22} aria-hidden="true" />
+          </button>
+        }
+      />
       <div className="content stack">
-        <p className="muted">그룹 가입 신청과 처리 결과를 확인해요.</p>
         {error && <Notice>{error}</Notice>}
         {resource.error !== undefined ? (
           <>
@@ -98,13 +112,6 @@ export function Notifications() {
                 아직 알림이 없어요.
               </p>
             )}
-            <button
-              className="text-button"
-              onClick={resource.reload}
-              disabled={resource.loading || busy}
-            >
-              알림 새로고침
-            </button>
           </>
         ) : (
           <Loading />

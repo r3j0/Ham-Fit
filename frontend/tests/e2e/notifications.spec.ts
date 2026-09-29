@@ -53,11 +53,24 @@ test("알림 페이지 병합, 읽음 저장 실패와 재시도, 잘못된 응�
   });
   await page.goto("/account/notifications");
   await expect(page.getByRole("listitem")).toHaveCount(2);
+  await expect(
+    page.getByText("그룹 가입 신청과 처리 결과를 확인해요."),
+  ).toHaveCount(0);
+  const refresh = page
+    .locator(".page-header")
+    .getByRole("button", { name: "알림 새로고침" });
+  await expect(refresh).toBeVisible();
   const approved = page
     .getByRole("listitem")
     .filter({ hasText: "가입이 승인됐어요" });
   for (const width of [320, 390, 702, 1280]) {
     await page.setViewportSize({ width, height: 786 });
+    const title = (await page
+      .getByRole("heading", { name: "알림", exact: true })
+      .boundingBox())!;
+    expect((await refresh.boundingBox())!.x).toBeGreaterThan(
+      title.x + title.width,
+    );
     const link = (await approved.getByRole("link").boundingBox())!;
     const button = (await approved.getByRole("button").boundingBox())!;
     expect(link.y).toBeCloseTo(button.y, 1);
