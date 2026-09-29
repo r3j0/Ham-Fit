@@ -202,13 +202,12 @@ for (const [width, height] of [
     await expect(page.getByText(/연속 운동에는 기존 운동 이력이/)).toHaveCount(
       0,
     );
-    const mascots = page.getByRole("link", {
-      name: "내 그룹으로 이동",
-      exact: true,
-    });
+    const mascots = page
+      .getByRole("region", { name: "내 그룹의 햄스터" })
+      .getByRole("link", { name: "그룹 만들기·가입하기", exact: true });
     await expect(
-      mascots.getByRole("group", { name: "그룹 햄스터 예시" }),
-    ).toBeVisible();
+      page.getByRole("region", { name: "내 그룹의 햄스터" }).getByRole("img"),
+    ).toHaveCount(0);
     await mascots.focus();
     await mascots.press("Enter");
     await expect(page).toHaveURL("/groups");

@@ -177,21 +177,6 @@
 .home-mascot-stage > span {
   width: min(80%, var(--home-mascot-size));
 }
-.home-group-link {
-  display: block;
-  border-radius: 16px;
-}
-.home-group-mascots {
-  display: flex;
-  isolation: isolate;
-  align-items: center;
-  justify-content: center;
-  gap: clamp(4px, 2vw, 12px);
-  padding-inline: 8px;
-}
-.home-group-mascots > span {
-  width: min(calc((100% - 36px) / 4), calc(var(--home-mascot-size) / 3));
-}
 .home-intro {
   background: var(--navy);
   color: var(--surface);

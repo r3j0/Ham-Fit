@@ -208,6 +208,8 @@ export async function installApi(
       return send({ dateOfBirth: null, currentAge: null, nickname: null });
     if (path === "/workouts/current") return send(testWorkout);
     if (path === "/workout-routines/current") return send(null);
+    if (path === "/groups" && method === "GET")
+      return send({ items: [], nextCursor: null });
     if (path === "/workout-routines/history")
       return send({ items: [], nextCursor: null });
     if (path === "/users/me/profile/activity")

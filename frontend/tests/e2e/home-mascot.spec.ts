@@ -1,12 +1,15 @@
 import { test, expect } from "@playwright/test";
 import { installApi, testRecord } from "./integration-fixtures";
 
+import { installHomeGroups } from "./home-groups-fixtures";
+
 const mascotName = "편안하게 숨 쉬는 햄스터";
 
 test("메인은 중앙 캐릭터와 운동을 보여 주고 기록은 내 프로필에서 연다", async ({
   page,
 }, info) => {
   await installApi(page, testRecord());
+  await installHomeGroups(page);
   let polygonRequests = 0;
   page.on("request", (request) => {
     if (request.url().endsWith("/measurements/latest-polygon"))
@@ -34,24 +37,15 @@ test("메인은 중앙 캐릭터와 운동을 보여 주고 기록은 내 프로
   );
   expect((await page.request.get("/mascots/cream-belly.svg")).ok()).toBe(true);
   expect((await page.request.get("/mascots/gray-belly.svg")).ok()).toBe(true);
-  const group = page.getByRole("group", { name: "그룹 햄스터 예시" });
+  const group = page.getByRole("region", { name: "내 그룹의 햄스터" });
   const companions = group.getByRole("img");
   await expect(group).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
   await expect(group).toHaveCSS("border-top-width", "0px");
   await expect(companions).toHaveCount(4);
-  const expected = [
-    ["cream", "lying", "green-sportswear"],
-    ["gray", "situp", "white-sportswear"],
-    ["gray", "run", "blue-sportswear"],
-    ["cream", "cant-hear", "black-sportswear"],
-  ];
-  for (const [index, [variant, pose, wear]] of expected.entries()) {
-    await expect(companions.nth(index)).toHaveAttribute(
-      "data-variant",
-      variant,
-    );
-    await expect(companions.nth(index)).toHaveAttribute("data-pose", pose);
-    await expect(companions.nth(index)).toHaveAttribute("data-wear", wear);
+  for (const character of await companions.all()) {
+    await expect(character).toHaveAttribute("data-variant", "cream");
+    await expect(character).toHaveAttribute("data-pose", "basic");
+    await expect(character).toHaveAttribute("data-wear", "none");
   }
   await expect(
     page.getByRole("heading", { name: "운동 스트릭", exact: true }),
@@ -132,6 +126,7 @@ test("대기 호흡은 동작 줄이기와 숨겨진 탭을 따르고 페이지 
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await installApi(page);
+  await installHomeGroups(page);
   await page.goto("/");
   await expect(page.getByRole("img", { name: mascotName })).toBeVisible();
   await expect(
@@ -141,7 +136,7 @@ test("대기 호흡은 동작 줄이기와 숨겨진 탭을 따르고 페이지 
     .getByRole("img", { name: mascotName, exact: true })
     .locator('[data-part="head"]');
   const groupImages = page
-    .getByRole("group", { name: "그룹 햄스터 예시" })
+    .getByRole("region", { name: "내 그룹의 햄스터" })
     .locator("svg image");
   await expect(groupImages).toHaveCount(4);
   const stillPoses = await groupImages.evaluateAll((nodes) =>
