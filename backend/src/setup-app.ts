@@ -2,7 +2,11 @@ import type { INestApplication } from '@nestjs/common';
 import { VersioningType } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Express, NextFunction, Request, Response } from 'express';
-import { API_PREFIX, API_V1_BASE_PATH } from './config/api-version.js';
+import {
+  API_PREFIX,
+  API_V1_BASE_PATH,
+  API_V2_BASE_PATH,
+} from './config/api-version.js';
 
 export function configureApp(app: INestApplication): void {
   const config = app.get(ConfigService);
@@ -23,6 +27,7 @@ export function configureApp(app: INestApplication): void {
       `${API_V1_BASE_PATH}/groups`,
       `${API_V1_BASE_PATH}/notifications`,
       `${API_V1_BASE_PATH}/workout-routines`,
+      `${API_V2_BASE_PATH}/workout-routines`,
     ],
     (_request: Request, response: Response, next: NextFunction) => {
       response.setHeader('Cache-Control', 'no-store');

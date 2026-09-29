@@ -16,7 +16,7 @@ import {
 import { ageOnDate, koreaDate } from '../users/date-of-birth.js';
 import { mediaFor } from './media.js';
 import {
-  nextPlaybackStatus,
+  nextRoutinePlaybackStatus,
   normalizePlaybackProgress,
   playbackInvalid,
   unionIntervals,
@@ -77,7 +77,7 @@ export class WorkoutRoutinesService {
     );
   }
 
-  async next(userId: string, key: string) {
+  async today(userId: string, key: string) {
     return this.locked(userId, async (tx, now) => {
       const previous = await tx.workoutRoutineRequest.findUnique({
         where: { userId_key: { userId, key } },
@@ -92,7 +92,7 @@ export class WorkoutRoutinesService {
         };
       const day = koreaDate(now);
       const referenceDate = new Date(`${day}T00:00:00Z`);
-      const assignmentDate = new Date(referenceDate.getTime() + 86_400_000);
+      const assignmentDate = referenceDate;
       const saved = await tx.workoutRoutine.findUnique({
         where: { userId_assignmentDate: { userId, assignmentDate } },
         include: includeRoutine,
@@ -162,8 +162,8 @@ export class WorkoutRoutinesService {
           createdAt: now,
           algorithmVersion: decision.algorithmVersion,
           dataVersion: decision.dataVersion,
-          estimatedMinutes: decision.result.nextWorkout.estimatedMinutes,
-          weightAdjustment: decision.result.weightAdjustment,
+          estimatedMinutes: decision.result.workout.estimatedMinutes,
+          weightAdjustment: Prisma.DbNull,
           inputSnapshot: {
             ...input,
             measurementId: measurement.id,
@@ -177,7 +177,7 @@ export class WorkoutRoutinesService {
             preferenceUpdatedAt: preference.updatedAt.toISOString(),
           },
           items: {
-            create: decision.result.nextWorkout.routine.map((item) => ({
+            create: decision.result.workout.routine.map((item) => ({
               ...item,
               durationSeconds: decision.durations[item.videoId],
             })),
@@ -301,7 +301,7 @@ export class WorkoutRoutinesService {
         [...(item.intervals as PlaybackInterval[]), ...normalized.intervals],
         item.durationSeconds,
       );
-      const status = nextPlaybackStatus(
+      const status = nextRoutinePlaybackStatus(
         item.status,
         input.type,
         watchedSeconds(intervals),
@@ -311,6 +311,12 @@ export class WorkoutRoutinesService {
       const final = ['not_performed', 'interrupted', 'completed'].includes(
         status,
       );
+      // Repeated stops without additional viewing must not move yesterday's
+      // incomplete effort to today (e.g. a late pagehide after pause).
+      const unchangedOutcome =
+        item.status === status &&
+        watchedSeconds(item.intervals as PlaybackInterval[]) ===
+          watchedSeconds(intervals);
       const updated = replayed
         ? item
         : await tx.workoutRoutineItem.update({
@@ -320,7 +326,9 @@ export class WorkoutRoutinesService {
               intervals,
               positionSeconds: normalized.positionSeconds,
               revision: { increment: 1 },
-              ...(final ? { resultStatus: status, performedAt: now } : {}),
+              ...(final && !unchangedOutcome
+                ? { resultStatus: status, performedAt: now }
+                : {}),
               ...(status === 'completed' ? { completedAt: now } : {}),
             },
           });

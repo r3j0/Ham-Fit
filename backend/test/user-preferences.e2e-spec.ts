@@ -812,7 +812,7 @@ describe('Personal exercise preferences against PostgreSQL', () => {
       vi.spyOn(algorithm, 'weightAdjustment'),
       vi.spyOn(app.get(CurriculaService), 'assign'),
       vi.spyOn(app.get(RoutineAlgorithm), 'recommend'),
-      vi.spyOn(app.get(WorkoutRoutinesService), 'next'),
+      vi.spyOn(app.get(WorkoutRoutinesService), 'today'),
     ];
     try {
       await read(account).expect(200);

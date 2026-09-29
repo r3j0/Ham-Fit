@@ -20,12 +20,22 @@ def main():
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     payload = json.load(sys.stdin)
-    result = module.run_recommendation(**payload)
+    # The service requests the routine for this date, not the post-workout
+    # wrapper which advances the date and computes tomorrow's exposure delta.
+    result = {"workout": module.recommend_workout_routine(
+        age=payload["profile"]["age"],
+        fitness_data=module.extract_fitness_data(payload["fitness100"]),
+        logs=payload["logs"],
+        current_date=payload["current_date"],
+        goal=payload["goal"],
+        routine_level=payload["routine_level"],
+        owned_tools=payload["owned_tools"],
+    )}
     # Enrich output with actual catalog durations for BE playback validation.
     # estimatedMinutes is an exercise estimate, not a video duration.
     catalog = module.workout_videos.set_index("file_nm")
     durations = {}
-    for item in result["nextWorkout"]["routine"]:
+    for item in result["workout"]["routine"]:
         row = catalog.loc[item["videoId"]]
         if item["title"] != row["title"] or item["videoUrl"] != row["file_url"]:
             raise ValueError("Recommendation/catalog mismatch")

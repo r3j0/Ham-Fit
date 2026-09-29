@@ -389,7 +389,7 @@ model WorkoutRoutine {
   dataVersion      String                  @map("data_version")
   estimatedMinutes Float                   @map("estimated_minutes")
   inputSnapshot    Json                    @map("input_snapshot") @db.JsonB
-  weightAdjustment Json                    @map("weight_adjustment") @db.JsonB
+  weightAdjustment Json?                   @map("weight_adjustment") @db.JsonB
   user             User                    @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict)
   items            WorkoutRoutineItem[]
   requests         WorkoutRoutineRequest[]

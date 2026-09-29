@@ -92,6 +92,8 @@ Idempotency-Key: 91004d71-b8c5-4c32-a56e-ed38349325af
       "nickname": "운동친구",
       "profileCharacter": null,
       "streak": 2,
+      "longestStreak": 5,
+      "totalWorkoutDays": 12,
       "role": "leader",
       "joinedAt": "2026-09-29T08:00:00.000Z"
     }
@@ -103,7 +105,7 @@ Idempotency-Key: 91004d71-b8c5-4c32-a56e-ed38349325af
 
 현재 프로필 캐릭터의 저장·선택·카탈로그 기능은 기존 BE에 없다. **`profileCharacter: null`은 미설정/소스 없음**을 뜻하며 임의 캐릭터나 보유 여부를 만들지 않는다. 캐릭터 선택 기능을 완성한 것으로 간주하지 않는다.
 
-스트릭은 기존 FE `lib/workout-history.ts`의 개인 운동 이력 기준을 backend 공통 `member-profile.ts`로 구현했다. 데이터는 기존 `UserCurriculumAssignment`의 일별 배정(`assignmentDate != null`) 중 완료 상태와 `completedAt`이다. 완료 시각을 KST 날짜로 변환하여 같은 날짜를 한 번만 세고, 오늘 완료가 없으면 어제부터 연속 일수를 센다. 배정일 순서·최근 한 페이지로 절삭하지 않으며 미래 완료는 제외한다. 그룹별 계산 기준을 추가하지 않았다. `GET /users/me/profile/activity`와 그룹 조회가 같은 함수를 호출한다. 기존 `/users/me/profile` 응답은 유지한다. 새 루틴 항목의 완료를 개인 스트릭에 포함할지는 기존 개인 이력 계약이 바뀔 때 함께 변경해야 한다.
+2026-09-29 확정 정책으로 공통 `member-profile.ts`가 기존 일별 배정 완료와 **모든 항목이 완료된 신규 루틴**을 함께 집계한다. 신규 루틴의 마지막 `completedAt`을 KST 날짜로 변환하고 기존 기록과 날짜 중복을 제거한다. `streak`는 현재 스트릭이며 오늘 미완료·어제 완료이면 유지한다. `longestStreak`와 `totalWorkoutDays`를 추가하고, 개인 활동 조회와 그룹원 조회에 같은 값을 제공한다. 기존 `/users/me/profile` 응답은 유지한다. [전체 정책·기존 기록 호환·조회 방식](activity-streaks.md)을 따른다. 그룹 미션 진행도·씨앗·보상은 연결하지 않는다.
 
 ## 신청·처리·알림 예시
 
