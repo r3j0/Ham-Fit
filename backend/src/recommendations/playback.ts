@@ -122,3 +122,29 @@ export function nextPlaybackStatus(
   }
   return 'in_progress';
 }
+
+/** Routine v2: only distinct watched intervals count toward the 80% outcome. */
+export function nextRoutinePlaybackStatus(
+  status: CurriculumAssignmentStatus,
+  type: PlaybackEventInput['type'],
+  watched: number,
+  duration: number,
+): CurriculumAssignmentStatus {
+  const stopping = type === 'pause' || type === 'end' || type === 'complete';
+  if (status === 'completed') {
+    if (stopping) return status;
+    workoutConflict('완료한 운동의 시청 기록은 변경할 수 없습니다.');
+  }
+  if (type === 'start') return 'in_progress';
+  // A late pause/end from another device may add watched intervals after a stop.
+  if (
+    status !== 'in_progress' &&
+    !(stopping && ['interrupted', 'not_performed'].includes(status))
+  )
+    workoutConflict('먼저 운동을 시작하거나 이어하기를 선택해 주세요.');
+  if (!stopping) return 'in_progress';
+  const threshold = duration * 0.8;
+  const tolerance = 8 * Number.EPSILON * Math.max(watched, threshold);
+  if (watched >= threshold - tolerance) return 'completed';
+  return watched > 0 ? 'interrupted' : 'not_performed';
+}

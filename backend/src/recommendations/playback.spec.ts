@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   nextPlaybackStatus,
+  nextRoutinePlaybackStatus,
   normalizePlaybackProgress,
   parsePlaybackEvent,
   unionIntervals,
@@ -147,5 +148,74 @@ describe('played interval union and explicit outcome semantics', () => {
     expect(() =>
       parsePlaybackEvent({ ...event, videoId: 'spoofed' }),
     ).toThrow();
+  });
+});
+
+describe('routine v2 completion from 80% unique watched duration', () => {
+  it.each(['pause', 'end', 'complete'] as const)(
+    '%s applies the same threshold, including a premature explicit complete',
+    (type) => {
+      expect(nextRoutinePlaybackStatus('in_progress', type, 0, 100)).toBe(
+        'not_performed',
+      );
+      expect(
+        nextRoutinePlaybackStatus('in_progress', type, 79.9999999, 100),
+      ).toBe('interrupted');
+      expect(nextRoutinePlaybackStatus('in_progress', type, 80, 100)).toBe(
+        'completed',
+      );
+      expect(nextRoutinePlaybackStatus('in_progress', type, 100, 100)).toBe(
+        'completed',
+      );
+      expect(nextRoutinePlaybackStatus('completed', type, 80, 100)).toBe(
+        'completed',
+      );
+    },
+  );
+  it('keeps progress provisional, resumes incomplete items, and rejects unstarted/completed writes', () => {
+    expect(nextRoutinePlaybackStatus('in_progress', 'progress', 80, 100)).toBe(
+      'in_progress',
+    );
+    expect(nextRoutinePlaybackStatus('interrupted', 'start', 79, 100)).toBe(
+      'in_progress',
+    );
+    expect(() =>
+      nextRoutinePlaybackStatus('assigned', 'complete', 100, 100),
+    ).toThrow();
+    expect(() =>
+      nextRoutinePlaybackStatus('interrupted', 'progress', 80, 100),
+    ).toThrow();
+    expect(() =>
+      nextRoutinePlaybackStatus('completed', 'progress', 100, 100),
+    ).toThrow();
+  });
+  it('counts decimal interval unions without crediting seeks, repeats, or a real shortfall', () => {
+    const intervals = unionIntervals(
+      [
+        { start: 0.1, end: 40.1 },
+        { start: 50.1, end: 90.1 },
+        { start: 50.1, end: 90.1 },
+      ],
+      100,
+    );
+    expect(
+      nextRoutinePlaybackStatus(
+        'in_progress',
+        'end',
+        watchedSeconds(intervals),
+        100,
+      ),
+    ).toBe('completed');
+    expect(
+      nextRoutinePlaybackStatus('in_progress', 'end', 79.999999, 100),
+    ).toBe('interrupted');
+    expect(
+      nextRoutinePlaybackStatus(
+        'in_progress',
+        'end',
+        watchedSeconds([{ start: 90, end: 100 }]),
+        100,
+      ),
+    ).toBe('interrupted');
   });
 });

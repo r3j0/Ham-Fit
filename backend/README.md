@@ -26,7 +26,7 @@ Project Health의 NestJS API 서버입니다. 백엔드 코드·설정·문서·
 - [영상 HTTPS·Range·메타데이터 검증 범위](docs/recommendations/media-verification.md)
 - [알고리즘 연결 제거·BE 계약 검증](docs/recommendations/verification.md)
 
-2026-09-29 사용자 결정으로 `/api/v1/workout-routines`에서 원본 Python 알고리즘을 직접 호출하고 여러 운동·처방·진행을 저장한다. Python 환경과 읽기 전용 원본 데이터가 필요하며 [준비 절차](docs/recommendations/routines-api.md)를 따른다. 기존 `/api/v1/workouts` 단일 영상 API는 미연결 상태와 기존 계약을 유지한다. 운영 경로에 복사한 알고리즘이나 대체 추천 계산은 없다.
+2026-09-29 사용자 결정으로 `/api/v2/workout-routines/today`에서 원본 Python의 당일 추천 함수를 직접 호출하고 하루 한 루틴의 여러 운동·처방·진행을 저장한다. 당일 재요청은 저장값을 반환하며 영상의 실제 시청률 80% 이상에서 중단·종료하면 완료로 기록한다. Python 환경과 읽기 전용 원본 데이터가 필요하며 [준비 절차](docs/recommendations/routines-api.md)를 따른다. 기존 `/api/v1/workouts` 단일 영상 API는 미연결 상태와 기존 계약을 유지한다. 운영 경로에 복사한 알고리즘이나 대체 추천 계산은 없다.
 
 ## 개발 환경
 

@@ -2,14 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { parseRoutineDecision, routineInput } from './routine-algorithm.js';
 import type { serializeRecord } from '../measurements/measurements.service.js';
 import type { AxisEvaluation } from '../measurements/evaluation/evaluation-types.js';
-import { fixtureAdjustment } from '../../test/fixtures/workouts.js';
 
 const output = () => ({
   algorithmVersion: `recommendation_v2:${'a'.repeat(64)}`,
   dataVersion: 'b'.repeat(64),
   durations: { 'TEST.mp4': 37 },
   result: {
-    nextWorkout: {
+    workout: {
       estimatedMinutes: 2,
       routine: [
         {
@@ -29,14 +28,12 @@ const output = () => ({
         },
       ],
     },
-    weightAdjustment: fixtureAdjustment(),
   },
 });
 
 describe('Python transport contract', () => {
-  it('accepts the returned prescription and signed weight changes without calculating them', () => {
+  it('accepts the original same-day prescription without next-day weight adjustments', () => {
     const value = output();
-    value.result.weightAdjustment.strength.delta = -0.1;
     expect(parseRoutineDecision(value)).toEqual(value);
   });
   it.each([
@@ -45,17 +42,17 @@ describe('Python transport contract', () => {
     'bad order',
     'bad URL',
     'nonfinite estimate',
-    'missing factor',
+    'missing workout',
     'bad prescription',
   ])('rejects invalid output: %s', (kind) => {
     const value = output();
-    const item = value.result.nextWorkout.routine[0];
+    const item = value.result.workout.routine[0];
     switch (kind) {
       case 'missing duration':
         value.durations['TEST.mp4'] = 0;
         break;
       case 'duplicate video':
-        value.result.nextWorkout.routine.push({ ...item, order: 2 });
+        value.result.workout.routine.push({ ...item, order: 2 });
         break;
       case 'bad order':
         item.order = 2;
@@ -64,10 +61,10 @@ describe('Python transport contract', () => {
         item.videoUrl = 'http://127.0.0.1/private';
         break;
       case 'nonfinite estimate':
-        value.result.nextWorkout.estimatedMinutes = Infinity;
+        value.result.workout.estimatedMinutes = Infinity;
         break;
-      case 'missing factor':
-        Reflect.deleteProperty(value.result.weightAdjustment, 'strength');
+      case 'missing workout':
+        Reflect.deleteProperty(value.result, 'workout');
         break;
       case 'bad prescription':
         item.prescription.sets = 0;

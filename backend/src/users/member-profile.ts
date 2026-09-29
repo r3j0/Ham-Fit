@@ -25,6 +25,23 @@ export function currentStreak(completed: ReadonlySet<string>, today: string) {
   return streak;
 }
 
+export function activityStats(completed: ReadonlySet<string>, today: string) {
+  const days = [...completed].filter((day) => day <= today).sort();
+  let longestStreak = 0;
+  let run = 0;
+  let previous: string | undefined;
+  for (const day of days) {
+    run = previous === previousDay(day) ? run + 1 : 1;
+    longestStreak = Math.max(longestStreak, run);
+    previous = day;
+  }
+  return {
+    streak: currentStreak(completed, today),
+    longestStreak,
+    totalWorkoutDays: days.length,
+  };
+}
+
 export async function memberProfiles(
   tx: Prisma.TransactionClient,
   userIds: string[],
@@ -34,6 +51,8 @@ export async function memberProfiles(
     where: { id: { in: userIds } },
     select: { id: true, nickname: true },
   });
+  // Preserve the legacy daily-assignment eligibility rule. Routine items never
+  // enter this table/path and must pass the whole-routine check below.
   const completions = await tx.userCurriculumAssignment.findMany({
     where: {
       userId: { in: userIds },
@@ -43,8 +62,35 @@ export async function memberProfiles(
     },
     select: { userId: true, completedAt: true },
   });
+  const routines = await tx.workoutRoutine.findMany({
+    where: {
+      userId: { in: userIds },
+      items: {
+        some: {}, // `every` alone also matches an empty routine.
+        every: {
+          status: 'completed',
+          completedAt: { not: null, lte: now },
+        },
+      },
+    },
+    select: {
+      userId: true,
+      items: {
+        // Only after checking ALL items, take the last actual completion.
+        orderBy: { completedAt: 'desc' },
+        take: 1,
+        select: { completedAt: true },
+      },
+    },
+  });
   const days = new Map<string, Set<string>>();
-  for (const completion of completions) {
+  for (const completion of [
+    ...completions,
+    ...routines.map((routine) => ({
+      userId: routine.userId,
+      completedAt: routine.items[0]?.completedAt,
+    })),
+  ]) {
     const set = days.get(completion.userId) ?? new Set<string>();
     if (completion.completedAt) set.add(koreanDay(completion.completedAt));
     days.set(completion.userId, set);
@@ -57,7 +103,7 @@ export async function memberProfiles(
         nickname: user.nickname,
         // There is no persisted character selection/catalog in the existing backend.
         profileCharacter: null,
-        streak: currentStreak(days.get(user.id) ?? new Set(), koreanDay(now)),
+        ...activityStats(days.get(user.id) ?? new Set(), koreanDay(now)),
       },
     ]),
   );

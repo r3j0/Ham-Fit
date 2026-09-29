@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  GoneException,
   Headers,
   HttpCode,
   Inject,
@@ -11,17 +12,18 @@ import {
   Req,
   Res,
   UseGuards,
+  Version,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { z } from 'zod';
 import { AccessTokenGuard, AuthRequestGuard } from '../auth/auth.guards.js';
 import type { AuthenticatedRequest } from '../auth/auth.guards.js';
-import { API_V1, API_V1_BASE_PATH } from '../config/api-version.js';
+import { API_V1, API_V2, API_V2_BASE_PATH } from '../config/api-version.js';
 import { parseCreateKey, parseId } from '../measurements/measurement-input.js';
 import { parsePlaybackEvent, playbackInvalid } from './playback.js';
 import { WorkoutRoutinesService } from './workout-routines.service.js';
 
-@Controller({ path: 'workout-routines', version: API_V1 })
+@Controller({ path: 'workout-routines', version: API_V2 })
 @UseGuards(AccessTokenGuard, AuthRequestGuard)
 export class WorkoutRoutinesController {
   constructor(
@@ -29,8 +31,8 @@ export class WorkoutRoutinesController {
     private readonly routines: WorkoutRoutinesService,
   ) {}
 
-  @Post('next')
-  async next(
+  @Post('today')
+  async today(
     @Req() request: AuthenticatedRequest,
     @Headers('idempotency-key') key: unknown,
     @Body() body: unknown,
@@ -41,7 +43,7 @@ export class WorkoutRoutinesController {
       !z.strictObject({}).safeParse(body).success
     )
       playbackInvalid('추천 요청은 빈 JSON 객체만 허용합니다.');
-    const result = await this.routines.next(
+    const result = await this.routines.today(
       request.user.id,
       parseCreateKey(key),
     );
@@ -49,9 +51,27 @@ export class WorkoutRoutinesController {
     response.setHeader('Idempotency-Replayed', String(result.replayed));
     response.setHeader(
       'Location',
-      `${API_V1_BASE_PATH}/workout-routines/${result.routine.id}`,
+      `${API_V2_BASE_PATH}/workout-routines/${result.routine.id}`,
     );
     return result.routine;
+  }
+  @Version(API_V1)
+  @Post(['next', ':id/items/:itemId/events'])
+  retiredMutation() {
+    this.retired();
+  }
+  @Version(API_V1)
+  @Get(['current', 'history', ':id'])
+  retiredRead() {
+    this.retired();
+  }
+  private retired(): never {
+    throw new GoneException({
+      statusCode: 410,
+      code: 'ROUTINE_API_RETIRED',
+      message:
+        '당일 루틴 API /api/v2/workout-routines를 사용해 주세요. 기존 기록도 v2에서 조회할 수 있습니다.',
+    });
   }
   @Get('current')
   async current(

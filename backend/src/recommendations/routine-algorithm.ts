@@ -17,7 +17,6 @@ import {
   PYTHON_TOOL_NAMES,
 } from '../users/owned-tools.js';
 import type { serializeRecord } from '../measurements/measurements.service.js';
-import { FITNESS_FACTORS } from './workout-contracts.js';
 import type { WorkoutLog } from './workout-contracts.js';
 
 const volumes = { less: 'light', standard: 'normal', more: 'full' } as const;
@@ -82,7 +81,7 @@ const outputSchema = z.strictObject({
   dataVersion: z.string().regex(/^[a-f0-9]{64}$/),
   durations: z.record(z.string(), z.number().positive()),
   result: z.strictObject({
-    nextWorkout: z.strictObject({
+    workout: z.strictObject({
       estimatedMinutes: z.number().positive(),
       routine: z
         .array(
@@ -102,14 +101,6 @@ const outputSchema = z.strictObject({
         )
         .min(1),
     }),
-    weightAdjustment: z.record(
-      z.enum(FITNESS_FACTORS),
-      z.strictObject({
-        previous: z.number(),
-        delta: z.number(),
-        next: z.number(),
-      }),
-    ),
   }),
 });
 export type RoutineDecision = z.infer<typeof outputSchema>;
@@ -119,7 +110,7 @@ export function parseRoutineDecision(value: unknown): RoutineDecision {
   if (!parsed.success) throw algorithmUnavailable();
   const result = parsed.data;
   const ids = new Set<string>();
-  for (const [index, item] of result.result.nextWorkout.routine.entries()) {
+  for (const [index, item] of result.result.workout.routine.entries()) {
     if (
       item.order !== index + 1 ||
       ids.has(item.videoId) ||
