@@ -73,11 +73,11 @@ test("프로필은 재화·가입 경과일·활동 리포트와 얼굴 모션�
     "가입한지",
   ]);
   await expect(report.locator("dd")).toHaveText([
-    "3일",
-    "12일",
-    "4레벨",
-    "2개",
-    "28일",
+    "0일",
+    "—집계 준비 중",
+    "—집계 준비 중",
+    "—집계 준비 중",
+    "—집계 준비 중",
     "26일",
   ]);
   await expect(report.getByText(/EXP/)).toHaveCount(0);
@@ -278,7 +278,7 @@ test("로그아웃 확인창을 열고 닫아도 프로필의 가로 위치와 �
   expect(closed.scrollY).toBe(before.scrollY);
 });
 
-test("미측정 계정도 가입 당일 표시와 예시 리포트를 보되 실제 등급을 만들지 않는다", async ({
+test("미측정 계정도 가입 당일 표시와 지원되는 활동 정보를 보되 실제 등급을 만들지 않는다", async ({
   page,
 }) => {
   const api = await installApi(page);

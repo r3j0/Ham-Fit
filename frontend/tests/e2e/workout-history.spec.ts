@@ -1,5 +1,10 @@
 import { test, expect, type Page } from "@playwright/test";
-import { installApi, testRecord, testWorkout } from "./integration-fixtures";
+import {
+  installApi,
+  testRecord,
+  testWorkout,
+  testUser,
+} from "./integration-fixtures";
 import type { Workout } from "../../lib/workout-types";
 
 // The calendar must remain Korean even when the viewer's local date is the previous day.
@@ -17,6 +22,16 @@ function completed(id: string, day: string): Workout {
 async function setup(page: Page) {
   const api = await installApi(page, testRecord());
   await page.clock.setFixedTime(fixedDate);
+  await page.route("**/api/v1/users/me/profile/activity", (route) =>
+    route.fulfill({
+      json: {
+        userId: testUser.id,
+        nickname: null,
+        profileCharacter: null,
+        streak: 3,
+      },
+    }),
+  );
   const rows = [
     completed("today", "2026-09-27"),
     completed("today-again", "2026-09-27"),
@@ -183,11 +198,11 @@ test("이력의 모든 페이지를 읽고 실패 시 0일로 오인시키지 �
   await page.goto("/");
   const streak = page.getByRole("region", { name: "연속 운동" });
   await expect(streak.getByRole("alert")).toBeVisible();
-  await expect(streak).not.toContainText("연속 운동 중");
+  await expect(streak).toContainText("3일 연속 운동 중");
   expect(cursors).toContain("next");
   fail = false;
   await streak.getByRole("button", { name: "운동 기록 다시 불러오기" }).click();
-  await expect(streak).toContainText("2일 연속 운동 중");
+  await expect(streak).toContainText("3일 연속 운동 중");
   await streak.getByRole("link", { name: "운동 기록 보기" }).click();
   await expect(
     page.getByRole("region", { name: "운동 기록", exact: true }),
@@ -200,6 +215,16 @@ for (const width of [320, 390, 430, 1280]) {
   }, info) => {
     await setup(page);
     await page.clock.setFixedTime(fixedDate);
+    await page.route("**/api/v1/users/me/profile/activity", (route) =>
+      route.fulfill({
+        json: {
+          userId: testUser.id,
+          nickname: null,
+          profileCharacter: null,
+          streak: 3,
+        },
+      }),
+    );
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page.setViewportSize({ width, height: width === 320 ? 640 : 844 });
     await page.goto("/");
