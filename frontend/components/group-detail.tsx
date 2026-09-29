@@ -10,6 +10,7 @@ import {
   getRequests,
   groupError,
   groupInput,
+  parseGroup,
   groupMutation,
   type GroupDetail as Detail,
   type Member,
@@ -148,6 +149,7 @@ function GroupView({ row, refresh }: { row: Detail; refresh: () => void }) {
     [editing, setEditing] = useState(false),
     [name, setName] = useState(row.name),
     [description, setDescription] = useState(row.description);
+  const editBase = useRef({ name: row.name, description: row.description });
   const [invite, setInvite] = useState(""),
     [message, setMessage] = useState(""),
     [error, setError] = useState(""),
@@ -203,14 +205,33 @@ function GroupView({ row, refresh }: { row: Detail; refresh: () => void }) {
     event.preventDefault();
     let body;
     try {
-      body = groupInput(name, description);
+      const input = groupInput(name, description);
+      body = {
+        ...(input.name !== editBase.current.name ? { name: input.name } : {}),
+        ...(input.description !== editBase.current.description
+          ? { description: input.description }
+          : {}),
+      };
+      if (!Object.keys(body).length) {
+        setEditing(false);
+        return;
+      }
     } catch (e) {
       setError(groupError(e));
       return;
     }
     await run(async (current) => {
-      await groupMutation(`/${row.id}`, "PATCH", JSON.stringify(body));
+      const saved = parseGroup(
+        await groupMutation(`/${row.id}`, "PATCH", JSON.stringify(body)),
+      );
       if (!current()) return;
+      if (
+        saved.id !== row.id ||
+        (body.name !== undefined && saved.name !== body.name) ||
+        (body.description !== undefined &&
+          saved.description !== body.description)
+      )
+        invalid();
       setEditing(false);
       setMessage("그룹 정보를 저장했어요.");
       refresh();
@@ -269,6 +290,10 @@ function GroupView({ row, refresh }: { row: Detail; refresh: () => void }) {
               className="button secondary"
               disabled={busy}
               onClick={() => {
+                editBase.current = {
+                  name: row.name,
+                  description: row.description,
+                };
                 setName(row.name);
                 setDescription(row.description);
                 setEditing(true);
@@ -365,7 +390,7 @@ function GroupView({ row, refresh }: { row: Detail; refresh: () => void }) {
           </button>
         )}
       </div>
-      {editing && (
+      {editing && leader && (
         <Dialog
           title="그룹 정보 수정"
           busy={busy}
@@ -386,7 +411,7 @@ function GroupView({ row, refresh }: { row: Detail; refresh: () => void }) {
           </form>
         </Dialog>
       )}
-      {action && (
+      {action && (action.kind === "leave" || leader) && (
         <Dialog
           title={
             action.kind === "transfer"

@@ -57,7 +57,26 @@ test("실제 API: 생성·초대·승인/거절·멤버 조회·강퇴·위임·
       .getByRole("dialog")
       .getByLabel("그룹 소개")
       .fill("작은 운동을 꾸준히");
+    expect(
+      (
+        await page.request.patch(`${api}/groups/${groupId}`, {
+          headers: leader.headers,
+          data: { name: "함께하는 하루" },
+        })
+      ).status(),
+    ).toBe(200);
+    const updated = page.waitForResponse(
+      (r) =>
+        r.url().endsWith(`/groups/${groupId}`) &&
+        r.request().method() === "PATCH",
+    );
     await page.getByRole("button", { name: "그룹 정보 저장" }).click();
+    expect((await updated).request().postDataJSON()).toEqual({
+      description: "작은 운동을 꾸준히",
+    });
+    await expect(
+      page.getByRole("heading", { name: "함께하는 하루" }),
+    ).toBeVisible();
     await expect(
       page.getByText("작은 운동을 꾸준히", { exact: true }),
     ).toBeVisible();
