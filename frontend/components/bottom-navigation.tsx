@@ -10,6 +10,7 @@ export function BottomNavigation() {
     return null;
   const workoutRoute =
     pathname === "/workout" ||
+    pathname.startsWith("/workout-routines/") ||
     pathname === "/workouts" ||
     pathname.startsWith("/workouts/");
   const profileRoute =

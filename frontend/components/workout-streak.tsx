@@ -9,7 +9,13 @@ import {
 import styles from "./workout-history.module.css";
 
 export function WorkoutStreak() {
-  const { today, completed, ready, error } = useWorkoutHistory();
+  const {
+    today,
+    legacyCompleted: completed,
+    ready,
+    error,
+    legacyUnavailable,
+  } = useWorkoutHistory();
   const streak = workoutStreak(completed, today);
   const days = Array.from({ length: 7 }, (_, index) =>
     shiftDay(today, index - 6),
@@ -21,7 +27,7 @@ export function WorkoutStreak() {
         <h2 id="workout-streak-title">연속 운동</h2>
       </div>
       <div className={styles.streak}>
-        {!ready || error ? (
+        {!ready || error || legacyUnavailable ? (
           <WorkoutHistoryFeedback />
         ) : (
           <div className={styles.streakColumns}>
@@ -62,7 +68,7 @@ export function WorkoutStreak() {
           </div>
         )}
         <div className={styles.streakFooter}>
-          {ready && !error && (
+          {ready && !error && !legacyUnavailable && (
             <p className={styles.hint}>
               {completed.has(today)
                 ? "오늘의 운동을 완료했어요!"

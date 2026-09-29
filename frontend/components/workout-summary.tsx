@@ -47,6 +47,14 @@ export function WorkoutSummary({ workout }: { workout: Workout }) {
         초 ·{" "}
         {video.equipment.length ? video.equipment.join(", ") : "장비 정보 없음"}
       </p>
+      {workout.routine && (
+        <p className="muted">
+          {workout.routine.order}/{workout.routine.totalItems}번째 운동 ·{" "}
+          {workout.routine.prescription.text} ·{" "}
+          {workout.routine.prescription.sets}세트 · 휴식{" "}
+          {workout.routine.prescription.restSec}초
+        </p>
+      )}
       <div className={styles.progressPanel}>
         <span className={styles.progressLabel}>시청 기록</span>
         <progress

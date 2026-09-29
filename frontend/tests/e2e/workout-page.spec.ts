@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { installApi, testRecord, testWorkout } from "./integration-fixtures";
+import { routineFixture } from "../fixtures/routine";
 import { prepareAssessment } from "./workout-helpers";
 import type { Workout } from "../../lib/workout-types";
 
@@ -72,39 +73,41 @@ test("메인과 운동 탭은 오늘의 여러 배정을 모두 보여주고 시
   expect(api.mutations).toEqual([]);
 });
 
-test("오늘 배정이 없으면 이전 운동을 오늘 목록으로 표시하지 않고 명시적 추천 후 목록에 추가한다", async ({
+test("오늘 배정이 없으면 이전 운동을 오늘로 표시하지 않고 내일 루틴을 명시적으로 준비한다", async ({
   page,
 }) => {
   await installApi(page, testRecord());
   const previous = { ...testWorkout, koreanDate: "2026-09-26" };
-  let assigned = false;
-  let requests = 0;
-  await page.route("**/api/v1/workouts/current", (route) =>
-    route.fulfill({ json: assigned ? testWorkout : previous }),
-  );
   await page.route("**/api/v1/workouts/history?*", (route) =>
-    route.fulfill({
-      json: { items: [assigned ? testWorkout : previous], nextCursor: null },
-    }),
+    route.fulfill({ json: { items: [previous], nextCursor: null } }),
   );
-  await page.route("**/api/v1/workouts/today", (route) => {
+  let requests = 0;
+  await page.route("**/api/v1/workout-routines/next", (route) => {
     requests++;
-    assigned = true;
-    expect(route.request().headers()["idempotency-key"]).toBeTruthy();
-    return route.fulfill({ status: 201, json: testWorkout });
+    return route.fulfill({
+      status: 201,
+      json: {
+        ...routineFixture(),
+        koreanDate: "2026-09-30",
+        referenceDate: "2026-09-29",
+      },
+    });
   });
   await page.goto("/workout");
   await expect(
-    page.getByRole("heading", { name: "아직 오늘 배정된 운동이 없어요" }),
+    page.getByText("아직 오늘 배정된 운동이 없어요.", { exact: false }),
   ).toBeVisible();
   await expect(
     page.getByRole("list", { name: "오늘 배정된 운동" }),
   ).toHaveCount(0);
   expect(requests).toBe(0);
-  await page.getByRole("button", { name: "운동하기" }).click();
+  await page
+    .getByRole("button", { name: "내일 운동 준비하기", exact: true })
+    .click();
+  await expect(page.getByRole("region", { name: "내일의 운동" })).toBeVisible();
   await expect(
-    page.getByRole("list", { name: "오늘 배정된 운동" }).getByRole("listitem"),
-  ).toHaveCount(1);
+    page.getByRole("list", { name: "오늘 배정된 운동" }),
+  ).toHaveCount(0);
   await expect(page.locator("video")).toHaveCount(0);
   expect(requests).toBe(1);
 });
@@ -138,8 +141,8 @@ test("다른 기기에서 완료한 운동은 화면 복귀 시 완료로 바뀌
 }) => {
   await installApi(page, testRecord());
   let current = testWorkout;
-  await page.route("**/api/v1/workouts/current", (route) =>
-    route.fulfill({ json: current }),
+  await page.route("**/api/v1/workouts/history?*", (route) =>
+    route.fulfill({ json: { items: [current], nextCursor: null } }),
   );
   await page.goto("/workout");
   const list = page.getByRole("list", { name: "오늘 배정된 운동" });

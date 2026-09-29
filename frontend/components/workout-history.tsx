@@ -2,9 +2,10 @@
 import Link from "next/link";
 import { useWorkoutHistoryLinks } from "./use-workout-history-links";
 import { useEffect, useRef, useState } from "react";
-import { getWorkoutHistory } from "@/lib/workouts";
-import type { WorkoutPage } from "@/lib/workout-types";
-import { Header, Loading, Shell } from "./ui";
+import { getCombinedHistoryPage } from "@/lib/workouts";
+import { workoutHref } from "@/lib/workout-routine";
+import type { CombinedHistoryPage } from "@/lib/workouts";
+import { Header, Loading, Notice, Shell } from "./ui";
 import { WorkoutError } from "./workout-error";
 import { WorkoutSummary, workoutLabels } from "./workout-summary";
 import { useOperationScope } from "./use-operation-scope";
@@ -12,7 +13,7 @@ import { useOperationScope } from "./use-operation-scope";
 export function WorkoutHistory() {
   const { basePath } = useWorkoutHistoryLinks();
 
-  const [page, setPage] = useState<WorkoutPage | null>(null);
+  const [page, setPage] = useState<CombinedHistoryPage | null>(null);
   const [error, setError] = useState<unknown>();
   const [busy, setBusy] = useState(false);
   const [retry, setRetry] = useState(0);
@@ -20,7 +21,7 @@ export function WorkoutHistory() {
   const begin = useOperationScope();
   useEffect(() => {
     const controller = new AbortController();
-    getWorkoutHistory(undefined, controller.signal)
+    getCombinedHistoryPage(undefined, controller.signal)
       .then((value) => {
         if (!controller.signal.aborted) setPage(value);
       })
@@ -36,7 +37,7 @@ export function WorkoutHistory() {
     setError(undefined);
     const current = begin();
     try {
-      const next = await getWorkoutHistory(page.nextCursor);
+      const next = await getCombinedHistoryPage(page.nextCursor);
       if (!current()) return;
       setPage((old) => {
         const ids = new Set(old?.items.map((row) => row.id));
@@ -46,6 +47,7 @@ export function WorkoutHistory() {
             ...next.items.filter((row) => !ids.has(row.id)),
           ],
           nextCursor: next.nextCursor,
+          legacyUnavailable: next.legacyUnavailable || !!old?.legacyUnavailable,
         };
       });
     } catch (e) {
@@ -82,11 +84,17 @@ export function WorkoutHistory() {
           )
         ) : (
           <>
+            {page.legacyUnavailable && (
+              <Notice tone="info">
+                이전 단일 운동 기록은 지금 불러올 수 없어요. 새 루틴 기록을
+                표시하고 있어요.
+              </Notice>
+            )}
             {!page.items.length ? (
               <>
                 <h2>아직 운동 이력이 없어요</h2>
-                <Link className="button primary" href="/">
-                  오늘 운동 받으러 가기
+                <Link className="button primary" href="/workout">
+                  내일 운동 준비하기
                 </Link>
               </>
             ) : (
@@ -107,17 +115,19 @@ export function WorkoutHistory() {
                     )}
                     <Link
                       className="button secondary"
-                      href={
-                        row.status === "completed"
-                          ? `${basePath}/${row.id}/replay`
-                          : `/workouts/${row.id}`
-                      }
+                      href={workoutHref(
+                        row,
+                        row.status === "completed",
+                        basePath.startsWith("/account"),
+                      )}
                     >
-                      {row.status === "completed"
-                        ? "운동 다시보기"
-                        : row.status === "assigned"
-                          ? "운동 자세히 보기"
-                          : "이 운동 이어하기"}
+                      {row.koreanDate > row.serverKoreanDate
+                        ? "예정된 운동 보기"
+                        : row.status === "completed"
+                          ? "운동 다시보기"
+                          : row.status === "assigned"
+                            ? "운동 자세히 보기"
+                            : "이 운동 이어하기"}
                     </Link>
                   </li>
                 ))}

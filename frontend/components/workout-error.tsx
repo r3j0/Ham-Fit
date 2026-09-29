@@ -4,6 +4,16 @@ import { Notice } from "./ui";
 export function WorkoutError({ error }: { error: unknown }) {
   const code = error instanceof ApiError ? error.code : undefined;
   const help = {
+    EXERCISE_GOAL_REQUIRED: [
+      "운동 목적을 선택하면 맞춤 루틴을 준비할 수 있어요.",
+      "/account/preferences",
+      "운동 목적 선택하기",
+    ],
+    ROUTINE_NOT_DUE: [
+      "배정된 날짜부터 이 운동을 시작할 수 있어요.",
+      "/workout",
+      "오늘의 운동으로",
+    ],
     DATE_OF_BIRTH_REQUIRED: [
       "운동 추천을 받으려면 생년월일을 입력해 주세요.",
       "/account/settings?tab=birth",
@@ -24,7 +34,8 @@ export function WorkoutError({ error }: { error: unknown }) {
     <Notice>
       <p>
         {help?.[0] ??
-          (code === "WORKOUT_CATALOG_UNAVAILABLE"
+          (code === "WORKOUT_CATALOG_UNAVAILABLE" ||
+          code === "ROUTINE_ALGORITHM_UNAVAILABLE"
             ? "운동 영상을 준비하고 있어요. 잠시 후 다시 시도해 주세요."
             : code === "WORKOUT_CONFLICT"
               ? "다른 화면에서 운동 상태가 변경되었어요. 저장된 최신 상태를 확인해 주세요."

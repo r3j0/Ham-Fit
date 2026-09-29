@@ -155,7 +155,7 @@ test("운동 하위 경로와 메뉴에 Skyblue를 적용하고 메인과 프로
     } else {
       await expect(nav.locator("a[aria-current] svg")).toHaveCSS(
         "color",
-        "rgb(6, 43, 58)",
+        "rgb(27, 153, 196)",
       );
     }
     if (path === "/workout" || path.includes("/history/")) {
