@@ -177,6 +177,10 @@
 .home-mascot-stage > span {
   width: min(80%, var(--home-mascot-size));
 }
+.home-group-link {
+  display: block;
+  border-radius: 16px;
+}
 .home-group-mascots {
   display: flex;
   isolation: isolate;

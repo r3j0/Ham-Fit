@@ -1,4 +1,5 @@
 export type MascotPoseId =
+  | "phone"
   | "basic"
   | "curious"
   | "a-plus"
@@ -13,7 +14,7 @@ export type MascotPoseId =
   | "droopy"
   | "cant-hear";
 export type MascotVariant = "cream" | "gray";
-export type PoseCategory = "basic" | "emotion" | "exercise" | "rest";
+export type PoseCategory = "basic" | "emotion" | "exercise" | "rest" | "daily";
 export type PoseViewport = readonly [number, number, number, number];
 export type PoseDefinition = {
   readonly id: MascotPoseId;

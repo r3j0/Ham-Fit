@@ -20,6 +20,7 @@ import { useSession } from "./session-provider";
 import { useOperationScope } from "./use-operation-scope";
 import { useApiResource } from "./use-api-resource";
 import { Header, Loading, Notice, Shell } from "./ui";
+import { MascotPose } from "./mascot/MascotPose";
 import styles from "./groups.module.css";
 
 export function GroupFields({
@@ -39,8 +40,9 @@ export function GroupFields({
     <fieldset className={styles.fields} disabled={disabled}>
       <div className="field">
         <label>
-          그룹 이름
+          <span className="sr-only">그룹 이름</span>
           <input
+            placeholder="이름"
             value={name}
             onChange={(e) => onName(e.target.value)}
             required
@@ -50,8 +52,9 @@ export function GroupFields({
       </div>
       <div className="field">
         <label>
-          그룹 소개
+          <span className="sr-only">그룹 소개</span>
           <input
+            placeholder="소개"
             value={description}
             onChange={(e) => onDescription(e.target.value)}
             maxLength={500}
@@ -74,7 +77,7 @@ function GroupRequestForm({
     begin = useOperationScope();
   const [name, setName] = useState(""),
     [description, setDescription] = useState(""),
-    [max, setMax] = useState("10"),
+    [max, setMax] = useState(""),
     [code, setCode] = useState("");
   const [pending, setPending] = useState<PendingWorkoutRequest>(),
     [ready, setReady] = useState(false),
@@ -199,8 +202,9 @@ function GroupRequestForm({
             />
             <div className="field">
               <label>
-                정원
+                <span className="sr-only">정원</span>
                 <input
+                  placeholder="정원 (최소 1, 최대 100)"
                   type="number"
                   min={1}
                   max={100}
@@ -210,16 +214,14 @@ function GroupRequestForm({
                   disabled={busy}
                 />
               </label>
-              <p className="caption">
-                그룹장을 포함해 최대 100명 · 생성 후 정원은 변경할 수 없어요.
-              </p>
             </div>
           </>
         ) : (
           <div className="field">
             <label>
-              초대 코드
+              <span className="sr-only">초대 코드</span>
               <input
+                placeholder="초대 코드"
                 className={styles.code}
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
@@ -262,6 +264,14 @@ export function Groups() {
     <Shell>
       <Header title="내 그룹" back="/" />
       <div className="content stack">
+        <div className={styles.mascotStage}>
+          <MascotPose
+            pose="phone"
+            variant="cream"
+            size={240}
+            label="핸드폰을 보는 크림 햄스터"
+          />
+        </div>
         {resource.error !== undefined ? (
           <>
             <Notice>{groupError(resource.error)}</Notice>

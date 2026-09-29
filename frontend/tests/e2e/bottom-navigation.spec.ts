@@ -202,6 +202,17 @@ for (const [width, height] of [
     await expect(page.getByText(/연속 운동에는 기존 운동 이력이/)).toHaveCount(
       0,
     );
+    const mascots = page.getByRole("link", {
+      name: "내 그룹으로 이동",
+      exact: true,
+    });
+    await expect(
+      mascots.getByRole("group", { name: "그룹 햄스터 예시" }),
+    ).toBeVisible();
+    await mascots.focus();
+    await mascots.press("Enter");
+    await expect(page).toHaveURL("/groups");
+    await home.click();
     await bell.click();
     await expect(page).toHaveURL("/account/notifications");
     await page.getByRole("link", { name: "이전 화면", exact: true }).click();

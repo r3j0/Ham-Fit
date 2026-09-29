@@ -20,6 +20,7 @@ export interface ActivityProfile {
 export interface Member extends ActivityProfile {
   role: Role;
   joinedAt: string;
+  todayWorkoutCompleted?: boolean;
 }
 export interface Group {
   id: string;
@@ -59,7 +60,13 @@ export function parseActivity(value: unknown): ActivityProfile {
 export function parseMember(value: unknown): Member {
   const row = object(value);
   parseActivity(row);
-  if (!role(row.role) || !timestamp(row.joinedAt)) invalid();
+  if (
+    !role(row.role) ||
+    !timestamp(row.joinedAt) ||
+    (row.todayWorkoutCompleted !== undefined &&
+      typeof row.todayWorkoutCompleted !== "boolean")
+  )
+    invalid();
   return row as unknown as Member;
 }
 export function parseGroup(value: unknown): Group {

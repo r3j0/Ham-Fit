@@ -52,7 +52,7 @@ test("실제 API: 생성·초대·승인/거절·멤버 조회·강퇴·위임·
     await expect(
       page.getByRole("heading", { name: "건강한 하루" }),
     ).toBeVisible();
-    await page.getByRole("button", { name: "그룹 정보 수정" }).click();
+    await page.getByRole("button", { name: "그룹 설정" }).click();
     await page
       .getByRole("dialog")
       .getByLabel("그룹 소개")
@@ -105,13 +105,14 @@ test("실제 API: 생성·초대·승인/거절·멤버 조회·강퇴·위임·
     await expect(other.getByText("아직 가입한 그룹이 없어요.")).toBeVisible();
     await page.evaluate(() => window.dispatchEvent(new Event("focus")));
     await page.getByRole("button", { name: "가입 거절" }).click();
-    await page
-      .getByRole("group", { name: "신청 상태" })
-      .getByRole("button", { name: "거절", exact: true })
-      .click();
+    await expect(
+      page
+        .getByRole("group", { name: "신청 상태" })
+        .getByRole("button", { name: "거절", exact: true }),
+    ).toHaveCount(0);
     await expect(
       page.getByRole("region", { name: "가입 신청 관리" }),
-    ).toContainText("꾸준한운동");
+    ).not.toContainText("꾸준한운동");
     await other.getByLabel("초대 코드", { exact: true }).fill(code);
     await other.getByRole("button", { name: "가입 신청하기" }).click();
     await expect(
@@ -121,18 +122,24 @@ test("실제 API: 생성·초대·승인/거절·멤버 조회·강퇴·위임·
       .getByRole("group", { name: "신청 상태" })
       .getByRole("button", { name: "대기", exact: true })
       .click();
+    await page.evaluate(() => window.dispatchEvent(new Event("focus")));
     await page.getByRole("button", { name: "가입 승인" }).click();
     await expect(
       page.getByRole("region", { name: "그룹원", exact: true }),
     ).toContainText("꾸준한운동");
     await other.goto(`${origin}/groups/${groupId}`);
-    await expect(
-      other.getByRole("button", { name: "그룹 정보 수정" }),
-    ).toHaveCount(0);
+    await other.getByRole("button", { name: "그룹 설정" }).click();
+    await expect(other.getByRole("dialog").getByLabel("그룹 이름")).toHaveCount(
+      0,
+    );
+    await expect(other.getByRole("button", { name: "그룹 삭제" })).toHaveCount(
+      0,
+    );
+    await other.getByRole("button", { name: "닫기", exact: true }).click();
     await expect(
       other.getByRole("region", { name: "가입 신청 관리" }),
     ).toHaveCount(0);
-    await other.getByRole("link", { name: "함께걷기 · 그룹장" }).click();
+    await other.getByRole("link", { name: "그룹장 함께걷기" }).click();
     await expect(
       other.getByRole("heading", { name: "그룹원 프로필" }),
     ).toBeVisible();
@@ -165,6 +172,7 @@ test("실제 API: 생성·초대·승인/거절·멤버 조회·강퇴·위임·
     );
     page.on("dialog", (d) => d.accept());
     await page.goto(`/groups/${groupId}`);
+    await page.getByRole("button", { name: "꾸준한운동 관리" }).click();
     await page.getByRole("button", { name: "내보내기", exact: true }).click();
     await page
       .getByRole("dialog")
@@ -183,6 +191,7 @@ test("실제 API: 생성·초대·승인/거절·멤버 조회·강퇴·위임·
     ).toBeVisible();
     await page.evaluate(() => window.dispatchEvent(new Event("focus")));
     await page.getByRole("button", { name: "가입 승인" }).click();
+    await page.getByRole("button", { name: "꾸준한운동 관리" }).click();
     await page.getByRole("button", { name: "그룹장 위임" }).click();
     await page
       .getByRole("dialog")
@@ -191,6 +200,7 @@ test("실제 API: 생성·초대·승인/거절·멤버 조회·강퇴·위임·
     await expect(page.getByRole("button", { name: "그룹 삭제" })).toHaveCount(
       0,
     );
+    await page.getByRole("button", { name: "그룹 설정" }).click();
     await page.getByRole("button", { name: "그룹 탈퇴", exact: true }).click();
     await page
       .getByRole("dialog")
@@ -198,6 +208,7 @@ test("실제 API: 생성·초대·승인/거절·멤버 조회·강퇴·위임·
       .click();
     await expect(page).toHaveURL("/groups");
     await other.goto(`${origin}/groups/${groupId}`);
+    await other.getByRole("button", { name: "그룹 설정" }).click();
     await other.getByRole("button", { name: "그룹 삭제" }).click();
     await other
       .getByRole("dialog")

@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Check, Crown, MoreHorizontal, X } from "lucide-react";
 import { api } from "@/lib/session";
 import { object, invalid } from "@/lib/api-contract";
 import {
@@ -21,6 +22,7 @@ import { useApiResource } from "./use-api-resource";
 import { useOperationScope } from "./use-operation-scope";
 import { Dialog, Header, Loading, Notice, Shell } from "./ui";
 import { GroupFields } from "./groups";
+import { MascotPose } from "./mascot/MascotPose";
 import styles from "./groups.module.css";
 
 const statusLabels = { pending: "대기", approved: "승인", rejected: "거절" };
@@ -77,7 +79,7 @@ function Applications({
         role="group"
         aria-label="신청 상태"
       >
-        {(Object.keys(statusLabels) as RequestStatus[]).map((value) => (
+        {(["pending", "approved"] as const).map((value) => (
           <button
             key={value}
             disabled={busy}
@@ -102,29 +104,38 @@ function Applications({
         <>
           <ul className={styles.list}>
             {resource.data?.map((request) => (
-              <li className={styles.card} key={request.id}>
-                <strong>{request.nickname ?? "닉네임 미설정"}</strong>
-                <p className={styles.meta}>
+              <li className={styles.applicationRow} key={request.id}>
+                <strong
+                  className={styles.nickname}
+                  title={request.nickname ?? "닉네임 미설정"}
+                >
+                  {request.nickname ?? "닉네임 미설정"}
+                </strong>
+                <p className={`${styles.meta} ${styles.requestMeta}`}>
                   {new Date(request.createdAt).toLocaleDateString("ko-KR", {
                     timeZone: "Asia/Seoul",
                   })}{" "}
                   · {statusLabels[request.status]}
                 </p>
                 {request.status === "pending" && (
-                  <div className={styles.actions}>
+                  <div className={styles.requestActions}>
                     <button
-                      className="button primary"
+                      className="icon-button"
+                      aria-label="가입 승인"
+                      title="가입 승인"
                       disabled={busy}
                       onClick={() => void decide(request.id, "approve")}
                     >
-                      가입 승인
+                      <Check size={20} aria-hidden="true" />
                     </button>
                     <button
-                      className="button secondary"
+                      className="icon-button"
+                      aria-label="가입 거절"
+                      title="가입 거절"
                       disabled={busy}
                       onClick={() => void decide(request.id, "reject")}
                     >
-                      가입 거절
+                      <X size={20} aria-hidden="true" />
                     </button>
                   </div>
                 )}
@@ -150,10 +161,21 @@ function GroupView({ row, refresh }: { row: Detail; refresh: () => void }) {
     (member) => member.userId === userId && member.role === "leader",
   );
   const [action, setAction] = useState<Action>(),
+    [managed, setManaged] = useState<Member>(),
     [editing, setEditing] = useState(false),
     [name, setName] = useState(row.name),
     [description, setDescription] = useState(row.description);
   const editBase = useRef({ name: row.name, description: row.description });
+  const settingsButton = useRef<HTMLButtonElement>(null),
+    memberButton = useRef<HTMLButtonElement | null>(null);
+  function closeSettings() {
+    setEditing(false);
+    queueMicrotask(() => settingsButton.current?.focus());
+  }
+  function closeManaged() {
+    setManaged(undefined);
+    queueMicrotask(() => memberButton.current?.focus());
+  }
   const [invite, setInvite] = useState(""),
     [message, setMessage] = useState(""),
     [error, setError] = useState(""),
@@ -264,6 +286,8 @@ function GroupView({ row, refresh }: { row: Detail; refresh: () => void }) {
         );
       if (!current()) return;
       setAction(undefined);
+      setManaged(undefined);
+      setEditing(false);
       if (target.kind === "leave" || target.kind === "delete")
         router.replace("/groups");
       else {
@@ -289,23 +313,22 @@ function GroupView({ row, refresh }: { row: Detail; refresh: () => void }) {
           >
             초대 코드 보기
           </button>
-          {leader && (
-            <button
-              className="button secondary"
-              disabled={busy}
-              onClick={() => {
-                editBase.current = {
-                  name: row.name,
-                  description: row.description,
-                };
-                setName(row.name);
-                setDescription(row.description);
-                setEditing(true);
-              }}
-            >
-              그룹 정보 수정
-            </button>
-          )}
+          <button
+            ref={settingsButton}
+            className="button secondary"
+            disabled={busy}
+            onClick={() => {
+              editBase.current = {
+                name: row.name,
+                description: row.description,
+              };
+              setName(row.name);
+              setDescription(row.description);
+              setEditing(true);
+            }}
+          >
+            그룹 설정
+          </button>
         </div>
         {invite && (
           <div className="field">
@@ -334,89 +357,126 @@ function GroupView({ row, refresh }: { row: Detail; refresh: () => void }) {
         <h2>그룹원</h2>
         <ul className={styles.list}>
           {row.members.map((member) => (
-            <li key={member.userId} className={styles.card}>
+            <li key={member.userId} className={styles.memberRow}>
+              <MascotPose pose="basic" variant="cream" size={36} label="" />
               <Link
                 href={`/groups/${row.id}/members/${member.userId}`}
-                className="text-link"
+                className={styles.memberName}
+                title={`${member.nickname ?? "닉네임 미설정"}${member.userId === userId ? " (나)" : ""}`}
               >
-                {member.nickname ?? "닉네임 미설정"}
-                {member.userId === userId ? " (나)" : ""} ·{" "}
-                {member.role === "leader" ? "그룹장" : "그룹원"}
+                {member.role === "leader" && (
+                  <Crown
+                    size={16}
+                    aria-label="그룹장"
+                    role="img"
+                    className={styles.crown}
+                  />
+                )}
+                <span className={styles.nickname}>
+                  {member.nickname ?? "닉네임 미설정"}
+                  {member.userId === userId ? " (나)" : ""}
+                </span>
               </Link>
-              <p>연속 운동 {member.streak}일</p>
+              <div className={styles.memberActivity}>
+                <span>연속 운동 {member.streak}일</span>
+                <span>
+                  {member.todayWorkoutCompleted === undefined
+                    ? "오늘 확인 불가"
+                    : member.todayWorkoutCompleted
+                      ? "오늘 운동 완료"
+                      : "오늘 운동 미완료"}
+                </span>
+              </div>
               {leader && member.userId !== userId && (
-                <div className={styles.actions}>
-                  <button
-                    className="button secondary"
-                    disabled={busy}
-                    onClick={() => setAction({ kind: "transfer", member })}
-                  >
-                    그룹장 위임
-                  </button>
-                  <button
-                    className="button secondary"
-                    disabled={busy}
-                    onClick={() => setAction({ kind: "kick", member })}
-                  >
-                    내보내기
-                  </button>
-                </div>
+                <button
+                  className="icon-button"
+                  aria-label={`${member.nickname ?? "닉네임 미설정"} 관리`}
+                  disabled={busy}
+                  onClick={(event) => {
+                    memberButton.current = event.currentTarget;
+                    setManaged(member);
+                  }}
+                >
+                  <MoreHorizontal size={20} aria-hidden="true" />
+                </button>
               )}
             </li>
           ))}
         </ul>
-        <p className="caption">
-          연속 운동은 서버 집계 기준이며, 새 루틴 완료 기록은 아직 포함되지
-          않아요.
-        </p>
       </section>
       {leader && <Applications id={row.id} onChanged={refresh} />}
-      <div className="stack-sm">
-        {leader && row.currentMembers > 1 && (
-          <p className="caption">
-            탈퇴하려면 다른 그룹원에게 그룹장을 먼저 위임해 주세요.
-          </p>
-        )}
-        <div className={styles.actions}>
-          <button
-            className="button secondary"
-            disabled={busy || (leader && row.currentMembers > 1)}
-            onClick={() => setAction({ kind: "leave" })}
-          >
-            그룹 탈퇴
-          </button>
-          {leader && (
-            <button
-              className="button secondary"
-              disabled={busy}
-              onClick={() => setAction({ kind: "delete" })}
-            >
-              그룹 삭제
-            </button>
-          )}
-        </div>
-      </div>
-      {editing && leader && (
-        <Dialog
-          title="그룹 정보 수정"
-          busy={busy}
-          onClose={() => setEditing(false)}
-        >
-          <form className="stack" onSubmit={(e) => void save(e)}>
-            <GroupFields
-              name={name}
-              description={description}
-              onName={setName}
-              onDescription={setDescription}
-              disabled={busy}
-            />
+      {editing && !action && (
+        <Dialog title="그룹 설정" busy={busy} onClose={closeSettings}>
+          <div className="stack">
+            {leader && (
+              <form className="stack" onSubmit={(e) => void save(e)}>
+                <GroupFields
+                  name={name}
+                  description={description}
+                  onName={setName}
+                  onDescription={setDescription}
+                  disabled={busy}
+                />
+                <button className="button primary" disabled={busy}>
+                  그룹 정보 저장
+                </button>
+              </form>
+            )}
             {error && <Notice>{error}</Notice>}
-            <button className="button primary" disabled={busy}>
-              그룹 정보 저장
-            </button>
-          </form>
+            {leader && row.currentMembers > 1 && (
+              <p className="caption">
+                탈퇴하려면 다른 그룹원에게 그룹장을 먼저 위임해 주세요.
+              </p>
+            )}
+            <div className={styles.actions}>
+              <button
+                className="button secondary"
+                disabled={busy || (leader && row.currentMembers > 1)}
+                onClick={() => setAction({ kind: "leave" })}
+              >
+                그룹 탈퇴
+              </button>
+              {leader && (
+                <button
+                  className="button secondary"
+                  disabled={busy}
+                  onClick={() => setAction({ kind: "delete" })}
+                >
+                  그룹 삭제
+                </button>
+              )}
+            </div>
+          </div>
         </Dialog>
       )}
+      {managed &&
+        leader &&
+        !action &&
+        row.members.some((member) => member.userId === managed.userId) && (
+          <Dialog title="그룹원 관리" busy={busy} onClose={closeManaged}>
+            <div className="stack">
+              <p>{managed.nickname ?? "닉네임 미설정"}</p>
+              <div className={styles.actions}>
+                <button
+                  className="button secondary"
+                  disabled={busy}
+                  onClick={() =>
+                    setAction({ kind: "transfer", member: managed })
+                  }
+                >
+                  그룹장 위임
+                </button>
+                <button
+                  className="button secondary"
+                  disabled={busy}
+                  onClick={() => setAction({ kind: "kick", member: managed })}
+                >
+                  내보내기
+                </button>
+              </div>
+            </div>
+          </Dialog>
+        )}
       {action && (action.kind === "leave" || leader) && (
         <Dialog
           title={
@@ -519,10 +579,6 @@ export function GroupMember({ id, userId }: { id: string; userId: string }) {
               {new Date(resource.data.joinedAt).toLocaleDateString("ko-KR", {
                 timeZone: "Asia/Seoul",
               })}
-            </p>
-            <p className="caption">
-              연속 운동은 서버 집계 기준이며, 새 루틴 완료 기록은 아직 포함되지
-              않아요.
             </p>
           </section>
         ) : (

@@ -726,5 +726,61 @@
         1254
       ]
     }
+  },
+  {
+    "id": "phone",
+    "label": "휴대폰",
+    "category": "daily",
+    "description": "휴대폰을 확인하는 순간",
+    "file": "phone.png",
+    "sourceName": "phone.png",
+    "width": 1254,
+    "height": 1254,
+    "background": "white",
+    "viewports": {
+      "cream": [
+        31.186,
+        261.2326,
+        611.6279,
+        764.5349
+      ],
+      "gray": [
+        603.7791,
+        256.5988,
+        617.4419,
+        771.8023
+      ]
+    },
+    "bounds": {
+      "cream": [
+        74,
+        316,
+        526,
+        655
+      ],
+      "gray": [
+        647,
+        314,
+        531,
+        657
+      ]
+    },
+    "clips": {
+      "cream": [
+        0,
+        0,
+        627,
+        1254
+      ],
+      "gray": [
+        627,
+        0,
+        627,
+        1254
+      ]
+    },
+    "sha256": "5506335fd6190275fb2eee71e278258d94925e79fd74b3de2794f84740198ebe",
+    "sourceSha256": "5506335fd6190275fb2eee71e278258d94925e79fd74b3de2794f84740198ebe",
+    "backgroundEdited": false
   }
 ]

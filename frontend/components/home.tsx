@@ -53,7 +53,13 @@ export function Home() {
               <div className="home-mascot-stage">
                 <BreathingMascot size={256} label="편안하게 숨 쉬는 햄스터" />
               </div>
-              <GroupMascots />
+              <Link
+                href="/groups"
+                className="home-group-link"
+                aria-label="내 그룹으로 이동"
+              >
+                <GroupMascots />
+              </Link>
             </div>
             <div
               className="home-activity"
