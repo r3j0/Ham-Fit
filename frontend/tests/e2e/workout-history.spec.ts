@@ -58,7 +58,7 @@ test("서버 완료일만 달력과 스트릭에 표시하고 같은 날 중복 
   await page.goto("/");
   const streak = page.getByRole("region", { name: "연속 운동" });
   await expect(streak).toContainText("3일 연속 운동 중");
-  await expect(streak).toContainText("오늘의 운동을 완료했어요!");
+  await expect(streak).toContainText("오늘 완료한 운동 기록이 있어요.");
   await expect(streak.getByRole("listitem")).toHaveCount(7);
   await streak.getByRole("link", { name: "운동 기록 보기" }).click();
   const calendar = page.getByRole("region", { name: "운동 기록", exact: true });

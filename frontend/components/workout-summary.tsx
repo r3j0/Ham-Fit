@@ -50,8 +50,7 @@ export function WorkoutSummary({ workout }: { workout: Workout }) {
       {workout.routine && (
         <p className="muted">
           {workout.routine.order}/{workout.routine.totalItems}번째 운동 ·{" "}
-          {workout.routine.prescription.text} ·{" "}
-          {workout.routine.prescription.sets}세트 · 휴식{" "}
+          {workout.routine.prescription.text} · 휴식{" "}
           {workout.routine.prescription.restSec}초
         </p>
       )}

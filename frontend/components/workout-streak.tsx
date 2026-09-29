@@ -91,7 +91,7 @@ export function WorkoutStreak() {
           {ready && !error && !legacyUnavailable && (
             <p className={styles.hint}>
               {completed.has(today)
-                ? "오늘의 운동을 완료했어요!"
+                ? "오늘 완료한 운동 기록이 있어요."
                 : "오늘의 운동으로 꾸준함을 이어가요."}
             </p>
           )}

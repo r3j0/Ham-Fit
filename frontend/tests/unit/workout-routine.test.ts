@@ -32,7 +32,7 @@ test("routine adapter preserves individual prescriptions, revisions and actual p
   assert.equal(workouts[0].progress.ratio, 0.25);
   assert.equal(workouts[0].revision, 4);
   assert.equal(workouts[1].status, "assigned");
-  assert.equal(workouts[0].routine?.prescription.text, "10회 반복");
+  assert.equal(workouts[0].routine?.prescription.text, "10회 × 2세트");
   assert.equal(completedDate(workouts[0]), "2026-09-29");
   assert.deepEqual(routineIdentity(workouts[0].id), {
     routineId: row.id,
@@ -98,4 +98,20 @@ test("future allocations preserve their date and incomplete items do not create 
   assert.equal(workout.koreanDate, "2026-09-30");
   assert.equal(completedDate(workout), null);
   assert.equal(routineIdentity("00000000-0000-4000-8000-000000000001"), null);
+});
+
+test("today's list respects prescription order even when item UUIDs sort differently", async () => {
+  const { assignedWorkoutsForDay } =
+    await import("../../lib/assigned-workouts.ts");
+  const row = routineFixture();
+  row.routine[0].id = "ffffffff-1111-4111-8111-111111111111";
+  row.routine[1].id = "00000000-1111-4111-8111-111111111111";
+  const sorted = assignedWorkoutsForDay(
+    routineWorkouts(row).reverse(),
+    row.koreanDate,
+  );
+  assert.deepEqual(
+    sorted.map((item) => item.routine?.order),
+    [1, 2, 3],
+  );
 });

@@ -1,5 +1,8 @@
 # 프론트엔드 연동 계약과 남은 확인
 
+최신 루틴·도구·그룹·알림·활동 통계는 [2026-09-29 연동 변경 사항](BACKEND-ROLLOUT.md)을 우선 적용한다. 아래 문서의 인증·측정·계정 기본 구조는 유지하며, 예시 활동 통계와 단일 운동 생성에 관한 이전 설명은 최신 문서로 대체한다.
+
+
 확인일: 2026-09-24. 프론트 브랜치 `feat/frontend/fitness-onboarding`, PR [#7](https://github.com/r3j0/project-health/pull/7).
 백엔드 PR [#6](https://github.com/r3j0/project-health/pull/6)의 실제 head `3c9b91ce56205356f8a5ea9a0059b091794f0aed`를 별도 체크아웃하여 연결했다. 이전 임시 백엔드 구현은 사용하지 않는다. 이 프론트 브랜치의 `backend/`를 변경하지 않는다.
 

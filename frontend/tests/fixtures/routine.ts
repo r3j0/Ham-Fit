@@ -27,7 +27,7 @@ export function routineFixture(): WorkoutRoutine {
         unit: n === 1 ? "회" : "초",
         sets: 2,
         restSec: 30,
-        text: n === 1 ? "10회 반복" : "20초 유지",
+        text: n === 1 ? "10회 × 2세트" : "20초 × 2세트",
       },
       status: "assigned",
       resultStatus: null,

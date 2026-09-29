@@ -120,7 +120,7 @@ test("item playback reuses recovery, saves only the selected item and replays co
   await page.goto("/workout");
   const list = page.getByRole("list", { name: "오늘 배정된 운동" });
   await expect(list.getByRole("listitem")).toHaveCount(3);
-  await expect(list).toContainText("10회 반복 · 2세트 · 휴식 30초");
+  await expect(list).toContainText("10회 × 2세트 · 휴식 30초");
   await list.getByRole("link", { name: "운동 시작하기" }).first().click();
   await page.getByRole("button", { name: "운동 시작", exact: true }).click();
   await expect(

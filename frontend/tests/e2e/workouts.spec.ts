@@ -1,10 +1,35 @@
 import { test, expect, type Page } from "@playwright/test";
 import path from "node:path";
 import { readFile } from "node:fs/promises";
+import {
+  parseRoutine,
+  routineWorkouts,
+  workoutHref,
+} from "../../lib/workout-routine";
+import { seedDueRoutine } from "./routine-live-fixtures";
 import type { PlaybackEvent, Workout } from "../../lib/workout-types";
 import { installApi, testRecord, testWorkout } from "./integration-fixtures";
 const base = process.env.E2E_API_BASE_URL ?? "http://localhost:3001/api/v1";
 const password = "frontend-workout-test-password-2026!";
+const createdUsers: string[] = [];
+test.afterEach(async ({ page }) => {
+  for (const token of createdUsers.splice(0)) {
+    const remove = () =>
+      page.request.delete(`${base}/users/me`, {
+        headers: { Authorization: `Bearer ${token}`, "X-CSRF-Protection": "1" },
+        data: { password },
+      });
+    let result = await remove();
+    if (result.status() === 429) {
+      await waitForLimit(page, result);
+      result = await remove();
+    }
+    expect(result.status()).toBe(204);
+  }
+});
+const itemEvents = (workout: Workout) =>
+  `/workout-routines/${workout.routine!.id}/items/${workout.routine!.itemId}/events`;
+
 async function waitForLimit(
   page: Page,
   response:
@@ -43,6 +68,7 @@ async function registerTestUser(page: Page, data: Record<string, string>) {
     await waitForLimit(page, response);
     response = await send();
   }
+  if (response.ok()) createdUsers.push((await response.json()).access_token);
   return response;
 }
 async function saveBirthProfile(page: Page) {
@@ -71,7 +97,10 @@ async function prepare(page: Page) {
   });
   expect(response.status()).toBe(201);
   const auth = await response.json();
-  const headers = { Authorization: `Bearer ${auth.access_token}` };
+  const headers = {
+    Authorization: `Bearer ${auth.access_token}`,
+    "X-CSRF-Protection": "1",
+  };
   const catalog = await (
     await page.request.get(`${base}/measurement-catalog`)
   ).json();
@@ -96,23 +125,40 @@ async function prepare(page: Page) {
     },
   });
   expect(record.status()).toBe(201);
-  const assigned = await page.request.post(`${base}/workouts/today`, {
+  expect(
+    (
+      await page.request.patch(`${base}/users/me/preferences`, {
+        headers,
+        data: { exerciseGoal: "general_fitness_improvement", ownedTools: [] },
+      })
+    ).status(),
+  ).toBe(200);
+  const assigned = await page.request.post(`${base}/workout-routines/next`, {
     headers: { ...headers, "Idempotency-Key": crypto.randomUUID() },
     data: {},
   });
   expect(assigned.status()).toBe(201);
-  const workout = (await assigned.json()) as Workout;
+  const routine = parseRoutine(await assigned.json());
+  const dueId = await seedDueRoutine(
+    routine.id,
+    auth.user.id,
+    routine.serverKoreanDate,
+  );
   const read = async () =>
-    (await (
-      await page.request.get(`${base}/workouts/${workout.id}`, { headers })
-    ).json()) as Workout;
+    routineWorkouts(
+      parseRoutine(
+        await (
+          await page.request.get(`${base}/workout-routines/${dueId}`, {
+            headers,
+          })
+        ).json(),
+      ),
+    )[0];
+  const workout = await read();
   return { workout, read, headers, email: auth.user.email as string };
 }
 async function serveTestMedia(page: Page) {
-  const url = new URL(
-    "/test-workout.mp4",
-    process.env.E2E_BASE_URL ?? "http://localhost:3000",
-  ).href;
+  const url = "https://openapi.kspo.or.kr/web/video/frontend-test.mp4";
   const bytes = await readFile(path.resolve("tests/fixtures/workout.mp4"));
   await page.route(url, (route) => {
     const range = /^bytes=(\d+)-(\d*)$/.exec(
@@ -134,43 +180,35 @@ async function serveTestMedia(page: Page) {
   });
   return url;
 }
-// Real API tests replace only media delivery with a tiny generated MP4.
+// Real API tests replace only media delivery/verification metadata with the fixture MP4.
+// Definitions, progress, revisions, idempotency and persistence use the actual latest API.
 async function testMedia(page: Page, workout: Workout) {
   const url = await serveTestMedia(page);
-  await page.route(
-    new RegExp(`/api/v1/workouts/(?:${workout.id}|current)$`),
-    async (route) => {
-      const response = await route.fetch();
-      const data = await response.json();
-      await route.fulfill({
-        response,
-        json: {
-          ...data,
-          video: {
-            ...data.video,
-            playbackStatus: "verified",
-            playbackUrl: url,
-          },
-        },
-      });
-    },
-  );
-  // Event replies also carry video metadata; retain the same media fixture across state updates.
-  await page.route(`**/api/v1/workouts/${workout.id}/events`, async (route) => {
-    const response = await route.fetch();
-    const data = await response.json();
-    await route.fulfill({
+  await page.route("**/api/v1/workout-routines/**", async (route) => {
+    const requestPath = new URL(route.request().url()).pathname;
+    if (
+      requestPath !== `/api/v1/workout-routines/${workout.routine!.id}` &&
+      !requestPath.endsWith(itemEvents(workout))
+    )
+      return route.fallback();
+    const response = await route.fetch(),
+      data = await response.json();
+    if (!data.routine) return route.fulfill({ response });
+    return route.fulfill({
       response,
-      json: data.video
-        ? {
-            ...data,
-            video: {
-              ...data.video,
-              playbackStatus: "verified",
-              playbackUrl: url,
-            },
-          }
-        : data,
+      json: {
+        ...data,
+        routine: data.routine.map((item: { id: string }) =>
+          item.id === workout.routine!.itemId
+            ? {
+                ...item,
+                playbackStatus: "verified",
+                playbackUrl: url,
+                verifiedDurationSeconds: workout.video.durationSeconds,
+              }
+            : item,
+        ),
+      },
     });
   });
 }
@@ -186,8 +224,11 @@ test("actual playback excludes seeks, ends below 50%, resumes after reload and c
     .click();
   await expect(page).toHaveURL("/workout");
   await expect(page.locator("video")).toHaveCount(0);
-  await page.getByRole("link", { name: "운동 시작하기", exact: true }).click();
-  await expect(page).toHaveURL(`/workouts/${workout.id}`);
+  await page
+    .getByRole("link", { name: "운동 시작하기", exact: true })
+    .first()
+    .click();
+  await expect(page).toHaveURL(workoutHref(workout));
   const video = page.getByLabel("운동 영상");
   await expect
     .poll(() => video.evaluate((v: HTMLVideoElement) => v.readyState))
@@ -244,8 +285,7 @@ test("actual playback excludes seeks, ends below 50%, resumes after reload and c
   const completed = await read();
   let replayEvents = 0;
   page.on("request", (request) => {
-    if (request.url().endsWith(`/workouts/${workout.id}/events`))
-      replayEvents++;
+    if (request.url().endsWith(itemEvents(workout))) replayEvents++;
   });
   await video.evaluate((v: HTMLVideoElement) => {
     v.currentTime = 0;
@@ -278,9 +318,9 @@ test("actual playback excludes seeks, ends below 50%, resumes after reload and c
     .getByRole("navigation")
     .getByRole("link", { name: "메인", exact: true })
     .click();
-  await expect(page.getByRole("button", { name: "운동하기" })).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "내일의 운동" })).toBeVisible();
   await expect(page.getByRole("region", { name: "연속 운동" })).toContainText(
-    "1일 연속 운동 중",
+    "0일 연속 운동 중",
   );
   await page
     .getByRole("navigation")
@@ -289,13 +329,13 @@ test("actual playback excludes seeks, ends below 50%, resumes after reload and c
   await page.getByRole("link", { name: "내 운동 이력", exact: true }).click();
   await expect(
     page.getByRole("link", { name: "운동 다시보기" }),
-  ).toHaveAttribute("href", `/account/workouts/${workout.id}/replay`);
+  ).toHaveAttribute("href", workoutHref(workout, true, true));
   await expect(page.getByText("최근 수행일", { exact: false })).toBeVisible();
   await page.getByRole("link", { name: "운동 다시보기" }).click();
   await expect(
     page.getByRole("img", { name: "운동 완료", exact: true }),
   ).toBeVisible();
-  await expect(page).toHaveURL(`/account/workouts/${workout.id}/replay`);
+  await expect(page).toHaveURL(workoutHref(workout, true, true));
   await expect(
     page.getByRole("heading", { name: "운동 다시보기", exact: true }),
   ).toBeVisible();
@@ -318,7 +358,7 @@ test("actual playback excludes seeks, ends below 50%, resumes after reload and c
   await expect(dailyRecords.getByRole("listitem")).toHaveCount(1);
   await expect(dailyRecords.getByRole("link")).toHaveAttribute(
     "href",
-    `/account/workouts/${workout.id}/replay`,
+    workoutHref(workout, true, true),
   );
 });
 test("a lost start response survives reload with the original event key and body", async ({
@@ -328,7 +368,7 @@ test("a lost start response survives reload with the original event key and body
   await testMedia(page, workout);
   const requests: { key: string; body: string | null }[] = [];
   let lost = false;
-  await page.route(`**/api/v1/workouts/${workout.id}/events`, async (route) => {
+  await page.route(`**/api/v1${itemEvents(workout)}`, async (route) => {
     if (route.request().postDataJSON().type !== "start")
       return route.fallback();
     requests.push({
@@ -342,7 +382,7 @@ test("a lost start response survives reload with the original event key and body
       await route.abort("failed");
     } else await route.fallback();
   });
-  await openAuthenticated(page, `/workouts/${workout.id}`);
+  await openAuthenticated(page, workoutHref(workout));
   await page.getByRole("button", { name: "운동 시작", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "저장 다시 확인하기" }),
@@ -360,22 +400,7 @@ test("unavailable media has an explicit retry and never uses originalUrl", async
   page,
 }) => {
   const { workout } = await prepare(page);
-  await page.route(`**/api/v1/workouts/${workout.id}`, async (route) => {
-    const response = await route.fetch();
-    const data = await response.json();
-    await route.fulfill({
-      response,
-      json: {
-        ...data,
-        video: {
-          ...data.video,
-          playbackStatus: "unavailable",
-          playbackUrl: null,
-        },
-      },
-    });
-  });
-  await openAuthenticated(page, `/workouts/${workout.id}`);
+  await openAuthenticated(page, workoutHref(workout));
   await expect(
     page.getByText("현재 이 영상을 재생할 수 없어요.", { exact: false }),
   ).toBeVisible();
@@ -402,17 +427,14 @@ test("a saved 50% session ends as interrupted and can be explicitly completed af
       workout.video.durationSeconds / 2,
     ],
   ] as const) {
-    const saved = await page.request.post(
-      `${base}/workouts/${workout.id}/events`,
-      {
-        headers: { ...headers, "Idempotency-Key": crypto.randomUUID() },
-        data: { type, deviceId, sequence, intervals, positionSeconds },
-      },
-    );
+    const saved = await page.request.post(`${base}${itemEvents(workout)}`, {
+      headers: { ...headers, "Idempotency-Key": crypto.randomUUID() },
+      data: { type, deviceId, sequence, intervals, positionSeconds },
+    });
     expect(saved.status()).toBe(200);
   }
   await testMedia(page, workout);
-  await openAuthenticated(page, `/workouts/${workout.id}`);
+  await openAuthenticated(page, workoutHref(workout));
   await page.getByRole("button", { name: "여기서 종료" }).click();
   await page.getByRole("button", { name: "종료 확인" }).click();
   await expect.poll(async () => (await read()).status).toBe("interrupted");
@@ -427,24 +449,21 @@ test("another device's completion is recovered without overwriting it", async ({
 }) => {
   const { workout, headers, read } = await prepare(page);
   await testMedia(page, workout);
-  await openAuthenticated(page, `/workouts/${workout.id}`);
+  await openAuthenticated(page, workoutHref(workout));
   await page.getByRole("button", { name: "운동 시작", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "운동 완료", exact: true }),
   ).toBeEnabled();
-  const completed = await page.request.post(
-    `${base}/workouts/${workout.id}/events`,
-    {
-      headers: { ...headers, "Idempotency-Key": crypto.randomUUID() },
-      data: {
-        type: "complete",
-        deviceId: crypto.randomUUID(),
-        sequence: 1,
-        intervals: [],
-        positionSeconds: 0,
-      },
+  const completed = await page.request.post(`${base}${itemEvents(workout)}`, {
+    headers: { ...headers, "Idempotency-Key": crypto.randomUUID() },
+    data: {
+      type: "complete",
+      deviceId: crypto.randomUUID(),
+      sequence: 1,
+      intervals: [],
+      positionSeconds: 0,
     },
-  );
+  });
   expect(completed.status()).toBe(200);
   await page.getByLabel("운동 영상").evaluate((v: HTMLVideoElement) => {
     v.currentTime = 1;
@@ -474,10 +493,24 @@ test("legacy users are guided to a birth profile, measurement, or unsupported-ag
     password,
   });
   expect(registered.status()).toBe(201);
+  const auth = await registered.json();
+  expect(
+    (
+      await page.request.patch(`${base}/users/me/preferences`, {
+        headers: {
+          Authorization: `Bearer ${auth.access_token}`,
+          "X-CSRF-Protection": "1",
+        },
+        data: { exerciseGoal: "general_fitness_improvement" },
+      })
+    ).status(),
+  ).toBe(200);
   await openAuthenticated(page, "/workouts");
   await expect(page.getByText("아직 운동 이력이 없어요")).toBeVisible();
-  await page.getByRole("link", { name: "오늘 운동 받으러 가기" }).click();
-  await page.getByRole("button", { name: "운동하기" }).click();
+  await page.getByRole("link", { name: "내일 운동 준비하기" }).click();
+  await page
+    .getByRole("button", { name: "내일 운동 준비하기", exact: true })
+    .click();
   await page.getByRole("link", { name: "생년월일 입력하기" }).click();
   await expect(page).toHaveURL(/\/account\/settings\?tab=birth$/);
   await page.getByLabel("생년월일 입력", { exact: true }).fill("2000-01-01");
@@ -486,7 +519,9 @@ test("legacy users are guided to a birth profile, measurement, or unsupported-ag
     .getByRole("navigation")
     .getByRole("link", { name: "메인", exact: true })
     .click();
-  await page.getByRole("button", { name: "운동하기" }).click();
+  await page
+    .getByRole("button", { name: "내일 운동 준비하기", exact: true })
+    .click();
   await expect(
     page.getByRole("link", { name: "측정 기록 등록하기" }),
   ).toBeVisible();
@@ -502,7 +537,9 @@ test("legacy users are guided to a birth profile, measurement, or unsupported-ag
     .getByRole("navigation")
     .getByRole("link", { name: "메인", exact: true })
     .click();
-  await page.getByRole("button", { name: "운동하기" }).click();
+  await page
+    .getByRole("button", { name: "내일 운동 준비하기", exact: true })
+    .click();
   await expect(
     page.getByRole("link", { name: "생년월일 확인하기" }),
   ).toHaveAttribute("href", "/account/settings?tab=birth");
@@ -511,30 +548,27 @@ test("legacy users are guided to a birth profile, measurement, or unsupported-ag
 test("history retains its first page on failure and retries the same cursor without duplicates", async ({
   page,
 }) => {
-  const { workout } = await prepare(page);
+  await installApi(page, testRecord());
+  const workout = testWorkout;
   let failed = false;
   const cursors: string[] = [];
-  // Only pagination metadata and the extra display row are fixtures; the first row is an actual assignment.
+  // Legacy records remain readable when served by a compatible backend.
   await page.route("**/api/v1/workouts/history?*", async (route) => {
     const cursor = new URL(route.request().url()).searchParams.get("cursor");
-    const response = await route.fetch();
-    const data = await response.json();
+    const data = { items: [workout], nextCursor: null };
     if (!cursor)
       return route.fulfill({
-        response,
         json: { ...data, nextCursor: workout.id },
       });
     cursors.push(cursor);
     if (!failed) {
       failed = true;
       return route.fulfill({
-        response,
         status: 503,
         json: { message: "history test failure" },
       });
     }
     return route.fulfill({
-      response,
       json: {
         items: [
           workout,
@@ -548,7 +582,7 @@ test("history retains its first page on failure and retries the same cursor with
       },
     });
   });
-  await openAuthenticated(page, "/workouts");
+  await page.goto("/workouts");
   await expect(page.locator(".workout-list > li")).toHaveCount(1);
   await page.getByRole("button", { name: "이전 운동 더 보기" }).click();
   await expect(page.getByRole("main").getByRole("alert")).toBeVisible();
@@ -561,8 +595,7 @@ test("history retains its first page on failure and retries the same cursor with
   ).toHaveCount(0);
 });
 
-// The backend currently assigns one workout/day. This contract fixture validates
-// the frontend's multi-assignment navigation; persistence is covered above against PR #9.
+// Legacy multi-assignment navigation stays compatible; current routine persistence is tested above.
 test("여러 운동은 각자의 영상과 기록으로 완료하고 목록에서 다음 운동을 시작한다", async ({
   page,
 }) => {

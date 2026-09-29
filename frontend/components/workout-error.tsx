@@ -4,6 +4,11 @@ import { Notice } from "./ui";
 export function WorkoutError({ error }: { error: unknown }) {
   const code = error instanceof ApiError ? error.code : undefined;
   const help = {
+    RECOMMENDATION_NOT_CONNECTED: [
+      "이전 단일 운동은 현재 연결되지 않았어요. 새 루틴을 이용해 주세요.",
+      "/workout",
+      "새 루틴 보기",
+    ],
     EXERCISE_GOAL_REQUIRED: [
       "운동 목적을 선택하면 맞춤 루틴을 준비할 수 있어요.",
       "/account/preferences",
@@ -34,14 +39,15 @@ export function WorkoutError({ error }: { error: unknown }) {
     <Notice>
       <p>
         {help?.[0] ??
-          (code === "WORKOUT_CATALOG_UNAVAILABLE" ||
-          code === "ROUTINE_ALGORITHM_UNAVAILABLE"
-            ? "운동 영상을 준비하고 있어요. 잠시 후 다시 시도해 주세요."
-            : code === "WORKOUT_CONFLICT"
-              ? "다른 화면에서 운동 상태가 변경되었어요. 저장된 최신 상태를 확인해 주세요."
-              : error instanceof ApiError && error.status === 404
-                ? "운동을 찾을 수 없거나 접근할 수 없어요."
-                : errorMessage(error))}
+          (code === "ROUTINE_ALGORITHM_UNAVAILABLE"
+            ? "맞춤 운동을 준비할 수 없어요. 잠시 후 다시 시도해 주세요."
+            : code === "WORKOUT_CATALOG_UNAVAILABLE"
+              ? "운동 영상을 준비하고 있어요. 잠시 후 다시 시도해 주세요."
+              : code === "WORKOUT_CONFLICT"
+                ? "다른 화면에서 운동 상태가 변경되었어요. 저장된 최신 상태를 확인해 주세요."
+                : error instanceof ApiError && error.status === 404
+                  ? "운동을 찾을 수 없거나 접근할 수 없어요."
+                  : errorMessage(error))}
       </p>
       {help && (
         <Link className="text-link" href={help[1]}>

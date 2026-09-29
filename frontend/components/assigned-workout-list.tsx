@@ -23,8 +23,7 @@ export function AssignedWorkoutList({
             </p>
             {workout.routine && (
               <p className="caption">
-                {workout.routine.prescription.text} ·{" "}
-                {workout.routine.prescription.sets}세트 · 휴식{" "}
+                {workout.routine.prescription.text} · 휴식{" "}
                 {workout.routine.prescription.restSec}초
               </p>
             )}

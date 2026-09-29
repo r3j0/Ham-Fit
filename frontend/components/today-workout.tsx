@@ -30,6 +30,9 @@ export function TodayWorkout({ embedded = false }: { embedded?: boolean }) {
   useEffect(() => {
     const lease = workoutJournal.acquire(userId, "routine:next");
     writer.current = lease;
+    queueMicrotask(() => {
+      if (lease.active()) setPending(lease.read().length > 0);
+    });
     return () => {
       lease.release();
       writer.current = null;
@@ -147,8 +150,13 @@ export function TodayWorkout({ embedded = false }: { embedded?: boolean }) {
   );
   const content = (
     <div className={embedded ? "stack" : "content stack"}>
-      {!loaded ? (
-        <Loading />
+      {!loaded && !history.ready ? (
+        <>
+          <Loading />
+          <button className="button primary workout-request" disabled>
+            내일 운동 준비하기
+          </button>
+        </>
       ) : (
         <>
           {error !== undefined && <WorkoutError error={error} />}
@@ -184,7 +192,8 @@ export function TodayWorkout({ embedded = false }: { embedded?: boolean }) {
               <ol>
                 {next.routine.map((item) => (
                   <li key={item.id}>
-                    {item.title} · {item.prescription.text}
+                    {item.title} · {item.prescription.text} · 휴식{" "}
+                    {item.prescription.restSec}초
                   </li>
                 ))}
               </ol>

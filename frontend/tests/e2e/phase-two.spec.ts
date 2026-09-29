@@ -47,18 +47,23 @@ test("메인은 미배정·배정·완료를 구분하고 운동 내용을 임�
   await register(page);
   await page.goto("/");
   await expect(
-    page.getByRole("heading", { name: "아직 오늘 배정된 운동이 없어요" }),
+    page.getByText("아직 오늘 배정된 운동이 없어요.", { exact: false }),
   ).toBeVisible();
   await expect(
     page.getByRole("link", { name: "체력 기록 등록하기" }),
   ).toBeVisible();
   let completed = false;
-  await page.route(`${api}/workouts/current`, (route) =>
+  await page.route(`${api}/workouts/history?*`, (route) =>
     route.fulfill({
       json: {
-        ...testWorkout,
-        status: completed ? "completed" : "assigned",
-        completedAt: completed ? new Date().toISOString() : null,
+        items: [
+          {
+            ...testWorkout,
+            status: completed ? "completed" : "assigned",
+            completedAt: completed ? new Date().toISOString() : null,
+          },
+        ],
+        nextCursor: null,
       },
       headers: {
         "Access-Control-Allow-Origin": route.request().headers().origin,
@@ -106,7 +111,7 @@ test("구형 사용자 응답은 임의의 초기 상태로 표시하지 않고 
     page.getByRole("button", { name: "다시 불러오기" }),
   ).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: "아직 오늘 배정된 운동이 없어요" }),
+    page.getByText("아직 오늘 배정된 운동이 없어요.", { exact: false }),
   ).toHaveCount(0);
 });
 

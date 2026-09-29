@@ -15,6 +15,9 @@ export function assignedWorkoutsForDay(
     .filter((workout) => workout.koreanDate === day)
     .sort(
       (a, b) =>
-        a.assignedAt.localeCompare(b.assignedAt) || a.id.localeCompare(b.id),
+        a.assignedAt.localeCompare(b.assignedAt) ||
+        (a.routine && b.routine && a.routine.id === b.routine.id
+          ? a.routine.order - b.routine.order
+          : a.id.localeCompare(b.id)),
     );
 }
