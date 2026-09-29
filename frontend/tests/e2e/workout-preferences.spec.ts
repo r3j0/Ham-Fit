@@ -6,13 +6,14 @@ const path = "**/api/v1/users/me/preferences";
 const initial: StoredExercisePreferences = {
   exerciseVolume: "standard",
   exerciseGoal: null,
+  ownedTools: [],
   updatedAt: "2026-09-26T00:00:00.000Z",
 };
 async function installPreferences(page: Page, value = initial) {
   await installApi(page);
   const state = {
     value: { ...value },
-    patches: [] as Record<string, string>[],
+    patches: [] as Record<string, unknown>[],
   };
   await page.route(path, async (route) => {
     const request = route.request();
@@ -72,6 +73,92 @@ test("저장된 설정을 조회하고 변경 필드만 저장해 다른 곳의 
   await expect(
     page.getByRole("button", { name: "저장하기", exact: true }),
   ).toBeDisabled();
+});
+
+test("보유 도구를 복수 선택·해제하고 없음으로 전체 해제한다", async ({
+  page,
+}) => {
+  const state = await installPreferences(page, {
+    ...initial,
+    ownedTools: ["band"],
+  });
+  await page.goto("/account/preferences");
+  await expect(
+    page.getByRole("checkbox", { name: "밴드", exact: true }),
+  ).toBeChecked();
+  await expect(
+    page.getByRole("checkbox", { name: "없음", exact: true }),
+  ).not.toBeChecked();
+  await page.getByRole("checkbox", { name: "덤벨·아령", exact: true }).check();
+  await page.getByRole("checkbox", { name: "짐볼", exact: true }).check();
+  await page.getByRole("checkbox", { name: "밴드", exact: true }).uncheck();
+  await page.getByRole("button", { name: "저장하기", exact: true }).click();
+  await expect(page.getByRole("status")).toHaveText("운동 설정을 저장했어요.");
+  expect(state.patches).toEqual([{ ownedTools: ["dumbbell", "gym_ball"] }]);
+  await page.reload();
+  await expect(
+    page.getByRole("checkbox", { name: "덤벨·아령", exact: true }),
+  ).toBeChecked();
+  await expect(
+    page.getByRole("checkbox", { name: "짐볼", exact: true }),
+  ).toBeChecked();
+  await page.getByRole("checkbox", { name: "없음", exact: true }).check();
+  await expect(
+    page.getByRole("group", { name: "보유 운동 도구" }).locator(":checked"),
+  ).toHaveCount(1);
+  await page.getByRole("button", { name: "저장하기", exact: true }).click();
+  await expect(page.getByRole("status")).toHaveText("운동 설정을 저장했어요.");
+  expect(state.patches[1]).toEqual({ ownedTools: [] });
+  await page.reload();
+  await expect(
+    page.getByRole("checkbox", { name: "없음", exact: true }),
+  ).toBeChecked();
+});
+
+test("도구 저장 실패 후 선택을 보존하고 동일한 요청으로 재시도한다", async ({
+  page,
+}) => {
+  const state = await installPreferences(page);
+  await page.goto("/account/preferences");
+  await page.getByRole("checkbox", { name: "밴드", exact: true }).check();
+  let release!: () => void;
+  const pending = new Promise<void>((done) => {
+    release = done;
+  });
+  await page.route(
+    path,
+    async (route) => {
+      if (route.request().method() !== "PATCH") return route.fallback();
+      await pending;
+      await route.fulfill({
+        status: 503,
+        json: { message: "temporary test failure" },
+      });
+    },
+    { times: 1 },
+  );
+  await page.getByRole("button", { name: "저장하기", exact: true }).click();
+  try {
+    await expect(
+      page.getByRole("button", { name: "저장 중이에요" }),
+    ).toBeDisabled();
+    await expect(
+      page.getByRole("checkbox", { name: "밴드", exact: true }),
+    ).toBeDisabled();
+  } finally {
+    release();
+  }
+  await expect(
+    page.getByRole("form", { name: "운동 설정" }).getByRole("alert"),
+  ).toContainText("저장 결과를 확인하지 못했어요");
+  await expect(
+    page.getByRole("checkbox", { name: "밴드", exact: true }),
+  ).toBeChecked();
+  await page
+    .getByRole("button", { name: "다시 저장하기", exact: true })
+    .click();
+  await expect(page.getByRole("status")).toHaveText("운동 설정을 저장했어요.");
+  expect(state.patches).toEqual([{ ownedTools: ["band"] }]);
 });
 
 test("목적 미선택을 유지하면서 운동량을 저장하고 키보드로 목적을 선택한다", async ({

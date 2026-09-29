@@ -5,10 +5,12 @@ import {
   parseExercisePreferences,
   exerciseVolumeOptions,
   exerciseGoalOptions,
+  ownedToolOptions,
 } from "../../lib/user-preferences.ts";
 const initial = {
   exerciseVolume: "standard",
   exerciseGoal: null,
+  ownedTools: [],
   updatedAt: "2026-09-26T00:00:00.000Z",
 } as const;
 
@@ -36,9 +38,39 @@ test("missing, invalid and legacy preferences never become default settings", ()
     { ...initial, exerciseGoal: "weight_loss" },
     { ...initial, updatedAt: undefined },
     { ...initial, updatedAt: "invalid" },
+    ...[undefined, null, "band", {}, ["none"], ["barbell"], ["band", null]].map(
+      (ownedTools) => ({ ...initial, ownedTools }),
+    ),
     { ...initial, updatedAt: "2026-09-26T00:00:00" },
   ])
     assert.throws(() => parseExercisePreferences(value), /운동 설정을 확인/);
+});
+
+test("tools are a canonical set, unchanged sets omit PATCH, and empty arrays clear", () => {
+  const tools = ownedToolOptions.map((option) => option.value);
+  const saved = { ...initial, ownedTools: tools };
+  assert.deepEqual(
+    parseExercisePreferences({
+      ...saved,
+      ownedTools: [...tools].reverse().concat("band"),
+    }),
+    saved,
+  );
+  assert.equal(
+    buildPreferencesPatch(saved, {
+      ...saved,
+      ownedTools: [...tools].reverse(),
+    }),
+    null,
+  );
+  assert.deepEqual(buildPreferencesPatch(saved, initial), { ownedTools: [] });
+  assert.deepEqual(buildPreferencesPatch(initial, saved), {
+    ownedTools: tools,
+  });
+  assert.deepEqual(
+    buildPreferencesPatch(saved, { ...saved, exerciseVolume: "more" }),
+    { exerciseVolume: "more" },
+  );
 });
 test("unchanged preferences do not produce an empty PATCH", () => {
   assert.equal(buildPreferencesPatch(initial, { ...initial }), null);
