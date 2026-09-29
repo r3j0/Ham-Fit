@@ -66,12 +66,15 @@ type PreferenceRow = {
   exercise_goal: string | null;
   created_at: Date;
   updated_at: Date;
+  owned_tools: string[];
 };
 
 async function preferences(client: pg.Client) {
   return (
     await client.query<PreferenceRow>(
-      'SELECT * FROM user_preferences ORDER BY user_id',
+      // pg does not decode custom enum-array OIDs automatically. JSON decodes
+      // the list without registering a parser tied to this temporary schema.
+      "SELECT p.*, to_jsonb(p)->'owned_tools' AS owned_tools FROM user_preferences p ORDER BY user_id",
     )
   ).rows;
 }
@@ -150,6 +153,7 @@ it('backfills populated accounts without inferring goals and preserves saved pre
     for (const row of initialized) {
       expect(row.exercise_volume).toBe('standard');
       expect(row.exercise_goal).toBeNull();
+      expect(row.owned_tools).toEqual([]);
       for (const timestamp of [row.created_at, row.updated_at]) {
         expect(timestamp.getTime()).toBeGreaterThanOrEqual(beforeMigration);
         expect(timestamp.getTime()).toBeLessThanOrEqual(afterMigration);
@@ -198,6 +202,7 @@ it('backfills populated accounts without inferring goals and preserves saved pre
         expect(await service.get(row.user_id)).toEqual({
           exerciseVolume: 'standard',
           exerciseGoal: null,
+          ownedTools: [],
           updatedAt: row.updated_at.toISOString(),
         });
 
@@ -242,11 +247,13 @@ it('backfills populated accounts without inferring goals and preserves saved pre
       expect(await service.get(overlapUser)).toEqual({
         exerciseVolume: 'standard',
         exerciseGoal: null,
+        ownedTools: [],
         updatedAt: repairedRow.updated_at.toISOString(),
       });
       expect(await service.get(owner)).toEqual({
         exerciseVolume: 'more',
         exerciseGoal: 'body_composition_management',
+        ownedTools: [],
         updatedAt: saved
           .find((row) => row.user_id === owner)!
           .updated_at.toISOString(),
@@ -256,6 +263,79 @@ it('backfills populated accounts without inferring goals and preserves saved pre
     } finally {
       await database.onModuleDestroy();
     }
+  });
+}, 30_000);
+
+it('adds empty tools to existing saved preferences without changing data or timestamps', async () => {
+  await withIsolatedSchema(async (client) => {
+    const all = await migrations();
+    const name = '20260929000200_owned_tools';
+    for (const migration of all.filter((entry) => entry.name < name))
+      await client.query(migration.sql);
+    const user = randomUUID();
+    await client.query('INSERT INTO users(id, email) VALUES ($1, $2)', [
+      user,
+      `tools-upgrade-${user}@example.test`,
+    ]);
+    await client.query(
+      `INSERT INTO user_preferences(user_id, exercise_volume, exercise_goal, created_at, updated_at)
+      VALUES ($1, 'more', 'body_composition_management', '2026-09-26', '2026-09-27')`,
+      [user],
+    );
+    const before = await preferences(client);
+    const accountsBefore = (await client.query('SELECT * FROM users')).rows;
+    await client.query(all.find((entry) => entry.name === name)!.sql);
+    expect(await preferences(client)).toEqual(
+      before.map((row) => ({ ...row, owned_tools: [] })),
+    );
+    expect((await client.query('SELECT * FROM users')).rows).toEqual(
+      accountsBefore,
+    );
+    for (const [value, code] of [
+      ['NULL', '23502'],
+      ['ARRAY[\'barbell\']::"OwnedTool"[]', '22P02'],
+      ['ARRAY[NULL]::"OwnedTool"[]', '23514'],
+    ]) {
+      await expect(
+        client.query(`UPDATE user_preferences SET owned_tools = ${value}`),
+      ).rejects.toMatchObject({ code });
+    }
+    expect(await preferences(client)).toEqual(
+      before.map((row) => ({ ...row, owned_tools: [] })),
+    );
+  });
+}, 30_000);
+
+it('extends the tool enum while preserving existing selections and timestamps', async () => {
+  await withIsolatedSchema(async (client) => {
+    const all = await migrations();
+    const name = '20260929000300_home_training_tools';
+    for (const migration of all.filter((entry) => entry.name < name))
+      await client.query(migration.sql);
+    const user = randomUUID();
+    await client.query('INSERT INTO users(id, email) VALUES ($1, $2)', [
+      user,
+      `tools-extension-${user}@example.test`,
+    ]);
+    await client.query(
+      `INSERT INTO user_preferences(user_id, owned_tools, updated_at)
+      VALUES ($1, ARRAY['band', 'dumbbell']::"OwnedTool"[], '2026-09-27')`,
+      [user],
+    );
+    const before = await preferences(client);
+    await client.query(all.find((entry) => entry.name === name)!.sql);
+    expect(await preferences(client)).toEqual(before);
+    await client.query(
+      `UPDATE user_preferences SET owned_tools = ARRAY['band', 'ball', 'cone', 'agility_ladder', 'bosu']::"OwnedTool"[] WHERE user_id = $1`,
+      [user],
+    );
+    expect((await preferences(client))[0].owned_tools).toEqual([
+      'band',
+      'ball',
+      'cone',
+      'agility_ladder',
+      'bosu',
+    ]);
   });
 }, 30_000);
 

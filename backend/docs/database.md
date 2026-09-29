@@ -1,5 +1,7 @@
 # DB 설계와 운영
 
+2026-09-29 여러 운동 루틴: `20260929000100_workout_routines`는 `workout_routines`, `workout_routine_items`, `workout_routine_requests`, `workout_routine_events`를 추가한다. 기존 단일 영상 배정과 데이터는 보존한다. [루틴 API·Python 런타임·배포 준비](recommendations/routines-api.md)를 따르며, 이 작업에서 마이그레이션은 격리 테스트 DB에만 적용한다.
+
 2026-09-27 닉네임 확장: `20260927000200_user_nickname`은 nullable `nickname VARCHAR(20)`과 길이·문자 CHECK를 추가한다. 중복을 허용하며 기존 계정·생년월일·관계 데이터는 보존한다. 새 서버 시작 전에 마이그레이션을 적용한다. [가입·프로필 닉네임 계약](nickname-profile.md)을 따른다.
 
 2026-09-27 추가 마이그레이션 `20260927000100_daily_workouts`는 nullable 생년월일 DATE, 버전별 운동 카탈로그/영상, 기존 배정의 한국 날짜·진행·입력 스냅샷, 일별 요청 키·이벤트를 추가한다. 기존 행을 지우거나 추정값으로 채우지 않는다. [일별 운동 API 및 적용/수입 절차](recommendations/workouts-api.md)를 따른다. 운영 DB에는 자동 적용하지 않는다.
@@ -18,7 +20,7 @@ PostgreSQL 17과 Prisma 7.10을 사용한다. 정밀한 측정값, 고유 키·�
 
 Prisma 관계를 통한 조회는 비밀번호 필드를 포함할 수 있다. 인증 발급 응답은 기존 공개 4개 필드를 직렬화하고, `/api/v1/auth/me`는 그 필드와 본인의 온보딩·재화·현재 운동 배정을 반환한다. 비밀번호·세션은 명시적 select/serializer로 제외한다.
 
-- `user_preferences`: userId PK/FK, 단일 선택 운동량 enum 기본 standard, nullable 목적 enum 초기 null, 생성·실제 변경 시각. [운동 설정 API](user-preferences-api.md)의 가입·배포·부분 수정 계약을 따른다.
+- `user_preferences`: userId PK/FK, 단일 선택 운동량 enum 기본 standard, nullable 목적 enum 초기 null, 보유 도구 OwnedTool enum 배열 기본 [], 생성·실제 변경 시각. [운동 설정 API](user-preferences-api.md)의 가입·배포·부분 수정 계약을 따른다.
 - `user_currencies`: userId PK/FK, balance INTEGER DEFAULT 0, 비음수 CHECK. 허용 잔액 0~2,147,483,647.
 - `workout_curricula`: 공용 운동 1회분 정의의 최소 식별 구조. 콘텐츠·추천 seed 없음, 정의 수정 금지.
 - `user_curriculum_assignments`: 배정·완료 상태, 시각, 요청 키, 이력. 현재는 nullable currentForUserId UNIQUE로 표시하며 소유자 일치 CHECK가 있다. 사용자 행 잠금으로 다음 배정과 완료를 직렬화한다.
@@ -95,3 +97,7 @@ Prisma Client·PostgreSQL 어댑터·CLI를 7.10.0으로 맞췄다. 이 버전�
 `20260924000100_retire_self_curl_up`은 이전 카탈로그에서 `self_curl_up`만 제외한 `nfa100-2026-09-24`를 추가한다. 전체 20개, 성인 16개, 청소년 15개이며 청소년 `curl_up`은 그대로다. 불변 카탈로그를 수정하거나 기존 측정 항목·평가·생성 요청 키를 삭제하지 않는다. 공식 수치 기준을 확보하지 못해 신규 입력에서 제외한다는 2026-09-24 사용자 결정을 반영한다.
 
 서버는 카탈로그 버전·등록 방식에 관계없이 해당 코드의 신규 POST를 거절한다. PATCH는 잠금 후 읽은 현재 기록에 이미 있는 항목만 유지·수정·제거할 수 있고, 제거 후 재추가할 수 없다. 기존 생성 요청 재시도와 과거 조회는 유지한다. 이전 DB 검증 함수의 8개 코드 허용은 과거 항목을 보존하기 위해 유지하며, 현재 API의 간이측정 신규 입력 목록은 7개다. 저장된 과거 평가의 일괄 변경은 없다. 새 서버 시작 전에 `npm run db:migrate:deploy`로 새 카탈로그를 적용한다.
+
+2026-09-29 후속 `20260929000200_owned_tools`: 기존 `user_preferences`에 `owned_tools` enum 배열과 빈 배열 기본값·NOT NULL·null 원소 금지 제약을 추가한다. 기존 설정·생성/수정 시각·루틴을 보존하며 추가 가입 백필은 필요 없다. [보유 도구 계약](owned-tools.md)을 따른다.
+
+후속 `20260929000300_home_training_tools`는 `OwnedTool`에 ball·cone·agility_ladder·bosu를 추가해 홈트 소도구 10종을 지원한다. 기존 배열·기본값·수정 시각은 변경하지 않는다.

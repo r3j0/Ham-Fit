@@ -1,5 +1,7 @@
 # 개인 맞춤 하루 운동 API와 저장 계약
 
+2026-09-29: 이 문서는 기존 단일 영상 `/workouts` 계약이다. 여러 운동 루틴과 실제 Python 호출은 별도 [루틴 API](routines-api.md)를 사용한다. 기존 계약·기록은 보존한다.
+
 2026-09-28 정정: API·DB 설계는 유지하고 데이터 팀 알고리즘 연결만 제거했다. 실제 계산이 필요한 요청은 503 `RECOMMENDATION_NOT_CONNECTED`다. [연결 상태](provenance.md)를 따른다. 기존 2026-09-27 계약의 측정 원본은 [측정 평가 API](../measurement-evaluation-api.md)를 따른다. 아래 `/api/v1` API는 모두 기존 Bearer 인증·소유권·개인 응답 캐시 금지 규칙을 사용한다. 로그인, `/auth/me`, GET은 추천을 생성하지 않는다.
 
 ## API

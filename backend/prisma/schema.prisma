@@ -81,16 +81,32 @@ model User {
   sessions                    AuthSession[]
   measurementRequests         MeasurementCreateRequest[]
   workoutRequests             WorkoutAssignmentRequest[]
+  workoutRoutines             WorkoutRoutine[]
+  routineRequests             WorkoutRoutineRequest[]
 
   @@map("users")
 }
 
-// Independent single-choice workout settings (2026-09-26 scope addition).
-// No recommendations, measurements or onboarding state are derived from these yet.
+// Public tool identifiers; translated only at the Python input boundary.
+enum OwnedTool {
+  band
+  dumbbell
+  gym_ball
+  foam_roller
+  jump_rope
+  step_box
+  ball
+  cone
+  agility_ladder
+  bosu
+}
+
+// Persistent settings used when a new routine is generated (2026-09-29).
 model UserPreference {
   userId         String         @id @map("user_id") @db.Uuid
   exerciseVolume ExerciseVolume @default(standard) @map("exercise_volume")
   exerciseGoal   ExerciseGoal?  @map("exercise_goal")
+  ownedTools     OwnedTool[]    @default([]) @map("owned_tools")
   createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   user           User           @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict)
@@ -355,4 +371,79 @@ model WorkoutProgressEvent {
   @@id([assignmentId, key])
   @@unique([assignmentId, deviceId, sequence])
   @@map("workout_progress_events")
+}
+
+// Multi-exercise routines coexist with immutable legacy single-video assignments.
+model WorkoutRoutine {
+  id               String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId           String                  @map("user_id") @db.Uuid
+  assignmentDate   DateTime                @map("assignment_date") @db.Date
+  referenceDate    DateTime                @map("reference_date") @db.Date
+  createdAt        DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  algorithmVersion String                  @map("algorithm_version")
+  dataVersion      String                  @map("data_version")
+  estimatedMinutes Float                   @map("estimated_minutes")
+  inputSnapshot    Json                    @map("input_snapshot") @db.JsonB
+  weightAdjustment Json                    @map("weight_adjustment") @db.JsonB
+  user             User                    @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  items            WorkoutRoutineItem[]
+  requests         WorkoutRoutineRequest[]
+
+  @@unique([userId, assignmentDate])
+  @@map("workout_routines")
+}
+
+model WorkoutRoutineItem {
+  id              String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  routineId       String                     @map("routine_id") @db.Uuid
+  order           Int
+  videoId         String                     @map("video_id")
+  title           String
+  videoUrl        String                     @map("video_url")
+  durationSeconds Float                      @map("duration_seconds")
+  slot            String
+  prescription    Json                       @db.JsonB
+  status          CurriculumAssignmentStatus @default(assigned)
+  intervals       Json                       @default("[]") @db.JsonB
+  positionSeconds Float                      @default(0) @map("position_seconds")
+  revision        Int                        @default(1)
+  resultStatus    String?                    @map("result_status")
+  performedAt     DateTime?                  @map("performed_at") @db.Timestamptz(6)
+  completedAt     DateTime?                  @map("completed_at") @db.Timestamptz(6)
+  routine         WorkoutRoutine             @relation(fields: [routineId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  events          WorkoutRoutineEvent[]
+
+  @@unique([routineId, order])
+  @@unique([routineId, videoId])
+  @@map("workout_routine_items")
+}
+
+model WorkoutRoutineRequest {
+  userId    String         @map("user_id") @db.Uuid
+  key       String         @db.Uuid
+  routineId String         @map("routine_id") @db.Uuid
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  routine   WorkoutRoutine @relation(fields: [routineId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+
+  @@id([userId, key])
+  @@map("workout_routine_requests")
+}
+
+model WorkoutRoutineEvent {
+  itemId            String             @map("item_id") @db.Uuid
+  key               String             @db.Uuid
+  requestHash       String             @map("request_hash") @db.Char(64)
+  deviceId          String             @map("device_id") @db.Uuid
+  sequence          Int
+  type              String
+  intervals         Json               @db.JsonB
+  positionSeconds   Float              @map("position_seconds")
+  clientOccurredAt  DateTime?          @map("client_occurred_at") @db.Timestamptz(6)
+  receivedAt        DateTime           @map("received_at") @db.Timestamptz(6)
+  resultingRevision Int                @map("resulting_revision")
+  item              WorkoutRoutineItem @relation(fields: [itemId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+
+  @@id([itemId, key])
+  @@unique([itemId, deviceId, sequence])
+  @@map("workout_routine_events")
 }

@@ -19,10 +19,11 @@ Project Health의 NestJS API 서버입니다. 백엔드 코드·설정·문서·
 - [일별 운동·수행 결과 API 설계](docs/recommendations/workouts-api.md)
 - [생년월일 프로필 API와 KST 만 나이](docs/recommendations/birth-profile.md)
 - [추천 알고리즘 연결 상태·재연결 경계](docs/recommendations/provenance.md)
+- [여러 운동 루틴 API·실제 Python 연결·런타임 설정](docs/recommendations/routines-api.md)
 - [영상 HTTPS·Range·메타데이터 검증 범위](docs/recommendations/media-verification.md)
 - [알고리즘 연결 제거·BE 계약 검증](docs/recommendations/verification.md)
 
-2026-09-28 사용자 결정으로 데이터 팀 알고리즘 연결을 제거했다. API·DB·프로필·진행 저장 설계는 유지하며 추천 및 노출도 계산이 필요한 요청은 503 `RECOMMENDATION_NOT_CONNECTED`를 반환한다. 데이터 팀 코드의 main 병합 후 BE를 rebase하고 별도로 재연결한다. 현재 운영 경로에는 복사한 데이터나 대체 추천 계산이 없다.
+2026-09-29 사용자 결정으로 `/api/v1/workout-routines`에서 원본 Python 알고리즘을 직접 호출하고 여러 운동·처방·진행을 저장한다. Python 환경과 읽기 전용 원본 데이터가 필요하며 [준비 절차](docs/recommendations/routines-api.md)를 따른다. 기존 `/api/v1/workouts` 단일 영상 API는 미연결 상태와 기존 계약을 유지한다. 운영 경로에 복사한 알고리즘이나 대체 추천 계산은 없다.
 
 ## 개발 환경
 
@@ -58,7 +59,7 @@ curl http://localhost:3001/api/v1/health/ready
 
 2026-09-21 정정으로 선호 운동·운동 목적·개인별 목표/기준값과 `currentFitness` 프로필 응답을 제거했습니다. 기존 측정 CRUD·저장 데이터와 유효한 기록 1건 이상의 온보딩 조건은 유지합니다.
 
-2026-09-26부터 별도 UserPreference에 운동량 선호·단일 운동 목적을 저장합니다. 기존 프로필·계정 변경 계약과 온보딩을 유지하며 운동 알고리즘에는 아직 반영하지 않습니다. 가입 중지 → 마이그레이션 → 모든 신규 서버 교체 → 누락 점검 → 가입 재개 순서가 필요합니다. [운동 설정 API](docs/user-preferences-api.md)에 요청·응답·복구 절차를 정리했습니다.
+2026-09-26부터 별도 UserPreference에 운동량 선호·단일 운동 목적을 저장하며 2026-09-29 보유 도구 목록을 추가했습니다. 기존 프로필·계정 변경 계약과 온보딩을 유지하며 신규 루틴 추천에서 저장된 운동량·목적·보유 도구를 사용합니다. 가입 중지 → 마이그레이션 → 모든 신규 서버 교체 → 누락 점검 → 가입 재개 순서가 필요합니다. [운동 설정 API](docs/user-preferences-api.md)에 요청·응답·복구 절차를 정리했습니다.
 
 2026-09-24부터 공식 수치 기준을 확보하지 못한 성인 `self_curl_up`은 신규 입력에서 제외합니다. 최신 카탈로그는 `nfa100-2026-09-24`이며, 기존 기록·과거 카탈로그와 청소년 `curl_up`은 유지합니다. [평가 API](docs/measurement-evaluation-api.md)에 신규 입력과 기존 기록 수정 계약을 정리했습니다.
 

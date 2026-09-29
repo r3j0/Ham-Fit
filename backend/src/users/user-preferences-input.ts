@@ -1,15 +1,26 @@
 import { z } from 'zod';
-import { ExerciseGoal, ExerciseVolume } from '../generated/prisma/enums.js';
+import {
+  ExerciseGoal,
+  ExerciseVolume,
+  OwnedTool,
+} from '../generated/prisma/enums.js';
+import { normalizeOwnedTools } from './owned-tools.js';
 import { invalidUserInput } from './user-input.js';
 
 const updateSchema = z
   .strictObject({
     exerciseVolume: z.enum(ExerciseVolume).optional(),
     exerciseGoal: z.enum(ExerciseGoal).optional(),
+    ownedTools: z
+      .array(z.enum(OwnedTool))
+      .transform(normalizeOwnedTools)
+      .optional(),
   })
   .refine(
     (input) =>
-      input.exerciseVolume !== undefined || input.exerciseGoal !== undefined,
+      input.exerciseVolume !== undefined ||
+      input.exerciseGoal !== undefined ||
+      input.ownedTools !== undefined,
     { message: '변경할 운동 설정을 하나 이상 전달해 주세요.' },
   );
 

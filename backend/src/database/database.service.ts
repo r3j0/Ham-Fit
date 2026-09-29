@@ -66,10 +66,19 @@ export class DatabaseService
         this.measurementCreateRequest.findFirst({ select: { key: true } }),
         this.userCurrency.findFirst({ select: { balance: true } }),
         this.userPreference.findFirst({
-          select: { exerciseVolume: true, exerciseGoal: true, updatedAt: true },
+          select: {
+            exerciseVolume: true,
+            exerciseGoal: true,
+            ownedTools: true,
+            updatedAt: true,
+          },
         }),
         this.workoutCurriculum.findFirst({ select: { id: true } }),
         this.userCurriculumAssignment.findFirst({ select: { id: true } }),
+        this.workoutRoutine.findFirst({ select: { id: true } }),
+        this.workoutRoutineItem.findFirst({ select: { id: true } }),
+        this.workoutRoutineRequest.findFirst({ select: { key: true } }),
+        this.workoutRoutineEvent.findFirst({ select: { key: true } }),
       ]);
       return definitions > 0;
     } catch {
