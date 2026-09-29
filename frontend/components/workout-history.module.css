@@ -137,6 +137,28 @@
   border-radius: var(--radius-hero);
   background: var(--surface);
 }
+.viewSwitch {
+  display: inline-grid;
+  grid-template-columns: repeat(2, 36px);
+  padding: 3px;
+  border-radius: var(--radius-chip);
+  background: var(--canvas);
+}
+.viewSwitch button {
+  min-height: 36px;
+  border-radius: calc(var(--radius-chip) - 3px);
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+.viewSwitch button[aria-pressed="true"] {
+  background: var(--surface);
+  color: var(--navy);
+  box-shadow: 0 1px 4px rgb(16 46 58 / 12%);
+}
+.viewSwitch button:hover:not([aria-pressed="true"]) {
+  color: var(--navy);
+}
 .monthNavigation {
   display: grid;
   grid-template-columns: 44px 1fr 44px;
@@ -157,6 +179,9 @@
   justify-content: space-between;
   color: var(--muted);
   font-size: 13px;
+}
+.monthSummary[data-detail] {
+  justify-content: flex-end;
 }
 .monthSummary strong {
   color: var(--navy);
@@ -207,6 +232,18 @@
 }
 .day svg {
   color: var(--sky);
+}
+.dayDuration {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 13px;
+  color: var(--sky);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: -0.06em;
+  line-height: 1;
+  white-space: nowrap;
 }
 .day[data-completed] {
   background: var(--tint);

@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  calendarWeek,
   calendarWeeks,
   isWorkoutDate,
   completedDate,
@@ -36,6 +37,27 @@ test("monthly calendars preserve weekday positions with four, five, or six compl
   assert.equal(august.flat().filter(Boolean).length, 31);
   for (const week of [...february, ...leapFebruary, ...august])
     assert.equal(week.length, 7);
+});
+
+test("weekly calendars run Sunday through Saturday across month and year boundaries", () => {
+  assert.deepEqual(calendarWeek("2026-09-28"), [
+    "2026-09-27",
+    "2026-09-28",
+    "2026-09-29",
+    "2026-09-30",
+    "2026-10-01",
+    "2026-10-02",
+    "2026-10-03",
+  ]);
+  assert.deepEqual(calendarWeek("2026-01-01"), [
+    "2025-12-28",
+    "2025-12-29",
+    "2025-12-30",
+    "2025-12-31",
+    "2026-01-01",
+    "2026-01-02",
+    "2026-01-03",
+  ]);
 });
 
 test("streaks include today or remain active through yesterday, but stop at a missed day", () => {

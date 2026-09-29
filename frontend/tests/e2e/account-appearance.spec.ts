@@ -328,8 +328,12 @@ test("프로필의 운동 이력·다시보기·날짜 이동은 Orange와 프�
   await expect(page).toHaveURL("/account/workouts/history/2026-09-27");
   await expectProfile();
   const calendar = page.getByRole("region", { name: "운동 기록", exact: true });
+  await calendar.getByRole("button", { name: "이전 주" }).click();
   await calendar
-    .getByRole("link", { name: "9월 26일, 운동함", exact: true })
+    .getByRole("link", {
+      name: "9월 26일, 운동함, 총 1분 0초 운동",
+      exact: true,
+    })
     .click();
   await expect(page).toHaveURL("/account/workouts/history/2026-09-26");
   await expectProfile();

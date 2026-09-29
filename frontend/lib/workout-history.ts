@@ -86,6 +86,14 @@ export function calendarWeeks(month: string): (string | null)[][] {
   );
 }
 
+/** Return the Sunday-to-Saturday week containing the supplied date key. */
+export function calendarWeek(day: string): string[] {
+  const start = dateFromKey(day);
+  start.setDate(start.getDate() - start.getDay());
+  const startKey = localDateKey(start);
+  return Array.from({ length: 7 }, (_, offset) => shiftDay(startKey, offset));
+}
+
 /** An unfinished today keeps yesterday's streak alive until the day ends. */
 export function workoutStreak(
   completed: ReadonlySet<string>,
