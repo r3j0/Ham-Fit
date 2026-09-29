@@ -46,7 +46,15 @@ export function Home() {
               </div>
               <GroupMascots />
             </div>
-            <div className="home-activity">
+            <div
+              className="home-activity"
+              data-current-workout={
+                user.currentCurriculum &&
+                user.currentCurriculum.status !== "completed"
+                  ? true
+                  : undefined
+              }
+            >
               <section className="stack" aria-labelledby="today-title">
                 <div className="section-heading">
                   <ClipboardList size={22} />

@@ -78,10 +78,29 @@ test("서버 완료일만 달력과 스트릭에 표시하고 같은 날 중복 
     calendarBox.y + calendarBox.height,
   );
   await expect(
-    calendar.getByRole("link", { name: "9월 27일 오늘, 운동함", exact: true }),
+    calendar.getByRole("link", {
+      name: "9월 27일 오늘, 운동함, 총 2분 0초 운동",
+      exact: true,
+    }),
   ).toHaveAttribute("data-selected", "true");
+  await expect(calendar.getByText("3일 운동했어요")).toHaveCount(0);
+  await expect(calendar.locator("tbody tr")).toHaveCount(1);
+  await expect(
+    calendar.getByRole("button", { name: "주", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await calendar.getByRole("button", { name: "월", exact: true }).click();
+  await expect(calendar.locator("tbody tr")).toHaveCount(5);
+  await expect(
+    calendar.getByRole("button", { name: "월", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await calendar.getByRole("button", { name: "주", exact: true }).click();
+  await expect(calendar.locator("tbody tr")).toHaveCount(1);
+  await calendar.getByRole("button", { name: "이전 주" }).click();
   await calendar
-    .getByRole("link", { name: "9월 26일, 운동함", exact: true })
+    .getByRole("link", {
+      name: "9월 26일, 운동함, 총 1분 0초 운동",
+      exact: true,
+    })
     .focus();
   await page.keyboard.press("Enter");
   await expect(page).toHaveURL("/workouts/history/2026-09-26");
@@ -287,7 +306,10 @@ test("날짜 상세의 빈 날짜·잘못된 날짜와 이력 조회 실패를 �
   await setup(page);
   await page.goto("/workouts/history/2026-08-01");
   await expect(
-    page.getByRole("heading", { name: "2026년 8월", exact: true }),
+    page.getByRole("heading", {
+      name: "2026년 7월 26일 – 8월 1일",
+      exact: true,
+    }),
   ).toBeVisible();
   await expect(
     page.getByText("이 날짜에 완료한 운동 기록이 없어요."),

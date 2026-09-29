@@ -3,7 +3,7 @@ import "@fontsource-variable/noto-sans-kr";
 import "./globals.css";
 import { SessionProvider } from "@/components/session-provider";
 export const metadata: Metadata = {
-  title: { default: "모두채력", template: "%s | 모두채력" },
+  title: { default: "햄피트", template: "%s | 햄피트" },
   description:
     "나만의 속도로, 함께 건강하게. 국민체력100 측정 결과를 기록해요.",
   robots: { index: false, follow: false },

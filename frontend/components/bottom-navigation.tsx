@@ -24,16 +24,16 @@ export function BottomNavigation() {
       : "";
   const tabs = [
     {
-      href: "/",
-      label: "메인",
-      icon: House,
-      active: pathname === "/",
-    },
-    {
       href: "/workout",
       label: "운동",
       icon: Dumbbell,
       active: workoutRoute,
+    },
+    {
+      href: "/",
+      label: "메인",
+      icon: House,
+      active: pathname === "/",
     },
     {
       href: "/account",
@@ -45,21 +45,23 @@ export function BottomNavigation() {
 
   return (
     <nav className={`bottom-navigation${theme}`} aria-label="하단 메뉴">
-      {tabs.map(({ href, label, icon: Icon, active }) => (
-        <Link
-          key={href}
-          href={href}
-          className={`bottom-tab${href === "/workout" ? " bottom-tab-workout" : ""}`}
-          aria-label={label}
-          aria-current={
-            active ? (pathname === href ? "page" : "location") : undefined
-          }
-        >
-          <span className="bottom-tab-icon" aria-hidden="true">
-            <Icon size={href === "/workout" ? 28 : 22} />
-          </span>
-        </Link>
-      ))}
+      <div className="bottom-navigation-inner">
+        {tabs.map(({ href, label, icon: Icon, active }) => (
+          <Link
+            key={href}
+            href={href}
+            className={`bottom-tab${href === "/" ? " bottom-tab-main" : ""}`}
+            aria-label={label}
+            aria-current={
+              active ? (pathname === href ? "page" : "location") : undefined
+            }
+          >
+            <span className="bottom-tab-icon" aria-hidden="true">
+              <Icon size={href === "/" ? 28 : 22} />
+            </span>
+          </Link>
+        ))}
+      </div>
     </nav>
   );
 }

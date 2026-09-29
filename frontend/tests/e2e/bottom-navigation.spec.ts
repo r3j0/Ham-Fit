@@ -5,10 +5,19 @@ async function expectBottomMenu(page: Page, current: string) {
   const nav = page.getByRole("navigation", { name: "하단 메뉴" });
   await expect(nav).toBeVisible();
   await expect(nav.getByRole("link")).toHaveText(["", "", ""]);
+  expect(
+    await nav
+      .getByRole("link")
+      .evaluateAll((links) =>
+        links.map((link) => link.getAttribute("aria-label")),
+      ),
+  ).toEqual(["운동", "메인", "내 프로필"]);
   await expect(
     nav.getByRole("link", { name: current, exact: true }),
   ).toHaveAttribute("aria-current", /page|location/);
   const box = (await nav.boundingBox())!;
+  expect(box.x).toBeCloseTo(0, 1);
+  expect(box.width).toBeCloseTo(page.viewportSize()!.width, 1);
   expect(box.y + box.height).toBeCloseTo(page.viewportSize()!.height, 1);
   await expect(nav).toHaveCSS("position", "fixed");
   for (const label of ["메인", "운동", "내 프로필"]) {
@@ -35,7 +44,7 @@ for (const [width, height] of [
   [390, 844],
   [1280, 900],
 ]) {
-  test(`${width}px 아이콘 메뉴는 하단에 고정되고 원형 운동 강조·키보드 이동·저장 버튼 접근을 유지한다`, async ({
+  test(`${width}px 아이콘 메뉴는 하단에 고정되고 원형 메인 강조·키보드 이동·저장 버튼 접근을 유지한다`, async ({
     page,
   }, info) => {
     const record = testRecord();
@@ -72,14 +81,18 @@ for (const [width, height] of [
           "background-color",
           "rgb(255, 248, 241)",
         );
-        const circle = profileNav
-          .getByRole("link", { name: "운동", exact: true })
+        const center = profileNav
+          .getByRole("link", { name: "메인", exact: true })
           .locator(".bottom-tab-icon");
-        await expect(circle).toHaveCSS(
+        await expect(center).toHaveCSS(
           "background-color",
-          "rgb(255, 240, 224)",
+          "rgb(226, 232, 240)",
         );
-        await expect(circle).toHaveCSS("color", "rgb(166, 73, 0)");
+        await expect(center).toHaveCSS("color", "rgb(100, 116, 139)");
+        const activeIcon = profileNav
+          .getByRole("link", { name: "내 프로필", exact: true })
+          .locator("svg");
+        await expect(activeIcon).toHaveCSS("fill", "rgb(255, 127, 0)");
       }
     }
     await page.goto(`/measurements/${record.id}/edit`);
@@ -103,28 +116,51 @@ for (const [width, height] of [
     await home.press("Enter");
     await expect(page).toHaveURL("/");
     await expectBottomMenu(page, "메인");
-    const circle = workout.locator(".bottom-tab-icon");
+    const circle = home.locator(".bottom-tab-icon");
     await expect(circle).toHaveCSS("border-radius", "50%");
     const circleBox = (await circle.boundingBox())!;
     expect(circleBox.width).toBe(circleBox.height);
-    expect((await workout.locator("svg").boundingBox())!.width).toBeGreaterThan(
-      (await home.locator("svg").boundingBox())!.width,
+    expect((await home.locator("svg").boundingBox())!.width).toBeGreaterThan(
+      (await workout.locator("svg").boundingBox())!.width,
     );
-    for (const link of [home, account]) {
-      await expect(link.locator(".bottom-tab-icon")).toHaveCSS(
-        "background-color",
-        "rgba(0, 0, 0, 0)",
+    await expect(nav).toHaveCSS("background-color", "rgb(240, 242, 246)");
+    await expect(circle).toHaveCSS("background-color", "rgb(10, 42, 112)");
+    await expect(home.locator("svg")).toHaveCSS("fill", "rgb(255, 255, 255)");
+    for (const inactive of [workout, account]) {
+      await expect(inactive.locator(".bottom-tab-icon")).toHaveCSS(
+        "color",
+        "rgb(148, 163, 184)",
       );
+      await expect(inactive.locator("svg")).toHaveCSS("fill", "none");
     }
-    await expect(circle).toHaveCSS("background-color", "rgb(230, 245, 250)");
-    await home.focus();
+    await workout.focus();
     await page.keyboard.press("Tab");
+    await expect(home).toBeFocused();
+    await page.keyboard.press("Shift+Tab");
     await expect(workout).toBeFocused();
     await page.keyboard.press("Enter");
     await expect(page).toHaveURL("/workout");
-    await expect(circle).toHaveCSS("background-color", "rgb(27, 153, 196)");
+    await expect(nav).toHaveCSS("background-color", "rgb(243, 250, 253)");
+    await expect(workout.locator(".bottom-tab-icon")).toHaveCSS(
+      "color",
+      "rgb(27, 153, 196)",
+    );
+    await expect(workout.locator("svg")).toHaveCSS("fill", "rgb(27, 153, 196)");
+    await expect(circle).toHaveCSS("background-color", "rgb(226, 232, 240)");
+    await expect(account.locator(".bottom-tab-icon")).toHaveCSS(
+      "color",
+      "rgb(148, 163, 184)",
+    );
+    await expect(account.locator("svg")).toHaveCSS("fill", "none");
     await account.click();
     await expectBottomMenu(page, "내 프로필");
+    await expect(nav).toHaveCSS("background-color", "rgb(255, 248, 241)");
+    await expect(account.locator("svg")).toHaveCSS("fill", "rgb(255, 127, 0)");
+    await expect(workout.locator(".bottom-tab-icon")).toHaveCSS(
+      "color",
+      "rgb(148, 163, 184)",
+    );
+    await expect(workout.locator("svg")).toHaveCSS("fill", "none");
     await page.goBack();
     await expectBottomMenu(page, "운동");
     await page.goForward();

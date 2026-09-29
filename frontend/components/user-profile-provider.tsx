@@ -20,8 +20,9 @@ export function UserProfileProvider({
 }) {
   const session = useSession();
   const version = `${session.generation}:${session.profileRevision}`;
+  const owner = `${session.generation}:${session.user?.id ?? ""}`;
   const [snapshot, setSnapshot] = useState<{
-    version: string;
+    owner: string;
     state: ProfileState;
   } | null>(null);
   useEffect(() => {
@@ -34,19 +35,19 @@ export function UserProfileProvider({
           );
         if (!abort.signal.aborted)
           setSnapshot({
-            version,
+            owner,
             state: { status: "ready", data, error: null },
           });
       })
       .catch((error) => {
         if (!abort.signal.aborted)
           setSnapshot({
-            version,
+            owner,
             state: { status: "error", data: null, error: errorMessage(error) },
           });
       });
     return () => abort.abort();
-  }, [version]);
+  }, [owner, version]);
   useEffect(() => {
     const refresh = () => {
       if (document.visibilityState === "visible") invalidateUserProfile();
@@ -60,7 +61,7 @@ export function UserProfileProvider({
   }, []);
   return (
     <ProfileContext.Provider
-      value={snapshot?.version === version ? snapshot.state : loading}
+      value={snapshot?.owner === owner ? snapshot.state : loading}
     >
       {children}
     </ProfileContext.Provider>

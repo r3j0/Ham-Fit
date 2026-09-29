@@ -17,8 +17,9 @@ type State =
 export function LatestFitness() {
   const session = useSession();
   const version = `${session.generation}:${session.profileRevision}`;
+  const owner = `${session.generation}:${session.user?.id ?? ""}`;
   const [snapshot, setSnapshot] = useState<{
-    version: string;
+    owner: string;
     state: State;
   } | null>(null);
   useEffect(() => {
@@ -27,12 +28,12 @@ export function LatestFitness() {
       .then(({ data }) => {
         const profile = parseLatestFitness(data);
         if (!abort.signal.aborted)
-          setSnapshot({ version, state: { status: "ready", data: profile } });
+          setSnapshot({ owner, state: { status: "ready", data: profile } });
       })
       .catch((error) => {
         if (!abort.signal.aborted)
           setSnapshot({
-            version,
+            owner,
             state:
               error instanceof ApiError && [404, 501].includes(error.status)
                 ? {
@@ -44,8 +45,8 @@ export function LatestFitness() {
           });
       });
     return () => abort.abort();
-  }, [version]);
-  const state = snapshot?.version === version ? snapshot.state : null;
+  }, [owner, version]);
+  const state = snapshot?.owner === owner ? snapshot.state : null;
   return (
     <section
       className="stack latest-fitness"
