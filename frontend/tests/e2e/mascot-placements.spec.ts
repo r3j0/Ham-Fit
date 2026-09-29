@@ -123,7 +123,7 @@ test("그룹·체력 기록·간이측정·탈퇴 확인의 캐릭터를 읽기 
   await page.goto("/");
   await expect(
     page.getByRole("region", { name: "내 그룹의 햄스터" }).getByRole("img"),
-  ).toHaveCount(4);
+  ).toHaveCount(3);
   await renderedArt(page);
   await page.screenshot({
     path: info.outputPath("home.png"),

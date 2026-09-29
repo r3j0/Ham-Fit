@@ -6,6 +6,7 @@ import { useCallback, useState, type CSSProperties } from "react";
 import { getGroup, getGroups, groupError, type MyGroup } from "@/lib/groups";
 import { MascotPose } from "./mascot/MascotPose";
 import { useApiResource } from "./use-api-resource";
+import { useSession } from "./session-provider";
 import { Loading, Notice } from "./ui";
 import styles from "./home-groups.module.css";
 
@@ -16,6 +17,7 @@ function GroupSlide({
   group: MyGroup;
   direction: number;
 }) {
+  const { user } = useSession();
   const load = useCallback(
     (signal: AbortSignal) => getGroup(group.id, signal),
     [group.id],
@@ -32,6 +34,7 @@ function GroupSlide({
     );
   if (!resource.data) return <Loading label="그룹원을 불러오고 있어요" />;
   const row = resource.data;
+  const members = row.members.filter((member) => member.userId !== user?.id);
   return (
     <Link
       href={`/groups/${row.id}`}
@@ -44,25 +47,31 @@ function GroupSlide({
         direction > 0 ? "next" : direction < 0 ? "previous" : "initial"
       }
     >
-      <ul className={styles.members} aria-label={`${row.name} 그룹원`}>
-        {row.members.map((member) => (
-          <li className={styles.member} key={member.userId}>
-            {/* The server has no saved character yet; use the shared default, never an invented outfit. */}
-            <MascotPose
-              pose="basic"
-              variant="cream"
-              size={96}
-              label={`${member.nickname ?? "닉네임 미설정"}의 기본 햄스터`}
-            />
-            <span
-              className={styles.nickname}
-              title={member.nickname ?? "닉네임 미설정"}
-            >
-              {member.nickname ?? "닉네임 미설정"}
-            </span>
-          </li>
-        ))}
-      </ul>
+      {members.length ? (
+        <ul className={styles.members} aria-label={`${row.name} 그룹원`}>
+          {members.map((member) => (
+            <li className={styles.member} key={member.userId}>
+              {/* The server has no saved character yet; use the shared default, never an invented outfit. */}
+              <MascotPose
+                pose="basic"
+                variant="cream"
+                size={96}
+                label={`${member.nickname ?? "닉네임 미설정"}의 기본 햄스터`}
+              />
+              <span
+                className={styles.nickname}
+                title={member.nickname ?? "닉네임 미설정"}
+              >
+                {member.nickname ?? "닉네임 미설정"}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className={`muted ${styles.noCompanions}`}>
+          아직 다른 그룹원이 없어요.
+        </p>
+      )}
       <p className={styles.name} aria-live="polite">
         {row.name}
       </p>

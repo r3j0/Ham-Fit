@@ -41,7 +41,7 @@ test("메인은 중앙 캐릭터와 운동을 보여 주고 기록은 내 프로
   const companions = group.getByRole("img");
   await expect(group).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
   await expect(group).toHaveCSS("border-top-width", "0px");
-  await expect(companions).toHaveCount(4);
+  await expect(companions).toHaveCount(3);
   for (const character of await companions.all()) {
     await expect(character).toHaveAttribute("data-variant", "cream");
     await expect(character).toHaveAttribute("data-pose", "basic");
@@ -138,7 +138,7 @@ test("대기 호흡은 동작 줄이기와 숨겨진 탭을 따르고 페이지 
   const groupImages = page
     .getByRole("region", { name: "내 그룹의 햄스터" })
     .locator("svg image");
-  await expect(groupImages).toHaveCount(4);
+  await expect(groupImages).toHaveCount(3);
   const stillPoses = await groupImages.evaluateAll((nodes) =>
     nodes.map((node) => node.getAttribute("href")),
   );

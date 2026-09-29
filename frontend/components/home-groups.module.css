@@ -53,6 +53,13 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.noCompanions {
+  display: grid;
+  place-items: center;
+  min-height: 120px;
+  margin: 0;
+  text-align: center;
+}
 .name {
   margin-top: 8px;
   text-align: center;

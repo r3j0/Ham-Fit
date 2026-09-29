@@ -24,7 +24,10 @@ test("실제 그룹 응답의 닉네임·인원과 가로 스크롤을 표시하
   const region = page.getByRole("region", { name: "내 그룹의 햄스터" });
   const next = region.getByRole("button", { name: "다음 그룹" }),
     previous = region.getByRole("button", { name: "이전 그룹" });
-  await expect(region.getByRole("listitem")).toHaveCount(2);
+  await expect(region.getByRole("listitem")).toHaveCount(1);
+  await expect(
+    region.getByText(rows[0].members[0].nickname!, { exact: true }),
+  ).toHaveCount(0);
   await expect(region.getByRole("link")).toHaveAttribute(
     "href",
     `/groups/${rows[0].id}`,
@@ -37,7 +40,7 @@ test("실제 그룹 응답의 닉네임·인원과 가로 스크롤을 표시하
     page.getByRole("group", { name: "그룹 햄스터 예시" }),
   ).toHaveCount(0);
   await next.click();
-  await expect(region.getByRole("listitem")).toHaveCount(12);
+  await expect(region.getByRole("listitem")).toHaveCount(11);
   await expect(region.getByRole("link")).toHaveAttribute(
     "data-direction",
     "next",
@@ -84,12 +87,13 @@ test("실제 그룹 응답의 닉네임·인원과 가로 스크롤을 표시하
     });
   }
   await next.press("Enter");
-  await expect(region.getByRole("listitem")).toHaveCount(1);
+  await expect(region.getByText("아직 다른 그룹원이 없어요.")).toBeVisible();
+  await expect(region.getByRole("img")).toHaveCount(0);
   await expect(region.getByRole("link")).toHaveAccessibleName(
     `${rows[2].name} 그룹 보기`,
   );
   await next.click();
-  await expect(region.getByRole("listitem")).toHaveCount(2);
+  await expect(region.getByRole("listitem")).toHaveCount(1);
   await previous.click();
   await expect(region.getByRole("link")).toHaveAttribute(
     "data-direction",
@@ -101,6 +105,29 @@ test("실제 그룹 응답의 닉네임·인원과 가로 스크롤을 표시하
   await expect(page).toHaveURL(`/groups/${rows[2].id}`);
 });
 
+test("본인은 ID로 제외하고 닉네임이 같은 다른 그룹원과 그룹장을 표시한다", async ({
+  page,
+}) => {
+  await installApi(page);
+  const row = homeGroup(1, 3);
+  row.members.forEach((member) => {
+    member.nickname = "같은닉네임";
+  });
+  row.members[0].role = "member";
+  row.members[1].role = "leader";
+  const self = row.members.shift()!;
+  row.members.splice(1, 0, self);
+  await installHomeGroups(page, [row]);
+  await page.goto("/");
+  const region = page.getByRole("region", { name: "내 그룹의 햄스터" });
+  await expect(region.getByRole("listitem")).toHaveCount(2);
+  await expect(region.getByText("같은닉네임", { exact: true })).toHaveCount(2);
+  await expect(region.getByRole("img")).toHaveCount(2);
+  await expect(
+    page.getByRole("img", { name: "편안하게 숨 쉬는 햄스터" }),
+  ).toBeVisible();
+});
+
 test("빈 그룹·한 그룹·삭제·조회 실패를 구분하고 실패를 빈 목록으로 바꾸지 않는다", async ({
   page,
 }) => {
@@ -110,8 +137,8 @@ test("빈 그룹·한 그룹·삭제·조회 실패를 구분하고 실패를 �
   await expect(region.getByText("아직 가입한 그룹이 없어요.")).toBeVisible();
   await expect(region.getByRole("img")).toHaveCount(0);
   await expect(region.getByRole("button", { name: /그룹$/ })).toHaveCount(0);
-  const row = homeGroup(1, 1);
-  row.members[0].nickname = null;
+  const row = homeGroup(1, 2);
+  row.members[1].nickname = null;
   await installHomeGroups(page, [row]);
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
   await expect(region.getByRole("listitem")).toHaveCount(1);
@@ -161,11 +188,15 @@ test("빠른 그룹 전환에서 늦게 도착한 이전 응답을 현재 그룹
   });
   await page.goto("/");
   const region = page.getByRole("region", { name: "내 그룹의 햄스터" });
-  await expect(region.getByRole("listitem")).toHaveCount(1);
+  await expect(region.getByRole("link")).toHaveAttribute(
+    "href",
+    `/groups/${rows[0].id}`,
+  );
+  await expect(region.getByRole("img")).toHaveCount(0);
   await region.getByRole("button", { name: "다음 그룹" }).click();
   await expect(region.getByText("그룹원을 불러오고 있어요")).toBeVisible();
   await region.getByRole("button", { name: "다음 그룹" }).click();
-  await expect(region.getByRole("listitem")).toHaveCount(3);
+  await expect(region.getByRole("listitem")).toHaveCount(2);
   release();
   await expect(region.getByRole("link")).toHaveAttribute(
     "href",

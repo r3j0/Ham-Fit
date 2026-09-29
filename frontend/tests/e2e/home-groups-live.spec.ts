@@ -81,14 +81,26 @@ test("실제 API: 가입한 두 그룹의 멤버·닉네임을 표시하고 탈�
       `/groups/${ids[1]}`
     )
       await region.getByRole("button", { name: "다음 그룹" }).click();
-    await expect(region.getByRole("listitem")).toHaveCount(2);
+    await expect(region.getByRole("listitem")).toHaveCount(1);
     await expect(
       region.getByText("실제운동친구", { exact: true }),
     ).toBeVisible();
     await expect(region.getByRole("link")).toHaveAccessibleName(
       "함께하는 두 번째 그룹 그룹 보기",
     );
-    await expect(region.getByRole("img")).toHaveCount(2);
+    await expect(region.getByRole("img")).toHaveCount(1);
+    await expect(
+      region.getByText("슬라이드그룹장", { exact: true }),
+    ).toHaveCount(0);
+    await other.goto(`${origin}/`);
+    const peerRegion = other.getByRole("region", { name: "내 그룹의 햄스터" });
+    await expect(peerRegion.getByRole("listitem")).toHaveCount(1);
+    await expect(
+      peerRegion.getByText("슬라이드그룹장", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      peerRegion.getByText("실제운동친구", { exact: true }),
+    ).toHaveCount(0);
     for (const image of await region.getByRole("img").all()) {
       await expect(image).toHaveAttribute("data-pose", "basic");
       await expect(image).toHaveAttribute("data-wear", "none");
@@ -104,13 +116,14 @@ test("실제 API: 가입한 두 그룹의 멤버·닉네임을 표시하고 탈�
       fullPage: true,
     });
     await region.getByRole("button", { name: "다음 그룹" }).click();
-    await expect(region.getByRole("listitem")).toHaveCount(1);
+    await expect(region.getByText("아직 다른 그룹원이 없어요.")).toBeVisible();
+    await expect(region.getByRole("img")).toHaveCount(0);
     await expect(region.getByRole("link")).toHaveAttribute(
       "href",
       `/groups/${ids[0]}`,
     );
     await region.getByRole("button", { name: "이전 그룹" }).click();
-    await expect(region.getByRole("listitem")).toHaveCount(2);
+    await expect(region.getByRole("listitem")).toHaveCount(1);
     expect(
       (
         await other.request.patch(`${api}/users/me/profile`, {
@@ -131,7 +144,8 @@ test("실제 API: 가입한 두 그룹의 멤버·닉네임을 표시하고 탈�
       ).status(),
     ).toBe(204);
     await page.evaluate(() => window.dispatchEvent(new Event("focus")));
-    await expect(region.getByRole("listitem")).toHaveCount(1);
+    await expect(region.getByText("아직 다른 그룹원이 없어요.")).toBeVisible();
+    await expect(region.getByRole("img")).toHaveCount(0);
     expect(
       (
         await page.request.delete(`${api}/groups/${ids[1]}`, {
