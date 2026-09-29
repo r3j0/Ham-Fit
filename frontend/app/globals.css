@@ -233,6 +233,7 @@
 html {
   color-scheme: light;
   scroll-padding-bottom: 160px;
+  scrollbar-gutter: stable;
 }
 body {
   margin: 0;

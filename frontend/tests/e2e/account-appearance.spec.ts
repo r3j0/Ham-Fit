@@ -1,5 +1,10 @@
 import { test, expect } from "@playwright/test";
-import { installApi, testUser, testWorkout } from "./integration-fixtures";
+import {
+  installApi,
+  testRecord,
+  testUser,
+  testWorkout,
+} from "./integration-fixtures";
 import {
   storedRecordFixture,
   storedCatalogFixture,
@@ -199,6 +204,78 @@ test("프로필은 재화·가입 경과일·활동 리포트와 얼굴 모션�
   ).not.toHaveClass(/kspo-orange-theme/);
   expect(errors).toEqual([]);
   expect(api.mutations).toEqual([]);
+});
+
+test("프로필을 다시 확인하는 동안 기존 카드와 메뉴 위치를 유지한다", async ({
+  page,
+}) => {
+  await installApi(page, testRecord());
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/account");
+  const card = page.locator(".profile-card");
+  const actions = page.locator(".profile-actions");
+  await expect(card).toBeVisible();
+  await expect(page.locator("main > .content > .loading")).toHaveCount(0);
+  const beforeCard = (await card.boundingBox())!;
+  const beforeActions = (await actions.boundingBox())!;
+
+  const gate = Promise.withResolvers<void>();
+  let profileReads = 0;
+  await page.route("**/api/v1/auth/me", async (route) => {
+    profileReads++;
+    await gate.promise;
+    await route.fallback();
+  });
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await expect.poll(() => profileReads).toBe(1);
+
+  await expect(card).toBeVisible();
+  await expect(page.locator("main > .content > .loading")).toHaveCount(0);
+  const pendingCard = (await card.boundingBox())!;
+  const pendingActions = (await actions.boundingBox())!;
+  expect(pendingCard.x).toBeCloseTo(beforeCard.x, 1);
+  expect(pendingCard.y).toBeCloseTo(beforeCard.y, 1);
+  expect(pendingCard.height).toBeCloseTo(beforeCard.height, 1);
+  expect(pendingActions.y).toBeCloseTo(beforeActions.y, 1);
+
+  gate.resolve();
+  await expect.poll(() => profileReads).toBe(1);
+  await expect(card).toBeVisible();
+});
+
+test("로그아웃 확인창을 열고 닫아도 프로필의 가로 위치와 스크롤을 유지한다", async ({
+  page,
+}) => {
+  await installApi(page, testRecord());
+  await page.setViewportSize({ width: 1280, height: 560 });
+  await page.goto("/account");
+  const card = page.locator(".profile-card");
+  const logout = page.getByRole("button", { name: "로그아웃", exact: true });
+  await expect(card).toBeVisible();
+  await expect(page.locator("html")).toHaveCSS("scrollbar-gutter", "stable");
+  await logout.scrollIntoViewIfNeeded();
+  const before = {
+    card: (await card.boundingBox())!,
+    scrollY: await page.evaluate(() => window.scrollY),
+  };
+
+  await logout.click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  const open = {
+    card: (await card.boundingBox())!,
+    scrollY: await page.evaluate(() => window.scrollY),
+  };
+  expect(open.card.x).toBeCloseTo(before.card.x, 1);
+  expect(open.scrollY).toBe(before.scrollY);
+
+  await page.getByRole("button", { name: "취소", exact: true }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  const closed = {
+    card: (await card.boundingBox())!,
+    scrollY: await page.evaluate(() => window.scrollY),
+  };
+  expect(closed.card.x).toBeCloseTo(before.card.x, 1);
+  expect(closed.scrollY).toBe(before.scrollY);
 });
 
 test("미측정 계정도 가입 당일 표시와 예시 리포트를 보되 실제 등급을 만들지 않는다", async ({

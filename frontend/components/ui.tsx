@@ -154,7 +154,7 @@ export function Dialog({
     return () => {
       dialog?.close();
       document.body.style.overflow = overflow;
-      previous?.focus();
+      previous?.focus({ preventScroll: true });
     };
   }, []);
   return (
