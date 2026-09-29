@@ -1,5 +1,7 @@
 # 추천 알고리즘 연결 상태
 
+2026-09-29 추가 결정: [여러 운동 루틴 API](routines-api.md)는 원본 `data-analysis/src/recommendation_v2.py`를 Python 프로세스로 직접 호출한다. 루틴·항목별 저장과 진행을 추가했으며 원본·데이터는 복사하거나 수정하지 않는다. **아래 미연결 설명은 기존 `/api/v1/workouts` 단일 영상 경계에 적용**된다. 신규 `/api/v1/workout-routines`는 별도 `RoutineAlgorithm`과 실제 Python 연결을 사용한다.
+
 2026-09-28 사용자 결정: **API 설계와 DB 구조는 유지하고 데이터 팀 알고리즘을 BE에 연결한 구현만 제거한다.** 데이터 팀원이 수정한 코드를 데이터 브랜치에 push한 뒤 main으로 병합하고, BE 브랜치를 main에 rebase할 예정이다.
 
 ## 현재 유지하는 부분

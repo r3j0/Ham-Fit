@@ -23,10 +23,31 @@ export const exerciseGoalOptions = [
 ] as const;
 
 export type ExerciseVolume = (typeof exerciseVolumeOptions)[number]["value"];
+// Keep this public catalog/order aligned with backend OwnedTool. No facility equipment.
+export const ownedToolOptions = [
+  { value: "band", label: "밴드" },
+  { value: "dumbbell", label: "덤벨·아령" },
+  { value: "gym_ball", label: "짐볼" },
+  { value: "foam_roller", label: "폼롤러" },
+  { value: "jump_rope", label: "줄넘기" },
+  { value: "step_box", label: "스텝박스·스텝퍼" },
+  { value: "ball", label: "공" },
+  { value: "cone", label: "콘" },
+  { value: "agility_ladder", label: "사다리" },
+  { value: "bosu", label: "보슈" },
+] as const;
+export type OwnedTool = (typeof ownedToolOptions)[number]["value"];
+export function normalizeOwnedTools(tools: readonly OwnedTool[]): OwnedTool[] {
+  return ownedToolOptions
+    .map(({ value }) => value)
+    .filter((tool) => tools.includes(tool));
+}
+
 export type ExerciseGoal = (typeof exerciseGoalOptions)[number]["value"];
 export interface ExercisePreferences {
   exerciseVolume: ExerciseVolume;
   exerciseGoal: ExerciseGoal | null;
+  ownedTools: readonly OwnedTool[];
 }
 
 export interface StoredExercisePreferences extends ExercisePreferences {
@@ -35,6 +56,7 @@ export interface StoredExercisePreferences extends ExercisePreferences {
 export type ExercisePreferencesPatch = {
   exerciseVolume?: ExerciseVolume;
   exerciseGoal?: ExerciseGoal;
+  ownedTools?: OwnedTool[];
 };
 
 /** Missing or incompatible responses must never become editable defaults. */
@@ -51,6 +73,10 @@ export function parseExercisePreferences(
         exerciseGoalOptions.some(
           (option) => option.value === data.exerciseGoal,
         )) &&
+      Array.isArray(data.ownedTools) &&
+      data.ownedTools.every((tool) =>
+        ownedToolOptions.some((option) => option.value === tool),
+      ) &&
       typeof data.updatedAt === "string" &&
       /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(data.updatedAt) &&
       Number.isFinite(Date.parse(data.updatedAt))
@@ -58,6 +84,7 @@ export function parseExercisePreferences(
       return {
         exerciseVolume: data.exerciseVolume as ExerciseVolume,
         exerciseGoal: data.exerciseGoal as ExerciseGoal | null,
+        ownedTools: normalizeOwnedTools(data.ownedTools as OwnedTool[]),
         updatedAt: data.updatedAt,
       };
     }
@@ -76,5 +103,11 @@ export function buildPreferencesPatch(
   // null is a valid initial response, but clearing a goal is not an API operation.
   if (draft.exerciseGoal !== null && saved.exerciseGoal !== draft.exerciseGoal)
     patch.exerciseGoal = draft.exerciseGoal;
+  const tools = normalizeOwnedTools(draft.ownedTools);
+  if (
+    JSON.stringify(normalizeOwnedTools(saved.ownedTools)) !==
+    JSON.stringify(tools)
+  )
+    patch.ownedTools = tools;
   return Object.keys(patch).length ? patch : null;
 }

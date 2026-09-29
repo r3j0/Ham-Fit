@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { ownedToolOptions } from "../../lib/user-preferences";
 const api = process.env.E2E_API_BASE_URL ?? "http://localhost:3001/api/v1";
 const password = "preferences-live-test-2026!";
 let email: string;
@@ -29,8 +30,9 @@ test.afterEach(async ({ page }) => {
   expect(pageErrors).toEqual([]);
 });
 
-test("실제 PR #8: 운동량·목적 저장, 새로고침·재로그인 복원과 프로필 보존", async ({
+test("실제 API: 운동량·목적·도구 저장, 새로고침·재로그인 복원과 프로필 보존", async ({
   page,
+  browser,
 }) => {
   const profile = await (
     await page.request.get(`${api}/auth/me`, { headers })
@@ -41,6 +43,7 @@ test("실제 PR #8: 운동량·목적 저장, 새로고침·재로그인 복원�
   expect(initial).toMatchObject({
     exerciseVolume: "standard",
     exerciseGoal: null,
+    ownedTools: [],
   });
   await page.goto("/account");
   await page.getByRole("link", { name: "운동 설정" }).click();
@@ -64,6 +67,13 @@ test("실제 PR #8: 운동량·목적 저장, 새로고침·재로그인 복원�
   await expect(page.getByRole("status")).toHaveText("운동 설정을 저장했어요.");
   await page.reload();
   await expect(page.getByRole("radio", { name: "가볍게" })).toBeChecked();
+  await expect(
+    page.getByRole("checkbox", { name: "없음", exact: true }),
+  ).toBeChecked();
+  for (const option of ownedToolOptions)
+    await page
+      .getByRole("checkbox", { name: option.label, exact: true })
+      .check();
   await page.getByText("체형 관리", { exact: true }).click();
   await page.getByRole("button", { name: "저장하기", exact: true }).click();
   await expect(page.getByRole("status")).toHaveText("운동 설정을 저장했어요.");
@@ -73,6 +83,7 @@ test("실제 PR #8: 운동량·목적 저장, 새로고침·재로그인 복원�
   expect(saved).toMatchObject({
     exerciseVolume: "less",
     exerciseGoal: "body_composition_management",
+    ownedTools: ownedToolOptions.map((option) => option.value),
   });
   expect(Date.parse(saved.updatedAt)).toBeGreaterThan(
     Date.parse(initial.updatedAt),
@@ -80,6 +91,27 @@ test("실제 PR #8: 운동량·목적 저장, 새로고침·재로그인 복원�
   expect(
     await (await page.request.get(`${api}/auth/me`, { headers })).json(),
   ).toEqual(profile);
+  await page.reload();
+  for (const option of ownedToolOptions)
+    await expect(
+      page.getByRole("checkbox", { name: option.label, exact: true }),
+    ).toBeChecked();
+  const secondDevice = await browser.newContext();
+  try {
+    const loginResponse = await secondDevice.request.post(`${api}/auth/login`, {
+      headers: { Origin: headers.Origin, "X-CSRF-Protection": "1" },
+      data: { email, password },
+    });
+    expect(loginResponse.status()).toBe(200);
+    const secondPage = await secondDevice.newPage();
+    await secondPage.goto(`${headers.Origin}/account/preferences`);
+    for (const option of ownedToolOptions)
+      await expect(
+        secondPage.getByRole("checkbox", { name: option.label, exact: true }),
+      ).toBeChecked();
+  } finally {
+    await secondDevice.close();
+  }
   await page.getByRole("link", { name: "이전 화면" }).click();
   await page.getByRole("button", { name: "로그아웃", exact: true }).click();
   await page
@@ -105,9 +137,27 @@ test("실제 PR #8: 운동량·목적 저장, 새로고침·재로그인 복원�
   await expect(
     page.getByRole("radio", { name: "체형 관리", exact: true }),
   ).toBeChecked();
+  for (const option of ownedToolOptions)
+    await expect(
+      page.getByRole("checkbox", { name: option.label, exact: true }),
+    ).toBeChecked();
+  await page.getByRole("checkbox", { name: "없음", exact: true }).check();
+  await page.getByRole("button", { name: "저장하기", exact: true }).click();
+  await expect(page.getByRole("status")).toHaveText("운동 설정을 저장했어요.");
+  await page.reload();
+  await expect(
+    page.getByRole("checkbox", { name: "없음", exact: true }),
+  ).toBeChecked();
+  expect(
+    (
+      await (
+        await page.request.get(`${api}/users/me/preferences`, { headers })
+      ).json()
+    ).ownedTools,
+  ).toEqual([]);
 });
 
-test("실제 PR #8: 두 사용자의 설정 격리와 변경하지 않은 목적 보존", async ({
+test("실제 API: 두 사용자의 도구 설정 격리와 변경하지 않은 목적 보존", async ({
   page,
   playwright,
 }) => {
@@ -132,6 +182,7 @@ test("실제 PR #8: 두 사용자의 설정 격리와 변경하지 않은 목적
       page.getByRole("radio", { name: "기본", exact: true }),
     ).toBeChecked();
     await page.getByText("충분히", { exact: true }).click();
+    await page.getByRole("checkbox", { name: "짐볼", exact: true }).check();
     const concurrent = await page.request.patch(`${api}/users/me/preferences`, {
       headers,
       data: { exerciseGoal: "general_fitness_improvement" },
@@ -150,6 +201,7 @@ test("실제 PR #8: 두 사용자의 설정 격리와 변경하지 않은 목적
     expect(mine).toMatchObject({
       exerciseVolume: "more",
       exerciseGoal: "general_fitness_improvement",
+      ownedTools: ["gym_ball"],
     });
     const theirs = await (
       await other.get(`${api}/users/me/preferences`, { headers: otherHeaders })
@@ -157,12 +209,14 @@ test("실제 PR #8: 두 사용자의 설정 격리와 변경하지 않은 목적
     expect(theirs).toMatchObject({
       exerciseVolume: "standard",
       exerciseGoal: null,
+      ownedTools: [],
     });
     const changed = await other.patch(`${api}/users/me/preferences`, {
       headers: otherHeaders,
       data: {
         exerciseVolume: "less",
         exerciseGoal: "fitness_grade_improvement",
+        ownedTools: ["band"],
       },
     });
     expect(changed.status()).toBe(200);

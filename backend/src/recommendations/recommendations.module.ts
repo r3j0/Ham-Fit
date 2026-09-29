@@ -4,6 +4,9 @@ import { DatabaseModule } from '../database/database.module.js';
 import { RecommendationsController } from './recommendations.controller.js';
 import { RecommendationsService } from './recommendations.service.js';
 import { WorkoutCatalogService } from './workout-catalog.service.js';
+import { RoutineAlgorithm } from './routine-algorithm.js';
+import { WorkoutRoutinesService } from './workout-routines.service.js';
+import { WorkoutRoutinesController } from './workout-routines.controller.js';
 import {
   DisconnectedWorkoutAlgorithm,
   WorkoutAlgorithm,
@@ -11,10 +14,12 @@ import {
 
 @Module({
   imports: [DatabaseModule, AuthModule],
-  controllers: [RecommendationsController],
+  controllers: [RecommendationsController, WorkoutRoutinesController],
   providers: [
     RecommendationsService,
     WorkoutCatalogService,
+    RoutineAlgorithm,
+    WorkoutRoutinesService,
     { provide: WorkoutAlgorithm, useClass: DisconnectedWorkoutAlgorithm },
   ],
   exports: [RecommendationsService, WorkoutCatalogService],
