@@ -172,7 +172,7 @@ test("그룹 생성과 초대 가입은 좁은 화면에서도 두 열로 배치
   await create.getByLabel("그룹 이름").fill("함께 움직이기");
   await create.getByLabel("그룹 소개").fill("매일 조금씩 운동해요");
   await join.getByLabel("초대 코드", { exact: true }).fill("a".repeat(43));
-  for (const width of [320, 390, 702, 1280]) {
+  for (const width of [320, 390, 702, 1280, 1456]) {
     await page.setViewportSize({ width, height: 786 });
     const left = (await create.boundingBox())!,
       right = (await join.boundingBox())!;
@@ -181,7 +181,8 @@ test("그룹 생성과 초대 가입은 좁은 화면에서도 두 열로 배치
     await expect(mascot).toHaveAttribute("data-variant", "cream");
     const art = (await mascot.boundingBox())!,
       frame = (await mascot.locator("..").boundingBox())!;
-    expect(art.width / frame.width).toBeCloseTo(0.3, 2);
+    expect(art.width).toBeCloseTo(96, 1);
+    expect(art.height).toBeCloseTo(120, 1);
     expect(art.x + art.width / 2).toBeCloseTo(frame.x + frame.width / 2, 1);
     expect(
       await create.evaluate((el) =>
