@@ -25,6 +25,7 @@ import { MeasurementsService } from '../src/measurements/measurements.service.js
 import { parseCreate } from '../src/measurements/measurement-input.js';
 import { RoutineAlgorithm } from '../src/recommendations/routine-algorithm.js';
 import { WorkoutRoutinesService } from '../src/recommendations/workout-routines.service.js';
+import * as media from '../src/recommendations/media.js';
 import type { PlaybackEventInput } from '../src/recommendations/playback.js';
 import { configureApp } from '../src/setup-app.js';
 import { memberProfiles } from '../src/users/member-profile.js';
@@ -1069,6 +1070,218 @@ describe('Multi-exercise routines with the real data-team Python algorithm', () 
     const all = (await read(routine.id).expect(200)).body as Routine;
     expect(all.status).toBe('interrupted');
     expect(all.progress).toEqual({ completedItems: 1, totalItems: 3 });
+  });
+
+  it.each(
+    (['pause', 'end', 'complete'] as const).flatMap((type) =>
+      [0, 0.3].map((ratio) => ({ type, ratio })),
+    ),
+  )(
+    'preserves the outcome time after a same-day restart without new viewing ($type, $ratio)',
+    async ({ type, ratio }) => {
+      now = new Date('2026-09-29T01:00:00Z');
+      await prepare(owner, 'less');
+      const routine = (await today().expect(201)).body as Routine;
+      const duration = routine.routine[0].progress.durationSeconds;
+      const watched = duration * ratio;
+      const intervals = watched ? [{ start: 0, end: watched }] : [];
+      const device = randomUUID();
+      await event(routine, 0, body('start', 1, device)).expect(200);
+      await event(routine, 0, {
+        ...body('progress', 2, device),
+        positionSeconds: watched,
+        intervals,
+      }).expect(200);
+      const stopped = (
+        await event(routine, 0, body('pause', 3, device)).expect(200)
+      ).body as Routine;
+      const performedAt = now.toISOString();
+      const resultStatus = watched ? 'interrupted' : 'not_performed';
+      expect(stopped.routine[0]).toMatchObject({
+        status: resultStatus,
+        resultStatus,
+        performedAt,
+      });
+
+      now = new Date('2026-09-29T06:00:00Z');
+      const restarted = (
+        await event(routine, 0, body('start', 4, device)).expect(200)
+      ).body as Routine;
+      expect(restarted.routine[0]).toMatchObject({
+        status: 'in_progress',
+        resultStatus,
+        performedAt,
+      });
+      // Seeking and overlapping/cumulative progress reports add no unique viewing.
+      await event(routine, 0, {
+        ...body('progress', 5, device),
+        positionSeconds: duration,
+        intervals: [...intervals, ...intervals],
+      }).expect(200);
+      const unchanged = (
+        await event(routine, 0, body(type, 6, device)).expect(200)
+      ).body as Routine;
+      expect(unchanged.routine[0]).toMatchObject({
+        status: resultStatus,
+        resultStatus,
+        performedAt,
+        completedAt: null,
+      });
+      expect(unchanged.routine[0].progress.watchedSeconds).toBeCloseTo(watched);
+      expect(unchanged.routine[0].revision).toBe(
+        stopped.routine[0].revision + 3,
+      );
+      now = new Date('2026-09-29T07:00:00Z');
+      const repeated = (
+        await event(routine, 0, {
+          ...body(type, 7, device),
+          positionSeconds: watched,
+          intervals,
+        }).expect(200)
+      ).body as Routine;
+      expect(repeated.routine[0].performedAt).toBe(performedAt);
+      const stored = await db.workoutRoutineItem.findUniqueOrThrow({
+        where: { id: routine.routine[0].id },
+      });
+      expect(stored.performedAt?.toISOString()).toBe(performedAt);
+      expect(
+        (await read('history').expect(200)).body.items[0].routine[0],
+      ).toMatchObject({ resultStatus, performedAt });
+    },
+  );
+
+  it.each(['pause', 'end', 'complete'] as const)(
+    'updates the outcome time for new viewing saved by progress before %s',
+    async (type) => {
+      now = new Date('2026-09-29T01:00:00Z');
+      await prepare(owner, 'less');
+      const routine = (await today().expect(201)).body as Routine;
+      const duration = routine.routine[0].progress.durationSeconds;
+      const device = randomUUID();
+      const otherDevice = randomUUID();
+      await event(routine, 0, body('start', 1, device)).expect(200);
+      const stopped = (
+        await event(routine, 0, {
+          ...body('pause', 2, device),
+          positionSeconds: duration * 0.2,
+          intervals: [{ start: 0, end: duration * 0.2 }],
+        }).expect(200)
+      ).body as Routine;
+      expect(stopped.routine[0].performedAt).toBe(now.toISOString());
+      await event(routine, 0, body('start', 3, device)).expect(200);
+      // All these events share a receipt timestamp; revisions identify the boundary.
+      const progress = (
+        await event(routine, 0, {
+          ...body('progress', 1, otherDevice),
+          positionSeconds: duration * 0.4,
+          intervals: [{ start: duration * 0.2, end: duration * 0.4 }],
+        }).expect(200)
+      ).body as Routine;
+      expect(progress.routine[0].performedAt).toBe(
+        stopped.routine[0].performedAt,
+      );
+      now = new Date('2026-09-29T06:00:00Z');
+      const updated = (
+        await event(routine, 0, body(type, 4, device)).expect(200)
+      ).body as Routine;
+      const performedAt = now.toISOString();
+      expect(updated.routine[0]).toMatchObject({
+        status: 'interrupted',
+        resultStatus: 'interrupted',
+        performedAt,
+      });
+      expect(updated.routine[0].progress.watchedSeconds).toBeCloseTo(
+        duration * 0.4,
+      );
+      now = new Date('2026-09-29T07:00:00Z');
+      expect(
+        (await event(routine, 0, body(type, 5, device)).expect(200)).body
+          .routine[0].performedAt,
+      ).toBe(performedAt);
+
+      // A result change still records the new completion time.
+      await event(routine, 0, body('start', 6, device)).expect(200);
+      await event(routine, 0, {
+        ...body('progress', 2, otherDevice),
+        positionSeconds: duration * 0.8,
+        intervals: [{ start: duration * 0.4, end: duration * 0.8 }],
+      }).expect(200);
+      now = new Date('2026-09-29T08:00:00Z');
+      const completed = (
+        await event(routine, 0, body(type, 7, device)).expect(200)
+      ).body as Routine;
+      expect(completed.routine[0]).toMatchObject({
+        status: 'completed',
+        resultStatus: 'completed',
+        performedAt: now.toISOString(),
+        completedAt: now.toISOString(),
+      });
+      const before = await snapshot(routine);
+      now = new Date('2026-09-29T09:00:00Z');
+      await event(routine, 0, body(type, 8, device)).expect(200);
+      expect((await snapshot(routine)).items[0]).toMatchObject({
+        performedAt: before.items[0].performedAt,
+        completedAt: before.items[0].completedAt,
+        revision: before.items[0].revision,
+        intervals: before.items[0].intervals,
+      });
+    },
+  );
+
+  it('compares confirmed viewing on the catalog timeline despite raw verified-media overrun', async () => {
+    now = new Date('2026-09-29T01:00:00Z');
+    await prepare(owner, 'less');
+    const routine = (await today().expect(201)).body as Routine;
+    const item = routine.routine[0];
+    const duration = item.progress.durationSeconds;
+    const spy = vi.spyOn(media, 'mediaFor').mockReturnValue({
+      playbackUrl: item.videoUrl.replace('http:', 'https:'),
+      playbackStatus: 'verified',
+      verifiedDurationSeconds: duration + 0.4,
+    });
+    try {
+      const device = randomUUID();
+      const intervals = [
+        { start: duration - 0.2, end: duration + 0.4 },
+        { start: duration + 0.1, end: duration + 0.4 },
+      ];
+      await event(routine, 0, {
+        ...body('start', 1, device),
+        positionSeconds: duration + 0.4,
+        intervals,
+      }).expect(200);
+      const stopped = (
+        await event(routine, 0, body('pause', 2, device)).expect(200)
+      ).body as Routine;
+      expect(stopped.routine[0].progress.watchedSeconds).toBeCloseTo(0.2);
+      now = new Date('2026-09-29T06:00:00Z');
+      await event(routine, 0, body('start', 3, device)).expect(200);
+      const unchanged = (
+        await event(routine, 0, body('pause', 4, device)).expect(200)
+      ).body as Routine;
+      expect(unchanged.routine[0].performedAt).toBe(
+        stopped.routine[0].performedAt,
+      );
+      // A late stop from another device can still add a new distinct interval.
+      now = new Date('2026-09-29T07:00:00Z');
+      const added = (
+        await event(routine, 0, {
+          ...body('end'),
+          positionSeconds: duration,
+          intervals: [{ start: duration - 0.3, end: duration }],
+        }).expect(200)
+      ).body as Routine;
+      expect(added.routine[0].progress.watchedSeconds).toBeCloseTo(0.3);
+      expect(added.routine[0].performedAt).toBe(now.toISOString());
+      const stored = await snapshot(routine);
+      expect(
+        stored.items[0].events.find(
+          (entry) => entry.deviceId === device && entry.sequence === 1,
+        )?.intervals,
+      ).toEqual(intervals);
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   it('merges concurrent item progress and rejects invalid/reordered events atomically', async () => {

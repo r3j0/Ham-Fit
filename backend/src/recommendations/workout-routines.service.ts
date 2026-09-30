@@ -323,21 +323,25 @@ export class WorkoutRoutinesService {
         [...(item.intervals as PlaybackInterval[]), ...normalized.intervals],
         item.durationSeconds,
       );
+      const watched = watchedSeconds(intervals);
       const status = nextRoutinePlaybackStatus(
         item.status,
         input.type,
-        watchedSeconds(intervals),
+        watched,
         item.durationSeconds,
       );
       const replayed = item.status === 'completed';
       const final = ['not_performed', 'interrupted', 'completed'].includes(
         status,
       );
-      // Repeated stops without additional viewing preserve the saved outcome time.
+      // A restart changes status, and progress may already contain new viewing.
+      // Compare with the accumulated viewing at the last confirmed stop instead.
       const unchangedOutcome =
-        item.status === status &&
-        watchedSeconds(item.intervals as PlaybackInterval[]) ===
-          watchedSeconds(intervals);
+        final &&
+        !replayed &&
+        item.resultStatus === status &&
+        watchedSeconds(item.intervals as PlaybackInterval[]) === watched &&
+        (await this.finalizedWatchedSeconds(tx, item)) === watched;
       const updated = replayed
         ? item
         : await tx.workoutRoutineItem.update({
@@ -375,6 +379,35 @@ export class WorkoutRoutinesService {
         replayed,
       };
     });
+  }
+
+  private async finalizedWatchedSeconds(
+    tx: Prisma.TransactionClient,
+    item: Routine['items'][number],
+  ) {
+    const stopped = await tx.workoutRoutineEvent.findFirst({
+      where: { itemId: item.id, type: { in: ['pause', 'end', 'complete'] } },
+      orderBy: { resultingRevision: 'desc' },
+      select: { resultingRevision: true },
+    });
+    if (!stopped) return null;
+    const events = await tx.workoutRoutineEvent.findMany({
+      where: {
+        itemId: item.id,
+        resultingRevision: { lte: stopped.resultingRevision },
+      },
+      select: { intervals: true },
+    });
+    // Events retain raw media intervals. Rebuild the immutable catalog timeline,
+    // including progress from every device, without counting verified overrun.
+    const intervals = events
+      .flatMap((event) => event.intervals as PlaybackInterval[])
+      .filter(({ start }) => start < item.durationSeconds)
+      .map(({ start, end }) => ({
+        start,
+        end: Math.min(end, item.durationSeconds),
+      }));
+    return watchedSeconds(unionIntervals(intervals, item.durationSeconds));
   }
 
   private async logs(tx: Prisma.TransactionClient, userId: string, now: Date) {
