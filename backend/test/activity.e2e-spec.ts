@@ -60,8 +60,12 @@ describe('shared activity aggregation against PostgreSQL', () => {
   });
 
   // Saved prescriptions, no recommender or external media needed for aggregation.
-  async function routine(dates: Array<string | null>, userId = owner.user.id) {
-    const date = new Date(Date.UTC(2020, 0, ++assignment));
+  async function routine(
+    dates: Array<string | null>,
+    userId = owner.user.id,
+    assignmentDate = new Date(Date.UTC(2020, 0, ++assignment)),
+  ) {
+    const date = assignmentDate;
     return db.workoutRoutine.create({
       data: {
         userId,
@@ -124,11 +128,11 @@ describe('shared activity aggregation against PostgreSQL', () => {
   }
 
   it('excludes partial routines, includes the final item, and ignores duplicate events across midnight', async () => {
-    const saved = await routine([
-      '2026-09-27T12:00:00Z',
-      null,
-      '2026-09-28T12:00:00Z',
-    ]);
+    const saved = await routine(
+      ['2026-09-29T12:00:00Z', null, '2026-09-29T13:00:00Z'],
+      owner.user.id,
+      new Date('2026-09-29T00:00:00Z'),
+    );
     expect(await stats()).toMatchObject({
       streak: 0,
       longestStreak: 0,
@@ -163,10 +167,22 @@ describe('shared activity aggregation against PostgreSQL', () => {
     });
     now = new Date('2026-09-29T15:00:00Z');
     await service.event(owner.user.id, saved.id, item.id, key, input);
-    await service.event(owner.user.id, saved.id, item.id, randomUUID(), {
-      ...input,
-      sequence: 3,
+    const before = await db.workoutRoutineItem.findUniqueOrThrow({
+      where: { id: item.id },
+      include: { events: true },
     });
+    await expect(
+      service.event(owner.user.id, saved.id, item.id, randomUUID(), {
+        ...input,
+        sequence: 3,
+      }),
+    ).rejects.toMatchObject({ response: { code: 'ROUTINE_EXPIRED' } });
+    expect(
+      await db.workoutRoutineItem.findUniqueOrThrow({
+        where: { id: item.id },
+        include: { events: true },
+      }),
+    ).toEqual(before);
     expect(await stats()).toMatchObject({
       streak: 1,
       longestStreak: 1,

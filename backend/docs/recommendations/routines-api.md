@@ -14,9 +14,11 @@
 | `GET /api/v2/workout-routines/history?limit=20&cursor=UUID` | 배정일 내림차순 목록 `{items,nextCursor}`. 최대 50개. 과거 v1의 미래 배정도 보존하여 포함.                                             |
 | `POST /api/v2/workout-routines/:id/items/:itemId/events`    | 특정 운동의 재생·수행 이벤트. 저장 후 전체 루틴 반환(200).                                                                             |
 
-기존 v1 루틴 API의 생성·조회·이벤트 경로는 인증 후 410 `ROUTINE_API_RETIRED`를 반환한다. v2에는 `/next`가 없으며 자동 리다이렉트하지 않는다. 기존 루틴 ID·항목 ID·요청 키는 v2에서 그대로 조회·재시도·이어서 수행할 수 있다. 다른 인증·사용자·측정 API와 기존 단일 영상 `/api/v1/workouts`는 v1을 유지한다.
+기존 v1 루틴 API의 생성·조회·이벤트 경로는 인증 후 410 `ROUTINE_API_RETIRED`를 반환한다. v2에는 `/next`가 없으며 자동 리다이렉트하지 않는다. 기존 루틴 ID·항목 ID·요청 키는 v2에서 그대로 조회·재시도할 수 있으며 신규 수행 저장은 배정일 당일에만 허용한다. 다른 인증·사용자·측정 API와 기존 단일 영상 `/api/v1/workouts`는 v1을 유지한다.
 
 새 루틴 응답은 `id`, `koreanDate`, `referenceDate`, `serverKoreanDate`, `createdAt`, `status`, `estimatedMinutes`, `cardioRecommendation`, `progress: {completedItems,totalItems}`, `algorithmVersion`, `dataVersion`, `inputSnapshot`, `weightAdjustment`, `routine[]`다. 생성 응답에는 Location과 Idempotency-Replayed 헤더가 있다.
+
+2026-09-30 지난 루틴 보호 정책으로 모든 루틴 응답에 `serverTime`(서버 판정 시각 ISO UTC), `recordingAllowed`(배정일이 서버 KST 오늘과 같은지), `recordingExpiresAt`(배정일 다음 KST 자정, ISO UTC)를 추가한다. 이 값은 조회 시 계산하며 저장된 진행·revision을 변경하지 않는다. 날짜상 기록 가능 여부와 항목 상태별 수행 제약, 미디어 재생 가능 여부는 별개다. 상세 FE 계약과 현재 단일 영상 호출 경로는 [지난 루틴 시청·기록 분리](expired-routine-playback.md)를 따른다.
 
 각 `routine[]` 항목에는 다음을 저장·반환한다.
 
@@ -78,7 +80,9 @@ BE는 출력 스키마, 연속 순서, 영상 중복, 허용 URL, 실제 영상 
 }
 ```
 
-`start|progress|pause|end|complete` 이벤트의 구간 합집합·영상 길이 검증은 기존 진행 코드를 재사용하지만 결과 판정은 아래 v2의 **80% 기준**을 사용한다. 배정일 이전 수행은 409 ROUTINE_NOT_DUE다. 과거 루틴은 날짜가 지나도 이어 할 수 있다. 운동별 순서는 안내용이며 다른 운동의 진행을 자동 완료시키지 않는다. 모든 항목의 상태가 completed일 때만 루틴 전체가 completed다. 전체 상태는 저장된 항목에서 계산한다: 모두 assigned면 assigned, 하나라도 in_progress면 in_progress, 모두 not_performed면 not_performed, 나머지 혼합 상태는 interrupted다.
+`start|progress|pause|end|complete` 이벤트의 구간 합집합·영상 길이 검증은 기존 진행 코드를 재사용하지만 결과 판정은 아래 v2의 **80% 기준**을 사용한다. 배정일 이전 수행은 409 ROUTINE_NOT_DUE다. **배정일이 지난 루틴의 신규 이벤트는 상태와 무관하게 409 ROUTINE_EXPIRED**다. 지난 루틴의 상세·이력·영상 재생 정보는 계속 제공하며 시청만 허용한다. 운동별 순서는 안내용이며 다른 운동의 진행을 자동 완료시키지 않는다. 모든 항목의 상태가 completed일 때만 루틴 전체가 completed다. 신규 수행은 모든 항목의 완료가 배정일 KST 자정 전에 서버에 접수되어야 그날 전체 완료·스트릭으로 인정한다. 전체 상태는 저장된 항목에서 계산한다: 모두 assigned면 assigned, 하나라도 in_progress면 in_progress, 모두 not_performed면 not_performed, 나머지 혼합 상태는 interrupted다.
+
+쓰기는 사용자 행 잠금 획득 후 DB `clock_timestamp()`로 얻은 시각을 접수·판정 시각으로 사용한다. 요청 발송 시각·클라이언트 `occurredAt`·잠금 대기 시작 시각으로 마감을 우회할 수 없다. 자정 이후 처음 접수된 완료는 자정 전 시청 구간이나 occurredAt을 담아도 거절한다. 거절 시 항목·구간·재생 위치·결과·수행/완료 시각·revision·이벤트 행에 쓰기가 없으므로 스트릭과 다음 추천의 수행 로그도 바뀌지 않는다. 자정에 재생을 자동 중단하거나 결과를 추정·확정하지 않는다. 이미 저장된 과거 기록은 소급 수정·재판정하지 않는다.
 
 | 이벤트·실제 시청 비율                    | 결과                                                    |
 | ---------------------------------------- | ------------------------------------------------------- |
@@ -90,7 +94,7 @@ BE는 출력 스키마, 연속 순서, 영상 중복, 허용 URL, 실제 영상 
 
 시청 비율은 실제 시청 구간 합집합 / 카탈로그 영상 길이다. 탐색 위치·중복 보고·반복 재생을 추가 시청량으로 계산하지 않는다. 완료 버튼도 80%를 우회하지 못한다. pause는 일시 중단 결과를 확정하므로 재개 시 start가 필요하다. 소수 경계는 표시 반올림 없이 실수 연산 오차만 허용하며, 79.999999%를 80%로 올리지 않는다. 일시정지·화면 이탈을 저장할 클라이언트는 pause 이벤트를 보내야 한다. 서버에 이벤트가 전혀 도착하지 않은 강제 종료는 수행 결과를 추정해 완료시키지 않는다.
 
-요청 키·기기 sequence의 범위는 **운동 항목별**이다. 같은 키·같은 본문은 재사용, 같은 키·다른 본문이나 역순 sequence는 409다. 완료 후 새로운 pause/end/complete는 기존 완료 시각·결과·진행을 유지하며 감사 이벤트만 기록한다. 완료 후 start/progress는 거부한다. 전체 루틴 조회는 Repeatable Read, 생성·수행 쓰기는 사용자 행 잠금으로 직렬화한다.
+요청 키·기기 sequence의 범위는 **운동 항목별**이다. 같은 키·같은 본문은 날짜 검사 전에 재사용하여 자정 이후에도 200과 `Idempotency-Replayed: true`를 반환하며 새 쓰기를 하지 않는다. 응답은 현재 저장 상태와 현재 서버 날짜를 반영하므로 과거 응답의 날짜 메타데이터까지 동일하다는 의미는 아니다. 같은 키·다른 본문은 기존 409 WORKOUT_CONFLICT다. 배정일 당일의 역순 sequence도 기존 409다. **당일에만** 완료 후 새로운 pause/end/complete는 기존 완료 시각·결과·진행을 유지하며 감사 이벤트를 기록한다. 날짜가 지나면 이 감사 이벤트도 추가하지 않는다. 완료 후 start/progress는 거부한다. 전체 루틴 조회는 Repeatable Read, 생성·수행 쓰기는 사용자 행 잠금으로 직렬화한다.
 
 생성 키는 자정이 지나도 원래 루틴으로 재사용한다. 같은 날짜에 다른 키를 보내도 새로 계산하지 않는다. 설정 변경은 다음 신규 배정부터 반영되며 이미 생성된 현재·미래 루틴, 기존 단일 영상 배정과 진행·측정·등급·세션·재화는 유지한다. GET은 추천을 생성하지 않는다.
 
@@ -105,6 +109,7 @@ BE는 출력 스키마, 연속 순서, 영상 중복, 허용 URL, 실제 영상 
 | 409 EXERCISE_GOAL_REQUIRED                                          | 목적 미설정                                                                     |
 | 409 DATE_OF_BIRTH_REQUIRED / AGE_UNSUPPORTED / MEASUREMENT_REQUIRED | 기존 추천 준비 조건                                                             |
 | 409 ROUTINE_NOT_DUE / WORKOUT_CONFLICT                              | 미래 운동 수행 또는 이벤트 재시도/순서 충돌                                     |
+| 409 ROUTINE_EXPIRED                                                 | 지난 루틴의 신규 수행 이벤트. 재시도 중단 후 기록 없는 영상 시청 유지           |
 | 503 ROUTINE_ALGORITHM_UNAVAILABLE                                   | Python·의존성·원본·CSV 누락, 실행/시간/용량 실패, 구성 불가 또는 출력 검증 실패 |
 
 Python 내부 경로·traceback·개인 입력은 오류 응답에 노출하지 않는다. 실행 실패 시 루틴·운동·요청 키 저장을 롤백한다. 저장된 결과 조회·생성 재시도·진행은 Python이 없어도 동작한다.

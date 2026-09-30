@@ -25,7 +25,9 @@ import { MeasurementsService } from '../src/measurements/measurements.service.js
 import { parseCreate } from '../src/measurements/measurement-input.js';
 import { RoutineAlgorithm } from '../src/recommendations/routine-algorithm.js';
 import { WorkoutRoutinesService } from '../src/recommendations/workout-routines.service.js';
+import type { PlaybackEventInput } from '../src/recommendations/playback.js';
 import { configureApp } from '../src/setup-app.js';
+import { memberProfiles } from '../src/users/member-profile.js';
 
 type Account = { user: { id: string }; access_token: string };
 type Routine = Awaited<ReturnType<WorkoutRoutinesService['get']>>;
@@ -132,6 +134,21 @@ describe('Multi-exercise routines with the real data-team Python algorithm', () 
   function body(type = 'start', sequence = 1, deviceId = randomUUID()) {
     return { type, deviceId, sequence, positionSeconds: 0, intervals: [] };
   }
+  const snapshot = (routine: Routine) =>
+    db.workoutRoutine.findUniqueOrThrow({
+      where: { id: routine.id },
+      include: {
+        items: {
+          orderBy: { order: 'asc' },
+          include: { events: { orderBy: { key: 'asc' } } },
+        },
+        requests: { orderBy: { key: 'asc' } },
+      },
+    });
+  const activity = () =>
+    db.$transaction(async (tx) =>
+      (await memberProfiles(tx, [owner.user.id], now)).get(owner.user.id),
+    );
 
   const patchPreferences = (data: object) =>
     request(app.getHttpServer())
@@ -197,8 +214,8 @@ describe('Multi-exercise routines with the real data-team Python algorithm', () 
     await patchPreferences({ ownedTools: ['band'] }).expect(200);
     const key = randomUUID();
     const current = (await today(key).expect(201)).body as Routine;
-    now = new Date('2026-09-29T15:00:00Z');
     await event(current, 0, body()).expect(200);
+    now = new Date('2026-09-29T15:00:00Z');
     const future = (await today().expect(201)).body as Routine;
     const snapshot = () =>
       db.workoutRoutine.findMany({
@@ -642,12 +659,20 @@ describe('Multi-exercise routines with the real data-team Python algorithm', () 
         }
         const saved = (await read('current').expect(200)).body as Routine;
         expect(saved.status).toBe('completed');
+        expect(await activity()).toMatchObject({
+          streak: 1,
+          totalWorkoutDays: 1,
+        });
         await today().expect(200, saved);
         expect(spy).not.toHaveBeenCalled();
         expect(
           await db.workoutRoutine.count({ where: { userId: owner.user.id } }),
         ).toBe(1);
         now = new Date('2026-09-29T15:00:00Z');
+        expect(await activity()).toMatchObject({
+          streak: 1,
+          totalWorkoutDays: 1,
+        });
         await today().expect(201);
         expect(spy.mock.calls[0][0]).toMatchObject({
           current_date: '2026-09-30',
@@ -688,8 +713,12 @@ describe('Multi-exercise routines with the real data-team Python algorithm', () 
       }
       expect(spy).not.toHaveBeenCalled();
       now = new Date('2026-09-29T15:00:00Z');
-      // A delayed second stop adds no viewing and preserves the actual saved day.
-      await event(routine, 0, body('end')).expect(200);
+      // A delayed stop is rejected, preserving the actual saved day and events.
+      const before = await snapshot(routine);
+      expect((await event(routine, 0, body('end')).expect(409)).body.code).toBe(
+        'ROUTINE_EXPIRED',
+      );
+      expect(await snapshot(routine)).toEqual(before);
       await today().expect(201);
       expect(spy.mock.calls[0][0].logs).toEqual([
         {
@@ -698,6 +727,237 @@ describe('Multi-exercise routines with the real data-team Python algorithm', () 
           completed: false,
         },
       ]);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it.each([
+    'assigned',
+    'in_progress',
+    'not_performed',
+    'interrupted',
+    'completed',
+  ] as const)(
+    'rejects every new expired event for %s items without changing any saved row or activity',
+    async (status) => {
+      await prepare(owner, 'less');
+      const routine = (await today().expect(201)).body as Routine;
+      const device = randomUUID();
+      const startKey = randomUUID();
+      const start = body('start', 1, device);
+      const duration = routine.routine[0].progress.durationSeconds;
+      const stopKey = randomUUID();
+      const watched =
+        status === 'completed'
+          ? duration * 0.8
+          : status === 'interrupted'
+            ? duration * 0.4
+            : 0;
+      const stop = {
+        ...body('pause', 2, device),
+        positionSeconds: watched,
+        intervals: watched ? [{ start: 0, end: watched }] : [],
+      };
+      if (status !== 'assigned') {
+        await event(routine, 0, start, startKey).expect(200);
+        if (status !== 'in_progress')
+          await event(routine, 0, stop, stopKey).expect(200);
+      }
+      const saved = (await read(routine.id).expect(200)).body as Routine;
+      expect(saved.routine[0].status).toBe(status);
+      const before = await snapshot(routine);
+      now = new Date('2026-09-29T15:00:00Z');
+      const activityBefore = await activity();
+      for (const [index, type] of [
+        'start',
+        'progress',
+        'pause',
+        'end',
+        'complete',
+      ].entries()) {
+        const rejected = await event(routine, 0, {
+          ...body(type, index + 3, device),
+          positionSeconds: duration,
+          intervals: [{ start: 0, end: duration }],
+          // A client clock cannot backdate a newly received request across midnight.
+          occurredAt: '2026-09-29T14:59:58Z',
+        }).expect(409);
+        expect(rejected.body).toMatchObject({
+          statusCode: 409,
+          code: 'ROUTINE_EXPIRED',
+          serverTime: '2026-09-29T15:00:00.000Z',
+          serverKoreanDate: '2026-09-30',
+          recordingAllowed: false,
+          recordingExpiresAt: '2026-09-29T15:00:00.000Z',
+        });
+        expect(await snapshot(routine)).toEqual(before);
+      }
+      if (status !== 'assigned') {
+        const retry = await event(routine, 0, start, startKey).expect(200);
+        expect(retry.headers['idempotency-replayed']).toBe('true');
+        expect(retry.body.recordingAllowed).toBe(false);
+        if (status !== 'in_progress') {
+          const stopRetry = await event(routine, 0, stop, stopKey).expect(200);
+          expect(stopRetry.headers['idempotency-replayed']).toBe('true');
+        }
+        const conflict = await event(
+          routine,
+          0,
+          { ...start, positionSeconds: 1 },
+          startKey,
+        ).expect(409);
+        expect(conflict.body.code).toBe('WORKOUT_CONFLICT');
+      }
+      const detail = (await read(routine.id).expect(200)).body as Routine;
+      expect(detail).toMatchObject({
+        recordingAllowed: false,
+        serverKoreanDate: '2026-09-30',
+        routine: saved.routine,
+        inputSnapshot: saved.inputSnapshot,
+      });
+      const history = await read('history').expect(200);
+      expect(history.body.items).toEqual([detail]);
+      await read('current').expect(200, 'null');
+      expect(await snapshot(routine)).toEqual(before);
+      expect(await activity()).toEqual(activityBefore);
+    },
+  );
+
+  it('does not complete a playing routine when its final stop first arrives at or after KST midnight', async () => {
+    await prepare(owner, 'less');
+    const routine = (await today().expect(201)).body as Routine;
+    expect(routine).toMatchObject({
+      recordingAllowed: true,
+      serverTime: '2026-09-29T14:59:59.000Z',
+      recordingExpiresAt: '2026-09-29T15:00:00.000Z',
+    });
+    const device = randomUUID();
+    let progress: PlaybackEventInput = {
+      ...body('progress', 2, device),
+      type: 'progress',
+    };
+    const progressKey = randomUUID();
+    for (const [index, item] of routine.routine.entries()) {
+      await event(routine, index, body('start', 1, device)).expect(200);
+      const watched = item.progress.durationSeconds * 0.8;
+      const input = {
+        ...body('progress', 2, device),
+        type: index === 2 ? ('progress' as const) : ('complete' as const),
+        positionSeconds: watched,
+        intervals: [{ start: 0, end: watched }],
+      };
+      if (index === 2) progress = input;
+      await event(
+        routine,
+        index,
+        input,
+        index === 2 ? progressKey : randomUUID(),
+      ).expect(200);
+    }
+    expect(await activity()).toMatchObject({ totalWorkoutDays: 0, streak: 0 });
+    const before = await snapshot(routine);
+    for (const timestamp of ['2026-09-29T15:00:00Z', '2026-09-29T15:00:01Z']) {
+      now = new Date(timestamp);
+      const late = await event(routine, 2, {
+        ...progress,
+        type: 'complete',
+        sequence: 3,
+        occurredAt: '2026-09-29T14:59:59Z',
+      }).expect(409);
+      expect(late.body.code).toBe('ROUTINE_EXPIRED');
+    }
+    await event(routine, 2, progress, progressKey).expect(200);
+    const detail = (await read(routine.id).expect(200)).body as Routine;
+    expect(detail.routine[2].status).toBe('in_progress');
+    expect(detail.progress).toEqual({ completedItems: 2, totalItems: 3 });
+    expect(await snapshot(routine)).toEqual(before);
+    expect(await activity()).toMatchObject({ totalWorkoutDays: 0, streak: 0 });
+  });
+
+  it("keeps recommendation logs unchanged after expired viewing attempts and still records the same video in today's item", async () => {
+    await prepare(owner, 'less');
+    const yesterday = (await today().expect(201)).body as Routine;
+    await event(yesterday, 0, body()).expect(200);
+    await event(yesterday, 0, {
+      ...body('pause'),
+      positionSeconds: 10,
+      intervals: [{ start: 0, end: 10 }],
+    }).expect(200);
+    const before = await snapshot(yesterday);
+    now = new Date('2026-09-29T15:00:00Z');
+    const spy = vi.spyOn(algorithm, 'recommend');
+    try {
+      await today().expect(201);
+      const logsBefore = spy.mock.calls[0][0].logs;
+      expect(logsBefore).toEqual([
+        {
+          videoId: yesterday.routine[0].videoId,
+          date: '2026-09-29T14:59:59.000Z',
+          completed: false,
+        },
+      ]);
+      await event(yesterday, 0, body('start')).expect(409);
+      await event(yesterday, 0, {
+        ...body('pause'),
+        positionSeconds: 20,
+        intervals: [{ start: 0, end: 20 }],
+      }).expect(409);
+      now = new Date('2026-09-30T15:00:00Z');
+      // Use the real algorithm input before and after, without writing today's outcomes.
+      await today().expect(201);
+      expect(spy.mock.calls[1][0].logs).toEqual(logsBefore);
+      expect(await snapshot(yesterday)).toEqual(before);
+      // Clone the saved output only for this test's deterministic same-video fixture.
+      const old = yesterday.routine[0];
+      // Random tie selection need not return the same video: make a separate next-day fixture.
+      const nextDay = await db.workoutRoutine.create({
+        data: {
+          userId: owner.user.id,
+          assignmentDate: new Date('2026-10-02T00:00:00Z'),
+          referenceDate: new Date('2026-10-02T00:00:00Z'),
+          algorithmVersion: 'test-only',
+          dataVersion: yesterday.dataVersion,
+          estimatedMinutes: 1,
+          inputSnapshot: {},
+          items: {
+            create: {
+              order: 1,
+              videoId: old.videoId,
+              title: old.title,
+              videoUrl: old.videoUrl,
+              durationSeconds: old.progress.durationSeconds,
+              slot: old.slot,
+              prescription: old.prescription as Prisma.InputJsonObject,
+            },
+          },
+        },
+      });
+      const future = (await read(nextDay.id).expect(200)).body as Routine;
+      expect(future.recordingAllowed).toBe(false);
+      expect((await event(future, 0, body()).expect(409)).body.code).toBe(
+        'ROUTINE_NOT_DUE',
+      );
+      now = new Date('2026-10-01T15:00:00Z');
+      const due = (await read(nextDay.id).expect(200)).body as Routine;
+      expect(due.recordingAllowed).toBe(true);
+      const device = randomUUID();
+      await event(due, 0, body('start', 1, device)).expect(200);
+      const watched = old.progress.durationSeconds * 0.8;
+      const completed = (
+        await event(due, 0, {
+          ...body('complete', 2, device),
+          positionSeconds: watched,
+          intervals: [{ start: 0, end: watched }],
+        }).expect(200)
+      ).body as Routine;
+      expect(completed.status).toBe('completed');
+      expect(completed.routine[0].performedAt).toBe(now.toISOString());
+      expect(await snapshot(yesterday)).toEqual(before);
+      expect(await activity()).toMatchObject({
+        streak: 1,
+        totalWorkoutDays: 1,
+      });
     } finally {
       spy.mockRestore();
     }
@@ -798,23 +1058,22 @@ describe('Multi-exercise routines with the real data-team Python algorithm', () 
       spy.mockRestore();
     }
     for (const index of [1, 2]) {
-      await event(routine, index, body()).expect(200);
+      await event(routine, index, body()).expect(409);
       const watched = routine.routine[index].progress.durationSeconds * 0.8;
       await event(routine, index, {
         ...body('end'),
         positionSeconds: watched,
         intervals: [{ start: 0, end: watched }],
-      }).expect(200);
+      }).expect(409);
     }
     const all = (await read(routine.id).expect(200)).body as Routine;
-    expect(all.status).toBe('completed');
-    expect(all.progress).toEqual({ completedItems: 3, totalItems: 3 });
+    expect(all.status).toBe('interrupted');
+    expect(all.progress).toEqual({ completedItems: 1, totalItems: 3 });
   });
 
   it('merges concurrent item progress and rejects invalid/reordered events atomically', async () => {
     await prepare(owner, 'less');
     const routine = (await today().expect(201)).body as Routine;
-    now = new Date('2026-09-29T15:00:00Z');
     const device = randomUUID();
     await event(routine, 0, body('start', 1, device)).expect(200);
     const results = await Promise.all([
@@ -858,7 +1117,6 @@ describe('Multi-exercise routines with the real data-team Python algorithm', () 
       .send({})
       .expect(403);
     await today().set('Origin', 'https://untrusted.example').expect(403);
-    now = new Date('2026-09-29T15:00:00Z');
     await event(routine, 0, body()).expect(200);
     await request(app.getHttpServer())
       .delete('/api/v1/users/me')
@@ -908,7 +1166,6 @@ describe('Multi-exercise routines with the real data-team Python algorithm', () 
       });
     const before = await snapshot();
     const saved = (await today().expect(201)).body as Routine;
-    now = new Date('2026-09-29T15:00:00Z');
     await event(saved, 0, body()).expect(200);
     await event(saved, 0, body('complete')).expect(200);
     expect(await snapshot()).toEqual(before);

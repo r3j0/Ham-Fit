@@ -38,6 +38,18 @@ type Routine = Prisma.WorkoutRoutineGetPayload<{
   include: typeof includeRoutine;
 }>;
 const dateOnly = (date: Date) => date.toISOString().slice(0, 10);
+function recordingWindow(assignmentDate: Date, now: Date) {
+  const day = dateOnly(assignmentDate);
+  const serverKoreanDate = koreaDate(now);
+  return {
+    serverTime: now.toISOString(),
+    serverKoreanDate,
+    recordingAllowed: day === serverKoreanDate,
+    recordingExpiresAt: new Date(
+      new Date(`${day}T00:00:00+09:00`).getTime() + 86_400_000,
+    ).toISOString(),
+  };
+}
 function readiness(code: string, message: string): never {
   throw new ConflictException({ statusCode: 409, code, message });
 }
@@ -272,6 +284,15 @@ export class WorkoutRoutinesService {
           workoutConflict('같은 요청 키로 다른 이벤트를 저장할 수 없습니다.');
         return { routine: this.response(routine, now), replayed: true };
       }
+      // Check the locked server receipt time only after exact idempotent replays.
+      // Expired viewing must never update an item or append even an audit event.
+      if (dateOnly(routine.assignmentDate) < koreaDate(now))
+        throw new ConflictException({
+          statusCode: 409,
+          code: 'ROUTINE_EXPIRED',
+          message: '지난 루틴의 시청은 운동 기록에 반영되지 않습니다.',
+          ...recordingWindow(routine.assignmentDate, now),
+        });
       if (dateOnly(routine.assignmentDate) > koreaDate(now))
         readiness(
           'ROUTINE_NOT_DUE',
@@ -312,8 +333,7 @@ export class WorkoutRoutinesService {
       const final = ['not_performed', 'interrupted', 'completed'].includes(
         status,
       );
-      // Repeated stops without additional viewing must not move yesterday's
-      // incomplete effort to today (e.g. a late pagehide after pause).
+      // Repeated stops without additional viewing preserve the saved outcome time.
       const unchangedOutcome =
         item.status === status &&
         watchedSeconds(item.intervals as PlaybackInterval[]) ===
@@ -410,7 +430,7 @@ export class WorkoutRoutinesService {
     return {
       id: row.id,
       koreanDate: dateOnly(row.assignmentDate),
-      serverKoreanDate: koreaDate(now),
+      ...recordingWindow(row.assignmentDate, now),
       referenceDate: dateOnly(row.referenceDate),
       createdAt: row.createdAt,
       status,
