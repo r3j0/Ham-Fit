@@ -38,9 +38,19 @@ test("missing, invalid and legacy preferences never become default settings", ()
     { ...initial, exerciseGoal: "weight_loss" },
     { ...initial, updatedAt: undefined },
     { ...initial, updatedAt: "invalid" },
-    ...[undefined, null, "band", {}, ["none"], ["barbell"], ["band", null]].map(
-      (ownedTools) => ({ ...initial, ownedTools }),
-    ),
+    ...[
+      undefined,
+      null,
+      "band",
+      {},
+      ["none"],
+      ["barbell"],
+      ["foam_roller"],
+      ["bosu"],
+      ["agility_ladder"],
+      ["cone"],
+      ["band", null],
+    ].map((ownedTools) => ({ ...initial, ownedTools })),
     { ...initial, updatedAt: "2026-09-26T00:00:00" },
   ])
     assert.throws(() => parseExercisePreferences(value), /운동 설정을 확인/);
