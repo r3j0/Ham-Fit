@@ -40,11 +40,15 @@ data-analysis/
                     "unit": str,           # 예: "회", "초 유지", "초"
                     "sets": int,
                     "restSec": int,
-                    "text": str            # 예: "10~15회 × 2세트"
+                    "text": str            # 예: "10~15회 × 3세트"
                 }
             }
         ],
-        "estimatedMinutes": int            # 운동 1개당 2분 기준
+        "estimatedMinutes": int,           # 운동 1개당 2분 기준 (유산소 시간 제외)
+        "cardioRecommendation": {
+            "activity": "걷기" | "뛰기",    # 운동량 기준: light·normal → 걷기 / full → 뛰기
+            "minutes": int                 # 운동 목적 기준: body 30 / general 20 / grade 15
+        }
     },
     "weightAdjustment": {
         "<fitnessFactor>": {
@@ -107,7 +111,6 @@ ROUTINE_SIZE = {
 
 GOALS = {"grade", "body", "general"}
 
-# 체형 관리 목적 가중치
 BODY_GOAL_WEIGHT = {
     "strength": 1.10,
     "muscularEndurance": 1.10,
@@ -134,11 +137,11 @@ IN_ROUTINE_DECAY = EXPOSURE_ALPHA
 # 슬롯 그룹에 해당하는 영상으로 인정하는 최소 비중
 MIN_GROUP_WEIGHT = 0.5
 
-# 화면 표시 순서: 동적 유연성 → 민첩·순발 → 근력 → 정리 스트레칭
+# 화면 표시 순서: 동적 유연성 → 근력 → 민첩·순발 → 정리 스트레칭
 SLOT_ORDER = [
     "flexibility_group",
-    "agility_power_group",
     "strength_group",
+    "agility_power_group",
     "cooldown",
 ]
 
@@ -165,12 +168,27 @@ TOOL_ALIASES = {
 
 # 처방 유형별 기본 운동량 (MVP 정책값, 방향 근거: Garber et al. 2011)
 PRESCRIPTION_RULES = {
-    "reps": {"value": "10~15", "unit": "회", "sets": 2},
-    "hold": {"value": "20~30", "unit": "초 유지", "sets": 2},
-    "timed": {"value": "30", "unit": "초", "sets": 2},
+    "reps": {"value": "10~15", "unit": "회", "sets": 3},
+    "hold": {"value": "20~30", "unit": "초 유지", "sets": 3},
+    "timed": {"value": "30", "unit": "초", "sets": 3},
 }
 REST_SEC = 20
 MINUTES_PER_EXERCISE = 2
+
+# (추가) 루틴 외 추가 유산소 권장량
+# 운동 목적별 유산소 시간(분): 체형관리 30 / 체력 늘리기 20 / 체력 등급 올리기 15
+CARDIO_MINUTES = {
+    "body": 30,
+    "general": 20,
+    "grade": 15,
+}
+
+# 오늘의 운동량별 유산소 종류: 가볍게·기본 → 걷기 / 충분히 → 뛰기
+CARDIO_ACTIVITY = {
+    "light": "걷기",
+    "normal": "걷기",
+    "full": "뛰기",
+}
 
 REQUIRED_VIDEO_COLUMNS = {
     "file_nm",
@@ -909,9 +927,16 @@ def recommend_workout_routine(
         for order, (slot, video) in enumerate(selected, start=1)
     ]
 
+    # 유산소: 종류는 운동량, 시간은 운동 목적으로 결정
+    cardio = {
+        "activity": CARDIO_ACTIVITY[routine_level],
+        "minutes": CARDIO_MINUTES[goal],
+    }
+
     return {
         "routine": routine,
         "estimatedMinutes": len(routine) * MINUTES_PER_EXERCISE,
+        "cardioRecommendation": cardio,
     }
 
 
@@ -1022,6 +1047,8 @@ __all__ = [
     "ROUTINE_SIZE",
     "GOALS",
     "BODY_GOAL_WEIGHT",
+    "CARDIO_MINUTES",
+    "CARDIO_ACTIVITY",
     "ROUTINE_GROUPS",
     "IN_ROUTINE_DECAY",
     "BASIC_TOOLS",
