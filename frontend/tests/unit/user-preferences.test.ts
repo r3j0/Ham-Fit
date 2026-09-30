@@ -6,6 +6,8 @@ import {
   exerciseVolumeOptions,
   exerciseGoalOptions,
   ownedToolOptions,
+  normalizeOwnedTools,
+  type ExercisePreferences,
 } from "../../lib/user-preferences.ts";
 const initial = {
   exerciseVolume: "standard",
@@ -84,6 +86,33 @@ test("tools are a canonical set, unchanged sets omit PATCH, and empty arrays cle
 });
 test("unchanged preferences do not produce an empty PATCH", () => {
   assert.equal(buildPreferencesPatch(initial, { ...initial }), null);
+});
+test("removed tools in legacy drafts cannot re-enter a PATCH or mutate historical input", () => {
+  const legacyTools = ["foam_roller", "bosu", "agility_ladder", "cone"];
+  const snapshot = { ownedTools: [...legacyTools, "band"] };
+  const draft = {
+    ...initial,
+    exerciseVolume: "more",
+    ownedTools: [...snapshot.ownedTools, "dumbbell", "band"],
+  } as unknown as ExercisePreferences;
+  assert.deepEqual(buildPreferencesPatch(initial, draft), {
+    exerciseVolume: "more",
+    ownedTools: ["band", "dumbbell"],
+  });
+  assert.deepEqual(
+    normalizeOwnedTools([...legacyTools, null, 1, {}, "none"]),
+    [],
+  );
+  const removedOnly = {
+    ...initial,
+    ownedTools: legacyTools,
+  } as unknown as ExercisePreferences;
+  assert.deepEqual(
+    buildPreferencesPatch({ ...initial, ownedTools: ["band"] }, removedOnly),
+    { ownedTools: [] },
+  );
+  assert.equal(buildPreferencesPatch(initial, removedOnly), null);
+  assert.deepEqual(snapshot.ownedTools, [...legacyTools, "band"]);
 });
 test("volume-only edits omit a null goal and server metadata", () => {
   assert.deepEqual(

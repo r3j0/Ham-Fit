@@ -250,3 +250,37 @@ test("실제 API: 두 사용자의 도구 설정 격리와 변경하지 않은 �
     await other.dispose();
   }
 });
+
+test("실제 API: 제거 도구가 섞인 PATCH는 운동량·목적도 저장하지 않고 전체 400을 반환한다", async ({
+  page,
+}) => {
+  const initial = await (
+    await page.request.get(`${api}/users/me/preferences`, { headers })
+  ).json();
+  for (const tool of ["foam_roller", "bosu", "agility_ladder", "cone"]) {
+    const rejected = await page.request.patch(`${api}/users/me/preferences`, {
+      headers,
+      data: {
+        exerciseVolume: "more",
+        exerciseGoal: "general_fitness_improvement",
+        ownedTools: ["band", tool],
+      },
+    });
+    expect(rejected.status()).toBe(400);
+    expect(
+      await (
+        await page.request.get(`${api}/users/me/preferences`, { headers })
+      ).json(),
+    ).toEqual(initial);
+  }
+  await page.goto("/account/preferences");
+  await expect(
+    page.getByRole("radio", { name: "기본", exact: true }),
+  ).toBeChecked();
+  await expect(
+    page.getByRole("checkbox", { name: "없음", exact: true }),
+  ).toBeChecked();
+  await expect(
+    page.getByRole("group", { name: "운동 목적" }).locator(":checked"),
+  ).toHaveCount(0);
+});

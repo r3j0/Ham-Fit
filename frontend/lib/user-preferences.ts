@@ -33,7 +33,8 @@ export const ownedToolOptions = [
   { value: "ball", label: "공" },
 ] as const;
 export type OwnedTool = (typeof ownedToolOptions)[number]["value"];
-export function normalizeOwnedTools(tools: readonly OwnedTool[]): OwnedTool[] {
+/** Draft/cache values are untrusted; only supported identifiers may enter a PATCH. */
+export function normalizeOwnedTools(tools: readonly unknown[]): OwnedTool[] {
   return ownedToolOptions
     .map(({ value }) => value)
     .filter((tool) => tools.includes(tool));
