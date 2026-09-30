@@ -22,7 +22,7 @@ import { useApiResource } from "./use-api-resource";
 import { useOperationScope } from "./use-operation-scope";
 import { Dialog, Header, Loading, Notice, Shell } from "./ui";
 import { GroupFields } from "./groups";
-import { MascotPose } from "./mascot/MascotPose";
+import { ProfileCharacter } from "./profile-character";
 import styles from "./groups.module.css";
 
 const statusLabels = { pending: "대기", approved: "승인", rejected: "거절" };
@@ -358,7 +358,11 @@ function GroupView({ row, refresh }: { row: Detail; refresh: () => void }) {
         <ul className={styles.list}>
           {row.members.map((member) => (
             <li key={member.userId} className={styles.memberRow}>
-              <MascotPose pose="basic" variant="cream" size={36} label="" />
+              <ProfileCharacter
+                outfit={member.profileCharacter}
+                size={36}
+                label=""
+              />
               <Link
                 href={`/groups/${row.id}/members/${member.userId}`}
                 className={styles.memberName}
@@ -571,9 +575,20 @@ export function GroupMember({ id, userId }: { id: string; userId: string }) {
           </>
         ) : resource.data ? (
           <section className={styles.card}>
+            <ProfileCharacter
+              outfit={resource.data.profileCharacter}
+              size={96}
+              label={`${resource.data.nickname ?? "닉네임 미설정"}의 햄스터`}
+            />
             <h2>{resource.data.nickname ?? "닉네임 미설정"}</h2>
             <p>{resource.data.role === "leader" ? "그룹장" : "그룹원"}</p>
             <p>연속 운동 {resource.data.streak}일</p>
+            {resource.data.longestStreak !== undefined && (
+              <p>최장 연속 운동 {resource.data.longestStreak}일</p>
+            )}
+            {resource.data.totalWorkoutDays !== undefined && (
+              <p>총 운동 {resource.data.totalWorkoutDays}일</p>
+            )}
             <p>
               가입일{" "}
               {new Date(resource.data.joinedAt).toLocaleDateString("ko-KR", {

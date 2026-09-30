@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useCallback, useState, type CSSProperties } from "react";
 import { getGroup, getGroups, groupError, type MyGroup } from "@/lib/groups";
-import { MascotPose } from "./mascot/MascotPose";
+import { ProfileCharacter } from "./profile-character";
 import { useApiResource } from "./use-api-resource";
 import { useSession } from "./session-provider";
 import { Loading, Notice } from "./ui";
@@ -51,12 +51,10 @@ function GroupSlide({
         <ul className={styles.members} aria-label={`${row.name} 그룹원`}>
           {members.map((member) => (
             <li className={styles.member} key={member.userId}>
-              {/* The server has no saved character yet; use the shared default, never an invented outfit. */}
-              <MascotPose
-                pose="basic"
-                variant="cream"
+              <ProfileCharacter
+                outfit={member.profileCharacter}
                 size={96}
-                label={`${member.nickname ?? "닉네임 미설정"}의 기본 햄스터`}
+                label={`${member.nickname ?? "닉네임 미설정"}의 햄스터`}
               />
               <span
                 className={styles.nickname}

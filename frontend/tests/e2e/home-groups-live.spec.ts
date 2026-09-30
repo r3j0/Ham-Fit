@@ -124,6 +124,23 @@ test("실제 API: 가입한 두 그룹의 멤버·닉네임을 표시하고 탈�
     );
     await region.getByRole("button", { name: "이전 그룹" }).click();
     await expect(region.getByRole("listitem")).toHaveCount(1);
+    const avatar = await (
+      await other.request.get(`${api}/users/me/avatar/outfit`, {
+        headers: member,
+      })
+    ).json();
+    const changedAvatar = await other.request.put(
+      `${api}/users/me/avatar/outfit`,
+      {
+        headers: { ...member, "If-Match": `"${avatar.revision}"` },
+        data: {
+          characterId: "character.gray",
+          poseId: "pose.basic",
+          clothingIds: [],
+        },
+      },
+    );
+    expect(changedAvatar.status()).toBe(200);
     expect(
       (
         await other.request.patch(`${api}/users/me/profile`, {
@@ -136,6 +153,14 @@ test("실제 API: 가입한 두 그룹의 멤버·닉네임을 표시하고 탈�
     await expect(
       region.getByText("바뀐운동친구", { exact: true }),
     ).toBeVisible();
+    await expect(region.getByRole("img")).toHaveAttribute(
+      "data-variant",
+      "gray",
+    );
+    await page.screenshot({
+      path: info.outputPath("home-saved-avatar.png"),
+      fullPage: true,
+    });
     expect(
       (
         await other.request.delete(`${api}/groups/${ids[1]}/members/me`, {

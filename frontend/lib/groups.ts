@@ -1,5 +1,6 @@
 import { api } from "./session";
 import { ApiError, errorMessage } from "./http";
+import { parseAvatarOutfit, type AvatarOutfit } from "./avatar-outfit";
 import {
   object,
   invalid,
@@ -14,8 +15,10 @@ export type RequestStatus = "pending" | "approved" | "rejected";
 export interface ActivityProfile {
   userId: string;
   nickname: string | null;
-  profileCharacter: null;
+  profileCharacter: AvatarOutfit | null;
   streak: number;
+  longestStreak?: number;
+  totalWorkoutDays?: number;
 }
 export interface Member extends ActivityProfile {
   role: Role;
@@ -51,10 +54,12 @@ export function parseActivity(value: unknown): ActivityProfile {
   if (
     !uuid(row.userId) ||
     !(row.nickname === null || text(row.nickname)) ||
-    row.profileCharacter !== null ||
-    !integer(row.streak)
+    !integer(row.streak) ||
+    (row.longestStreak !== undefined && !integer(row.longestStreak)) ||
+    (row.totalWorkoutDays !== undefined && !integer(row.totalWorkoutDays))
   )
     invalid();
+  if (row.profileCharacter !== null) parseAvatarOutfit(row.profileCharacter);
   return row as unknown as ActivityProfile;
 }
 export function parseMember(value: unknown): Member {
