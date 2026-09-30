@@ -35,7 +35,7 @@ export class AvatarService {
   private async lockUser(tx: Prisma.TransactionClient, userId: string) {
     const rows = await tx.$queryRaw<
       Array<{ id: string }>
-    >`SELECT id FROM ${this.database.table('users')} WHERE id = ${userId}::uuid FOR UPDATE`;
+    >`SELECT id FROM ${this.database.table('users')} WHERE id = ${userId}::uuid FOR NO KEY UPDATE`;
     if (!rows.length) throw new UnauthorizedException('계정이 삭제되었습니다.');
   }
 
@@ -285,6 +285,21 @@ export class AvatarService {
   // Server-internal only; no controller, automatic signup or workout reward.
   // Callers must validate a trusted event and derive the amount server-side.
   async grantCurrency(userId: string, eventKey: string, amount: number) {
+    return this.database.$transaction(async (tx) => {
+      await this.lockUser(tx, userId);
+      return this.grantCurrencyInTransaction(tx, userId, eventKey, amount);
+    });
+  }
+
+  // The caller locks multiple users in UUID order BEFORE calling this method.
+  // FOR KEY SHARE protects deletion without conflicting with workout/purchase
+  // NO KEY UPDATE owner locks. Currency rows are then credited in UUID order.
+  async grantCurrencyInTransaction(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    eventKey: string,
+    amount: number,
+  ) {
     if (
       !/^[a-z][a-z0-9._-]{0,49}:[A-Za-z0-9._:-]{1,140}$/.test(eventKey) ||
       eventKey.startsWith('purchase:') ||
@@ -297,50 +312,52 @@ export class AvatarService {
         'INVALID_GRANT',
         '서버 지급 이벤트 형식을 확인해 주세요.',
       );
-    return this.database.$transaction(async (tx) => {
-      await this.lockUser(tx, userId);
-      const previous = await tx.currencyTransaction.findUnique({
-        where: { userId_eventKey: { userId, eventKey } },
-      });
-      if (previous) {
-        if (previous.amount !== amount || previous.kind !== 'grant')
-          avatarError(
-            409,
-            'GRANT_CONFLICT',
-            '지급 이벤트가 기존 내용과 다릅니다.',
-          );
-        return {
-          replayed: true,
-          transaction: previous,
-          ...(await this.state(tx, userId)),
-        };
-      }
-      const credited = await tx.userCurrency.updateMany({
-        where: { userId, balance: { lte: 2147483647 - amount } },
-        data: { balance: { increment: amount } },
-      });
-      if (!credited.count) {
-        if (!(await tx.userCurrency.findUnique({ where: { userId } })))
-          avatarError(503, 'CURRENCY_MISSING', '재화 정보가 누락되었습니다.');
-        avatarError(409, 'BALANCE_LIMIT', '잔액 한도를 초과합니다.');
-      }
-      const currency = await tx.userCurrency.findUniqueOrThrow({
-        where: { userId },
-      });
-      const transaction = await tx.currencyTransaction.create({
-        data: {
-          userId,
-          eventKey,
-          amount,
-          balanceAfter: currency.balance,
-          kind: 'grant',
-        },
-      });
+    const users = await tx.$queryRaw<
+      Array<{ id: string }>
+    >`SELECT id FROM ${this.database.table('users')} WHERE id = ${userId}::uuid FOR KEY SHARE`;
+    if (!users.length)
+      throw new UnauthorizedException('계정이 삭제되었습니다.');
+    const previous = await tx.currencyTransaction.findUnique({
+      where: { userId_eventKey: { userId, eventKey } },
+    });
+    if (previous) {
+      if (previous.amount !== amount || previous.kind !== 'grant')
+        avatarError(
+          409,
+          'GRANT_CONFLICT',
+          '지급 이벤트가 기존 내용과 다릅니다.',
+        );
       return {
-        replayed: false,
-        transaction,
+        replayed: true,
+        transaction: previous,
         ...(await this.state(tx, userId)),
       };
+    }
+    const credited = await tx.userCurrency.updateMany({
+      where: { userId, balance: { lte: 2147483647 - amount } },
+      data: { balance: { increment: amount } },
     });
+    if (!credited.count) {
+      if (!(await tx.userCurrency.findUnique({ where: { userId } })))
+        avatarError(503, 'CURRENCY_MISSING', '재화 정보가 누락되었습니다.');
+      avatarError(409, 'BALANCE_LIMIT', '잔액 한도를 초과합니다.');
+    }
+    const currency = await tx.userCurrency.findUniqueOrThrow({
+      where: { userId },
+    });
+    const transaction = await tx.currencyTransaction.create({
+      data: {
+        userId,
+        eventKey,
+        amount,
+        balanceAfter: currency.balance,
+        kind: 'grant',
+      },
+    });
+    return {
+      replayed: false,
+      transaction,
+      ...(await this.state(tx, userId)),
+    };
   }
 }

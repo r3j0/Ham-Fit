@@ -92,6 +92,11 @@ model User {
   avatarOutfit                AvatarOutfit?
   avatarPurchases             AvatarPurchase[]
   currencyTransactions        CurrencyTransaction[]
+  activityAchievements        ActivityAchievement[]
+  missionParticipants         GroupMissionParticipant[]
+  missionStarts               GroupMissionStartRequest[]
+  rouletteDraws               GroupRouletteDraw[]
+  rouletteRewards             GroupRouletteReward[]
 
   @@map("users")
 }
@@ -469,6 +474,7 @@ model Group {
   applications  GroupJoinRequest[]
   notifications GroupNotification[]
   creations     GroupCreateRequest[]
+  missions      GroupMissionRound[]
 
   @@index([leaderUserId])
   @@map("groups")
@@ -624,7 +630,128 @@ model CurrencyTransaction {
   purchaseId String? @unique @map("purchase_id") @db.Uuid
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  rouletteReward GroupRouletteReward?
   purchase AvatarPurchase? @relation(fields: [purchaseId], references: [id], onDelete: Cascade, onUpdate: Restrict)
   @@unique([userId, eventKey])
   @@map("currency_transactions")
+}
+
+
+// First valid completion transition of a KST day. Never backfilled.
+model ActivityAchievement {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  koreanDate DateTime @map("korean_date") @db.Date
+  achievedAt DateTime @map("achieved_at") @db.Timestamptz(6)
+  sourceKind String @map("source_kind")
+  sourceId String @map("source_id") @db.Uuid
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  contributions GroupMissionContribution[]
+  @@unique([userId, koreanDate])
+  @@map("activity_achievements")
+}
+
+model GroupMissionRound {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  groupId String @map("group_id") @db.Uuid
+  memberCount Int @map("member_count")
+  totalTarget Int @map("total_target")
+  waterCount Int @default(0) @map("water_count")
+  startedAt DateTime @map("started_at") @db.Timestamptz(6)
+  completedAt DateTime? @map("completed_at") @db.Timestamptz(6)
+  policyVersion String @map("policy_version")
+  roulettePolicy Json @map("roulette_policy") @db.JsonB
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  participants GroupMissionParticipant[]
+  contributions GroupMissionContribution[]
+  tickets GroupRouletteTicket[]
+  starts GroupMissionStartRequest[]
+  @@unique([id, groupId])
+  @@index([groupId, startedAt, id])
+  @@map("group_mission_rounds")
+}
+
+// No membership FK: departure must never cascade the contribution ledger.
+// invalidatedAt is permanent, including when the same account rejoins.
+model GroupMissionParticipant {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  roundId String @map("round_id") @db.Uuid
+  userId String? @map("user_id") @db.Uuid
+  waterCount Int @default(0) @map("water_count")
+  invalidatedAt DateTime? @map("invalidated_at") @db.Timestamptz(6)
+  round GroupMissionRound @relation(fields: [roundId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull, onUpdate: Restrict)
+  contributions GroupMissionContribution[]
+  tickets GroupRouletteTicket[]
+  @@unique([roundId, userId])
+  @@unique([id, roundId])
+  @@index([userId, roundId])
+  @@map("group_mission_participants")
+}
+
+model GroupMissionContribution {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  groupId String @map("group_id") @db.Uuid
+  roundId String @map("round_id") @db.Uuid
+  participantId String @map("participant_id") @db.Uuid
+  achievementId String? @map("achievement_id") @db.Uuid
+  contributedAt DateTime @map("contributed_at") @db.Timestamptz(6)
+  round GroupMissionRound @relation(fields: [roundId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  participant GroupMissionParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  achievement ActivityAchievement? @relation(fields: [achievementId], references: [id], onDelete: SetNull, onUpdate: Restrict)
+  @@unique([groupId, achievementId])
+  @@map("group_mission_contributions")
+}
+
+model GroupMissionStartRequest {
+  userId String @map("user_id") @db.Uuid
+  key String @db.Uuid
+  roundId String @map("round_id") @db.Uuid
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  round GroupMissionRound @relation(fields: [roundId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  @@id([userId, key])
+  @@map("group_mission_start_requests")
+}
+
+model GroupRouletteTicket {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  roundId String @map("round_id") @db.Uuid
+  participantId String @map("participant_id") @db.Uuid
+  ordinal Int
+  createdAt DateTime @map("created_at") @db.Timestamptz(6)
+  invalidatedAt DateTime? @map("invalidated_at") @db.Timestamptz(6)
+  round GroupMissionRound @relation(fields: [roundId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  participant GroupMissionParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  draw GroupRouletteDraw?
+  @@unique([roundId, participantId, ordinal])
+  @@map("group_roulette_tickets")
+}
+
+model GroupRouletteDraw {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ticketId String @unique @map("ticket_id") @db.Uuid
+  userId String? @map("user_id") @db.Uuid
+  key String @db.Uuid
+  policyVersion String @map("policy_version")
+  result String
+  amount Int
+  drawnAt DateTime @map("drawn_at") @db.Timestamptz(6)
+  ticket GroupRouletteTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull, onUpdate: Restrict)
+  rewards GroupRouletteReward[]
+  @@unique([userId, key])
+  @@map("group_roulette_draws")
+}
+
+model GroupRouletteReward {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  drawId String @map("draw_id") @db.Uuid
+  userId String? @map("user_id") @db.Uuid
+  amount Int
+  transactionId String? @unique @map("transaction_id") @db.Uuid
+  draw GroupRouletteDraw @relation(fields: [drawId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull, onUpdate: Restrict)
+  transaction CurrencyTransaction? @relation(fields: [transactionId], references: [id], onDelete: SetNull, onUpdate: Restrict)
+  @@unique([drawId, userId])
+  @@map("group_roulette_rewards")
 }

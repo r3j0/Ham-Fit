@@ -1,3 +1,5 @@
+import { recordActivityAchievement } from '../groups/mission-contributions.js';
+import { retryTransaction } from '../database/transaction-retry.js';
 import {
   ConflictException,
   Inject,
@@ -73,19 +75,21 @@ export class WorkoutRoutinesService {
     userId: string,
     work: (tx: Prisma.TransactionClient, now: Date) => Promise<T>,
   ) {
-    return this.database.$transaction(
-      async (tx) => {
-        const users = await tx.$queryRaw<Array<{ id: string }>>`
-        SELECT id FROM ${this.database.table('users')} WHERE id = ${userId}::uuid FOR UPDATE
+    return retryTransaction(() =>
+      this.database.$transaction(
+        async (tx) => {
+          const users = await tx.$queryRaw<Array<{ id: string }>>`
+        SELECT id FROM ${this.database.table('users')} WHERE id = ${userId}::uuid FOR NO KEY UPDATE
       `;
-        if (!users.length)
-          throw new NotFoundException('사용자를 찾을 수 없습니다.');
-        return work(tx, await this.now(tx));
-      },
-      {
-        isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
-        timeout: 15_000,
-      },
+          if (!users.length)
+            throw new NotFoundException('사용자를 찾을 수 없습니다.');
+          return work(tx, await this.now(tx));
+        },
+        {
+          isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
+          timeout: 15_000,
+        },
+      ),
     );
   }
 
@@ -342,6 +346,25 @@ export class WorkoutRoutinesService {
         item.resultStatus === status &&
         watchedSeconds(item.intervals as PlaybackInterval[]) === watched &&
         (await this.finalizedWatchedSeconds(tx, item)) === watched;
+      if (
+        !replayed &&
+        status === 'completed' &&
+        routine.items.every(
+          (entry) =>
+            entry.id === itemId ||
+            (entry.status === 'completed' &&
+              entry.completedAt !== null &&
+              entry.completedAt <= now),
+        )
+      )
+        await recordActivityAchievement(
+          this.database,
+          tx,
+          userId,
+          now,
+          'routine',
+          routineId,
+        );
       const updated = replayed
         ? item
         : await tx.workoutRoutineItem.update({

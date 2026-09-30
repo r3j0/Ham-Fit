@@ -68,7 +68,7 @@ npm run test:e2e -- test/activity.e2e-spec.ts test/groups.e2e-spec.ts test/curri
 TZ=America/Los_Angeles npm run test:e2e -- test/activity.e2e-spec.ts
 ```
 
-그룹 미션 진행도·씨앗·재화·보상·성장 기능과 화면 연결은 범위 밖이다. 그룹원 프로필의 활동 집계는 개인과 같지만 그룹 미션 성공·보상 기준을 새로 정의하지 않는다.
+2026-09-30 후속 구현: [그룹 미션](group-missions.md)은 위와 동일한 당일 성공 범위를 원본 완료 전이에서 자동 반영한다. 표시상 어제 스트릭 유지나 활동 조회는 물 주기 트리거가 아니다. 프로필 집계는 계속 원본 기록에서 계산하며, 신규 달성 원장은 백필 없이 그룹 중복 반영 방지에만 사용한다. 화면 변경은 포함하지 않는다.
 
 ### 실행 결과 (2026-09-29)
 

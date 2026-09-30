@@ -1,3 +1,4 @@
+import { retryTransaction } from '../database/transaction-retry.js';
 import {
   ConflictException,
   Inject,
@@ -254,22 +255,22 @@ export class AuthService {
       throw new UnauthorizedException('본인 확인에 실패했습니다.');
     // One DELETE is atomic with all FK cascades. The verified hash is a write
     // precondition: a changed password or concurrent deletion cannot be bypassed.
-    const deleted = await this.database.user
-      .deleteMany({
+    const deleted = await retryTransaction(() =>
+      this.database.user.deleteMany({
         where: { id: userId, password: user.password },
-      })
-      .catch((error: unknown) => {
-        // A leader cannot disappear via account deletion and orphan a group.
-        // Group leave/delete/transfer must happen first; ordinary membership cascades.
-        if (
-          error instanceof Prisma.PrismaClientKnownRequestError &&
-          error.code === 'P2003'
-        )
-          throw new ConflictException(
-            '그룹장인 그룹에서 위임 후 탈퇴하거나 그룹을 삭제한 뒤 계정을 삭제해 주세요.',
-          );
-        throw error;
-      });
+      }),
+    ).catch((error: unknown) => {
+      // A leader cannot disappear via account deletion and orphan a group.
+      // Group leave/delete/transfer must happen first; ordinary membership cascades.
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2003'
+      )
+        throw new ConflictException(
+          '그룹장인 그룹에서 위임 후 탈퇴하거나 그룹을 삭제한 뒤 계정을 삭제해 주세요.',
+        );
+      throw error;
+    });
     if (!deleted.count)
       throw new UnauthorizedException('본인 확인에 실패했습니다.');
   }

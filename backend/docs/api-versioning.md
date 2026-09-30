@@ -46,3 +46,5 @@ v2가 필요하면 `API_V1`의 값을 바꾸지 않고 v2 상수와 컨트롤러
 ## 2026-09-29 당일 루틴 v2
 
 사용자 결정으로 당일 추천·하루 한 루틴·80% 완료 판정으로 변경하여 `/api/v2/workout-routines`를 제공한다. 기존 v1 루틴 경로는 인증 후 410 ROUTINE_API_RETIRED로 전환을 안내하고 신규 내일 배정을 생성하지 않는다. 기존 루틴·항목·키는 v2에서 접근한다. API_V1 상수와 기존 인증·측정·설정·단일 영상 API는 유지한다. 신규 응답의 weightAdjustment는 null이며 기존 기록의 값은 보존한다. [루틴 계약](recommendations/routines-api.md)을 따른다.
+
+2026-09-30 그룹 미션·룰렛의 새 API는 `/api/v1/groups/:groupId` 아래에 추가한다. 기존 단일 운동 v1과 당일 루틴 v2의 상수·경로·완료 계약은 유지한다. [신규 경로·응답·멱등성](group-missions.md)을 참고한다.

@@ -5,7 +5,7 @@
 ## 확정 정책과 현재 등록 범위
 
 - 사용자 답변으로 **구매한 자세·의상은 크림·그레이 공용 소유**로 확정했다. 공용 소유와 실제 렌더링 지원은 별개다.
-- 신규·기존 사용자에게 `character.cream`, `character.gray`, `pose.basic`만 기본 지급한다. 최초 대표 코디는 크림/basic/의상 없음이다. 재화 기본값은 기존 `UserCurrency`의 0이며 가입·운동 완료 보상은 없다.
+- 신규·기존 사용자에게 `character.cream`, `character.gray`, `pose.basic`만 기본 지급한다. 최초 대표 코디는 크림/basic/의상 없음이다. 재화 기본값은 기존 `UserCurrency`의 0이다. 가입·운동 완료 자체의 직접 재화 보상은 없으며, 2026-09-30 [그룹 룰렛](group-missions.md)이 기존 개인 재화에 당첨 보상을 지급한다.
 - FE의 `components/mascot/mascot-poses.d.ts`, `mascot-poses.js`, `wardrobe.js`, `MascotPose.tsx`, `public/mascots/poses`를 읽기 전용으로 확인했다. 두 캐릭터, 13개 자세, 기존 스포츠웨어 4종의 130개 조합에서 참조 이미지 파일 존재를 확인했다. 이미지 품질·부위별 합성은 검증하지 않았다.
 - 후속 사용자 결정: 기존 합본 이미지 `blue-sportswear`, `black-sportswear`, `white-sportswear`, `green-sportswear`는 **카탈로그에서 제외**한다. 세트 상품 가격·전환·분리 소유권을 만들지 않는다. FE 파일은 보존한다.
 - 따라서 초기 카탈로그는 캐릭터 2 + 자세 13 = 15개, 의상 미착용 지원 조합은 26개다. 의상 상품은 아직 0개이며 모자·상의·하의의 가상 이미지나 상품을 판매하지 않는다.
@@ -42,7 +42,7 @@
 | GET /users/me/avatar/outfit    | 저장된 대표 코디                | 200 + ETag                          |
 | PUT /users/me/avatar/outfit    | 대표 코디 전체 교체             | 200 + 새 ETag                       |
 
-대표 코디 프리셋·구매 내역 목록·환불·선물·재판매·관리자 가격 화면·사용자 가격 수정·사용자 재화 지급 API는 제공하지 않는다. 기존 `/auth/me`의 `currency.balance`도 같은 UserCurrency다. 그룹 기획의 씨앗과 개인 해바라기씨는 통합하지 않는다.
+대표 코디 프리셋·구매 내역 목록·환불·선물·재판매·관리자 가격 화면·사용자 가격 수정·사용자 재화 지급 API는 제공하지 않는다. 기존 `/auth/me`의 `currency.balance`도 같은 UserCurrency다. 그룹 룰렛 보상도 같은 개인 해바라기씨에 지급한다. 성장 기여 단위인 물은 재화가 아니다.
 
 ## 상품 조회
 
@@ -283,7 +283,7 @@ BE 담당자는 새 forward-only 마이그레이션을 작성해 상품과 호�
 
 새 모델: AvatarProduct, AvatarCombination, AvatarCombinationItem, AvatarOwnership, AvatarOutfit, AvatarPurchase, CurrencyTransaction. 잔액은 기존 UserCurrency만 사용한다. 구매는 사용자 잠금→상품 공유 잠금→잔액 조건부 감소→구매/소유권/거래 기록 생성까지 하나의 트랜잭션이다. 중간 실패는 전부 롤백한다. DB의 비음수 CHECK와 사용자+상품/요청 키 UNIQUE도 중복 구매·음수 잔액을 막는다.
 
-`AvatarService.grantCurrency(userId, eventKey, amount)`는 **신뢰할 수 있는 서버 내부 호출 전용**이며 Controller가 없다. 호출자는 인증된 내부 이벤트를 검증하고 서버 정책으로 지급량을 결정해야 한다. 이벤트 키는 `<source>:<event-id>` 형식, 동일 사용자+키는 1회만 지급한다. 같은 키의 다른 금액은 GRANT_CONFLICT다. `purchase:` namespace를 사용할 수 없다. 잔액 상한은 2,147,483,647이고 초과는 전체 거절한다. 현재 호출하는 가입·운동·그룹 기능이 없으며 향후 보상 조건·지급량 결정 전에 연결하지 않는다. 기존 잔액에 대한 가상 거래 이력도 소급 생성하지 않는다.
+`AvatarService.grantCurrency(userId, eventKey, amount)`는 **신뢰할 수 있는 서버 내부 호출 전용**이며 Controller가 없다. 호출자는 인증된 내부 이벤트를 검증하고 서버 정책으로 지급량을 결정해야 한다. 이벤트 키는 `<source>:<event-id>` 형식, 동일 사용자+키는 1회만 지급한다. 같은 키의 다른 금액은 GRANT_CONFLICT다. `purchase:` namespace를 사용할 수 없다. 잔액 상한은 2,147,483,647이고 초과는 전체 거절한다. 2026-09-30 그룹 룰렛은 `grantCurrencyInTransaction(tx,userId,eventKey,amount)`으로 같은 지급 핵심을 호출하며 모든 수령자 지급·권 소비·추첨 저장을 한 트랜잭션에 묶는다. 기존 3인자 `grantCurrency`는 독립 트랜잭션 호출 계약을 유지한다. 수령자 계정/재화는 UUID 순서로 잠그고 상점의 조건부 차감·음수 방지·상한을 유지한다. 기존 잔액에 대한 가상 거래 이력도 소급 생성하지 않는다.
 
 마이그레이션 `20260930000300_avatar_shop`은 기존 계정·잔액·운동·인증을 수정하지 않고 누락된 기본 소유/대표 코디만 INSERT ON CONFLICT DO NOTHING으로 추가한다. 계정 INSERT trigger가 같은 트랜잭션에서 기본 지급해 신규 가입 및 구버전 서버의 동시 가입도 보호한다. 백필 전 users 잠금으로 가입과의 누락 경합을 방지한다. 함수는 설치된 스키마의 search_path를 고정하므로 Prisma의 격리 스키마에서도 동작한다.
 

@@ -1,3 +1,4 @@
+import { retryTransaction } from '../database/transaction-retry.js';
 import {
   ConflictException,
   ForbiddenException,
@@ -55,30 +56,18 @@ export class GroupsService {
     work: (tx: Tx) => Promise<T>,
     snapshot = false,
   ): Promise<T> {
-    for (let attempt = 0; ; attempt++) {
-      try {
-        return await this.database.$transaction(work, {
-          isolationLevel: snapshot
-            ? Prisma.TransactionIsolationLevel.RepeatableRead
-            : Prisma.TransactionIsolationLevel.ReadCommitted,
-        });
-      } catch (error) {
-        if (
-          attempt < 2 &&
-          error instanceof Prisma.PrismaClientKnownRequestError &&
-          (error.code === 'P2034' ||
-            (error.code === 'P2010' &&
-              ['40P01', '40001'].includes(String(error.meta?.code))))
-        )
-          continue;
-        throw error;
-      }
-    }
+    return retryTransaction(() =>
+      this.database.$transaction(work, {
+        isolationLevel: snapshot
+          ? Prisma.TransactionIsolationLevel.RepeatableRead
+          : Prisma.TransactionIsolationLevel.ReadCommitted,
+      }),
+    );
   }
   private async lockUser(tx: Tx, userId: string) {
     const rows = await tx.$queryRaw<
       Array<{ id: string }>
-    >`SELECT id FROM ${this.database.table('users')} WHERE id = ${userId}::uuid FOR UPDATE`;
+    >`SELECT id FROM ${this.database.table('users')} WHERE id = ${userId}::uuid FOR NO KEY UPDATE`;
     if (!rows.length) throw new UnauthorizedException('계정이 삭제되었습니다.');
   }
   private async protectTargetAccount(tx: Tx, userId: string) {

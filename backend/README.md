@@ -3,7 +3,7 @@
 Project Health의 NestJS API 서버입니다. 백엔드 코드·설정·문서·테스트는 이 디렉토리에서 관리합니다.
 
 - [그룹·가입 신청·알림 API](docs/groups-api.md)
-- [그룹 미션 연동 경계·미정 정책](docs/group-missions.md)
+- [그룹 미션·룰렛 정책·API](docs/group-missions.md)
 - [그룹 기능 검증·변경 파일](docs/groups-verification.md)
 - [개발 원칙](AGENTS.md)
 - [API 버전 관리](docs/api-versioning.md): 현재 `/api/v1`, DB·측정 기준·기록 수정 버전과 구분
@@ -172,3 +172,5 @@ Prisma 구성은 [공식 NestJS 안내](https://docs.prisma.io/docs/guides/frame
 회복 심박수 원본을 보존하고 측정 당시 성별·나이·신장·체중으로 최대산소섭취량을 추정합니다. 부분 저장, 계산 근거 및 참고 등급 계약은 [스텝검사 안내](docs/step-assessment.md)를 따릅니다. 과거의 YMCA 기준 미확보 설명은 새로 저장·수정하는 성인 기록에 한해 이 계약으로 대체되며, 기존 스냅샷은 유지됩니다.
 
 - [캐릭터·대표 코디·해바라기씨 상점 API 및 FE 연동](docs/avatar-shop-api.md) · [검증 결과](docs/avatar-shop-verification.md)
+
+2026-09-30 그룹 미션·룰렛을 `/api/v1/groups/:groupId` 아래에 추가했다. 그룹장 수동 시작, 고정 구성원 스냅샷, 당일 전체 운동 성공의 자동 물 주기, 14N 성장 목표, 누적 기여 기반 룰렛권과 기존 개인 재화 지급을 제공한다. [정책·권한·멱등성·삭제·동시성](docs/group-missions.md), [실제 검증 결과](docs/group-missions-verification.md)를 참고한다.

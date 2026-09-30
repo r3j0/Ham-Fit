@@ -1,3 +1,5 @@
+import { recordActivityAchievement } from '../groups/mission-contributions.js';
+import { retryTransaction } from '../database/transaction-retry.js';
 import {
   ConflictException,
   Inject,
@@ -86,25 +88,27 @@ export class RecommendationsService {
   ): Promise<T> {
     for (let attempt = 0; ; attempt++) {
       try {
-        return await this.database.$transaction(
-          async (tx) => {
-            const users = await tx.$queryRaw<
-              Array<{ id: string }>
-            >`SELECT id FROM ${this.database.table('users')} WHERE id = ${userId}::uuid FOR UPDATE`;
-            if (!users.length)
-              throw new NotFoundException('사용자를 찾을 수 없습니다.');
-            return work(tx, await this.now(tx));
-          },
-          {
-            // The waiter must see a committed same-day assignment before calculation.
-            isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
-            timeout: 15000,
-          },
+        return await retryTransaction(() =>
+          this.database.$transaction(
+            async (tx) => {
+              const users = await tx.$queryRaw<
+                Array<{ id: string }>
+              >`SELECT id FROM ${this.database.table('users')} WHERE id = ${userId}::uuid FOR NO KEY UPDATE`;
+              if (!users.length)
+                throw new NotFoundException('사용자를 찾을 수 없습니다.');
+              return work(tx, await this.now(tx));
+            },
+            {
+              // The waiter must see a committed same-day assignment before calculation.
+              isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
+              timeout: 15000,
+            },
+          ),
         );
       } catch (error) {
         if (
           error instanceof Prisma.PrismaClientKnownRequestError &&
-          ['P2034', 'P2002'].includes(error.code) &&
+          error.code === 'P2002' &&
           attempt < 4
         )
           continue;
@@ -372,6 +376,15 @@ export class RecommendationsService {
       const final = ['not_performed', 'interrupted', 'completed'].includes(
         status,
       );
+      if (!completedReplay && status === 'completed' && row.assignmentDate)
+        await recordActivityAchievement(
+          this.database,
+          tx,
+          userId,
+          now,
+          'daily_assignment',
+          id,
+        );
       const updated = completedReplay
         ? row
         : await tx.userCurriculumAssignment.update({

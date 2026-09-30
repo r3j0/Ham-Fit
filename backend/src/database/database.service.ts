@@ -26,6 +26,7 @@ export class DatabaseService
       | 'users'
       | 'avatar_products'
       | 'groups'
+      | 'group_memberships'
       | 'user_curriculum_assignments'
       | 'measurements'
       | 'user_preferences',
@@ -91,6 +92,10 @@ export class DatabaseService
         this.groupJoinRequest.findFirst({ select: { id: true } }),
         this.groupCreateRequest.findFirst({ select: { key: true } }),
         this.groupNotification.findFirst({ select: { id: true } }),
+        this.groupMissionRound.findFirst({ select: { id: true } }),
+        this.activityAchievement.findFirst({ select: { id: true } }),
+        this.groupRouletteTicket.findFirst({ select: { id: true } }),
+        this.groupRouletteDraw.findFirst({ select: { id: true } }),
       ]);
       return definitions > 0;
     } catch {
