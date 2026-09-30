@@ -64,8 +64,8 @@ export function WorkoutHistory() {
       <Header title="운동 이력" back="/account" />
       <div className="content stack">
         <p className="muted">
-          받았던 운동과 저장된 진행을 확인해요. 미완료 운동은 다시 이어갈 수
-          있어요.
+          받았던 운동과 저장된 진행을 확인해요. 오늘의 루틴은 이어서 운동하고,
+          지난 루틴은 영상을 다시 볼 수 있어요.
         </p>
         {error !== undefined && <WorkoutError error={error} />}
         {!page ? (
@@ -94,7 +94,7 @@ export function WorkoutHistory() {
               <>
                 <h2>아직 운동 이력이 없어요</h2>
                 <Link className="button primary" href="/workout">
-                  내일 운동 준비하기
+                  오늘 운동 준비하기
                 </Link>
               </>
             ) : (
@@ -117,17 +117,20 @@ export function WorkoutHistory() {
                       className="button secondary"
                       href={workoutHref(
                         row,
-                        row.status === "completed",
+                        row.status === "completed" ||
+                          (!!row.routine && !row.recording?.allowed),
                         basePath.startsWith("/account"),
                       )}
                     >
                       {row.koreanDate > row.serverKoreanDate
                         ? "예정된 운동 보기"
-                        : row.status === "completed"
-                          ? "운동 다시보기"
-                          : row.status === "assigned"
-                            ? "운동 자세히 보기"
-                            : "이 운동 이어하기"}
+                        : row.routine && !row.recording?.allowed
+                          ? "운동 영상 보기"
+                          : row.status === "completed"
+                            ? "운동 다시보기"
+                            : row.status === "assigned"
+                              ? "운동 자세히 보기"
+                              : "이 운동 이어하기"}
                     </Link>
                   </li>
                 ))}

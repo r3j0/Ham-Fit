@@ -168,9 +168,9 @@ export async function installApi(
 ) {
   let record = initialRecord;
   const mutations: { path: string; method: string; body: unknown }[] = [];
-  await page.route("**/api/v1/**", async (route) => {
+  await page.route(/\/api\/v[12]\//, async (route) => {
     const request = route.request(),
-      path = new URL(request.url()).pathname.replace("/api/v1", "");
+      path = new URL(request.url()).pathname.replace(/\/api\/v[12]/, "");
     const method = request.method();
     if (
       ["POST", "PATCH", "DELETE"].includes(method) &&

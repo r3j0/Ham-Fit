@@ -53,6 +53,12 @@ export interface WorkoutRoutine {
   koreanDate: string;
   referenceDate: string;
   serverKoreanDate: string;
+  serverTime: string;
+  recordingAllowed: boolean;
+  recordingExpiresAt: string;
+  /** Client-only monotonic deadline, conservatively reduced by the request duration. */
+  recordingDeadline?: number;
+  cardioRecommendation: { activity: "걷기" | "뛰기"; minutes: number } | null;
   createdAt: string;
   status: WorkoutStatus;
   estimatedMinutes: number;
@@ -145,7 +151,7 @@ function parseItem(value: unknown): RoutineItem {
   if (Math.abs(watched - progress.watchedSeconds) > 0.00001) invalid();
   return item as unknown as RoutineItem;
 }
-export function parseRoutine(value: unknown): WorkoutRoutine {
+export function parseRoutine(value: unknown, roundTripMs = 0): WorkoutRoutine {
   const row = object(value),
     progress = object(row.progress);
   if (
@@ -154,6 +160,10 @@ export function parseRoutine(value: unknown): WorkoutRoutine {
       (day) => typeof day === "string" && isWorkoutDate(day),
     ) ||
     !timestamp(row.createdAt) ||
+    !timestamp(row.serverTime) ||
+    !timestamp(row.recordingExpiresAt) ||
+    typeof row.recordingAllowed !== "boolean" ||
+    row.recordingAllowed !== (row.koreanDate === row.serverKoreanDate) ||
     !statuses.includes(String(row.status)) ||
     !number(row.estimatedMinutes, Number.MIN_VALUE) ||
     !text(row.algorithmVersion) ||
@@ -164,6 +174,23 @@ export function parseRoutine(value: unknown): WorkoutRoutine {
     !row.routine.length
   )
     invalid();
+  const expires = Date.parse(`${row.koreanDate}T00:00:00+09:00`) + 86400000;
+  if (
+    Date.parse(row.recordingExpiresAt as string) !== expires ||
+    new Date(Date.parse(row.serverTime as string) + 9 * 3600000)
+      .toISOString()
+      .slice(0, 10) !== row.serverKoreanDate
+  )
+    invalid();
+  if (row.cardioRecommendation !== null) {
+    const cardio = object(row.cardioRecommendation);
+    if (
+      !["걷기", "뛰기"].includes(String(cardio.activity)) ||
+      !integer(cardio.minutes, 1) ||
+      Object.keys(cardio).some((key) => !["activity", "minutes"].includes(key))
+    )
+      invalid();
+  }
   const items = row.routine.map(parseItem);
   if (
     new Set(items.map((item) => item.id)).size !== items.length ||
@@ -175,9 +202,21 @@ export function parseRoutine(value: unknown): WorkoutRoutine {
     (row.status === "completed") !== (progress.completedItems === items.length)
   )
     invalid();
-  return { ...row, routine: items } as unknown as WorkoutRoutine;
+  return {
+    ...row,
+    routine: items,
+    recordingDeadline:
+      performance.now() +
+      Math.max(
+        0,
+        expires -
+          Date.parse(row.serverTime as string) -
+          Math.max(0, roundTripMs),
+      ),
+  } as unknown as WorkoutRoutine;
 }
-export const parseRoutinePage = (value: unknown) => pageOf(value, parseRoutine);
+export const parseRoutinePage = (value: unknown, roundTripMs = 0) =>
+  pageOf(value, (row) => parseRoutine(row, roundTripMs));
 
 /** Identity includes the routine and item, and cannot collide with a legacy UUID. */
 export const routineWorkoutId = (routineId: string, itemId: string) =>
@@ -192,6 +231,18 @@ export function routineIdentity(id: string) {
 export function routineWorkouts(row: WorkoutRoutine): Workout[] {
   return row.routine.map((item) => ({
     id: routineWorkoutId(row.id, item.id),
+    recording: {
+      allowed: row.recordingAllowed,
+      serverTime: row.serverTime,
+      expiresAt: row.recordingExpiresAt,
+      deadline:
+        row.recordingDeadline ??
+        performance.now() +
+          Math.max(
+            0,
+            Date.parse(row.recordingExpiresAt) - Date.parse(row.serverTime),
+          ),
+    },
     routine: {
       id: row.id,
       itemId: item.id,

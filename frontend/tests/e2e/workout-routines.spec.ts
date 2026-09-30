@@ -1,7 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { installApi, testRecord } from "./integration-fixtures";
+import { installApi, testRecord, testUser } from "./integration-fixtures";
 import { routineFixture } from "../fixtures/routine";
 import type { WorkoutRoutine } from "../../lib/workout-routine";
 async function setup(
@@ -17,29 +17,25 @@ async function setup(
   await page.route("**/api/v1/workouts/history?*", (route) =>
     route.fulfill({ json: { items: [], nextCursor: null } }),
   );
-  await page.route("**/api/v1/workout-routines/**", async (route) => {
+  await page.route("**/api/v2/workout-routines/**", async (route) => {
     const req = route.request(),
       url = new URL(req.url());
     const row = state.row;
     if (url.pathname.endsWith("/current"))
       return route.fulfill({
-        json: row && row.koreanDate <= row.serverKoreanDate ? row : null,
+        json: row && row.koreanDate === row.serverKoreanDate ? row : null,
       });
     if (url.pathname.endsWith("/history"))
       return route.fulfill({
         json: { items: row ? [row] : [], nextCursor: null },
       });
-    if (url.pathname.endsWith("/next")) {
+    if (url.pathname.endsWith("/today")) {
       state.requests.push({
         key: req.headers()["idempotency-key"],
         body: req.postData()!,
       });
       expect(req.headers()["x-csrf-protection"]).toBe("1");
-      state.row = {
-        ...routineFixture(),
-        koreanDate: "2026-09-30",
-        referenceDate: "2026-09-29",
-      };
+      state.row = routineFixture();
       return route.fulfill({ status: 201, json: state.row });
     }
     if (url.pathname.endsWith("/events") && row) {
@@ -53,8 +49,26 @@ async function setup(
       });
       expect(req.headers()["x-csrf-protection"]).toBe("1");
       item.revision++;
-      item.status = body.type === "complete" ? "completed" : "in_progress";
-      if (body.type === "complete") {
+      if (body.intervals.length) {
+        const end = Math.max(
+          ...body.intervals.map((r: { end: number }) => r.end),
+          item.progress.watchedSeconds,
+        );
+        item.progress = {
+          ...item.progress,
+          watchedSeconds: end,
+          positionSeconds: body.positionSeconds,
+          intervals: [{ start: 0, end }],
+        };
+      }
+      item.status = ["pause", "end", "complete"].includes(body.type)
+        ? item.progress.watchedSeconds / item.progress.durationSeconds >= 0.8
+          ? "completed"
+          : item.progress.watchedSeconds > 0
+            ? "interrupted"
+            : "not_performed"
+        : "in_progress";
+      if (item.status === "completed") {
         item.resultStatus = "completed";
         item.completedAt = "2026-09-29T03:00:00Z";
       }
@@ -73,7 +87,7 @@ async function setup(
   return state;
 }
 
-test("shows every prescribed item and keeps tomorrow separate with an explicit, durable generation request", async ({
+test("오늘의 전체 처방과 유산소 안내를 명시적으로 생성하고 새로고침으로 복원한다", async ({
   page,
 }) => {
   const state = await setup(page, null);
@@ -83,23 +97,86 @@ test("shows every prescribed item and keeps tomorrow separate with an explicit, 
   ).toBeVisible();
   expect(state.requests).toHaveLength(0);
   await page
-    .getByRole("button", { name: "내일 운동 준비하기", exact: true })
+    .getByRole("button", { name: "오늘 운동 준비하기", exact: true })
     .click();
-  await expect(page.getByRole("region", { name: "내일의 운동" })).toContainText(
-    "2026-09-30",
-  );
   await expect(
-    page.getByRole("list", { name: "오늘 배정된 운동" }),
+    page.getByRole("list", { name: "오늘 배정된 운동" }).getByRole("listitem"),
+  ).toHaveCount(3);
+  await expect(
+    page.getByRole("region", { name: "유산소 운동 안내" }),
+  ).toContainText("걷기 20분");
+  await expect(
+    page.getByRole("button", { name: "오늘 운동 준비하기", exact: true }),
   ).toHaveCount(0);
   expect(state.requests).toHaveLength(1);
   await page.reload();
-  await expect(page.getByRole("region", { name: "내일의 운동" })).toBeVisible();
-  await page.goto(
-    `/workout-routines/${state.row!.id}/items/${state.row!.routine[0].id}`,
-  );
+  await expect(
+    page.getByRole("list", { name: "오늘 배정된 운동" }).getByRole("listitem"),
+  ).toHaveCount(3);
+  expect(state.requests).toHaveLength(1);
+});
+
+test("이전 버전의 미래 배정은 보존하되 오늘로 표시하거나 기록하지 않는다", async ({
+  page,
+}) => {
+  const row = routineFixture();
+  row.koreanDate = "2026-09-30";
+  row.recordingAllowed = false;
+  row.recordingExpiresAt = "2026-09-30T15:00:00.000Z";
+  const state = await setup(page, row);
+  await page.goto(`/workout-routines/${row.id}/items/${row.routine[0].id}`);
   await expect(page.getByText("2026-09-30에 시작할 운동이에요.")).toBeVisible();
   await expect(page.locator("video")).toHaveCount(0);
   expect(state.events).toHaveLength(0);
+});
+
+test("이전 next 미확정 요청은 원래 키로 확인하고 지난 배정을 오늘로 바꾸지 않는다", async ({
+  page,
+}) => {
+  const state = await setup(page, null);
+  const oldKey = "44444444-1111-4111-8111-111111111111";
+  await page.addInitScript(
+    ({ owner, key }) => {
+      sessionStorage.setItem(
+        `modu-workout-journal:v1:${owner}:routine:next`,
+        JSON.stringify([{ key, body: "{}" }]),
+      );
+    },
+    { owner: testUser.id, key: oldKey },
+  );
+  const keys: string[] = [];
+  await page.route("**/api/v2/workout-routines/today", (route) => {
+    const key = route.request().headers()["idempotency-key"];
+    keys.push(key);
+    if (key !== oldKey) return route.fallback();
+    return route.fulfill({
+      json: {
+        ...routineFixture(),
+        koreanDate: "2026-09-28",
+        recordingAllowed: false,
+        recordingExpiresAt: "2026-09-28T15:00:00Z",
+      },
+    });
+  });
+  await page.goto("/workout");
+  await page.getByRole("button", { name: "이전 추천 요청 확인하기" }).click();
+  await expect(
+    page.getByText("이전 요청으로 준비한 2026-09-28 운동을 확인했어요.", {
+      exact: false,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("list", { name: "오늘 배정된 운동" }),
+  ).toHaveCount(0);
+  await page
+    .getByRole("button", { name: "오늘 운동 준비하기", exact: true })
+    .click();
+  await expect(
+    page.getByRole("list", { name: "오늘 배정된 운동" }).getByRole("listitem"),
+  ).toHaveCount(3);
+  expect(keys[0]).toBe(oldKey);
+  expect(keys[1]).not.toBe(oldKey);
+  expect(state.requests).toHaveLength(1);
 });
 
 test("item playback reuses recovery, saves only the selected item and replays completed videos without events", async ({
@@ -109,7 +186,8 @@ test("item playback reuses recovery, saves only the selected item and replays co
   row.routine[0].playbackUrl =
     "https://openapi.kspo.or.kr/web/video/test-1.mp4";
   row.routine[0].playbackStatus = "verified";
-  row.routine[0].verifiedDurationSeconds = 60;
+  row.routine[0].verifiedDurationSeconds = 12;
+  row.routine[0].progress.durationSeconds = 12;
   const state = await setup(page, row);
   await page.route(row.routine[0].playbackUrl, async (route) =>
     route.fulfill({
@@ -126,6 +204,11 @@ test("item playback reuses recovery, saves only the selected item and replays co
   await expect(
     page.getByRole("button", { name: "운동 완료", exact: true }),
   ).toBeEnabled();
+  await expect
+    .poll(() =>
+      page.locator("video").evaluate((v: HTMLVideoElement) => v.currentTime),
+    )
+    .toBeGreaterThan(9.6);
   await page.getByRole("button", { name: "운동 완료", exact: true }).click();
   await page.getByRole("button", { name: "완료 확인", exact: true }).click();
   await page.getByRole("link", { name: "운동 목록으로" }).click();
@@ -157,14 +240,14 @@ test("lost generation responses replay the same key across reload and readiness 
   const state = await setup(page, null);
   let fail = true;
   const keys: string[] = [];
-  await page.route("**/api/v1/workout-routines/next", (route) => {
+  await page.route("**/api/v2/workout-routines/today", (route) => {
     keys.push(route.request().headers()["idempotency-key"]);
     if (fail) return route.abort();
     return route.fallback();
   });
   await page.goto("/workout");
   await page
-    .getByRole("button", { name: "내일 운동 준비하기", exact: true })
+    .getByRole("button", { name: "오늘 운동 준비하기", exact: true })
     .click();
   await expect(
     page.getByRole("button", { name: "이전 추천 요청 확인하기" }),
@@ -172,20 +255,63 @@ test("lost generation responses replay the same key across reload and readiness 
   await page.reload();
   fail = false;
   await page.getByRole("button", { name: "이전 추천 요청 확인하기" }).click();
-  await expect(page.getByRole("region", { name: "내일의 운동" })).toBeVisible();
+  await expect(
+    page.getByRole("list", { name: "오늘 배정된 운동" }),
+  ).toBeVisible();
   expect(keys[0]).toBe(keys[1]);
   expect(state.requests).toHaveLength(1);
   state.row = null;
-  await page.route("**/api/v1/workout-routines/next", (route) =>
+  await page.route("**/api/v2/workout-routines/today", (route) =>
     route.fulfill({ status: 409, json: { code: "EXERCISE_GOAL_REQUIRED" } }),
   );
   await page.reload();
   await page
-    .getByRole("button", { name: "내일 운동 준비하기", exact: true })
+    .getByRole("button", { name: "오늘 운동 준비하기", exact: true })
     .click();
   await expect(
     page.getByRole("link", { name: "운동 목적 선택하기" }),
   ).toHaveAttribute("href", "/account/preferences");
+});
+
+test("완료 확인을 취소하면 실제 일시정지를 저장하고 start로 재개한다", async ({
+  page,
+}) => {
+  const row = routineFixture();
+  row.routine[0].playbackStatus = "verified";
+  row.routine[0].playbackUrl =
+    "https://openapi.kspo.or.kr/web/video/confirmation-test.mp4";
+  row.routine[0].verifiedDurationSeconds = 60;
+  const state = await setup(page, row);
+  await page.route(row.routine[0].playbackUrl, async (route) =>
+    route.fulfill({
+      contentType: "video/mp4",
+      body: await readFile("tests/fixtures/workout.mp4"),
+    }),
+  );
+  await page.goto(`/workout-routines/${row.id}/items/${row.routine[0].id}`);
+  await page.getByRole("button", { name: "운동 시작", exact: true }).click();
+  await expect
+    .poll(() =>
+      page.locator("video").evaluate((v: HTMLVideoElement) => v.currentTime),
+    )
+    .toBeGreaterThan(0.2);
+  await page.getByRole("button", { name: "운동 완료", exact: true }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "취소", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "이어서 운동하기" }),
+  ).toBeEnabled();
+  expect(state.events.map((event) => event.type)).toContain("pause");
+  expect(state.events.map((event) => event.type)).not.toContain("complete");
+  await page.getByRole("button", { name: "이어서 운동하기" }).click();
+  await expect(
+    page.getByRole("button", { name: "운동 완료", exact: true }),
+  ).toBeEnabled();
+  expect(state.events.filter((event) => event.type === "start")).toHaveLength(
+    2,
+  );
 });
 
 test("legacy disconnection is visible but does not block new routines; invalid new responses remain errors", async ({
@@ -207,7 +333,7 @@ test("legacy disconnection is visible but does not block new routines; invalid n
       "이전 단일 운동 기록을 불러오지 못해 새 루틴 기록만 표시해요.",
     ),
   ).toBeVisible();
-  await page.route("**/api/v1/workout-routines/current", (route) =>
+  await page.route("**/api/v2/workout-routines/current", (route) =>
     route.fulfill({ json: { routine: [] } }),
   );
   await page.reload();
@@ -223,7 +349,7 @@ test("두 기록 API의 페이지를 보존하고 실패한 커서만 재시도�
   await setup(page, row);
   let fail = true;
   const cursors: string[] = [];
-  await page.route("**/api/v1/workout-routines/history?*", (route) => {
+  await page.route("**/api/v2/workout-routines/history?*", (route) => {
     const cursor = new URL(route.request().url()).searchParams.get("cursor");
     if (!cursor)
       return route.fulfill({ json: { items: [row], nextCursor: row.id } });
@@ -240,6 +366,8 @@ test("두 기록 API의 페이지를 보존하고 실패한 커서만 재시도�
             ...row,
             id: "99999999-1111-4111-8111-111111111111",
             koreanDate: "2026-09-28",
+            recordingAllowed: false,
+            recordingExpiresAt: "2026-09-28T15:00:00.000Z",
           },
         ],
         nextCursor: null,

@@ -2,9 +2,8 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { ApiError } from "@/lib/http";
-import { getCurrentRoutine, requestNextRoutine } from "@/lib/workout-routines";
+import { getCurrentRoutine, requestTodayRoutine } from "@/lib/workout-routines";
 import { routineWorkouts, type WorkoutRoutine } from "@/lib/workout-routine";
-import { shiftDay } from "@/lib/workout-history";
 import { assignedWorkoutsForDay } from "@/lib/assigned-workouts";
 import { workoutJournal, type WorkoutWriter } from "@/lib/workout-journal";
 import { useSession } from "./session-provider";
@@ -28,7 +27,13 @@ export function TodayWorkout({ embedded = false }: { embedded?: boolean }) {
   const guard = useRef(false);
   const version = useRef(0);
   useEffect(() => {
-    const lease = workoutJournal.acquire(userId, "routine:next");
+    // A previous v1 generation intent must be resolved with its original key.
+    const legacy = workoutJournal.acquire(userId, "routine:next");
+    let lease = legacy;
+    if (!legacy.read().length) {
+      legacy.release();
+      lease = workoutJournal.acquire(userId, "routine:today");
+    }
     writer.current = lease;
     queueMicrotask(() => {
       if (lease.active()) setPending(lease.read().length > 0);
@@ -55,6 +60,7 @@ export function TodayWorkout({ embedded = false }: { embedded?: boolean }) {
         const value = await getCurrentRoutine(controller.signal);
         if (controller.signal.aborted || read !== version.current) return;
         setCurrent(value);
+        setError(undefined);
         setPending((writer.current?.read().length ?? 0) > 0);
         setLoaded(true);
       } catch (e) {
@@ -90,12 +96,12 @@ export function TodayWorkout({ embedded = false }: { embedded?: boolean }) {
     setBusy(true);
     setError(undefined);
     try {
-      const value = await requestNextRoutine(request.key);
+      const value = await requestTodayRoutine(request.key);
       if (!lease.active()) return;
       lease.save([]);
       setPending(false);
       setCreated(value);
-      // A replay may belong to an earlier day. Never relabel it as tomorrow.
+      // Replayed requests retain their original assignment date.
       if (value.koreanDate === value.serverKoreanDate) setCurrent(value);
       history.reload();
       setRetry((n) => n + 1);
@@ -136,11 +142,6 @@ export function TodayWorkout({ embedded = false }: { embedded?: boolean }) {
     current?.koreanDate === today
       ? current
       : history.routines.find((row) => row.koreanDate === today);
-  const tomorrow = shiftDay(today, 1);
-  const next =
-    created?.koreanDate === tomorrow
-      ? created
-      : history.routines.find((row) => row.koreanDate === tomorrow);
   const todayItems = assignedWorkoutsForDay(
     [
       ...history.workouts.filter((row) => !row.routine),
@@ -154,7 +155,7 @@ export function TodayWorkout({ embedded = false }: { embedded?: boolean }) {
         <>
           <Loading />
           <button className="button primary workout-request" disabled>
-            내일 운동 준비하기
+            오늘 운동 준비하기
           </button>
         </>
       ) : (
@@ -170,6 +171,19 @@ export function TodayWorkout({ embedded = false }: { embedded?: boolean }) {
                 </p>
               )}
               <AssignedWorkoutList workouts={todayItems} />
+              {todayRoutine?.cardioRecommendation && (
+                <section
+                  className="feature-card stack-sm"
+                  aria-label="유산소 운동 안내"
+                >
+                  <h3>마무리 유산소</h3>
+                  <p>
+                    {todayRoutine.cardioRecommendation.activity}{" "}
+                    {todayRoutine.cardioRecommendation.minutes}분
+                  </p>
+                  <p className="caption">영상 운동을 마친 뒤 진행해 주세요.</p>
+                </section>
+              )}
               {todayRoutine?.status === "completed" && (
                 <Notice tone="success">오늘의 모든 운동을 완료했어요.</Notice>
               )}
@@ -177,29 +191,11 @@ export function TodayWorkout({ embedded = false }: { embedded?: boolean }) {
           ) : (
             error === undefined && (
               <p className="muted">
-                아직 오늘 배정된 운동이 없어요. 내일 시작할 운동을 준비해
-                보세요.
+                아직 오늘 배정된 운동이 없어요. 오늘 할 운동을 준비해 보세요.
               </p>
             )
           )}
-          {next && (
-            <section className="feature-card stack-sm" aria-label="내일의 운동">
-              <h3>내일의 운동이 준비됐어요</h3>
-              <p className="caption">
-                {next.koreanDate} · {next.routine.length}개 운동 · 예상{" "}
-                {next.estimatedMinutes}분
-              </p>
-              <ol>
-                {next.routine.map((item) => (
-                  <li key={item.id}>
-                    {item.title} · {item.prescription.text} · 휴식{" "}
-                    {item.prescription.restSec}초
-                  </li>
-                ))}
-              </ol>
-            </section>
-          )}
-          {created && created.koreanDate !== tomorrow && (
+          {created && created.koreanDate !== today && (
             <Notice tone="info">
               이전 요청으로 준비한 {created.koreanDate} 운동을 확인했어요.{" "}
               <Link href="/workouts" className="text-link">
@@ -213,7 +209,7 @@ export function TodayWorkout({ embedded = false }: { embedded?: boolean }) {
               수 있어요.
             </Notice>
           )}
-          {(!next || pending) && (
+          {(!todayRoutine || pending) && (
             <button
               className="button primary workout-request"
               disabled={busy || remaining > 0}
@@ -225,7 +221,7 @@ export function TodayWorkout({ embedded = false }: { embedded?: boolean }) {
                   ? `${remaining}초 후 다시 시도`
                   : pending
                     ? "이전 추천 요청 확인하기"
-                    : "내일 운동 준비하기"}
+                    : "오늘 운동 준비하기"}
             </button>
           )}
           {error !== undefined && (

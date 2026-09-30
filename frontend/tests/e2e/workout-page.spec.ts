@@ -73,7 +73,7 @@ test("메인과 운동 탭은 오늘의 여러 배정을 모두 보여주고 시
   expect(api.mutations).toEqual([]);
 });
 
-test("오늘 배정이 없으면 이전 운동을 오늘로 표시하지 않고 내일 루틴을 명시적으로 준비한다", async ({
+test("오늘 배정이 없으면 이전 운동을 오늘로 표시하지 않고 오늘 루틴을 명시적으로 준비한다", async ({
   page,
 }) => {
   await installApi(page, testRecord());
@@ -82,15 +82,16 @@ test("오늘 배정이 없으면 이전 운동을 오늘로 표시하지 않고 
     route.fulfill({ json: { items: [previous], nextCursor: null } }),
   );
   let requests = 0;
-  await page.route("**/api/v1/workout-routines/next", (route) => {
+  let generated: ReturnType<typeof routineFixture> | null = null;
+  await page.route("**/api/v2/workout-routines/current", (route) =>
+    route.fulfill({ json: generated }),
+  );
+  await page.route("**/api/v2/workout-routines/today", (route) => {
     requests++;
+    generated = routineFixture();
     return route.fulfill({
       status: 201,
-      json: {
-        ...routineFixture(),
-        koreanDate: "2026-09-30",
-        referenceDate: "2026-09-29",
-      },
+      json: generated,
     });
   });
   await page.goto("/workout");
@@ -102,12 +103,14 @@ test("오늘 배정이 없으면 이전 운동을 오늘로 표시하지 않고 
   ).toHaveCount(0);
   expect(requests).toBe(0);
   await page
-    .getByRole("button", { name: "내일 운동 준비하기", exact: true })
+    .getByRole("button", { name: "오늘 운동 준비하기", exact: true })
     .click();
-  await expect(page.getByRole("region", { name: "내일의 운동" })).toBeVisible();
   await expect(
     page.getByRole("list", { name: "오늘 배정된 운동" }),
-  ).toHaveCount(0);
+  ).toBeVisible();
+  await expect(
+    page.getByRole("list", { name: "오늘 배정된 운동" }).getByRole("listitem"),
+  ).toHaveCount(3);
   await expect(page.locator("video")).toHaveCount(0);
   expect(requests).toBe(1);
 });

@@ -94,6 +94,8 @@ test("future allocations preserve their date and incomplete items do not create 
   const row = routineFixture();
   row.koreanDate = "2026-09-30";
   row.referenceDate = "2026-09-29";
+  row.recordingAllowed = false;
+  row.recordingExpiresAt = "2026-09-30T15:00:00.000Z";
   const [workout] = routineWorkouts(parseRoutine(row));
   assert.equal(workout.koreanDate, "2026-09-30");
   assert.equal(completedDate(workout), null);
@@ -114,4 +116,19 @@ test("today's list respects prescription order even when item UUIDs sort differe
     sorted.map((item) => item.routine?.order),
     [1, 2, 3],
   );
+});
+
+test("cardio remains optional guidance and malformed time contracts cannot enable recording", () => {
+  const row = routineFixture();
+  row.cardioRecommendation = null;
+  assert.equal(parseRoutine(row).cardioRecommendation, null);
+  for (const patch of [
+    { cardioRecommendation: undefined },
+    { cardioRecommendation: { activity: "수영", minutes: 20 } },
+    { cardioRecommendation: { activity: "걷기", minutes: 0 } },
+    { recordingAllowed: false },
+    { serverTime: "2026-09-29T15:00:00Z" },
+    { recordingExpiresAt: "2026-09-30T15:00:00Z" },
+  ])
+    assert.throws(() => parseRoutine({ ...row, ...patch }));
 });

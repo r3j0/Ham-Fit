@@ -38,6 +38,7 @@ export function WorkoutPlayer({
     session.getSnapshot,
   );
   const { workout } = state;
+  const readOnly = !!workout.routine && !state.recordingAllowed;
   const video = useRef<HTMLVideoElement>(null);
   const restored = useRef(false);
   const lastSave = useRef(0);
@@ -53,8 +54,9 @@ export function WorkoutPlayer({
     state.error !== undefined ||
     state.terminalPending;
   const canPlay =
-    !actionBlocked &&
-    (workout.status === "in_progress" || workout.status === "completed");
+    readOnly ||
+    (!actionBlocked &&
+      (workout.status === "in_progress" || workout.status === "completed"));
   const verified =
     workout.video.playbackStatus === "verified" && !!workout.video.playbackUrl;
   const completed = workout.status === "completed";
@@ -64,7 +66,7 @@ export function WorkoutPlayer({
     if (completed) reloadHistory();
   }, [completed, reloadHistory]);
   useUnsaved(
-    (playing && !completed) || state.pending > 0,
+    (playing && !completed && !readOnly) || state.pending > 0,
     "운동 진행을 저장하고 있어요. 이 화면을 나가면 재생을 멈추고, 미확정 저장은 돌아온 뒤 다시 확인해요. 나갈까요?",
   );
   useEffect(() => {
@@ -73,6 +75,7 @@ export function WorkoutPlayer({
     const capturePause = () => {
       const media = video.current ?? mountedMedia;
       if (!media) return;
+      if (session.getSnapshot().workout.routine && !session.canRecord()) return;
       // Synchronous journaling survives pagehide even when the request cannot finish.
       suppressPause.current = true;
       media.pause();
@@ -108,11 +111,11 @@ export function WorkoutPlayer({
     if (!canPlay) video.current?.pause();
   }, [canPlay]);
   useEffect(() => {
-    if (completed) {
+    if (completed && !readOnly) {
       video.current?.pause();
       if (video.current) video.current.currentTime = 0;
     }
-  }, [completed]);
+  }, [completed, readOnly]);
   useEffect(() => {
     const media = video.current;
     if (
@@ -144,6 +147,7 @@ export function WorkoutPlayer({
       );
   }
   async function start() {
+    if (readOnly) return;
     if (state.saving || state.pending || state.error !== undefined || !verified)
       return;
     await session.record("start", {
@@ -166,14 +170,24 @@ export function WorkoutPlayer({
     await video.current?.play().catch(() => {});
   }
   function finalize(type: "end" | "complete") {
+    if (session.getSnapshot().workout.routine && !session.canRecord()) {
+      setConfirm(null);
+      return;
+    }
     const media = video.current;
-    suppressPause.current = true;
-    media?.pause();
+    if (media && !media.paused) {
+      suppressPause.current = true;
+      media.pause();
+    }
     const sample = media
       ? samplePlayback(media, workout)
       : { positionSeconds: workout.progress.positionSeconds, intervals: [] };
     void session.record(type, sample);
-    suppressPause.current = false;
+    setConfirm(null);
+  }
+  function closeConfirmation() {
+    if (workout.routine && (confirm === "end" || confirm === "complete"))
+      capture("pause");
     setConfirm(null);
   }
   const rejected =
@@ -182,6 +196,11 @@ export function WorkoutPlayer({
   return (
     <div className="stack">
       <WorkoutSummary workout={workout} />
+      {readOnly && (
+        <Notice tone="info">
+          지난 루틴의 시청은 운동 기록에 반영되지 않습니다.
+        </Notice>
+      )}
       {completed && !replay && (
         <Notice tone="success">
           운동을 완료했어요. 영상을 다시 볼 수 있고, 완료한 운동의 기록은
@@ -253,13 +272,17 @@ export function WorkoutPlayer({
               restored.current = true;
             }}
             onPlay={() => {
+              if (session.getSnapshot().workout.routine) session.canRecord();
               const latest = session.getSnapshot();
               if (
-                !latest.connected ||
-                latest.recovering ||
-                !["in_progress", "completed"].includes(latest.workout.status) ||
-                latest.error !== undefined ||
-                latest.terminalPending
+                !(latest.workout.routine && !latest.recordingAllowed) &&
+                (!latest.connected ||
+                  latest.recovering ||
+                  !["in_progress", "completed"].includes(
+                    latest.workout.status,
+                  ) ||
+                  latest.error !== undefined ||
+                  latest.terminalPending)
               ) {
                 video.current?.pause();
                 return;
@@ -270,6 +293,7 @@ export function WorkoutPlayer({
             onPause={() => {
               setPlaying(false);
               if (!suppressPause.current) capture("pause");
+              suppressPause.current = false;
             }}
             onTimeUpdate={() => {
               if (
@@ -310,7 +334,7 @@ export function WorkoutPlayer({
               </button>
             </>
           )}
-          {!completed && workout.status !== "in_progress" && (
+          {!readOnly && !completed && workout.status !== "in_progress" && (
             <button
               className="button primary"
               disabled={
@@ -325,13 +349,16 @@ export function WorkoutPlayer({
               {workout.status === "assigned" ? "운동 시작" : "이어서 운동하기"}
             </button>
           )}
-          {!completed && workout.status === "in_progress" && (
+          {!readOnly && !completed && workout.status === "in_progress" && (
             <div className="button-row">
               <button
                 className="button secondary"
                 disabled={actionBlocked}
                 onClick={() => {
-                  video.current?.pause();
+                  if (video.current && !video.current.paused) {
+                    suppressPause.current = true;
+                    video.current.pause();
+                  }
                   setConfirm("end");
                 }}
               >
@@ -341,7 +368,10 @@ export function WorkoutPlayer({
                 className="button primary"
                 disabled={actionBlocked}
                 onClick={() => {
-                  video.current?.pause();
+                  if (video.current && !video.current.paused) {
+                    suppressPause.current = true;
+                    video.current.pause();
+                  }
                   setConfirm("complete");
                 }}
               >
@@ -351,21 +381,23 @@ export function WorkoutPlayer({
           )}
         </>
       )}
-      {completed && (
+      {(completed || readOnly) && (
         <Link
           className="button primary"
           href={
-            replay && completedDay
-              ? `${basePath}/history/${completedDay}`
-              : replay
-                ? overviewHref
-                : "/workout"
+            readOnly
+              ? overviewHref
+              : replay && completedDay
+                ? `${basePath}/history/${completedDay}`
+                : replay
+                  ? overviewHref
+                  : "/workout"
           }
         >
-          {replay ? "운동 기록으로" : "운동 목록으로"}
+          {readOnly || replay ? "운동 기록으로" : "운동 목록으로"}
         </Link>
       )}
-      {confirm && (
+      {confirm && !readOnly && (
         <Dialog
           title={
             confirm === "complete"
@@ -374,22 +406,24 @@ export function WorkoutPlayer({
                 ? "운동을 여기서 종료할까요?"
                 : "서버에 저장된 상태로 돌아갈까요?"
           }
-          onClose={() => setConfirm(null)}
+          onClose={closeConfirmation}
           busy={state.saving}
         >
           <div className="stack">
             <p className="muted">
-              {confirm === "complete"
-                ? "직접 운동을 마쳤는지 확인해 주세요. 완료 후에는 진행 기록을 변경할 수 없어요."
-                : confirm === "end"
-                  ? "시청량이 절반 미만이면 미진행, 절반 이상이면 중단으로 기록돼요. 나중에 이어갈 수 있어요."
-                  : "서버가 거절한 미저장 진행은 버리고, 서버에 저장된 위치와 상태를 불러와요."}
+              {workout.routine && confirm !== "reset"
+                ? "실제로 시청한 구간이 영상의 80% 이상이면 완료로 기록돼요. 그보다 적으면 중단 또는 미진행으로 저장되며, 오늘 안에 이어서 운동할 수 있어요."
+                : confirm === "complete"
+                  ? "직접 운동을 마쳤는지 확인해 주세요. 완료 후에는 진행 기록을 변경할 수 없어요."
+                  : confirm === "end"
+                    ? "시청량이 절반 미만이면 미진행, 절반 이상이면 중단으로 기록돼요. 나중에 이어갈 수 있어요."
+                    : "서버가 거절한 미저장 진행은 버리고, 서버에 저장된 위치와 상태를 불러와요."}
             </p>
             <div className="button-row">
               <button
                 className="button secondary"
                 disabled={state.saving}
-                onClick={() => setConfirm(null)}
+                onClick={closeConfirmation}
               >
                 취소
               </button>

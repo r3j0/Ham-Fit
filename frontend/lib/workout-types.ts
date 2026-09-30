@@ -17,6 +17,12 @@ export interface PlaybackEvent {
   positionSeconds: number;
 }
 export interface Workout {
+  recording?: {
+    allowed: boolean;
+    serverTime: string;
+    expiresAt: string;
+    deadline: number;
+  };
   routine?: {
     id: string;
     itemId: string;

@@ -4,6 +4,16 @@ import { Notice } from "./ui";
 export function WorkoutError({ error }: { error: unknown }) {
   const code = error instanceof ApiError ? error.code : undefined;
   const help = {
+    ROUTINE_API_RETIRED: [
+      "운동 추천 방식이 변경되었어요. 오늘의 루틴을 이용해 주세요.",
+      "/workout",
+      "오늘의 운동으로",
+    ],
+    ROUTINE_EXPIRED: [
+      "지난 루틴은 영상만 볼 수 있어요. 운동 기록은 오늘의 루틴에서 저장해 주세요.",
+      "/workout",
+      "오늘의 운동으로",
+    ],
     RECOMMENDATION_NOT_CONNECTED: [
       "이전 단일 운동은 현재 연결되지 않았어요. 새 루틴을 이용해 주세요.",
       "/workout",

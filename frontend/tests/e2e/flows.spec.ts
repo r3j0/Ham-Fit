@@ -308,16 +308,16 @@ test("생년월일은 계정 설정에서 수정·복원하고 조회·저장 �
     page.getByRole("button", { name: "로그아웃", exact: true }),
   ).toBeEnabled();
 });
-test("내일 루틴은 목적·측정을 안내하고 응답 유실·새로고침 후 같은 배정을 복구한다", async ({
+test("오늘 루틴은 목적·측정을 안내하고 응답 유실·새로고침 후 같은 배정을 복구한다", async ({
   page,
 }) => {
   await signup(page, "main");
   await expect(
-    page.getByRole("button", { name: "내일 운동 준비하기", exact: true }),
+    page.getByRole("button", { name: "오늘 운동 준비하기", exact: true }),
   ).toBeVisible();
   await expect(page.getByRole("main").getByRole("alert")).toHaveCount(0);
   await page
-    .getByRole("button", { name: "내일 운동 준비하기", exact: true })
+    .getByRole("button", { name: "오늘 운동 준비하기", exact: true })
     .click();
   await page.getByRole("link", { name: "운동 목적 선택하기" }).click();
   await page.getByText("기본 체력 증진", { exact: true }).click();
@@ -328,7 +328,7 @@ test("내일 루틴은 목적·측정을 안내하고 응답 유실·새로고�
     .getByRole("link", { name: "메인", exact: true })
     .click();
   await page
-    .getByRole("button", { name: "내일 운동 준비하기", exact: true })
+    .getByRole("button", { name: "오늘 운동 준비하기", exact: true })
     .click();
   await expect(
     page.getByRole("link", { name: "측정 기록 등록하기" }),
@@ -343,7 +343,7 @@ test("내일 루틴은 목적·측정을 안내하고 응답 유실·새로고�
     .click();
   let assignmentId = "";
   const keys: string[] = [];
-  await page.route("**/workout-routines/next", async (route) => {
+  await page.route("**/workout-routines/today", async (route) => {
     keys.push(route.request().headers()["idempotency-key"]);
     expect(route.request().postDataJSON()).toEqual({});
     const response = await route.fetch();
@@ -353,7 +353,7 @@ test("내일 루틴은 목적·측정을 안내하고 응답 유실·새로고�
     } else await route.fulfill({ response });
   });
   await page
-    .getByRole("button", { name: "내일 운동 준비하기", exact: true })
+    .getByRole("button", { name: "오늘 운동 준비하기", exact: true })
     .click();
   await expect(
     page.getByRole("button", { name: "이전 추천 요청 확인하기" }),
@@ -366,12 +366,14 @@ test("내일 루틴은 목적·측정을 안내하고 응답 유실·새로고�
   expect(keys).toHaveLength(2);
   expect(keys[0]).toBe(keys[1]);
   expect(assignmentId).toMatch(/^[a-f0-9-]{36}$/);
-  await expect(page.getByRole("region", { name: "내일의 운동" })).toBeVisible();
   await expect(
-    page.getByRole("link", { name: "운동 시작하기", exact: true }),
-  ).toHaveCount(0);
+    page.getByRole("list", { name: "오늘 배정된 운동" }),
+  ).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "내일 운동 준비하기", exact: true }),
+    page.getByRole("link", { name: "운동 시작하기", exact: true }).first(),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "오늘 운동 준비하기", exact: true }),
   ).toHaveCount(0);
 });
 test("실제 저장 응답 유실 후 같은 키로 재시도해 중복 생성하지 않는다", async ({

@@ -1,10 +1,10 @@
 import { test, expect } from "@playwright/test";
 import { parseRoutine } from "../../lib/workout-routine";
-import { shiftDay } from "../../lib/workout-history";
 import { respectRateLimit } from "./live-api-fixtures";
 
 const api = process.env.E2E_API_BASE_URL ?? "http://localhost:3001/api/v1";
-test("실제 추천 엔진: 준비 조건, 내일 루틴 생성, 중복 방지와 저장된 처방 복원", async ({
+const routines = api.replace(/\/v1$/, "/v2");
+test("실제 추천 엔진: 준비 조건, 오늘 루틴 생성, 중복 방지와 저장된 처방 복원", async ({
   page,
 }) => {
   const password = "routine-live-test-2026!";
@@ -25,7 +25,7 @@ test("실제 추천 엔진: 준비 조건, 내일 루틴 생성, 중복 방지�
   try {
     await page.goto("/workout");
     await page
-      .getByRole("button", { name: "내일 운동 준비하기", exact: true })
+      .getByRole("button", { name: "오늘 운동 준비하기", exact: true })
       .click();
     await expect(
       page.getByRole("link", { name: "운동 목적 선택하기" }),
@@ -63,31 +63,40 @@ test("실제 추천 엔진: 준비 조건, 내일 루틴 생성, 중복 방지�
     );
     expect(preferences.status()).toBe(200);
     const generated = page.waitForResponse((r) =>
-      r.url().endsWith("/workout-routines/next"),
+      r.url().endsWith("/workout-routines/today"),
     );
     await page
-      .getByRole("button", { name: "내일 운동 준비하기", exact: true })
+      .getByRole("button", { name: "오늘 운동 준비하기", exact: true })
       .click();
     const response = await generated;
     expect(response.status()).toBe(201);
     const routine = parseRoutine(await response.json());
-    expect(routine.koreanDate).toBe(shiftDay(routine.serverKoreanDate, 1));
+    expect(routine.koreanDate).toBe(routine.serverKoreanDate);
     expect(routine.routine.length).toBeGreaterThan(1);
     await expect(
-      page.getByRole("region", { name: "내일의 운동" }),
+      page.getByRole("list", { name: "오늘 배정된 운동" }),
     ).toContainText(routine.routine[0].prescription.text);
     await page.reload();
     await expect(
-      page.getByRole("region", { name: "내일의 운동" }).getByRole("listitem"),
+      page
+        .getByRole("list", { name: "오늘 배정된 운동" })
+        .getByRole("listitem"),
     ).toHaveCount(routine.routine.length);
-    const repeat = await page.request.post(`${api}/workout-routines/next`, {
-      headers: { ...headers, "Idempotency-Key": crypto.randomUUID() },
-      data: {},
-    });
+    const repeat = await page.request.post(
+      `${routines}/workout-routines/today`,
+      {
+        headers: { ...headers, "Idempotency-Key": crypto.randomUUID() },
+        data: {},
+      },
+    );
     expect(repeat.status()).toBe(200);
-    expect(parseRoutine(await repeat.json())).toEqual(routine);
+    const repeated = parseRoutine(await repeat.json());
+    expect(repeated.id).toBe(routine.id);
+    expect(repeated.routine).toEqual(routine.routine);
+    expect(repeated.cardioRecommendation).toEqual(routine.cardioRecommendation);
+    expect(repeated.recordingAllowed).toBe(true);
     const event = await page.request.post(
-      `${api}/workout-routines/${routine.id}/items/${routine.routine[0].id}/events`,
+      `${routines}/workout-routines/${routine.id}/items/${routine.routine[0].id}/events`,
       {
         headers: { ...headers, "Idempotency-Key": crypto.randomUUID() },
         data: {
@@ -99,14 +108,95 @@ test("실제 추천 엔진: 준비 조건, 내일 루틴 생성, 중복 방지�
         },
       },
     );
-    expect(event.status()).toBe(409);
+    expect(event.status()).toBe(200);
+    const retired = await page.request.get(`${api}/workout-routines/current`, {
+      headers,
+    });
+    expect(retired.status()).toBe(410);
+    expect((await retired.json()).code).toBe("ROUTINE_API_RETIRED");
     await page.goto(
       `/workout-routines/${routine.id}/items/${routine.routine[0].id}`,
     );
     await expect(
-      page.getByText(`${routine.koreanDate}에 시작할 운동이에요.`),
+      page
+        .getByText(routine.routine[0].prescription.text, { exact: false })
+        .first(),
     ).toBeVisible();
-    await expect(page.locator("video")).toHaveCount(0);
+
+    // Explicit played-range fixtures verify server aggregation, not external media playback.
+    const firstItem = routine.routine[0],
+      deviceId = crypto.randomUUID();
+    let sequence = 0;
+    async function send(itemId: string, type: string, end = 0) {
+      const response = await page.request.post(
+        `${routines}/workout-routines/${routine.id}/items/${itemId}/events`,
+        {
+          headers: { ...headers, "Idempotency-Key": crypto.randomUUID() },
+          data: {
+            type,
+            deviceId,
+            sequence: ++sequence,
+            intervals: end ? [{ start: 0, end }] : [],
+            positionSeconds: end,
+          },
+        },
+      );
+      expect(response.status()).toBe(200);
+      return parseRoutine(await response.json());
+    }
+    const stopped = await send(
+      firstItem.id,
+      "pause",
+      firstItem.progress.durationSeconds * 0.3,
+    );
+    const performedAt = stopped.routine[0].performedAt;
+    await send(firstItem.id, "start");
+    const unchanged = await send(
+      firstItem.id,
+      "pause",
+      firstItem.progress.durationSeconds * 0.3,
+    );
+    expect(unchanged.routine[0].performedAt).toBe(performedAt);
+    const partialActivity = await (
+      await page.request.get(`${api}/users/me/profile/activity`, { headers })
+    ).json();
+    expect(partialActivity).toMatchObject({
+      streak: 0,
+      longestStreak: 0,
+      totalWorkoutDays: 0,
+    });
+    let final = unchanged;
+    for (const item of routine.routine) {
+      await send(item.id, "start");
+      final = await send(
+        item.id,
+        "complete",
+        item.progress.durationSeconds * 0.8,
+      );
+    }
+    expect(final.status).toBe("completed");
+    const activity = await (
+      await page.request.get(`${api}/users/me/profile/activity`, { headers })
+    ).json();
+    expect(activity).toMatchObject({
+      streak: 1,
+      longestStreak: 1,
+      totalWorkoutDays: 1,
+    });
+    await page.goto("/account");
+    const metrics = page
+      .getByRole("region", { name: "활동 리포트" })
+      .locator("dd");
+    await expect(metrics.nth(0)).toHaveText("1일");
+    await expect(metrics.nth(1)).toHaveText("1일");
+    await expect(metrics.nth(4)).toHaveText("1일");
+    await page.goto("/workout");
+    await expect(
+      page.getByText("오늘의 모든 운동을 완료했어요."),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "오늘 운동 준비하기", exact: true }),
+    ).toHaveCount(0);
   } finally {
     expect(
       (

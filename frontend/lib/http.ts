@@ -21,21 +21,31 @@ export class ApiError extends Error {
 export type ApiRequestOptions = RequestInit & {
   timeoutMs?: number;
   allowNull?: boolean;
+  apiVersion?: "v1" | "v2";
 };
 export async function request<T>(
   path: string,
   options: ApiRequestOptions = {},
 ): Promise<{ data: T; headers: Headers }> {
   let response: Response;
-  const { timeoutMs = 20000, allowNull = false, ...init } = options;
+  const {
+    timeoutMs = 20000,
+    allowNull = false,
+    apiVersion = "v1",
+    ...init
+  } = options;
   const headers = new Headers(options.headers);
   if (typeof options.body === "string" && !headers.has("Content-Type"))
     headers.set("Content-Type", "application/json");
   try {
     // Direct browser requests keep each client's IP visible to the backend.
-    const base = (
+    const configuredBase = (
       process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001/api/v1"
     ).replace(/\/$/, "");
+    const base =
+      apiVersion === "v2"
+        ? configuredBase.replace(/\/v1$/, "/v2")
+        : configuredBase;
     response = await fetch(`${base}${path}`, {
       ...init,
       credentials: "include",

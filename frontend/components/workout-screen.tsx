@@ -72,7 +72,7 @@ export function WorkoutScreen({
             </Link>
           </>
         ) : workout ? (
-          replay && workout.status !== "completed" ? (
+          replay && workout.status !== "completed" && !workout.routine ? (
             <>
               <Notice tone="info">완료한 운동만 다시 볼 수 있어요.</Notice>
               <Link className="button primary" href={workoutHref(workout)}>
