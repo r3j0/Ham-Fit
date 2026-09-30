@@ -38,7 +38,7 @@ test("실제 추천 엔진: 준비 조건, 오늘 루틴 생성, 중복 방지�
       data: {
         measuredOn: "2026-09-17",
         ageAtMeasurement: 26,
-        sexAtMeasurement: null,
+        sexAtMeasurement: "male",
         reportKind: "standard",
         centerName: null,
         reportedOverallGrade: null,
@@ -50,10 +50,22 @@ test("실제 추천 엔진: 준비 조건, 오늘 루틴 생성, 중복 방지�
             unit: "cm",
             reportedGrade: null,
           },
+          {
+            measurementCode: "sit_and_reach",
+            value: "0",
+            unit: "cm",
+            reportedGrade: null,
+          },
         ],
       },
     });
     expect(record.status()).toBe(201);
+    const measured = await record.json();
+    expect(
+      measured.axes.find(
+        (axis: { axis: string }) => axis.axis === "flexibility",
+      ),
+    ).toMatchObject({ status: "below_standard", grade: null });
     const preferences = await page.request.patch(
       `${api}/users/me/preferences`,
       {
@@ -73,6 +85,35 @@ test("실제 추천 엔진: 준비 조건, 오늘 루틴 생성, 중복 방지�
     const routine = parseRoutine(await response.json());
     expect(routine.koreanDate).toBe(routine.serverKoreanDate);
     expect(routine.routine.length).toBeGreaterThan(1);
+    expect(routine.routine.every((item) => item.prescription.sets === 3)).toBe(
+      true,
+    );
+    const snapshot = routine.inputSnapshot as {
+      axes: { axis: string; status: string; grade: number | null }[];
+      fitness100: { fitness: { flexibility: number } };
+    };
+    expect(snapshot.fitness100.fitness.flexibility).toBe(3);
+    expect(
+      snapshot.axes.find((axis) => axis.axis === "flexibility"),
+    ).toMatchObject({ status: "below_standard", grade: null });
+    const guidance = page.getByRole("region", { name: "유산소 운동 안내" });
+    expect(routine.cardioRecommendation).not.toBeNull();
+    const cardio = routine.cardioRecommendation!;
+    await expect(guidance).toContainText(
+      `${cardio.activity} ${cardio.minutes}분`,
+    );
+    await expect(
+      guidance.locator("button, input, video, progress"),
+    ).toHaveCount(0);
+    await expect(
+      page.getByText(
+        `영상 운동 예상 ${routine.estimatedMinutes}분 (유산소 제외)`,
+        { exact: false },
+      ),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("list", { name: "오늘 배정된 운동" }).getByRole("heading"),
+    ).toHaveText(routine.routine.map((item) => item.title));
     await expect(
       page.getByRole("list", { name: "오늘 배정된 운동" }),
     ).toContainText(routine.routine[0].prescription.text);
@@ -82,6 +123,20 @@ test("실제 추천 엔진: 준비 조건, 오늘 루틴 생성, 중복 방지�
         .getByRole("list", { name: "오늘 배정된 운동" })
         .getByRole("listitem"),
     ).toHaveCount(routine.routine.length);
+    await expect(guidance).toContainText(
+      `${cardio.activity} ${cardio.minutes}분`,
+    );
+    expect(
+      (
+        await page.request.patch(`${api}/users/me/preferences`, {
+          headers,
+          data: {
+            exerciseVolume: "more",
+            exerciseGoal: "body_composition_management",
+          },
+        })
+      ).status(),
+    ).toBe(200);
     const repeat = await page.request.post(
       `${routines}/workout-routines/today`,
       {
@@ -95,6 +150,24 @@ test("실제 추천 엔진: 준비 조건, 오늘 루틴 생성, 중복 방지�
     expect(repeated.routine).toEqual(routine.routine);
     expect(repeated.cardioRecommendation).toEqual(routine.cardioRecommendation);
     expect(repeated.recordingAllowed).toBe(true);
+    const detail = await page.request.get(
+      `${routines}/workout-routines/${routine.id}`,
+      { headers },
+    );
+    expect(detail.status()).toBe(200);
+    expect(parseRoutine(await detail.json()).cardioRecommendation).toEqual(
+      cardio,
+    );
+    const history = await page.request.get(
+      `${routines}/workout-routines/history?limit=20`,
+      { headers },
+    );
+    expect(history.status()).toBe(200);
+    expect((await history.json()).items[0].cardioRecommendation).toEqual(
+      cardio,
+    );
+    await page.goto(`/measurements/${measured.id}`);
+    await expect(page.locator(".radar-grade").nth(3)).toHaveText("기준 미달");
     const event = await page.request.post(
       `${routines}/workout-routines/${routine.id}/items/${routine.routine[0].id}/events`,
       {
@@ -175,6 +248,7 @@ test("실제 추천 엔진: 준비 조건, 오늘 루틴 생성, 중복 방지�
       );
     }
     expect(final.status).toBe("completed");
+    expect(final.cardioRecommendation).toEqual(cardio);
     const activity = await (
       await page.request.get(`${api}/users/me/profile/activity`, { headers })
     ).json();
@@ -194,6 +268,9 @@ test("실제 추천 엔진: 준비 조건, 오늘 루틴 생성, 중복 방지�
     await expect(
       page.getByText("오늘의 모든 운동을 완료했어요."),
     ).toBeVisible();
+    await expect(guidance).toContainText(
+      `${cardio.activity} ${cardio.minutes}분`,
+    );
     await expect(
       page.getByRole("button", { name: "오늘 운동 준비하기", exact: true }),
     ).toHaveCount(0);

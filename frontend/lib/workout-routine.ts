@@ -182,8 +182,9 @@ export function parseRoutine(value: unknown, roundTripMs = 0): WorkoutRoutine {
       .slice(0, 10) !== row.serverKoreanDate
   )
     invalid();
-  if (row.cardioRecommendation !== null) {
-    const cardio = object(row.cardioRecommendation);
+  const cardioRecommendation = row.cardioRecommendation ?? null;
+  if (cardioRecommendation !== null) {
+    const cardio = object(cardioRecommendation);
     if (
       !["걷기", "뛰기"].includes(String(cardio.activity)) ||
       !integer(cardio.minutes, 1) ||
@@ -204,6 +205,7 @@ export function parseRoutine(value: unknown, roundTripMs = 0): WorkoutRoutine {
     invalid();
   return {
     ...row,
+    cardioRecommendation,
     routine: items,
     recordingDeadline:
       performance.now() +

@@ -122,8 +122,10 @@ test("cardio remains optional guidance and malformed time contracts cannot enabl
   const row = routineFixture();
   row.cardioRecommendation = null;
   assert.equal(parseRoutine(row).cardioRecommendation, null);
+  const legacy = { ...row } as Partial<typeof row>;
+  delete legacy.cardioRecommendation;
+  assert.equal(parseRoutine(legacy).cardioRecommendation, null);
   for (const patch of [
-    { cardioRecommendation: undefined },
     { cardioRecommendation: { activity: "수영", minutes: 20 } },
     { cardioRecommendation: { activity: "걷기", minutes: 0 } },
     { recordingAllowed: false },

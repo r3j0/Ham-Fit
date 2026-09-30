@@ -7,6 +7,7 @@ import type { WorkoutRoutine } from "../../lib/workout-routine";
 async function setup(
   page: Page,
   row: WorkoutRoutine | null = routineFixture(),
+  generated = routineFixture(),
 ) {
   await installApi(page, testRecord());
   const state = {
@@ -35,7 +36,9 @@ async function setup(
         body: req.postData()!,
       });
       expect(req.headers()["x-csrf-protection"]).toBe("1");
-      state.row = routineFixture();
+      if (row && row.koreanDate === row.serverKoreanDate)
+        return route.fulfill({ status: 200, json: row });
+      state.row = generated;
       return route.fulfill({ status: 201, json: state.row });
     }
     if (url.pathname.endsWith("/events") && row) {
@@ -87,33 +90,146 @@ async function setup(
   return state;
 }
 
-test("오늘의 전체 처방과 유산소 안내를 명시적으로 생성하고 새로고침으로 복원한다", async ({
+for (const cardio of [
+  { activity: "걷기", minutes: 20 },
+  { activity: "뛰기", minutes: 13 },
+] as const)
+  test(`영상 뒤 ${cardio.activity} ${cardio.minutes}분 안내를 생성·재조회·당일 재사용으로 보존한다`, async ({
+    page,
+  }) => {
+    const generated = routineFixture();
+    generated.cardioRecommendation = cardio;
+    const state = await setup(page, null, generated);
+    await page.goto("/workout");
+    await expect(
+      page.getByText("아직 오늘 배정된 운동이 없어요.", { exact: false }),
+    ).toBeVisible();
+    expect(state.requests).toHaveLength(0);
+    await page
+      .getByRole("button", { name: "오늘 운동 준비하기", exact: true })
+      .click();
+    await expect(
+      page
+        .getByRole("list", { name: "오늘 배정된 운동" })
+        .getByRole("listitem"),
+    ).toHaveCount(3);
+    await expect(
+      page.getByRole("region", { name: "유산소 운동 안내" }),
+    ).toContainText(`${cardio.activity} ${cardio.minutes}분`);
+    const list = page.getByRole("list", { name: "오늘 배정된 운동" });
+    const guidance = page.getByRole("region", { name: "유산소 운동 안내" });
+    expect(
+      await list.evaluate((list) => {
+        const guidance = document.querySelector(
+          '[aria-label="유산소 운동 안내"]',
+        )!;
+        return !!(
+          list.compareDocumentPosition(guidance) &
+          Node.DOCUMENT_POSITION_FOLLOWING
+        );
+      }),
+    ).toBe(true);
+    await expect(
+      page.getByText("영상 운동 예상 6분 (유산소 제외)", { exact: false }),
+    ).toBeVisible();
+    await expect(
+      guidance.locator("button, input, video, progress"),
+    ).toHaveCount(0);
+    expect(state.events).toHaveLength(0);
+    await expect(
+      page.getByRole("button", { name: "오늘 운동 준비하기", exact: true }),
+    ).toHaveCount(0);
+    expect(state.requests).toHaveLength(1);
+    await page.reload();
+    await expect(
+      page
+        .getByRole("list", { name: "오늘 배정된 운동" })
+        .getByRole("listitem"),
+    ).toHaveCount(3);
+    await expect(guidance).toContainText(
+      `${cardio.activity} ${cardio.minutes}분`,
+    );
+    await page.evaluate(
+      ({ owner, key }) => {
+        sessionStorage.setItem(
+          `modu-workout-journal:v1:${owner}:routine:today`,
+          JSON.stringify([{ key, body: "{}" }]),
+        );
+      },
+      { owner: testUser.id, key: crypto.randomUUID() },
+    );
+    await page.reload();
+    await page.getByRole("button", { name: "이전 추천 요청 확인하기" }).click();
+    await expect(
+      page.getByRole("button", { name: "이전 추천 요청 확인하기" }),
+    ).toHaveCount(0);
+    await expect(guidance).toContainText(
+      `${cardio.activity} ${cardio.minutes}분`,
+    );
+    expect(state.requests).toHaveLength(2);
+    expect(state.row).toEqual(generated);
+    await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+    await expect(guidance).toContainText(
+      `${cardio.activity} ${cardio.minutes}분`,
+    );
+    expect(state.events).toHaveLength(0);
+  });
+
+for (const missing of [false, true])
+  test(`유산소가 ${missing ? "누락된" : "null인"} 과거 응답은 안내 없이 모든 영상을 표시한다`, async ({
+    page,
+  }) => {
+    const row = routineFixture();
+    row.cardioRecommendation = null;
+    if (missing) delete (row as Partial<WorkoutRoutine>).cardioRecommendation;
+    const state = await setup(page, row);
+    await page.goto("/workout");
+    await expect(
+      page
+        .getByRole("list", { name: "오늘 배정된 운동" })
+        .getByRole("listitem"),
+    ).toHaveCount(3);
+    await expect(
+      page.getByRole("region", { name: "유산소 운동 안내" }),
+    ).toHaveCount(0);
+    await page.reload();
+    await expect(
+      page
+        .getByRole("list", { name: "오늘 배정된 운동" })
+        .getByRole("listitem"),
+    ).toHaveCount(3);
+    expect(state.requests).toHaveLength(0);
+    expect(state.events).toHaveLength(0);
+  });
+
+test("영상 항목만 완료한 루틴은 유산소 수행 없이 전체 완료로 표시한다", async ({
   page,
 }) => {
-  const state = await setup(page, null);
+  const row = routineFixture();
+  for (const item of row.routine) {
+    item.status = item.resultStatus = "completed";
+    item.completedAt = item.performedAt = "2026-09-29T03:00:00Z";
+    item.progress.watchedSeconds = item.progress.durationSeconds;
+    item.progress.intervals = [
+      { start: 0, end: item.progress.durationSeconds },
+    ];
+  }
+  row.status = "completed";
+  row.progress.completedItems = row.routine.length;
+  const state = await setup(page, row);
   await page.goto("/workout");
   await expect(
-    page.getByText("아직 오늘 배정된 운동이 없어요.", { exact: false }),
+    page.getByText("오늘의 모든 운동을 완료했어요.", { exact: true }),
   ).toBeVisible();
-  expect(state.requests).toHaveLength(0);
-  await page
-    .getByRole("button", { name: "오늘 운동 준비하기", exact: true })
-    .click();
   await expect(
-    page.getByRole("list", { name: "오늘 배정된 운동" }).getByRole("listitem"),
+    page
+      .getByRole("list", { name: "오늘 배정된 운동" })
+      .getByText("완료", { exact: true }),
   ).toHaveCount(3);
   await expect(
     page.getByRole("region", { name: "유산소 운동 안내" }),
   ).toContainText("걷기 20분");
-  await expect(
-    page.getByRole("button", { name: "오늘 운동 준비하기", exact: true }),
-  ).toHaveCount(0);
-  expect(state.requests).toHaveLength(1);
-  await page.reload();
-  await expect(
-    page.getByRole("list", { name: "오늘 배정된 운동" }).getByRole("listitem"),
-  ).toHaveCount(3);
-  expect(state.requests).toHaveLength(1);
+  expect(state.events).toHaveLength(0);
 });
 
 test("이전 버전의 미래 배정은 보존하되 오늘로 표시하거나 기록하지 않는다", async ({

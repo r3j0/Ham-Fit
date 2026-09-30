@@ -165,8 +165,8 @@ export function TodayWorkout({ embedded = false }: { embedded?: boolean }) {
             <>
               {todayRoutine && (
                 <p className="caption">
-                  예상 {todayRoutine.estimatedMinutes}분 ·{" "}
-                  {todayRoutine.progress.completedItems}/
+                  영상 운동 예상 {todayRoutine.estimatedMinutes}분 (유산소 제외)
+                  · {todayRoutine.progress.completedItems}/
                   {todayRoutine.progress.totalItems}개 완료
                 </p>
               )}
@@ -181,7 +181,10 @@ export function TodayWorkout({ embedded = false }: { embedded?: boolean }) {
                     {todayRoutine.cardioRecommendation.activity}{" "}
                     {todayRoutine.cardioRecommendation.minutes}분
                   </p>
-                  <p className="caption">영상 운동을 마친 뒤 진행해 주세요.</p>
+                  <p className="caption">
+                    영상 운동을 마친 뒤 권장하는 활동이에요. 루틴 완료 조건에는
+                    포함되지 않아요.
+                  </p>
                 </section>
               )}
               {todayRoutine?.status === "completed" && (
