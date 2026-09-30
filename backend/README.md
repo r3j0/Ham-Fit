@@ -170,3 +170,5 @@ Prisma 구성은 [공식 NestJS 안내](https://docs.prisma.io/docs/guides/frame
 ## 성인 스텝검사 참고 평가 (2026-09-24)
 
 회복 심박수 원본을 보존하고 측정 당시 성별·나이·신장·체중으로 최대산소섭취량을 추정합니다. 부분 저장, 계산 근거 및 참고 등급 계약은 [스텝검사 안내](docs/step-assessment.md)를 따릅니다. 과거의 YMCA 기준 미확보 설명은 새로 저장·수정하는 성인 기록에 한해 이 계약으로 대체되며, 기존 스냅샷은 유지됩니다.
+
+- [캐릭터·대표 코디·해바라기씨 상점 API 및 FE 연동](docs/avatar-shop-api.md) · [검증 결과](docs/avatar-shop-verification.md)

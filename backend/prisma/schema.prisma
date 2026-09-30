@@ -88,6 +88,10 @@ model User {
   groupApplications           GroupJoinRequest[]
   notifications               GroupNotification[]
   groupCreations              GroupCreateRequest[]
+  avatarInventory             AvatarOwnership[]
+  avatarOutfit                AvatarOutfit?
+  avatarPurchases             AvatarPurchase[]
+  currencyTransactions        CurrencyTransaction[]
 
   @@map("users")
 }
@@ -97,13 +101,9 @@ enum OwnedTool {
   band
   dumbbell
   gym_ball
-  foam_roller
   jump_rope
   step_box
   ball
-  cone
-  agility_ladder
-  bosu
 }
 
 // Persistent settings used when a new routine is generated (2026-09-29).
@@ -389,6 +389,7 @@ model WorkoutRoutine {
   dataVersion      String                  @map("data_version")
   estimatedMinutes Float                   @map("estimated_minutes")
   inputSnapshot    Json                    @map("input_snapshot") @db.JsonB
+  cardioRecommendation Json?               @map("cardio_recommendation") @db.JsonB
   weightAdjustment Json?                   @map("weight_adjustment") @db.JsonB
   user             User                    @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict)
   items            WorkoutRoutineItem[]
@@ -530,4 +531,100 @@ model GroupNotification {
   @@unique([requestId, type])
   @@index([userId, id])
   @@map("group_notifications")
+}
+
+// Permanent SKU identity. Structural fields are immutable; SQL increments
+// catalogRevision on commercial changes. Pending ownership cannot be sold.
+model AvatarProduct {
+  id String @id
+  kind String
+  slot String?
+  occupiesSlots String[] @map("occupies_slots")
+  renderKey String @map("render_key")
+  ownershipScope String @map("ownership_scope")
+  scopeCharacterId String? @map("scope_character_id")
+  saleStatus String @map("sale_status")
+  price Int?
+  priceProvisional Boolean @default(false) @map("price_provisional")
+  catalogRevision Int @default(1) @map("catalog_revision")
+  ownerships AvatarOwnership[]
+  purchases AvatarPurchase[]
+  characters AvatarCombination[] @relation("CombinationCharacter")
+  poses AvatarCombination[] @relation("CombinationPose")
+  combinationItems AvatarCombinationItem[]
+  @@map("avatar_products")
+}
+
+// Each immutable row certifies one complete rendered combination. Absence
+// means unsupported, including combinations of otherwise compatible pieces.
+model AvatarCombination {
+  id String @id
+  characterId String @map("character_id")
+  poseId String @map("pose_id")
+  character AvatarProduct @relation("CombinationCharacter", fields: [characterId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  pose AvatarProduct @relation("CombinationPose", fields: [poseId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  items AvatarCombinationItem[]
+  outfits AvatarOutfit[]
+  @@map("avatar_combinations")
+}
+
+model AvatarCombinationItem {
+  combinationId String @map("combination_id")
+  productId String @map("product_id")
+  combination AvatarCombination @relation(fields: [combinationId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  product AvatarProduct @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  @@id([combinationId, productId])
+  @@map("avatar_combination_items")
+}
+
+model AvatarOwnership {
+  userId String @map("user_id") @db.Uuid
+  productId String @map("product_id")
+  source String
+  acquiredAt DateTime @default(now()) @map("acquired_at") @db.Timestamptz(6)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  product AvatarProduct @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  @@id([userId, productId])
+  @@map("avatar_ownerships")
+}
+
+model AvatarOutfit {
+  userId String @id @map("user_id") @db.Uuid
+  combinationId String @map("combination_id")
+  revision Int @default(1)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  combination AvatarCombination @relation(fields: [combinationId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  @@map("avatar_outfits")
+}
+
+model AvatarPurchase {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  key String @db.Uuid
+  productId String @map("product_id")
+  price Int
+  catalogRevision Int @map("catalog_revision")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  product AvatarProduct @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  transaction CurrencyTransaction?
+  @@unique([userId, key])
+  @@unique([userId, productId])
+  @@map("avatar_purchases")
+}
+
+model CurrencyTransaction {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  eventKey String @map("event_key")
+  amount Int
+  balanceAfter Int @map("balance_after")
+  kind String
+  purchaseId String? @unique @map("purchase_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  purchase AvatarPurchase? @relation(fields: [purchaseId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  @@unique([userId, eventKey])
+  @@map("currency_transactions")
 }

@@ -23,6 +23,7 @@ export function configureApp(app: INestApplication): void {
       `${API_V1_BASE_PATH}/auth`,
       `${API_V1_BASE_PATH}/measurements`,
       `${API_V1_BASE_PATH}/users`,
+      `${API_V1_BASE_PATH}/shop`,
       `${API_V1_BASE_PATH}/workouts`,
       `${API_V1_BASE_PATH}/groups`,
       `${API_V1_BASE_PATH}/notifications`,

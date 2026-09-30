@@ -10,6 +10,7 @@ const output = () => ({
   result: {
     workout: {
       estimatedMinutes: 2,
+      cardioRecommendation: { activity: '걷기', minutes: 20 },
       routine: [
         {
           order: 1,
@@ -35,6 +36,25 @@ describe('Python transport contract', () => {
   it('accepts the original same-day prescription without next-day weight adjustments', () => {
     const value = output();
     expect(parseRoutineDecision(value)).toEqual(value);
+  });
+  it.each([
+    undefined,
+    null,
+    {},
+    { activity: '자전거', minutes: 20 },
+    { activity: '걷기', minutes: 0 },
+    { activity: '뛰기', minutes: -1 },
+    { activity: '걷기', minutes: 1.5 },
+    { activity: '걷기', minutes: '20' },
+    { activity: '걷기', minutes: Infinity },
+    { activity: '걷기', minutes: NaN },
+    { activity: '걷기' },
+    { minutes: 20 },
+    { activity: '걷기', minutes: 20, videoId: 'fake.mp4' },
+  ])('rejects malformed or absent cardio on new decisions: %j', (cardio) => {
+    const value = output();
+    Reflect.set(value.result.workout, 'cardioRecommendation', cardio);
+    expect(() => parseRoutineDecision(value)).toThrow();
   });
   it.each([
     'missing duration',
@@ -72,30 +92,29 @@ describe('Python transport contract', () => {
     }
     expect(() => parseRoutineDecision(value)).toThrow();
   });
-  it('passes numeric stored grades only, renames axes, and leaves ungraded axes unset', () => {
+  it('maps below-standard only for calculation and preserves original axes', () => {
     const measurement = {
       axes: [
         { axis: 'strength', status: 'graded', grade: 2 },
         { axis: 'muscular_endurance', status: 'below_standard', grade: null },
         { axis: 'cardiorespiratory_endurance', status: 'graded', grade: 3 },
         { axis: 'flexibility', status: 'unevaluable', grade: null },
+        { axis: 'agility', status: 'not_measured', grade: null },
+        { axis: 'power', status: 'graded', grade: 1 },
       ] as AxisEvaluation[],
     } as ReturnType<typeof serializeRecord>;
+    const original = structuredClone(measurement);
     const input = routineInput({
       age: 26,
       measurement,
       exerciseVolume: 'more',
       exerciseGoal: 'fitness_grade_improvement',
       ownedTools: [
-        'bosu',
-        'agility_ladder',
-        'cone',
         'ball',
         'step_box',
         'dumbbell',
         'band',
         'gym_ball',
-        'foam_roller',
         'jump_rope',
         'band',
       ],
@@ -104,14 +123,17 @@ describe('Python transport contract', () => {
         { videoId: 'TEST.mp4', date: '2026-09-29T01:00:00Z', completed: true },
       ],
     });
+    expect(measurement).toEqual(original);
     expect(input).toEqual({
       profile: { age: 26 },
       fitness100: {
         fitness: {
           strength: 2,
-          muscularEndurance: null,
+          muscularEndurance: 3,
           cardiovascularEndurance: 3,
           flexibility: null,
+          agility: null,
+          power: 1,
         },
       },
       logs: [
@@ -120,18 +142,7 @@ describe('Python transport contract', () => {
       current_date: '2026-09-29',
       goal: 'grade',
       routine_level: 'full',
-      owned_tools: [
-        '밴드',
-        '덤벨',
-        '짐볼',
-        '폼롤러',
-        '줄넘기',
-        '스텝박스',
-        '공',
-        '콘',
-        '사다리',
-        '보슈',
-      ],
+      owned_tools: ['밴드', '덤벨', '짐볼', '줄넘기', '스텝박스', '공'],
     });
   });
 });

@@ -16,7 +16,14 @@
 {
   "userId": "39fcd6bd-f0cf-4c3d-9ce2-4619d37060e2",
   "nickname": "운동친구",
-  "profileCharacter": null,
+  "profileCharacter": {
+    "characterId": "character.cream",
+    "poseId": "pose.basic",
+    "clothingIds": [],
+    "revision": 1,
+    "updatedAt": "2026-09-30T00:00:00.000Z",
+    "rendering": { "variant": "cream", "pose": "basic", "clothing": [] }
+  },
   "streak": 2,
   "longestStreak": 5,
   "totalWorkoutDays": 12
@@ -70,3 +77,5 @@ TZ=America/Los_Angeles npm run test:e2e -- test/activity.e2e-spec.ts
 - 전용 테스트 DB의 임시 스키마에서 기존 19개 마이그레이션 적용·재적용을 확인하고 임시 스키마를 정리했다. 개발·운영 DB에는 적용하지 않았다.
 - 최초 실행에서 로컬 소켓의 샌드박스 차단과 기본 Python의 추천 실행 실패가 있었고, 실행 권한 및 문서의 준비된 Python 환경을 적용한 재실행은 통과했다. 기존 pg 동시 query deprecation 경고는 남아 있다.
 - 최종 diff 및 작업 시작 시점 파일 해시 비교로 기존 진행 중 변경을 보존하고 `frontend/`, `data-analysis/`, 저장소 루트에 변경이 없음을 확인했다.
+
+2026-09-30 `profileCharacter`는 [저장 대표 코디](avatar-shop-api.md)의 동일한 데이터와 직렬화를 사용한다. 잔액·보유 목록·구매 기록은 포함하지 않는다.

@@ -32,7 +32,12 @@ type GroupView = {
     role: string;
     nickname: string;
     streak: number;
-    profileCharacter: null;
+    profileCharacter: {
+      characterId: string;
+      poseId: string;
+      clothingIds: string[];
+      revision: number;
+    };
   }>;
 };
 type ApplicationView = { id: string; status: string };
@@ -137,7 +142,11 @@ describe('groups and notifications against real PostgreSQL', () => {
         userId: owner.id,
         role: 'leader',
         nickname: '그룹장',
-        profileCharacter: null,
+        profileCharacter: expect.objectContaining({
+          characterId: 'character.cream',
+          poseId: 'pose.basic',
+          clothingIds: [],
+        }),
         streak: 0,
       }),
     ]);

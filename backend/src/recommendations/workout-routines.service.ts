@@ -163,6 +163,7 @@ export class WorkoutRoutinesService {
           algorithmVersion: decision.algorithmVersion,
           dataVersion: decision.dataVersion,
           estimatedMinutes: decision.result.workout.estimatedMinutes,
+          cardioRecommendation: decision.result.workout.cardioRecommendation,
           weightAdjustment: Prisma.DbNull,
           inputSnapshot: {
             ...input,
@@ -414,6 +415,7 @@ export class WorkoutRoutinesService {
       createdAt: row.createdAt,
       status,
       estimatedMinutes: row.estimatedMinutes,
+      cardioRecommendation: row.cardioRecommendation,
       progress: { completedItems: completed, totalItems: row.items.length },
       algorithmVersion: row.algorithmVersion,
       dataVersion: row.dataVersion,

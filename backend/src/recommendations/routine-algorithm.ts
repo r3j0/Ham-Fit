@@ -49,8 +49,12 @@ export function routineInput(input: {
       fitness: Object.fromEntries(
         input.measurement.axes.map((axis) => [
           axes[axis.axis],
-          // No inferred grades from display text, raw values, or old records.
-          axis.status === 'graded' ? axis.grade : null,
+          // Calculation-only input: preserve the original status/grade in axes.
+          axis.status === 'graded'
+            ? axis.grade
+            : axis.status === 'below_standard'
+              ? 3
+              : null,
         ]),
       ),
     },
@@ -83,6 +87,10 @@ const outputSchema = z.strictObject({
   result: z.strictObject({
     workout: z.strictObject({
       estimatedMinutes: z.number().positive(),
+      cardioRecommendation: z.strictObject({
+        activity: z.enum(['걷기', '뛰기']),
+        minutes: z.number().int().positive(),
+      }),
       routine: z
         .array(
           z.strictObject({

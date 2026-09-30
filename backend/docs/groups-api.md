@@ -90,7 +90,14 @@ Idempotency-Key: 91004d71-b8c5-4c32-a56e-ed38349325af
     {
       "userId": "39fcd6bd-f0cf-4c3d-9ce2-4619d37060e2",
       "nickname": "운동친구",
-      "profileCharacter": null,
+      "profileCharacter": {
+        "characterId": "character.cream",
+        "poseId": "pose.basic",
+        "clothingIds": [],
+        "revision": 1,
+        "updatedAt": "2026-09-30T00:00:00.000Z",
+        "rendering": { "variant": "cream", "pose": "basic", "clothing": [] }
+      },
       "streak": 2,
       "longestStreak": 5,
       "totalWorkoutDays": 12,
@@ -103,7 +110,7 @@ Idempotency-Key: 91004d71-b8c5-4c32-a56e-ed38349325af
 
 예시 UUID·시간·스트릭은 설명용이다. 이메일·생년월일·계정 재화·비밀번호는 그룹 응답에서 조회하거나 직렬화하지 않는다. 미설정 닉네임은 기존 개인 프로필과 동일하게 `null`이다.
 
-현재 프로필 캐릭터의 저장·선택·카탈로그 기능은 기존 BE에 없다. **`profileCharacter: null`은 미설정/소스 없음**을 뜻하며 임의 캐릭터나 보유 여부를 만들지 않는다. 캐릭터 선택 기능을 완성한 것으로 간주하지 않는다.
+2026-09-30 확장: `profileCharacter`는 사용자의 현재 저장된 대표 코디 객체다. 캐릭터·자세·착용 의상·revision·렌더링 식별자만 반환하며 잔액·전체 보유·구매 내역은 공개하지 않는다. [대표 코디·상점 API](avatar-shop-api.md)를 따른다.
 
 2026-09-29 확정 정책으로 공통 `member-profile.ts`가 기존 일별 배정 완료와 **모든 항목이 완료된 신규 루틴**을 함께 집계한다. 신규 루틴의 마지막 `completedAt`을 KST 날짜로 변환하고 기존 기록과 날짜 중복을 제거한다. `streak`는 현재 스트릭이며 오늘 미완료·어제 완료이면 유지한다. `longestStreak`와 `totalWorkoutDays`를 추가하고, 개인 활동 조회와 그룹원 조회에 같은 값을 제공한다. 기존 `/users/me/profile` 응답은 유지한다. [전체 정책·기존 기록 호환·조회 방식](activity-streaks.md)을 따른다. 그룹 미션 진행도·씨앗·보상은 연결하지 않는다.
 

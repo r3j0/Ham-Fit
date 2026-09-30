@@ -16,7 +16,7 @@
 
 기존 v1 루틴 API의 생성·조회·이벤트 경로는 인증 후 410 `ROUTINE_API_RETIRED`를 반환한다. v2에는 `/next`가 없으며 자동 리다이렉트하지 않는다. 기존 루틴 ID·항목 ID·요청 키는 v2에서 그대로 조회·재시도·이어서 수행할 수 있다. 다른 인증·사용자·측정 API와 기존 단일 영상 `/api/v1/workouts`는 v1을 유지한다.
 
-새 루틴 응답은 `id`, `koreanDate`, `referenceDate`, `serverKoreanDate`, `createdAt`, `status`, `estimatedMinutes`, `progress: {completedItems,totalItems}`, `algorithmVersion`, `dataVersion`, `inputSnapshot`, `weightAdjustment`, `routine[]`다. 생성 응답에는 Location과 Idempotency-Replayed 헤더가 있다.
+새 루틴 응답은 `id`, `koreanDate`, `referenceDate`, `serverKoreanDate`, `createdAt`, `status`, `estimatedMinutes`, `cardioRecommendation`, `progress: {completedItems,totalItems}`, `algorithmVersion`, `dataVersion`, `inputSnapshot`, `weightAdjustment`, `routine[]`다. 생성 응답에는 Location과 Idempotency-Replayed 헤더가 있다.
 
 각 `routine[]` 항목에는 다음을 저장·반환한다.
 
@@ -25,6 +25,26 @@
 - 미디어 검증: `playbackUrl`, `playbackStatus`, `verifiedDurationSeconds`. 기존 검증 보고서 방식이며 새 데이터의 SHA-256을 보고서의 sourceCommit 식별자로 사용한다. 증거가 없으면 unavailable/null로 표시한다. HTTP 원본 URL을 임의로 HTTPS로 바꾸지 않는다.
 
 운동 개수·처방·예상 시간은 Python 반환값을 그대로 저장한다. BE가 운동량별 개수나 세트 수를 다시 계산하지 않는다. 현재 원본은 3/5/7개와 6/10/14분을 반환한다. 영상 진행의 `durationSeconds`는 원본 CSV의 `video_length`이며, 예상 운동 시간이나 반복·유지 처방 시간으로 대체하지 않는다.
+
+### 영상 다음 유산소 안내 (2026-09-30)
+
+루틴 최상위 응답에 `cardioRecommendation: { activity: "걷기" | "뛰기", minutes: number } | null`을 추가한다. data의 `workout.routine`과 `workout.cardioRecommendation`을 각각 보존한다. 신규 Python 결과에는 유산소 객체가 필수이며 activity는 위 두 문자열, minutes는 유한 양의 정수여야 한다. 누락·null·잘못된 종류/시간/추가 필드는 503 `ROUTINE_ALGORITHM_UNAVAILABLE`로 거절하고 루틴·항목·요청 키 전체를 저장하지 않는다. 목적별 시간표와 운동량별 종류 선택은 data만 담당한다.
+
+응답 일부 예시(값은 설명용):
+
+```json
+{
+  "estimatedMinutes": 10,
+  "routine": [{ "order": 1, "videoId": "...", "prescription": { "sets": 3 } }],
+  "cardioRecommendation": { "activity": "걷기", "minutes": 20 }
+}
+```
+
+FE는 영상 `routine`을 반환된 `order` 순서로 모두 표시한 뒤 유산소 안내 카드를 마지막에 표시한다. 유산소는 영상 항목이 아니며 videoId/videoUrl·재생/완료 이벤트·타이머·인증을 갖지 않는다. `estimatedMinutes`는 유산소를 제외한 영상 루틴 예상 시간이다. 기존 완료 판정·활동 연속 기록은 영상 항목만 사용한다.
+
+신규 생성은 영상과 유산소를 같은 트랜잭션에 저장한다. 생성·상세·current·history·이벤트 응답·날짜별 배정 및 요청 키 재사용 모두 저장된 유산소를 반환한다. 설정 변경이나 재요청으로 이를 재계산하지 않는다. 기존 유산소 없는 행은 SQL NULL로 남고 API는 **명시적인 null**을 반환한다. FE는 null이면 카드를 생략하며 임의 권장량을 채우지 않는다.
+
+`prescription`의 sets·value·unit·restSec·text와 배열/order는 data 결과 그대로 저장·응답한다. BE의 체력요인별 재정렬이나 기본 3세트 상수는 없다. 현재 data의 3세트를 수신하되 과거 2세트·순서·입력 스냅샷은 소급 변경하지 않는다.
 
 `weightAdjustment`는 신규 당일 루틴에서 **null**이다. 당일 추천 함수가 반환하지 않는 D→D+1 변화량을 다른 날짜 의미로 계산하거나 0으로 만들어 채우지 않는다. 과거 v1 루틴의 기존 값은 생성 시점 스냅샷으로 그대로 보존한다. null은 가중치를 적용하지 않았다는 뜻이 아니다. 당일 추천 내부에서 과거 운동 노출도와 체력·목적의 우선순위를 계산한다.
 
@@ -37,7 +57,7 @@
 - 나이: 저장 생년월일과 KST 오늘 기준 만 나이. 현재 지원 13–64세.
 - 측정: 기존 최신 정렬 `measuredOn DESC, createdAt DESC, id ASC` 한 건과 저장된 평가를 사용한다. 측정 원본에 공유 잠금을 잡아 revision과 평가를 함께 읽는다.
 - 체력요인: 기존 `aggregateAxes`가 선택한 숫자 등급을 전달한다. `muscular_endurance` → `muscularEndurance`, `cardiorespiratory_endurance` → `cardiovascularEndurance`; 나머지 네 축은 같은 이름이다.
-- 숫자 등급이 없는 `below_standard`, `unevaluable`, `not_measured`는 null이다. 최하 등급 미달을 임의의 ‘4등급’으로 만들거나 표시용 등급 문자열·과거 기록·원본 수치로 추정하지 않는다. 현재 알고리즘에서 null은 등급 미제공 의미이므로, 최하 기준 미달을 별도 need로 처리하려면 데이터 팀과 입력 계약을 확장해야 한다. 원본 axes와 이유는 스냅샷에 남긴다.
+- 2026-09-30 추천 입력 정책: `graded`는 실제 숫자 grade, `below_standard`는 **계산용 3**, `unevaluable`·`not_measured`는 null을 전달한다. 원본 `get_fitness_need`가 1→0.25, 2→0.50, 3 이상→1.00으로 변환하므로 기준 미달에 필요도 1.00을 적용한다. 필요도 1.00 자체를 등급으로 보내지 않는다. 측정 DB·조회·평가의 `below_standard` 및 `grade:null`은 유지하며 4·5·6등급을 추정하지 않는다. `inputSnapshot.axes`는 원본 평가와 이유, `inputSnapshot.fitness100.fitness`는 Python에 전달한 계산용 값을 각각 보존한다. 기존 스냅샷은 변경하지 않는다.
 - 운동량·목적: 저장된 최신 [운동 설정 매핑](../user-preferences-api.md)을 사용한다. 설정 읽기에 공유 잠금을 잡아 하나의 설정 상태를 캡처한다. 목적 null이면 409 EXERCISE_GOAL_REQUIRED이며 알고리즘을 호출하지 않는다. 기존 isOnboarded는 변경하지 않는다.
 - 도구: 저장된 `UserPreference.ownedTools`를 운동량·목적과 같은 잠금 아래 읽고 [도구 매핑](../owned-tools.md)에 따라 `owned_tools`로 변환한다. 스냅샷에는 API 식별자 `ownedTools`와 실제 입력 `owned_tools`를 모두 보존한다. 기본값은 빈 배열이며 맨몸·생활용품 허용과 필터는 원본 알고리즘을 그대로 따른다.
 - 기록: 기존 단일 영상 배정과 새 루틴 **개별 운동**의 interrupted/completed 대표 결과만 전달한다. 완료는 true, 중단은 false. 이벤트 행을 합산하지 않아 중단 후 완료가 중복 반영되지 않는다. 미시작·미진행은 제외한다. 날짜는 실제 서버 접수 시각을 전달하고 원본이 KST로 해석한다. 현재 데이터에서 사라진 영상 로그는 원본 알고리즘이 제외한다.
@@ -91,6 +111,8 @@ Python 내부 경로·traceback·개인 입력은 오류 응답에 노출하지 
 
 ## 마이그레이션·배포 준비
 
+2026-09-30 후속 `20260930000100_routine_cardio`는 nullable JSONB `cardio_recommendation`만 추가한다. 기본값·백필 없이 과거 행의 null과 기존 불변 트리거를 유지한다. `20260930000200_supported_tools`는 도구 6종 축소와 기존 설정 정리를 담당한다. enum 재생성으로 구 API와 혼합 운영할 수 없으므로 [도구 배포 순서](../owned-tools.md#배포)를 따른다. 기존 마이그레이션 파일은 수정하지 않는다.
+
 최초 마이그레이션 `20260929000100_workout_routines`는 루틴, 운동 항목, 생성 키, 항목별 이벤트 **4개 테이블만 추가**한다. 기존 테이블의 행·컬럼이나 기존 마이그레이션을 바꾸지 않는다. 사용자 FK CASCADE로 탈퇴 시 전체 삭제한다. 날짜당 루틴 하나, 루틴별 순서·영상 유일성, 연속 순서와 최소 한 항목, 처방·생성 스냅샷·완료 항목 불변을 DB에서 보장한다. 비기본 DB 스키마도 지원한다. readiness는 새 테이블 존재도 검사한다.
 
 추가 마이그레이션 `20260929000500_daily_routine_requests`는 신규 루틴의 배정일=기준일을 검사하고 weight_adjustment의 SQL NULL을 허용한다. 날짜당 한 루틴 유일성과 행 불변 제약은 유지한다. 새 날짜 CHECK는 NOT VALID로 추가하여 과거 다음날 배정 행을 바꾸거나 삭제하지 않고 신규 INSERT에는 당일 조건을 강제한다. 이미 존재하는 미래 배정은 해당 날짜가 되면 같은 날 저장값으로 사용하며 새 루틴으로 덮어쓰지 않는다. 배포 시 새 마이그레이션 후 새 서버를 적용해야 한다. 구 서버의 다음날 INSERT는 새 제약으로 거부되므로 구·신 서버의 생성 트래픽을 동시에 운영하지 않는다.
@@ -126,3 +148,18 @@ RECOMMENDATION_PYTHON 생략 시 PATH의 python3를 사용한다. Python 3.9 이
 `test/daily-routine-migration.e2e-spec.ts`는 기존 마이그레이션으로 다음날 루틴·중단 진행·요청 키·이벤트를 만든 뒤 실제 새 마이그레이션을 적용한다. 기존 행이 그대로 보존되고 신규 당일 배정 허용·날짜당 중복 금지·신규 다음날 배정 거부가 유지되는지 검증한다. v1 종료 안내·v2 인증/CSRF·캐시 금지·80% 소수 경계·겹침/탐색 제외·완료 불변·완료 후 당일 재사용·다음날 기록 전달도 검사한다.
 
 2026-09-29 v2 검증 결과: Prisma 스키마 검증·클라이언트 생성·전체 서식 검사·린트·타입 검사·빌드 통과. 단위 20개 파일 288개, 전체 통합 19개 파일 388개 통과. 통합 실행은 전용 테스트 DB의 임시 스키마에서 19개 마이그레이션 적용·재적용 후 정리했으며, 과거 다음날 루틴의 보존 업그레이드 검사도 별도 임시 스키마에서 통과했다. 기존 pg 동시 query deprecation 경고는 남아 있다. 샌드박스의 로컬 포트 제한으로 실패한 실행은 권한 허용 후 재실행하여 통과했다. 프론트엔드·data-analysis 변경과 개발/운영 DB 적용·배포는 수행하지 않았다.
+
+## 2026-09-30 유산소·기준 미달·지원 도구 검증
+
+이번 변경의 검증 결과:
+
+- 단위 테스트 20개 파일 302개 통과. 유산소 누락/null/잘못된 종류/시간/추가 필드 거절, 계산용 등급 매핑과 원본 axes 보존 포함.
+- 관련 통합 테스트 5개 파일 127개 통과: `workout-routines`, `user-preferences`, `preferences-migration`, `activity`, `daily-routine-migration`. 실제 Python 모듈·CSV를 읽기 전용으로 호출했다. 3세트·순서·처방·유산소 저장/조회/재사용, 과거 null·2세트 호환, 측정 상태/DB 보존, 제거 도구 원자적 거절, 설정/과거 이력 보존과 기존 완료·활동 기록을 확인했다.
+- 전용 `project_health_test` 임시 스키마에서 기존 19개와 신규 2개 마이그레이션을 적용하고 재적용 시 미적용 항목 없음을 확인했다. 실행기가 임시 스키마를 정리했다. 채워진 기존 데이터 업그레이드 검사도 별도 격리 스키마에서 통과했다.
+- Prisma validate/generate, TypeScript 타입 검사, 린트, 빌드, 변경 파일 Prettier와 `git diff --check` 통과.
+
+공유 작업 폴더에서는 동시에 진행 중인 아바타 작업의 마이그레이션이 처음에 이번 enum/유산소 DDL을 중복 포함했다. 그 중복은 다른 작업에서 제거됐으나, 이어서 아바타 가입 트리거의 `initialize_avatar(uuid)` 조회 실패로 HTTP 검사가 가입 단계에서 중단됐다. 아바타 파일은 이 작업에서 수정하지 않았다. 위 통합·빌드·최종 린트 검증은 **현재 HEAD의 backend에 이번 변경만 반영한 backend 내부 검증본**을 사용했으며, 동시 작업 전체의 통합 성공을 의미하지 않는다. 검증 로그는 로컬 `backend/.local/recommendation-validation/verified.log`, 검증본은 테스트 자동 검색을 피하도록 `backend/.local/recommendation-validation/node_modules/backend/`에 보관한다. 격리본 린트는 .local 무시 규칙 때문에 파일 목록을 명시하고 `--no-ignore`를 사용했다.
+
+최초 샌드박스 실행의 로컬 DB/HTTP 포트 EPERM은 승인된 실행으로 재검증했다. 기존 pg 동시 client.query deprecation 경고가 출력됐으나 최종 관련 검사는 통과했다. 전체 공유 작업 폴더의 아바타 통합, 전체 E2E 회귀, FE 화면, 운영 규모의 테이블 잠금/재작성 시간은 이번 검증에 포함하지 않는다.
+
+후속 FE 작업은 영상 목록 뒤 유산소 카드 표시(null이면 생략)와 폼롤러·보슈·사다리·콘 선택지 제거다. data 측에는 노트북의 명시적 제외 정책을 실행 모듈에 동기화하는 작업이 남아 있다([상세](../owned-tools.md#data-측-남은-의존사항-2026-09-30-읽기-전용-확인)). 개발·운영 DB 적용, 배포, 커밋·푸시는 수행하지 않았다. frontend·data-analysis·루트 파일과 기존 마이그레이션을 이 작업에서 수정하지 않았다.

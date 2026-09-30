@@ -24,6 +24,7 @@ export class DatabaseService
   table(
     name:
       | 'users'
+      | 'avatar_products'
       | 'groups'
       | 'user_curriculum_assignments'
       | 'measurements'
@@ -65,6 +66,11 @@ export class DatabaseService
         this.authRefreshToken.findFirst({ select: { createdAt: true } }),
         this.authRateLimit.findFirst({ select: { attempts: true } }),
         this.measurementCreateRequest.findFirst({ select: { key: true } }),
+        this.avatarProduct.findFirst({ select: { catalogRevision: true } }),
+        this.avatarOutfit.findFirst({ select: { revision: true } }),
+        this.avatarOwnership.findFirst({ select: { source: true } }),
+        this.avatarPurchase.findFirst({ select: { price: true } }),
+        this.currencyTransaction.findFirst({ select: { amount: true } }),
         this.userCurrency.findFirst({ select: { balance: true } }),
         this.userPreference.findFirst({
           select: {

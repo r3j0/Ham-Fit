@@ -1,3 +1,4 @@
+import { outfitInclude, outfitView } from '../avatar/avatar-view.js';
 import type { Prisma } from '../generated/prisma/client.js';
 
 export function koreanDay(date: Date) {
@@ -49,7 +50,11 @@ export async function memberProfiles(
 ) {
   const users = await tx.user.findMany({
     where: { id: { in: userIds } },
-    select: { id: true, nickname: true },
+    select: {
+      id: true,
+      nickname: true,
+      avatarOutfit: { include: outfitInclude },
+    },
   });
   // Preserve the legacy daily-assignment eligibility rule. Routine items never
   // enter this table/path and must pass the whole-routine check below.
@@ -101,8 +106,7 @@ export async function memberProfiles(
       {
         userId: user.id,
         nickname: user.nickname,
-        // There is no persisted character selection/catalog in the existing backend.
-        profileCharacter: null,
+        profileCharacter: outfitView(user.avatarOutfit),
         ...activityStats(days.get(user.id) ?? new Set(), koreanDay(now)),
       },
     ]),

@@ -144,34 +144,13 @@ describe('Multi-exercise routines with the real data-team Python algorithm', () 
     [[], []],
     [['band'], ['밴드']],
     [['ball'], ['공']],
-    [['cone'], ['콘']],
-    [['agility_ladder'], ['사다리']],
-    [['bosu'], ['보슈']],
+    [['dumbbell'], ['덤벨']],
+    [['gym_ball'], ['짐볼']],
+    [['jump_rope'], ['줄넘기']],
+    [['step_box'], ['스텝박스']],
     [
-      [
-        'bosu',
-        'agility_ladder',
-        'cone',
-        'ball',
-        'step_box',
-        'gym_ball',
-        'dumbbell',
-        'foam_roller',
-        'jump_rope',
-        'band',
-      ],
-      [
-        '밴드',
-        '덤벨',
-        '짐볼',
-        '폼롤러',
-        '줄넘기',
-        '스텝박스',
-        '공',
-        '콘',
-        '사다리',
-        '보슈',
-      ],
+      ['ball', 'step_box', 'gym_ball', 'dumbbell', 'jump_rope', 'band'],
+      ['밴드', '덤벨', '짐볼', '줄넘기', '스텝박스', '공'],
     ],
   ])(
     'passes persisted tools %j to real Python and respects its household/equipment filter',
@@ -370,6 +349,21 @@ describe('Multi-exercise routines with the real data-team Python algorithm', () 
             }),
           ),
         ).toEqual(decision.result.workout.routine);
+        expect(routine.cardioRecommendation).toEqual(
+          decision.result.workout.cardioRecommendation,
+        );
+        expect(routine.cardioRecommendation).toMatchObject({
+          activity: expect.stringMatching(/^(걷기|뛰기)$/),
+          minutes: expect.any(Number),
+        });
+        const stored = await db.workoutRoutine.findUniqueOrThrow({
+          where: { id: routine.id },
+        });
+        expect(stored.cardioRecommendation).toEqual(
+          routine.cardioRecommendation,
+        );
+        for (const item of routine.routine)
+          expect(item.prescription).toMatchObject({ sets: 3 });
         expect(routine.weightAdjustment).toBeNull();
         expect(routine.algorithmVersion).toMatch(
           /^recommendation_v2:[a-f0-9]{64}$/,
@@ -393,7 +387,24 @@ describe('Multi-exercise routines with the real data-team Python algorithm', () 
           id: routine.id,
         });
         expect(spy).toHaveBeenCalledTimes(1);
-        await event(routine, 0, body()).expect(200);
+        const eventResponse = await event(routine, 0, body()).expect(200);
+        expect(eventResponse.body.cardioRecommendation).toEqual(
+          routine.cardioRecommendation,
+        );
+        await patchPreferences({
+          exerciseVolume: 'less',
+          exerciseGoal: 'fitness_grade_improvement',
+        }).expect(200);
+        const replay = await today().expect(200);
+        expect(replay.body.cardioRecommendation).toEqual(
+          routine.cardioRecommendation,
+        );
+        expect(replay.body.routine).toEqual(eventResponse.body.routine);
+        const history = await read('history').expect(200);
+        expect(history.body.items[0].cardioRecommendation).toEqual(
+          routine.cardioRecommendation,
+        );
+        expect(spy).toHaveBeenCalledTimes(1);
         now = new Date('2026-09-29T15:00:00Z');
         await read('current').expect(200, 'null');
       } finally {
@@ -401,6 +412,124 @@ describe('Multi-exercise routines with the real data-team Python algorithm', () 
       }
     },
   );
+
+  it('reads and reuses a legacy routine with null cardio and two-set prescriptions unchanged', async () => {
+    const legacy = await db.workoutRoutine.create({
+      data: {
+        userId: owner.user.id,
+        assignmentDate: new Date('2026-09-29'),
+        referenceDate: new Date('2026-09-29'),
+        algorithmVersion: 'legacy-test-only',
+        dataVersion: 'legacy-test-only',
+        estimatedMinutes: 2,
+        inputSnapshot: { ownedTools: ['bosu'], axes: [] },
+        items: {
+          create: {
+            order: 1,
+            videoId: 'LEGACY.mp4',
+            title: '[TEST ONLY]',
+            videoUrl: 'http://openapi.kspo.or.kr/web/video/LEGACY.mp4',
+            durationSeconds: 100,
+            slot: 'strength_group',
+            prescription: {
+              doseType: 'reps',
+              value: '10~15',
+              unit: '회',
+              sets: 2,
+              restSec: 20,
+              text: '10~15회 × 2세트',
+            },
+          },
+        },
+      },
+    });
+    const spy = vi.spyOn(algorithm, 'recommend');
+    try {
+      const saved = (await read(legacy.id).expect(200)).body as Routine;
+      expect(saved.cardioRecommendation).toBeNull();
+      expect(saved.routine[0].prescription).toMatchObject({ sets: 2 });
+      expect(saved.inputSnapshot).toEqual(legacy.inputSnapshot);
+      await read('current').expect(200, saved);
+      expect((await read('history').expect(200)).body.items).toEqual([saved]);
+      const key = randomUUID();
+      await today(key).expect(200, saved);
+      await today(key).expect(200, saved);
+      expect(spy).not.toHaveBeenCalled();
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('passes below-standard as calculation-only 3 and leaves measurement storage and responses unchanged', async () => {
+    await db.userPreference.update({
+      where: { userId: owner.user.id },
+      data: { exerciseGoal: 'general_fitness_improvement' },
+    });
+    const measurement = await app.get(MeasurementsService).create(
+      owner.user.id,
+      randomUUID(),
+      parseCreate({
+        catalogVersion: 'nfa100-2026-09-24-grip-v1',
+        measuredOn: '2026-09-20',
+        ageAtMeasurement: 26,
+        sexAtMeasurement: 'male',
+        items: [{ measurementCode: 'cross_sit_up', value: '1', unit: '회' }],
+      }),
+    );
+    const measurementPath = `/api/v1/measurements/${measurement.record.id}`;
+    const getMeasurement = () =>
+      request(app.getHttpServer())
+        .get(measurementPath)
+        .set('Authorization', `Bearer ${owner.access_token}`);
+    const before = (await getMeasurement().expect(200)).body;
+    const storedBefore = await db.measurement.findUniqueOrThrow({
+      where: { id: measurement.record.id },
+      include: { items: true },
+    });
+    const routine = (await today().expect(201)).body as Routine;
+    expect(routine.inputSnapshot).toMatchObject({
+      axes: expect.arrayContaining([
+        expect.objectContaining({
+          axis: 'muscular_endurance',
+          status: 'below_standard',
+          grade: null,
+        }),
+      ]),
+      fitness100: { fitness: { muscularEndurance: 3, strength: null } },
+    });
+    await getMeasurement().expect(200, before);
+    expect(
+      await db.measurement.findUniqueOrThrow({
+        where: { id: measurement.record.id },
+        include: { items: true },
+      }),
+    ).toEqual(storedBefore);
+  });
+
+  it('rejects invalid cardio without persisting a routine or request key', async () => {
+    await prepare();
+    const realRecommend = algorithm.recommend.bind(algorithm);
+    const spy = vi
+      .spyOn(algorithm, 'recommend')
+      .mockImplementationOnce(async (input) => {
+        const decision = await realRecommend(input);
+        decision.result.workout.cardioRecommendation.minutes = 0;
+        return decision;
+      });
+    try {
+      await today().expect(503);
+      expect(
+        await db.workoutRoutine.count({ where: { userId: owner.user.id } }),
+      ).toBe(0);
+      expect(
+        await db.workoutRoutineRequest.count({
+          where: { userId: owner.user.id },
+        }),
+      ).toBe(0);
+    } finally {
+      spy.mockRestore();
+    }
+  });
 
   it('requires a selected goal without invoking the algorithm and preserves onboarding/session', async () => {
     const spy = vi.spyOn(algorithm, 'recommend');
@@ -806,6 +935,7 @@ describe('Multi-exercise routines with the real data-team Python algorithm', () 
       ...routine,
       inputSnapshot: routine.inputSnapshot!,
       weightAdjustment: routine.weightAdjustment ?? Prisma.DbNull,
+      cardioRecommendation: routine.cardioRecommendation ?? Prisma.DbNull,
     };
     const itemData = {
       ...item,
