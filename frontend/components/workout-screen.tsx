@@ -9,6 +9,7 @@ import { workoutHref } from "@/lib/workout-routine";
 import { Header, Loading, Notice, Shell } from "./ui";
 import { WorkoutError } from "./workout-error";
 import { WorkoutPlayer } from "./workout-player";
+import { RoutinePrescription } from "./routine-prescription";
 export function WorkoutScreen({
   id,
   replay = false,
@@ -61,11 +62,9 @@ export function WorkoutScreen({
             </Notice>
             <h2>{workout.video.title}</h2>
             {workout.routine && (
-              <p>
-                {workout.routine.prescription.text} ·{" "}
-                {workout.routine.prescription.sets}세트 · 휴식{" "}
-                {workout.routine.prescription.restSec}초
-              </p>
+              <RoutinePrescription
+                prescription={workout.routine.prescription}
+              />
             )}
             <Link className="button secondary" href="/workout">
               오늘의 운동으로

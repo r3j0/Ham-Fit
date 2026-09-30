@@ -3,6 +3,7 @@ import { Check } from "lucide-react";
 import type { Workout } from "@/lib/workout-types";
 import { workoutHref } from "@/lib/workout-routine";
 import styles from "./assigned-workout-list.module.css";
+import { RoutinePrescription } from "./routine-prescription";
 
 export function AssignedWorkoutList({
   workouts,
@@ -22,10 +23,9 @@ export function AssignedWorkoutList({
                 ` · ${workout.video.equipment.join(", ")}`}
             </p>
             {workout.routine && (
-              <p className="caption">
-                {workout.routine.prescription.text} · 휴식{" "}
-                {workout.routine.prescription.restSec}초
-              </p>
+              <RoutinePrescription
+                prescription={workout.routine.prescription}
+              />
             )}
           </div>
           {workout.status === "completed" ? (
