@@ -2278,8 +2278,155 @@ fieldset:disabled select {
 .character-choice > span {
   max-width: 100%;
 }
+.mission-card {
+  background: linear-gradient(150deg, #fffaf0, #f3f8ec);
+  border: 1px solid #e4e8ce;
+  border-radius: 24px;
+  padding: 20px;
+  text-align: center;
+}
+.mission-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+}
+.mission-heading h2 {
+  font-size: 18px;
+}
+.mission-heading > span {
+  flex-shrink: 0;
+  border-radius: 20px;
+  padding: 5px 10px;
+  background: #e6efd9;
+  color: #527641;
+  font-size: 11px;
+}
+.mission-flower {
+  width: 220px;
+  max-width: 100%;
+  align-self: center;
+  margin: auto;
+}
+.mission-progress {
+  width: 100%;
+  height: 12px;
+  border: 0;
+  border-radius: 20px;
+  overflow: hidden;
+  background: #e2e9d5;
+  accent-color: #85a557;
+}
+.mission-progress::-webkit-progress-bar {
+  background: #e2e9d5;
+}
+.mission-progress::-webkit-progress-value {
+  background: #85a557;
+  border-radius: 20px;
+}
+.roulette-page,
+.completion-page {
+  text-align: center;
+}
+.roulette-stage {
+  position: relative;
+  padding: 22px 0;
+  display: flex;
+  justify-content: center;
+}
+.roulette-pointer {
+  position: absolute;
+  top: 2px;
+  left: calc(50% - 12px);
+  font-size: 30px;
+  z-index: 2;
+  color: #805d36;
+}
+.roulette-wheel {
+  width: 280px;
+  height: 280px;
+  position: relative;
+  max-width: 100%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 8px solid #fff;
+  box-shadow:
+    0 0 0 3px #e4c789,
+    0 12px 30px #966b2420;
+  background: conic-gradient(
+    #ffe3a0 0deg 60deg,
+    #f9be76 60deg 120deg,
+    #e8efd2 120deg 180deg,
+    #f8d8ba 180deg 240deg,
+    #fceeb9 240deg 300deg,
+    #deecdb 300deg
+  );
+  transform: rotate(var(--wheel-angle, 0deg));
+  transition: transform 1s ease-out;
+}
+.roulette-wheel > span {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 88px;
+  font-size: 11px;
+  color: #63492f;
+  font-weight: 700;
+}
+.roulette-wheel > b {
+  position: absolute;
+  width: 60px;
+  height: 60px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #fff;
+  left: calc(50% - 30px);
+  top: calc(50% - 30px);
+  font-size: 34px;
+}
+.is-spinning {
+  animation: reward-spin 1s linear infinite;
+}
+@keyframes reward-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.reward-result {
+  padding: 24px 16px;
+  border: 1px solid #ecd395;
+  background: #fffae9;
+  border-radius: 24px;
+  display: grid;
+  gap: 12px;
+}
+.reward-result h2 {
+  font-size: 22px;
+  color: #835e27;
+}
+.reward-history {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+  border-bottom: 1px solid #ebe5da;
+  padding: 12px 0;
+  font-size: 13px;
+}
 @media (min-width: 700px) {
   .shop-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .is-spinning,
+  .streak-celebration,
+  .streak-marks .filled {
+    animation: none;
+  }
+  .roulette-wheel {
+    transition: none;
   }
 }

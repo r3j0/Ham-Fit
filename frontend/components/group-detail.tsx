@@ -1,4 +1,5 @@
 "use client";
+import { GroupMission } from "./group-mission";
 import Link from "next/link";
 import { useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -298,6 +299,11 @@ function GroupView({ row, refresh }: { row: Detail; refresh: () => void }) {
   }
   return (
     <>
+      <GroupMission
+        id={row.id}
+        leader={leader}
+        memberCount={row.currentMembers}
+      />
       <section className={styles.card}>
         <h2>{row.name}</h2>
         <p>{row.description || "그룹 소개가 없어요."}</p>
