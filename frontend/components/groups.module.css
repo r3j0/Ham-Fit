@@ -35,10 +35,6 @@
   padding: 10px 8px;
   font-size: 14px;
 }
-.statusFilter {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
 .requestGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

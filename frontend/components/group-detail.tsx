@@ -27,7 +27,6 @@ import {
   groupMutation,
   type GroupDetail as Detail,
   type Member,
-  type RequestStatus,
 } from "@/lib/groups";
 import { useSession } from "./session-provider";
 import { useApiResource } from "./use-api-resource";
@@ -38,7 +37,6 @@ import { ProfileCharacter } from "./profile-character";
 import styles from "./groups.module.css";
 import memberStyles from "./group-member-profile.module.css";
 
-const statusLabels = { pending: "대기", approved: "승인", rejected: "거절" };
 function Applications({
   id,
   onChanged,
@@ -46,16 +44,17 @@ function Applications({
   id: string;
   onChanged: () => void;
 }) {
-  const [status, setStatus] = useState<RequestStatus>("pending");
   const load = useCallback(
-    (signal: AbortSignal) => getRequests(id, status, signal),
-    [id, status],
+    (signal: AbortSignal) => getRequests(id, "pending", signal),
+    [id],
   );
   const resource = useApiResource(load),
     begin = useOperationScope();
   const [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     guard = useRef(false);
+  const pendingRequests =
+    resource.data?.filter((request) => request.status === "pending") ?? [];
   async function decide(requestId: string, action: "approve" | "reject") {
     if (guard.current) return;
     guard.current = true;
@@ -87,22 +86,6 @@ function Applications({
   return (
     <section className="stack" aria-label="가입 신청 관리">
       <h2>가입 신청 관리</h2>
-      <div
-        className={`segmented ${styles.statusFilter}`}
-        role="group"
-        aria-label="신청 상태"
-      >
-        {(["pending", "approved"] as const).map((value) => (
-          <button
-            key={value}
-            disabled={busy}
-            aria-pressed={status === value}
-            onClick={() => setStatus(value)}
-          >
-            {statusLabels[value]}
-          </button>
-        ))}
-      </div>
       {error && <Notice>{error}</Notice>}
       {resource.error !== undefined ? (
         <>
@@ -116,7 +99,7 @@ function Applications({
       ) : (
         <>
           <ul className={styles.list}>
-            {resource.data?.map((request) => (
+            {pendingRequests.map((request) => (
               <li className={styles.applicationRow} key={request.id}>
                 <strong
                   className={styles.nickname}
@@ -128,7 +111,7 @@ function Applications({
                   {new Date(request.createdAt).toLocaleDateString("ko-KR", {
                     timeZone: "Asia/Seoul",
                   })}{" "}
-                  · {statusLabels[request.status]}
+                  · 대기
                 </p>
                 {request.status === "pending" && (
                   <div className={styles.requestActions}>
@@ -155,8 +138,8 @@ function Applications({
               </li>
             ))}
           </ul>
-          {!resource.data?.length && (
-            <p className="muted">{statusLabels[status]} 중인 신청이 없어요.</p>
+          {!pendingRequests.length && (
+            <p className="muted">대기 중인 신청이 없어요.</p>
           )}
         </>
       )}
