@@ -1,3 +1,5 @@
+import { historyBounds } from './history-query.js';
+import type { HistoryRange } from './history-query.js';
 import { recordActivityAchievement } from '../groups/mission-contributions.js';
 import { retryTransaction } from '../database/transaction-retry.js';
 import {
@@ -281,7 +283,12 @@ export class RecommendationsService {
     );
   }
 
-  async history(userId: string, limit = 20, cursor?: string) {
+  async history(
+    userId: string,
+    limit = 20,
+    cursor?: string,
+    range?: HistoryRange,
+  ) {
     return this.database.$transaction(
       async (tx) => {
         const now = await this.now(tx);
@@ -293,7 +300,18 @@ export class RecommendationsService {
         )
           throw new NotFoundException('배정 내역을 찾을 수 없습니다.');
         const rows = await tx.userCurriculumAssignment.findMany({
-          where: { userId, assignmentDate: { not: null } },
+          where: {
+            userId,
+            assignmentDate: { not: null },
+            ...(range
+              ? {
+                  OR: [
+                    { assignmentDate: historyBounds(range).assignmentDate },
+                    { completedAt: historyBounds(range).completedAt },
+                  ],
+                }
+              : {}),
+          },
           orderBy: [{ assignedAt: 'desc' }, { id: 'asc' }],
           ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
           take: limit + 1,
@@ -301,6 +319,7 @@ export class RecommendationsService {
         });
         const page = rows.slice(0, limit);
         return {
+          serverKoreanDate: koreaDate(now),
           items: await Promise.all(
             page.map((row) => this.response(tx, row, now)),
           ),

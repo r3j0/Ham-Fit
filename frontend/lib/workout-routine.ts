@@ -217,8 +217,21 @@ export function parseRoutine(value: unknown, roundTripMs = 0): WorkoutRoutine {
       ),
   } as unknown as WorkoutRoutine;
 }
-export const parseRoutinePage = (value: unknown, roundTripMs = 0) =>
-  pageOf(value, (row) => parseRoutine(row, roundTripMs));
+export const parseRoutinePage = (value: unknown, roundTripMs = 0) => {
+  const page = pageOf(value, (row) => parseRoutine(row, roundTripMs));
+  const serverKoreanDate = object(value).serverKoreanDate;
+  if (
+    serverKoreanDate !== undefined &&
+    (typeof serverKoreanDate !== "string" || !isWorkoutDate(serverKoreanDate))
+  )
+    invalid();
+  return {
+    ...page,
+    ...(serverKoreanDate === undefined
+      ? {}
+      : { serverKoreanDate: serverKoreanDate as string }),
+  };
+};
 
 /** Identity includes the routine and item, and cannot collide with a legacy UUID. */
 export const routineWorkoutId = (routineId: string, itemId: string) =>

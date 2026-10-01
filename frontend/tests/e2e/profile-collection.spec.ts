@@ -1,3 +1,4 @@
+import { refreshOnFocus } from "./resource-refresh";
 import { expect, test } from "@playwright/test";
 import { installCommerce, rewardDate } from "./avatar-rewards-fixtures";
 import { installApi, testRecord, testUser } from "./integration-fixtures";
@@ -59,7 +60,7 @@ test("컬렉션 조회 실패·잘못된 중복 응답은 0이나 이전 수치�
   await expect(collection.locator("dd")).toHaveText("3개");
   for (const failure of ["failure", "duplicate"]) {
     mode = failure;
-    await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+    await refreshOnFocus(page);
     await expect(collection.locator("dd")).toHaveText("—확인 필요");
     await expect(
       page.getByText("보유 컬렉션을 확인하지 못했어요."),

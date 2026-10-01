@@ -1,3 +1,4 @@
+import { refreshOnFocus } from "./resource-refresh";
 import { expect, test } from "@playwright/test";
 import { installCommerce } from "./avatar-rewards-fixtures";
 import { testUser } from "./integration-fixtures";
@@ -98,7 +99,7 @@ test("재화 조회 오류를 0개로 표시하지 않고 캐릭터는 보유 �
   await page.route("**/auth/me", (route) =>
     route.fulfill({ status: 503, json: {} }),
   );
-  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await refreshOnFocus(page);
   await expect(
     page.getByRole("button", { name: "다시 불러오기", exact: true }),
   ).toBeVisible();

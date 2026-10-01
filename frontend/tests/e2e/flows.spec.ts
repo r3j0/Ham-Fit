@@ -1,3 +1,4 @@
+import { refreshOnFocus } from "./resource-refresh";
 import {
   setMeasurementAge,
   expectMeasurementAge,
@@ -566,7 +567,7 @@ test("API 인증 만료 응답을 받으면 갱신 후 본인 계정을 다시 �
     } else await route.continue();
   });
   await page.getByRole("link", { name: "내 프로필", exact: true }).click();
-  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await refreshOnFocus(page);
   await expect.poll(() => refreshes).toBe(1);
   await expect(page.getByText(email, { exact: true })).toBeVisible();
   expect(refreshes).toBe(1);
@@ -989,7 +990,7 @@ for (const status of [503, 0]) {
       status ? failApi(route, status) : route.abort(),
     );
     await page.getByRole("link", { name: "내 프로필", exact: true }).click();
-    await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+    await refreshOnFocus(page);
     await expect(
       page.getByRole("button", { name: "다시 불러오기" }),
     ).toBeVisible();
@@ -1027,7 +1028,7 @@ test("계정 조회 응답을 기다리는 동안에도 로그아웃할 수 있�
   const pending = Promise.withResolvers<Route>();
   await page.route("**/api/v1/auth/me", (route) => pending.resolve(route));
   await page.getByRole("link", { name: "내 프로필", exact: true }).click();
-  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await refreshOnFocus(page);
   const route = await pending.promise;
   await expect(
     page.getByRole("button", { name: "로그아웃", exact: true }),

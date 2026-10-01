@@ -1,3 +1,4 @@
+import { historyRangeQuery, type HistoryRange } from "./history-range";
 import { api } from "./session";
 import type { ApiRequestOptions } from "./http";
 import { invalid } from "./api-contract";
@@ -26,9 +27,13 @@ export const getRoutine = (id: string, signal?: AbortSignal) =>
       return row;
     },
   );
-export const getRoutineHistory = (cursor?: string, signal?: AbortSignal) =>
+export const getRoutineHistory = (
+  cursor?: string,
+  signal?: AbortSignal,
+  range?: HistoryRange,
+) =>
   routineApi(
-    `/workout-routines/history?limit=20${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`,
+    `/workout-routines/history?limit=20${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}${historyRangeQuery(range)}`,
     { signal },
   ).then(({ data, roundTripMs }) => parseRoutinePage(data, roundTripMs));
 export const requestTodayRoutine = (key: string) =>

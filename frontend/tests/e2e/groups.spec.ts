@@ -1,3 +1,4 @@
+import { refreshOnFocus } from "./resource-refresh";
 import { test, expect } from "@playwright/test";
 import { installApi, testUser } from "./integration-fixtures";
 const id = "77777777-1111-4111-8111-111111111111";
@@ -253,7 +254,7 @@ test("권한 변경은 화면 복귀 시 반영되며 실패·잘못된 응답�
   await expect(page.getByRole("button", { name: "그룹장 위임" })).toBeVisible();
   await page.getByRole("button", { name: "그룹장 위임" }).click();
   leader = false;
-  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await refreshOnFocus(page);
   await expect(page.getByRole("button", { name: "그룹장 위임" })).toHaveCount(
     0,
   );
@@ -543,7 +544,7 @@ test("그룹원과 신청을 한 행에 표시하며 오늘 상태를 검증하�
   await expect(page.getByRole("button", { name: "그룹 설정" })).toBeFocused();
   delete (members[0] as { todayWorkoutCompleted?: boolean })
     .todayWorkoutCompleted;
-  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await refreshOnFocus(page);
   await expect(
     region.getByText("오늘 확인 불가", { exact: true }),
   ).toBeVisible();
@@ -559,7 +560,7 @@ test("그룹원과 신청을 한 행에 표시하며 오늘 상태를 검증하�
       },
     }),
   );
-  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await refreshOnFocus(page);
   await expect(page.getByRole("main").getByRole("alert")).toContainText(
     "서버 응답을 확인할 수 없어요",
   );

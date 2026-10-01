@@ -1,5 +1,5 @@
 "use client";
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { api, invalidateUserProfile } from "@/lib/session";
 import { errorMessage } from "@/lib/http";
 import { isUserProfile } from "@/lib/user-profile";
@@ -21,12 +21,14 @@ export function UserProfileProvider({
   const session = useSession();
   const version = `${session.generation}:${session.profileRevision}`;
   const owner = `${session.generation}:${session.user?.id ?? ""}`;
+  const lastRead = useRef(-Infinity);
   const [snapshot, setSnapshot] = useState<{
     owner: string;
     state: ProfileState;
   } | null>(null);
   useEffect(() => {
     const abort = new AbortController();
+    lastRead.current = Date.now();
     api<UserProfile>("/auth/me", { signal: abort.signal })
       .then(({ data }) => {
         if (!isUserProfile(data))
@@ -50,7 +52,13 @@ export function UserProfileProvider({
   }, [owner, version]);
   useEffect(() => {
     const refresh = () => {
-      if (document.visibilityState === "visible") invalidateUserProfile();
+      if (
+        document.visibilityState === "visible" &&
+        Date.now() - lastRead.current >= 60000
+      ) {
+        lastRead.current = Date.now();
+        invalidateUserProfile();
+      }
     };
     window.addEventListener("focus", refresh);
     document.addEventListener("visibilitychange", refresh);

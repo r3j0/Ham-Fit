@@ -65,8 +65,12 @@ export function TodayWorkout({
   }, [remaining]);
   useEffect(() => {
     const controller = new AbortController();
+    let reading = false;
+    let lastRead = -Infinity;
     async function load() {
-      if (guard.current) return;
+      if (guard.current || reading) return;
+      reading = true;
+      lastRead = Date.now();
       const read = ++version.current;
       try {
         const value = await getCurrentRoutine(controller.signal);
@@ -81,15 +85,21 @@ export function TodayWorkout({
           setPending((writer.current?.read().length ?? 0) > 0);
           setLoaded(true);
         }
+      } finally {
+        reading = false;
       }
     }
     void load();
     const focus = () => {
-      if (document.visibilityState === "visible") void load();
+      if (
+        document.visibilityState === "visible" &&
+        Date.now() - lastRead >= 60000
+      )
+        void load();
     };
     window.addEventListener("focus", focus);
     document.addEventListener("visibilitychange", focus);
-    const interval = setInterval(focus, 60000);
+    const interval = setInterval(focus, 300000);
     return () => {
       controller.abort();
       clearInterval(interval);

@@ -1,3 +1,4 @@
+import { refreshOnFocus } from "./resource-refresh";
 import { test, expect } from "@playwright/test";
 import { installApi, testRecord, testWorkout } from "./integration-fixtures";
 import { routineFixture } from "../fixtures/routine";
@@ -157,7 +158,7 @@ test("다른 기기에서 완료한 운동은 화면 복귀 시 완료로 바뀌
     status: "completed",
     completedAt: "2026-09-27T03:00:00.000Z",
   };
-  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await refreshOnFocus(page);
   await expect(page.getByText("오늘의 모든 운동을 완료했어요.")).toBeVisible();
   await expect(list.getByRole("listitem")).toHaveCount(1);
   await expect(list.getByRole("link")).toHaveCount(0);

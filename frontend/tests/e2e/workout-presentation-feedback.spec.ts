@@ -1,3 +1,4 @@
+import { refreshOnFocus } from "./resource-refresh";
 import { test, expect } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import { routineFixture } from "../fixtures/routine";
@@ -166,7 +167,7 @@ test("운동 기록 위 내 햄스터는 추천 전·배정·진행·미완료·
     ["not_performed", "droopy"],
   ] as const) {
     row.routine[0].status = status;
-    await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+    await refreshOnFocus(page);
     await expect(mascot).toHaveAttribute("data-pose", pose);
   }
   for (const item of row.routine) {
@@ -176,7 +177,7 @@ test("운동 기록 위 내 햄스터는 추천 전·배정·진행·미완료·
   }
   row.status = "completed";
   row.progress.completedItems = row.routine.length;
-  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await refreshOnFocus(page);
   await expect(mascot).toHaveAttribute("data-pose", "drink");
   const calendar = page.getByRole("region", { name: "운동 기록", exact: true });
   const mascotBox = (await mascot.boundingBox())!,
@@ -218,6 +219,7 @@ test("홈은 빈 그룹 영역을 숨기고 두 제목은 KSPO Blue이며 완료
   const week = page.getByRole("list", { name: "최근 7일 운동 기록" });
   const seed = week.locator('[data-workout-status="routine_completed"] img');
   await expect(seed).toHaveCount(1);
+  await seed.scrollIntoViewIfNeeded();
   await expect
     .poll(() => seed.evaluate((img: HTMLImageElement) => img.naturalWidth))
     .toBeGreaterThan(0);

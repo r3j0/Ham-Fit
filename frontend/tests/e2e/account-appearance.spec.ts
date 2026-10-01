@@ -1,3 +1,4 @@
+import { refreshOnFocus } from "./resource-refresh";
 import { test, expect } from "@playwright/test";
 import {
   installApi,
@@ -85,7 +86,7 @@ test("프로필은 재화·가입 경과일·활동 리포트와 대표 캐릭�
   await expect(avatar).toBeVisible();
   await expect(avatar.locator('image[data-layer="base"]')).toHaveAttribute(
     "href",
-    "/hamsters/base/basic-cream.webp",
+    "/hamsters/base/basic-cream-hamdoli.webp",
   );
   await page.emulateMedia({ reducedMotion: "reduce" });
   await expect(
@@ -193,7 +194,7 @@ test("프로필은 재화·가입 경과일·활동 리포트와 대표 캐릭�
   const fullBody = page.getByRole("img", { name: "나의 대표 캐릭터" });
   await expect(fullBody.locator('image[data-layer="base"]')).toHaveAttribute(
     "href",
-    "/hamsters/base/basic-cream.webp",
+    "/hamsters/base/basic-cream-hamdoli.webp",
   );
   await expect(
     page.getByRole("navigation", { name: "하단 메뉴" }),
@@ -222,7 +223,7 @@ test("프로필을 다시 확인하는 동안 기존 카드와 메뉴 위치를 
     await gate.promise;
     await route.fallback();
   });
-  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await refreshOnFocus(page);
   await expect.poll(() => profileReads).toBe(1);
 
   await expect(card).toBeVisible();

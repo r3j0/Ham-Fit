@@ -1,3 +1,4 @@
+import { refreshOnFocus } from "./resource-refresh";
 import { test, expect } from "@playwright/test";
 import { installApi, testRecord, testUser } from "./integration-fixtures";
 test("홈·프로필은 서버 스트릭을 사용하고 지원하지 않는 통계와 조회 실패를 0으로 꾸미지 않는다", async ({
@@ -40,10 +41,10 @@ test("홈·프로필은 서버 스트릭을 사용하고 지원하지 않는 통
   await expect(report.locator("dd").nth(1)).toHaveText("12일");
   await expect(report.locator("dd").nth(3)).toHaveText("30일");
   streak = 8;
-  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await refreshOnFocus(page);
   await expect(report.locator("dd").first()).toHaveText("8일");
   fail = true;
-  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await refreshOnFocus(page);
   await expect(report.getByRole("alert")).toBeVisible();
   await expect(report.locator("dd").first()).toHaveText("—확인 필요");
   fail = false;

@@ -1,3 +1,4 @@
+import { refreshOnFocus } from "./resource-refresh";
 import { expect, type Page } from "@playwright/test";
 
 /** Existing records keep their recorded age; all new records calculate it from DOB. */
@@ -41,7 +42,7 @@ export async function setMeasurementAge(page: Page, value: string) {
         })
       : route.fallback(),
   );
-  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await refreshOnFocus(page);
   if (value && date)
     await expect(page.getByLabel("측정 당시 나이")).toContainText(
       `만 ${Number(value)}세`,

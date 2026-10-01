@@ -70,7 +70,10 @@ function GroupSlide({
 }
 
 export function HomeGroups() {
-  const resource = useApiResource(getGroupOverview);
+  const resource = useApiResource(getGroupOverview, {
+    refreshIntervalMs: 120000,
+    staleTimeMs: 60000,
+  });
   const [selection, setSelection] = useState<{
     id?: string;
     direction: number;

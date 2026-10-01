@@ -134,3 +134,25 @@ test("cardio remains optional guidance and malformed time contracts cannot enabl
   ])
     assert.throws(() => parseRoutine({ ...row, ...patch }));
 });
+
+test("empty history pages preserve server Korean dates and reject invalid date metadata", () => {
+  assert.equal(
+    parseRoutinePage({
+      items: [],
+      nextCursor: null,
+      serverKoreanDate: "2026-09-27",
+    }).serverKoreanDate,
+    "2026-09-27",
+  );
+  assert.throws(() =>
+    parseRoutinePage({
+      items: [],
+      nextCursor: null,
+      serverKoreanDate: "2026-02-30",
+    }),
+  );
+  assert.deepEqual(parseRoutinePage({ items: [], nextCursor: null }), {
+    items: [],
+    nextCursor: null,
+  });
+});

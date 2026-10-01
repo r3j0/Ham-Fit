@@ -1,3 +1,5 @@
+import { historyBounds } from './history-query.js';
+import type { HistoryRange } from './history-query.js';
 import { recordRoutineReward } from '../users/activity-rewards.service.js';
 import { recordActivityAchievement } from '../groups/mission-contributions.js';
 import { retryTransaction } from '../database/transaction-retry.js';
@@ -245,12 +247,31 @@ export class WorkoutRoutinesService {
       { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
     );
   }
-  async history(userId: string, limit: number, cursor?: string) {
+  async history(
+    userId: string,
+    limit: number,
+    cursor?: string,
+    range?: HistoryRange,
+  ) {
     return this.database.$transaction(
       async (tx) => {
         if (cursor) await this.owned(tx, userId, cursor);
         const rows = await tx.workoutRoutine.findMany({
-          where: { userId },
+          where: {
+            userId,
+            ...(range
+              ? {
+                  OR: [
+                    { assignmentDate: historyBounds(range).assignmentDate },
+                    {
+                      items: {
+                        some: { completedAt: historyBounds(range).completedAt },
+                      },
+                    },
+                  ],
+                }
+              : {}),
+          },
           orderBy: [{ assignmentDate: 'desc' }, { id: 'asc' }],
           ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
           take: limit + 1,
@@ -259,6 +280,7 @@ export class WorkoutRoutinesService {
         const now = await this.now(tx);
         const page = rows.slice(0, limit);
         return {
+          serverKoreanDate: koreaDate(now),
           items: page.map((row) => this.response(row, now)),
           nextCursor: rows.length > limit ? page.at(-1)!.id : null,
         };

@@ -51,7 +51,10 @@ function Applications({
     (signal: AbortSignal) => getRequests(id, "pending", signal),
     [id],
   );
-  const resource = useApiResource(load),
+  const resource = useApiResource(load, {
+      refreshIntervalMs: 120000,
+      staleTimeMs: 60000,
+    }),
     begin = useOperationScope();
   const [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
@@ -548,7 +551,10 @@ function GroupView({ row, refresh }: { row: Detail; refresh: () => void }) {
 }
 export function GroupDetail({ id }: { id: string }) {
   const load = useCallback((signal: AbortSignal) => getGroup(id, signal), [id]),
-    resource = useApiResource(load);
+    resource = useApiResource(load, {
+      refreshIntervalMs: 120000,
+      staleTimeMs: 60000,
+    });
   return (
     <Shell>
       <Header title="그룹" back="/groups" />

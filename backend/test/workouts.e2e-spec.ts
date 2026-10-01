@@ -299,6 +299,68 @@ describe('Daily workouts API against isolated PostgreSQL', () => {
     }
   });
 
+  it('filters legacy history by Korean dates and keeps older assignments completed within the window', async () => {
+    const assigned = await assign();
+    const source = await database.userCurriculumAssignment.findUniqueOrThrow({
+      where: { id: assigned.id },
+    });
+    await database.userCurriculumAssignment.deleteMany({
+      where: { userId: owner.user.id },
+    });
+    const rows = await Promise.all(
+      ['2026-08-01', '2026-08-02', '2026-09-01', '2026-10-01'].map((day, i) => {
+        const completedAt =
+          i === 0
+            ? new Date('2026-08-31T15:00:00Z')
+            : i === 1
+              ? new Date('2026-09-01T15:00:00Z')
+              : null;
+        return database.userCurriculumAssignment.create({
+          data: {
+            userId: owner.user.id,
+            curriculumId: source.curriculumId,
+            requestKey: randomUUID(),
+            assignmentDate: new Date(day),
+            assignedAt: new Date(day),
+            inputSnapshot: source.inputSnapshot!,
+            algorithmVersion: source.algorithmVersion,
+            ...(completedAt
+              ? {
+                  status: 'completed',
+                  resultStatus: 'completed',
+                  performedAt: completedAt,
+                  completedAt,
+                }
+              : {}),
+          },
+        });
+      }),
+    );
+    const response = await request(app.getHttpServer())
+      .get('/api/v1/workouts/history?from=2026-09-01&to=2026-09-01&limit=1')
+      .set('Authorization', `Bearer ${owner.access_token}`)
+      .expect(200);
+    expect(response.body.items[0].id).toBe(rows[2].id);
+    const second = await request(app.getHttpServer())
+      .get(
+        `/api/v1/workouts/history?from=2026-09-01&to=2026-09-01&limit=1&cursor=${response.body.nextCursor}`,
+      )
+      .set('Authorization', `Bearer ${owner.access_token}`)
+      .expect(200);
+    expect(second.body.items[0].id).toBe(rows[0].id);
+    expect(second.body.nextCursor).toBeNull();
+    await request(app.getHttpServer())
+      .get(
+        `/api/v1/workouts/history?from=2026-09-01&to=2026-09-01&cursor=${rows[0].id}`,
+      )
+      .set('Authorization', `Bearer ${other.access_token}`)
+      .expect(404);
+    await request(app.getHttpServer())
+      .get('/api/v1/workouts/history?from=2026-09-02&to=2026-09-01')
+      .set('Authorization', `Bearer ${owner.access_token}`)
+      .expect(400);
+  });
+
   it('serializes distinct concurrent request keys and snapshots the latest single measurement', async () => {
     await measure({
       measuredOn: '2026-09-19',
