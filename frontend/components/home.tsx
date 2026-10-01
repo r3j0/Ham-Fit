@@ -1,10 +1,11 @@
 "use client";
 import Link from "next/link";
 import { HomeGroups } from "./home-groups";
+import { NotificationBell } from "./notification-bell";
 import { SeedBalance } from "./seed-balance";
 import { MyCharacter } from "./my-character";
 import { RewardLinks } from "./personal-roulette";
-import { ArrowRight, Bell, ClipboardList } from "lucide-react";
+import { ArrowRight, ClipboardList } from "lucide-react";
 import { Loading, Notice, Shell } from "./ui";
 import { TodayWorkout } from "./today-workout";
 import { WorkoutStreak } from "./workout-streak";
@@ -18,13 +19,7 @@ export function Home() {
       <h1 className="sr-only">메인</h1>
       <div className="content stack home-content">
         <header className="home-toolbar">
-          <Link
-            className="icon-button"
-            href="/account/notifications"
-            aria-label="알림"
-          >
-            <Bell size={24} aria-hidden="true" />
-          </Link>
+          <NotificationBell />
           {user && (
             <Link
               href="/shop"
