@@ -352,7 +352,7 @@ test("item playback reuses recovery, saves only the selected item and replays co
     .toBeGreaterThan(9.6);
   await page.getByRole("button", { name: "여기서 종료", exact: true }).click();
   const confirmation = page.getByRole("dialog", {
-    name: "운동 방법대로 운동했나요?",
+    name: "운동 방법대로 운동을 완수했나요?",
   });
   await expect(confirmation).toBeVisible();
   await confirmation

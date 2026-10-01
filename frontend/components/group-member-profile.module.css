@@ -106,6 +106,17 @@
   color: var(--navy);
   font-weight: 600;
 }
+.management {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 16px;
+  padding: 24px clamp(16px, 3vw, 32px);
+  border-top: 1px solid var(--border);
+}
+.management h3 {
+  color: var(--navy);
+  font-size: 16px;
+}
 @media (min-width: 960px) {
   .profile {
     display: grid;

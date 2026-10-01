@@ -9,9 +9,18 @@
   font-size: 18px;
 }
 .mascot {
-  display: flex;
-  justify-content: center;
-  margin-top: 12px;
+  display: none;
+}
+@media (min-width: 960px) {
+  .mascot {
+    display: flex;
+    justify-content: center;
+    margin-top: 6px;
+  }
+  .mascot > [data-pose="pushup"] {
+    /* Include the transparent upper canvas when halving the visible gap. */
+    margin-top: calc(var(--pose-size) * -0.21);
+  }
 }
 .instruction {
   margin-top: 8px;
@@ -59,5 +68,24 @@
 @media (min-width: 480px) and (max-width: 959px) {
   .steps {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.guide[data-highlighted] {
+  animation: guide-outline 2.4s ease-in-out infinite;
+}
+@keyframes guide-outline {
+  0%,
+  100% {
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--navy) 30%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 2px var(--navy);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .guide[data-highlighted] {
+    animation: none;
+    box-shadow: 0 0 0 2px var(--navy);
   }
 }
