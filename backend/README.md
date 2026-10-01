@@ -174,3 +174,5 @@ Prisma 구성은 [공식 NestJS 안내](https://docs.prisma.io/docs/guides/frame
 - [캐릭터·대표 코디·해바라기씨 상점 API 및 FE 연동](docs/avatar-shop-api.md) · [검증 결과](docs/avatar-shop-verification.md)
 
 2026-09-30 그룹 미션·룰렛을 `/api/v1/groups/:groupId` 아래에 추가했다. 그룹장 수동 시작, 고정 구성원 스냅샷, 당일 전체 운동 성공의 자동 물 주기, 14N 성장 목표, 누적 기여 기반 룰렛권과 기존 개인 재화 지급을 제공한다. [정책·권한·멱등성·삭제·동시성](docs/group-missions.md), [실제 검증 결과](docs/group-missions-verification.md)를 참고한다.
+
+2026-10-01 개인 연속 운동 룰렛을 `/api/v1/users/me/streak-roulette`에 추가했다. 실제 연속 5배수 달성의 자동 권 발급, 수동 추첨, 기존 재화·미보유 상점 아이템 지급과 결과 복구를 제공한다. [정책·API·DB·마이그레이션](docs/streak-roulette.md), [단계별 검증](docs/streak-roulette-verification.md)을 참고한다.

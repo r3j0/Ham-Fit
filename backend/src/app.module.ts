@@ -1,4 +1,5 @@
 import { AvatarModule } from './avatar/avatar.module.js';
+import { StreakRouletteModule } from './streak-roulette/streak-roulette.module.js';
 import { GroupsModule } from './groups/groups.module.js';
 import { Module } from '@nestjs/common';
 import { UsersModule } from './users/users.module.js';
@@ -27,6 +28,7 @@ import { RecommendationsModule } from './recommendations/recommendations.module.
     RecommendationsModule,
     GroupsModule,
     AvatarModule,
+    StreakRouletteModule,
   ],
 })
 export class AppModule {}

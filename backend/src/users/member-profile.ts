@@ -56,6 +56,26 @@ export async function memberProfiles(
       avatarOutfit: { include: outfitInclude },
     },
   });
+  const days = await workoutDays(tx, userIds, now);
+  return new Map(
+    users.map((user) => [
+      user.id,
+      {
+        userId: user.id,
+        nickname: user.nickname,
+        profileCharacter: outfitView(user.avatarOutfit),
+        ...activityStats(days.get(user.id) ?? new Set(), koreanDay(now)),
+      },
+    ]),
+  );
+}
+
+// Shared source eligibility/date set, without profile or avatar reads.
+export async function workoutDays(
+  tx: Prisma.TransactionClient,
+  userIds: string[],
+  now: Date,
+) {
   // Preserve the legacy daily-assignment eligibility rule. Routine items never
   // enter this table/path and must pass the whole-routine check below.
   const completions = await tx.userCurriculumAssignment.findMany({
@@ -100,15 +120,5 @@ export async function memberProfiles(
     if (completion.completedAt) set.add(koreanDay(completion.completedAt));
     days.set(completion.userId, set);
   }
-  return new Map(
-    users.map((user) => [
-      user.id,
-      {
-        userId: user.id,
-        nickname: user.nickname,
-        profileCharacter: outfitView(user.avatarOutfit),
-        ...activityStats(days.get(user.id) ?? new Set(), koreanDay(now)),
-      },
-    ]),
-  );
+  return days;
 }

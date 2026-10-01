@@ -5,7 +5,7 @@
 ## 확정 정책과 현재 등록 범위
 
 - 사용자 답변으로 **구매한 자세·의상은 크림·그레이 공용 소유**로 확정했다. 공용 소유와 실제 렌더링 지원은 별개다.
-- 신규·기존 사용자에게 `character.cream`, `character.gray`, `pose.basic`만 기본 지급한다. 최초 대표 코디는 크림/basic/의상 없음이다. 재화 기본값은 기존 `UserCurrency`의 0이다. 가입·운동 완료 자체의 직접 재화 보상은 없으며, 2026-09-30 [그룹 룰렛](group-missions.md)이 기존 개인 재화에 당첨 보상을 지급한다.
+- 신규·기존 사용자에게 `character.cream`, `character.gray`, `pose.basic`만 기본 지급한다. 최초 대표 코디는 크림/basic/의상 없음이다. 재화 기본값은 기존 `UserCurrency`의 0이다. 가입·운동 완료 자체의 직접 재화 보상은 없으며, 2026-09-30 [그룹 룰렛](group-missions.md)과 2026-10-01 [개인 연속 운동 룰렛](streak-roulette.md)이 기존 개인 재화에 당첨 보상을 지급한다. 운동 성공은 개인 룰렛권을 적립하며 사용자가 추첨할 때 보상을 지급한다.
 - FE의 `components/mascot/mascot-poses.d.ts`, `mascot-poses.js`, `wardrobe.js`, `MascotPose.tsx`, `public/mascots/poses`를 읽기 전용으로 확인했다. 두 캐릭터, 13개 자세, 기존 스포츠웨어 4종의 130개 조합에서 참조 이미지 파일 존재를 확인했다. 이미지 품질·부위별 합성은 검증하지 않았다.
 - 후속 사용자 결정: 기존 합본 이미지 `blue-sportswear`, `black-sportswear`, `white-sportswear`, `green-sportswear`는 **카탈로그에서 제외**한다. 세트 상품 가격·전환·분리 소유권을 만들지 않는다. FE 파일은 보존한다.
 - 따라서 초기 카탈로그는 캐릭터 2 + 자세 13 = 15개, 의상 미착용 지원 조합은 26개다. 의상 상품은 아직 0개이며 모자·상의·하의의 가상 이미지나 상품을 판매하지 않는다.
@@ -111,7 +111,7 @@
 }
 ```
 
-`source`는 `default` 또는 `purchase`다. 기본 지급·구매 시각을 영구 보관한다. 소유권은 사용자+상품 PK로 중복될 수 없다. 구매한 의상은 지원 조합이 있는 두 캐릭터에서 공용으로 사용한다.
+`source`는 `default`, `purchase`, `streak_roulette`다. 기본 지급·구매·개인 룰렛 획득 시각을 영구 보관한다. [개인 룰렛](streak-roulette.md)은 미보유 판매 상품을 공용 inventory에 지급하며 구매 행/재화 차감/자동 착용 없이 대표 코디를 유지한다. 소유권은 사용자+상품 PK로 중복될 수 없다. 구매한 의상은 지원 조합이 있는 두 캐릭터에서 공용으로 사용한다.
 
 ## 구매와 통신 재시도
 
@@ -290,3 +290,5 @@ BE 담당자는 새 forward-only 마이그레이션을 작성해 상품과 호�
 초기화 복구가 필요한 경우 대상 스키마에서 `SELECT initialize_avatar(id) FROM users`를 재실행할 수 있다. 잔액·구매·소유 경로·획득 시각·기존 대표 코디/revision/수정 시각은 덮어쓰지 않는다. 전체 SQL 파일의 CREATE TABLE을 반복 실행하지 않는다. 정상 적용 재처리는 Prisma migration ledger를 사용한다. GET/로그인은 누락 행을 조용히 보정하지 않는다.
 
 이 작업에서는 **개발·운영 DB에 적용하거나 배포하지 않았다**. 향후 적용은 기존 DB 운영 절차에 따라 백업·잠금 시간·마이그레이션 검토 후 새 서버보다 먼저 진행해야 한다. 대규모 백필의 운영 잠금 시간은 별도 스테이징 검증 대상이다. 계정 삭제는 개인 소유·코디·구매·거래를 CASCADE로 삭제하고 공용 카탈로그를 보존한다.
+
+2026-10-01 개인 룰렛도 `grantCurrencyInTransaction`의 지급 핵심을 재사용한다. 개인 지급 키 `streak-roulette:<drawId>`는 그룹 지급 키와 분리한다. 소유권 source CHECK는 신규 `20261001000200_streak_roulette_draws`에서 확장하며 기존 기본 지급·구매·코디 계약과 기존 마이그레이션을 유지한다.

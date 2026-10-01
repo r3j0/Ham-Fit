@@ -25,6 +25,7 @@ export class DatabaseService
     name:
       | 'users'
       | 'avatar_products'
+      | 'avatar_ownerships'
       | 'groups'
       | 'group_memberships'
       | 'user_curriculum_assignments'
@@ -96,6 +97,9 @@ export class DatabaseService
         this.activityAchievement.findFirst({ select: { id: true } }),
         this.groupRouletteTicket.findFirst({ select: { id: true } }),
         this.groupRouletteDraw.findFirst({ select: { id: true } }),
+        this.streakRoulettePolicy.findFirst({ select: { version: true } }),
+        this.streakRouletteTicket.findFirst({ select: { id: true } }),
+        this.streakRouletteDraw.findFirst({ select: { id: true } }),
       ]);
       return definitions > 0;
     } catch {

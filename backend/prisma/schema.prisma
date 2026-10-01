@@ -97,6 +97,8 @@ model User {
   missionStarts               GroupMissionStartRequest[]
   rouletteDraws               GroupRouletteDraw[]
   rouletteRewards             GroupRouletteReward[]
+  streakRouletteTickets        StreakRouletteTicket[]
+  streakRouletteDraws          StreakRouletteDraw[]
 
   @@map("users")
 }
@@ -555,6 +557,7 @@ model AvatarProduct {
   catalogRevision Int @default(1) @map("catalog_revision")
   ownerships AvatarOwnership[]
   purchases AvatarPurchase[]
+  streakDraws StreakRouletteDraw[]
   characters AvatarCombination[] @relation("CombinationCharacter")
   poses AvatarCombination[] @relation("CombinationPose")
   combinationItems AvatarCombinationItem[]
@@ -590,6 +593,7 @@ model AvatarOwnership {
   acquiredAt DateTime @default(now()) @map("acquired_at") @db.Timestamptz(6)
   user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict)
   product AvatarProduct @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  streakDraws StreakRouletteDraw[] @relation("StreakItemOwnership")
   @@id([userId, productId])
   @@map("avatar_ownerships")
 }
@@ -631,6 +635,7 @@ model CurrencyTransaction {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict)
   rouletteReward GroupRouletteReward?
+  streakDraw StreakRouletteDraw?
   purchase AvatarPurchase? @relation(fields: [purchaseId], references: [id], onDelete: Cascade, onUpdate: Restrict)
   @@unique([userId, eventKey])
   @@map("currency_transactions")
@@ -647,7 +652,9 @@ model ActivityAchievement {
   sourceId String @map("source_id") @db.Uuid
   user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict)
   contributions GroupMissionContribution[]
+  streakTickets StreakRouletteTicket[]
   @@unique([userId, koreanDate])
+  @@unique([id, userId, koreanDate])
   @@map("activity_achievements")
 }
 
@@ -754,4 +761,55 @@ model GroupRouletteReward {
   transaction CurrencyTransaction? @relation(fields: [transactionId], references: [id], onDelete: SetNull, onUpdate: Restrict)
   @@unique([drawId, userId])
   @@map("group_roulette_rewards")
+}
+
+// An immutable versioned policy; tickets retain this reference forever.
+model StreakRoulettePolicy {
+  version String @id
+  snapshot Json @db.JsonB
+  tickets StreakRouletteTicket[]
+  @@map("streak_roulette_policies")
+}
+
+model StreakRouletteTicket {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  achievementId String @unique @map("achievement_id") @db.Uuid
+  koreanDate DateTime @map("korean_date") @db.Date
+  segmentStartDate DateTime @map("segment_start_date") @db.Date
+  streakDays Int @map("streak_days")
+  createdAt DateTime @map("created_at") @db.Timestamptz(6)
+  policyVersion String @map("policy_version")
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  achievement ActivityAchievement @relation(fields: [achievementId, userId, koreanDate], references: [id, userId, koreanDate], onDelete: Cascade, onUpdate: Restrict, map: "streak_ticket_achievement_fkey")
+  draw StreakRouletteDraw?
+  policy StreakRoulettePolicy @relation(fields: [policyVersion], references: [version], onDelete: Restrict, onUpdate: Restrict)
+  @@unique([userId, koreanDate])
+  @@unique([userId, segmentStartDate, streakDays])
+  @@index([userId, id])
+  @@map("streak_roulette_tickets")
+}
+
+// This immutable payout receipt is also the single-use ticket consumption.
+model StreakRouletteDraw {
+  id String @id @db.Uuid
+  ticketId String @unique @map("ticket_id") @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  key String @db.Uuid
+  policyVersion String @map("policy_version")
+  result String
+  actualKind String @map("actual_kind")
+  amount Int
+  productId String? @map("product_id")
+  transactionId String? @unique @map("transaction_id") @db.Uuid
+  fallbackReason String? @map("fallback_reason")
+  drawnAt DateTime @map("drawn_at") @db.Timestamptz(6)
+  ticket StreakRouletteTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  product AvatarProduct? @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  ownership AvatarOwnership? @relation("StreakItemOwnership", fields: [userId, productId], references: [userId, productId], onDelete: NoAction, onUpdate: Restrict)
+  transaction CurrencyTransaction? @relation(fields: [transactionId], references: [id], onDelete: NoAction, onUpdate: Restrict)
+  @@unique([userId, key])
+  @@index([userId, id])
+  @@map("streak_roulette_draws")
 }

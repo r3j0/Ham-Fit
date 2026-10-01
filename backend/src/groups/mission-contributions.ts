@@ -1,6 +1,7 @@
 import { DatabaseService } from '../database/database.service.js';
 import type { Prisma } from '../generated/prisma/client.js';
-import { koreanDay } from '../users/member-profile.js';
+import { koreanDay, workoutDays } from '../users/member-profile.js';
+import { issueStreakTicket } from '../streak-roulette/streak-ticket.js';
 import { ticketCount } from './mission-policy.js';
 
 // Only called before the FIRST valid completion transition is saved, under
@@ -21,32 +22,16 @@ export async function recordActivityAchievement(
     })
   )
     return;
-  const start = new Date(`${day}T00:00:00+09:00`);
-  // Includes pre-rollout completions, even though no achievement was backfilled.
-  // A routine qualifies by its LAST completion, not by any individual event.
-  const legacy = await tx.userCurriculumAssignment.findFirst({
-    where: {
-      userId,
-      assignmentDate: { not: null },
-      status: 'completed',
-      completedAt: { gte: start, lte: now },
-    },
-    select: { id: true },
-  });
-  const routine = await tx.workoutRoutine.findFirst({
-    where: {
-      userId,
-      items: {
-        some: { completedAt: { gte: start, lte: now } },
-        every: { status: 'completed', completedAt: { not: null, lte: now } },
-      },
-    },
-    select: { id: true },
-  });
-  if (legacy || routine) return;
+  const completed =
+    (await workoutDays(tx, [userId], now)).get(userId) ?? new Set<string>();
+  // The source is about to be saved. Existing success today consumes the day,
+  // but this first valid transition must be included in the reward calculation.
+  if (completed.has(day)) return;
   const achievement = await tx.activityAchievement.create({
     data: { userId, koreanDate, achievedAt: now, sourceKind, sourceId },
   });
+  completed.add(day);
+  await issueStreakTicket(tx, achievement, completed);
   // Stable UUID order across all eligible groups; deletion/start/admission and
   // departure use the same parent locks. Recheck eligibility after waiting.
   const groups = await tx.$queryRaw<Array<{ id: string }>>`

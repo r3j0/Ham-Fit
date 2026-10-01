@@ -1,6 +1,6 @@
 # 개인·그룹 공통 활동 집계
 
-2026-09-29 확정 정책. `src/users/member-profile.ts`를 개인 활동과 그룹원 프로필의 공통 집계 경로로 사용한다. 추천 알고리즘·개별 운동의 완료 판정·완료 저장은 변경하지 않는다.
+2026-09-29 확정 정책. `src/users/member-profile.ts`의 `workoutDays`를 개인 활동·그룹원 프로필·완료 전이 보상의 공통 날짜 집계 경로로 사용한다. 추천 알고리즘·개별 운동의 완료 판정·완료 저장은 변경하지 않는다.
 
 ## 응답 계약
 
@@ -81,3 +81,5 @@ TZ=America/Los_Angeles npm run test:e2e -- test/activity.e2e-spec.ts
 - 최종 diff 및 작업 시작 시점 파일 해시 비교로 기존 진행 중 변경을 보존하고 `frontend/`, `data-analysis/`, 저장소 루트에 변경이 없음을 확인했다.
 
 2026-09-30 `profileCharacter`는 [저장 대표 코디](avatar-shop-api.md)의 동일한 데이터와 직렬화를 사용한다. 잔액·보유 목록·구매 기록은 포함하지 않는다.
+
+2026-10-01 [개인 스트릭 룰렛](streak-roulette.md)은 같은 원본 날짜 집합과 `currentStreak`를 재사용한다. `recordActivityAchievement`가 원본 저장 직전에 이번 완료일까지 포함해 5배수 권을 발급하며 그룹 기여와 한 트랜잭션이다. 활동 GET은 계속 집계만 수행한다. 개인 최장/누적일·어제 표시 유지·기존 기록 일괄 지급은 보상 트리거가 아니다.

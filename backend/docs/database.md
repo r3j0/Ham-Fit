@@ -109,3 +109,7 @@ Prisma Client·PostgreSQL 어댑터·CLI를 7.10.0으로 맞췄다. 이 버전�
 ## 2026-09-30 캐릭터·상점
 
 `20260930000300_avatar_shop`은 상품·렌더링 조합·영구 소유·대표 코디·구매·재화 거래 테이블을 추가한다. 기존 UserCurrency 잔액을 재사용하고 기본 지급/백필은 계정·잔액·기존 소유/코디를 덮어쓰지 않는다. users INSERT trigger는 같은 트랜잭션에서 캐릭터 2종·basic·최초 코디를 지급한다. 개발·운영 DB 적용은 이번 작업에서 수행하지 않는다. [API·정책·등록/가격 변경·배포 계약](avatar-shop-api.md), [검증 기록](avatar-shop-verification.md)을 따른다.
+
+## 2026-10-01 개인 스트릭 룰렛
+
+`20261001000100_streak_roulette_tickets`와 `20261001000200_streak_roulette_draws`는 불변 정책·달성 근거 연결·개인 권·단일 추첨/지급 기록과 소유 경로 CHECK를 추가한다. 기존 마이그레이션·운동·그룹·재화·코디 데이터는 보존하며 달성 백필은 없다. 순서대로 적용한 뒤 새 서버를 시작한다. 개발·운영 DB 적용은 이번 작업에 포함하지 않는다. [상세 제약·잠금·적용 순서](streak-roulette.md), [격리 DB 검증](streak-roulette-verification.md)을 따른다.
