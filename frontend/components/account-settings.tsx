@@ -233,13 +233,13 @@ export function AccountSettings({
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
                         required
-                        minLength={15}
+                        minLength={8}
                         maxLength={128}
                         disabled={locked}
                         aria-describedby="new-password-hint"
                       />
                       <p id="new-password-hint" className="caption">
-                        15~128자 · 공백도 사용할 수 있어요
+                        8~128자 · 공백도 사용할 수 있어요
                       </p>
                     </div>
                     <div className="field">

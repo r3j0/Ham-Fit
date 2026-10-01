@@ -128,10 +128,19 @@ for (const action of ["password", "delete"] as const) {
       .fill("unrelated-draft");
     await form.getByLabel("현재 비밀번호").fill("correct-current-password");
     if (action === "password") {
-      await form
-        .getByLabel("새 비밀번호", { exact: true })
-        .fill("confirmed-new-password!");
-      await form.getByLabel("새 비밀번호 확인").fill("confirmed-new-password!");
+      await form.getByLabel("새 비밀번호", { exact: true }).fill("newpass!");
+      await form.getByLabel("새 비밀번호 확인").fill("newpass!");
+    }
+    if (action === "password") {
+      await expect(
+        form.getByLabel("새 비밀번호", { exact: true }),
+      ).toHaveAttribute("minlength", "8");
+      await form.getByLabel("새 비밀번호", { exact: true }).fill("1234567");
+      await form.getByLabel("새 비밀번호 확인").fill("1234567");
+      await form.getByRole("button", { name: title, exact: true }).click();
+      expect(writes).toHaveLength(0);
+      await form.getByLabel("새 비밀번호", { exact: true }).fill("newpass!");
+      await form.getByLabel("새 비밀번호 확인").fill("newpass!");
     }
     await form.getByRole("button", { name: title, exact: true }).click();
     if (action === "delete")
@@ -148,7 +157,7 @@ for (const action of ["password", "delete"] as const) {
             ? { password: "correct-current-password" }
             : {
                 currentPassword: "correct-current-password",
-                newPassword: "confirmed-new-password!",
+                newPassword: "newpass!",
               },
       },
     ]);

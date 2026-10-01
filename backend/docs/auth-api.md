@@ -32,7 +32,7 @@ npm run start:dev
 
 회원가입·로그인·갱신 응답은 `{ "user": { "id", "email", "created_at", "updated_at" }, "access_token", "token_type": "Bearer", "expires_in": 900 }` 형태다. `expires_in`은 초 단위이며 세션 만료가 가까우면 짧아진다. 비밀번호 원문·해시와 refresh token은 JSON 응답에 포함하지 않는다. `GET /auth/me`는 기존 공개 필드를 유지하고 온보딩·재화·현재 배정을 제공한다. 기존 선호 배열·수치 목표·currentFitness 프로필 응답은 폐기했다. 2026-09-26에 추가한 단일 운동량·목적은 별도 [운동 설정 API](user-preferences-api.md)에서 조회·저장하며 로그인 상태를 유지한다. 이메일·비밀번호 변경과 영구 탈퇴는 [사용자 API](users-api.md)를 따른다. 가입·로그인·갱신의 `user` 객체는 기존 형태를 유지한다.
 
-이메일은 앞뒤 공백 제거·소문자화·형식 검증 후 저장한다. 회원가입 비밀번호는 15~128자이며 공백을 제거하거나 문자열을 바꾸지 않는다. 숫자·특수문자 조합을 강제하지 않는다. 알 수 없는 요청 필드도 400으로 거절한다.
+이메일은 앞뒤 공백 제거·소문자화·형식 검증 후 저장한다. 회원가입 비밀번호는 8~128자이며 공백을 제거하거나 문자열을 바꾸지 않는다. 숫자·특수문자 조합을 강제하지 않는다. 알 수 없는 요청 필드도 400으로 거절한다.
 
 오류: 잘못된 입력 400, CSRF/Origin 위반 403, 이메일 중복 409, 잘못된 로그인·만료/위조/폐기 토큰 401, 요청 횟수 초과 429. 429 응답의 `retry_after`는 재시도까지 남은 초다. 없는 이메일·비밀번호 불일치·비밀번호 없는 계정은 동일한 로그인 오류를 반환한다.
 
@@ -111,3 +111,5 @@ curl -i -X POST http://localhost:3001/api/v1/auth/logout \
 - JWT 키를 모든 API 인스턴스에서 동일하게 사용하고 코드에 포함하지 않는다. 키 교체는 기존 access token을 무효화한다. refresh 세션을 모두 폐기하는 기능은 별도로 필요하다.
 
 근거: [OWASP 비밀번호 저장](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html), [node-argon2](https://github.com/ranisalt/node-argon2), [jose](https://github.com/panva/jose), [RFC 9700 refresh token 재사용 탐지](https://www.rfc-editor.org/rfc/rfc9700.html#section-4.14.2). 확인일 2026-09-19.
+
+2026-10-02 사용자 결정: 가입과 계정 설정의 새 비밀번호 최소 길이를 8자로 변경했다. 최대 128자, 원문 보존, 현재 비밀번호 검증과 변경 후 세션 해제 규칙은 유지한다.

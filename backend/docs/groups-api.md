@@ -17,7 +17,7 @@
 | `name`            | 필수 문자열, NFC 정규화·양끝 공백 제거 후 1–50 UTF-16 코드 단위                                   |
 | `description`     | 필수 문자열, 같은 정규화 후 0–500 코드 단위. 빈 문자열로 소개 비우기 가능                         |
 | 그룹 텍스트       | 제어 문자와 Unicode format 문자 금지. 줄바꿈도 금지                                               |
-| `maxMembers`      | 그룹장 포함 1–100 정수. 생성 시만 설정. 운영상 응답·구성원 처리량 제한이며 미션 정책과 무관       |
+| `maxMembers`      | 그룹장 포함 1–5 정수. 생성 시만 설정. 운영상 응답·구성원 처리량 제한이며 미션 정책과 무관         |
 | `inviteCode`      | 양끝 공백 제거 후 43자리 base64url. 대소문자 구분. 서버의 `randomBytes(32)`로 생성한 256비트 토큰 |
 | `Idempotency-Key` | 생성·가입 신청에 필수 UUID. 작업 종류별 사용자 단위로 구분                                        |
 | ID                | UUID, 소문자로 정규화                                                                             |
@@ -30,25 +30,26 @@
 
 표의 경로에는 `/api/v1`을 붙인다. `G`, `U`, `R`, `N`은 각각 그룹·사용자·신청·알림 UUID다.
 
-| 메서드·경로                              | 권한          | 요청                                                              | 성공                                  |
-| ---------------------------------------- | ------------- | ----------------------------------------------------------------- | ------------------------------------- |
-| `POST /groups`                           | 로그인 사용자 | 생성 JSON + 요청 키                                               | 201 그룹 요약·본인 역할               |
-| `GET /groups`                            | 로그인 사용자 | `limit`, `cursor`                                                 | 200 본인 그룹 페이지                  |
-| `GET /groups/G`                          | 해당 구성원   | 없음                                                              | 200 그룹 요약·그룹원 목록             |
-| `GET /groups/G/members/U`                | 해당 구성원   | 없음                                                              | 200 해당 그룹원 프로필·역할·가입 시각 |
-| `GET /groups/G/invite-code`              | 해당 구성원   | 없음                                                              | 200 `{ "inviteCode": "..." }`         |
-| `PATCH /groups/G`                        | 해당 그룹장   | `name`, `description` 중 1개 이상                                 | 200 그룹 요약                         |
-| `POST /groups/join-requests`             | 로그인 사용자 | `{ "inviteCode": "..." }` + 요청 키                               | 201 신청                              |
-| `GET /groups/G/join-requests`            | 해당 그룹장   | `status`(기본 pending, approved/rejected 가능), `limit`, `cursor` | 200 신청 페이지·신청자 닉네임         |
-| `POST /groups/G/join-requests/R/approve` | 해당 그룹장   | 본문 없음                                                         | 200 처리된 신청                       |
-| `POST /groups/G/join-requests/R/reject`  | 해당 그룹장   | 본문 없음                                                         | 200 처리된 신청                       |
-| `POST /groups/G/leadership`              | 해당 그룹장   | `{ "userId": "U" }`                                               | 204                                   |
-| `DELETE /groups/G/members/U`             | 해당 그룹장   | 없음                                                              | 204. 그룹장 대상은 금지               |
-| `DELETE /groups/G/members/me`            | 해당 구성원   | 없음                                                              | 204                                   |
-| `DELETE /groups/G`                       | 해당 그룹장   | 없음                                                              | 204                                   |
-| `GET /notifications`                     | 수신자 본인   | `limit`, `cursor`                                                 | 200 알림 페이지                       |
-| `PATCH /notifications/N/read`            | 수신자 본인   | 없음                                                              | 200 알림. 기존 읽음 시각 유지         |
-| `GET /users/me/profile/activity`         | 본인          | 없음                                                              | 200 그룹과 동일한 개인 활동 프로필    |
+| 메서드·경로                              | 권한          | 요청                                                              | 성공                                     |
+| ---------------------------------------- | ------------- | ----------------------------------------------------------------- | ---------------------------------------- |
+| `POST /groups`                           | 로그인 사용자 | 생성 JSON + 요청 키                                               | 201 그룹 요약·본인 역할                  |
+| `GET /groups`                            | 로그인 사용자 | `limit`, `cursor`                                                 | 200 본인 그룹 페이지                     |
+| `GET /groups/overview`                   | 로그인 사용자 | 없음                                                              | 200 전체 소속 그룹·본인 역할·전체 그룹원 |
+| `GET /groups/G`                          | 해당 구성원   | 없음                                                              | 200 그룹 요약·그룹원 목록                |
+| `GET /groups/G/members/U`                | 해당 구성원   | 없음                                                              | 200 해당 그룹원 프로필·역할·가입 시각    |
+| `GET /groups/G/invite-code`              | 해당 구성원   | 없음                                                              | 200 `{ "inviteCode": "..." }`            |
+| `PATCH /groups/G`                        | 해당 그룹장   | `name`, `description` 중 1개 이상                                 | 200 그룹 요약                            |
+| `POST /groups/join-requests`             | 로그인 사용자 | `{ "inviteCode": "..." }` + 요청 키                               | 201 신청                                 |
+| `GET /groups/G/join-requests`            | 해당 그룹장   | `status`(기본 pending, approved/rejected 가능), `limit`, `cursor` | 200 신청 페이지·신청자 닉네임            |
+| `POST /groups/G/join-requests/R/approve` | 해당 그룹장   | 본문 없음                                                         | 200 처리된 신청                          |
+| `POST /groups/G/join-requests/R/reject`  | 해당 그룹장   | 본문 없음                                                         | 200 처리된 신청                          |
+| `POST /groups/G/leadership`              | 해당 그룹장   | `{ "userId": "U" }`                                               | 204                                      |
+| `DELETE /groups/G/members/U`             | 해당 그룹장   | 없음                                                              | 204. 그룹장 대상은 금지                  |
+| `DELETE /groups/G/members/me`            | 해당 구성원   | 없음                                                              | 204                                      |
+| `DELETE /groups/G`                       | 해당 그룹장   | 없음                                                              | 204                                      |
+| `GET /notifications`                     | 수신자 본인   | `limit`, `cursor`                                                 | 200 알림 페이지                          |
+| `PATCH /notifications/N/read`            | 수신자 본인   | 없음                                                              | 200 알림. 기존 읽음 시각 유지            |
+| `GET /users/me/profile/activity`         | 본인          | 없음                                                              | 200 그룹과 동일한 개인 활동 프로필       |
 
 페이지는 UUID 오름차순으로 조회한다(시간순 피드 아님). 반환된 `nextCursor`를 그대로 사용한다. 응답 형식은 `{ "items": [...], "nextCursor": "UUID 또는 null" }`이며 실제 종료값은 문자열이 아닌 `null`이다. 신청은 상태 필터별로 페이지를 다시 시작한다. 페이지 사이 상태 변경·새 가입 등은 스냅샷으로 고정하지 않으며 갱신 시 첫 페이지부터 조회한다.
 
@@ -61,7 +62,7 @@ X-CSRF-Protection: 1
 Content-Type: application/json
 Idempotency-Key: 91004d71-b8c5-4c32-a56e-ed38349325af
 
-{"name":"함께 운동","description":"매일 함께 운동해요","maxMembers":10}
+{"name":"함께 운동","description":"매일 함께 운동해요","maxMembers":5}
 ```
 
 ```json
@@ -69,7 +70,7 @@ Idempotency-Key: 91004d71-b8c5-4c32-a56e-ed38349325af
   "id": "6dd410b4-9113-4293-9bc7-5165583167a0",
   "name": "함께 운동",
   "description": "매일 함께 운동해요",
-  "maxMembers": 10,
+  "maxMembers": 5,
   "currentMembers": 1,
   "createdAt": "2026-09-29T08:00:00.000Z",
   "role": "leader"
@@ -83,7 +84,7 @@ Idempotency-Key: 91004d71-b8c5-4c32-a56e-ed38349325af
   "id": "6dd410b4-9113-4293-9bc7-5165583167a0",
   "name": "함께 운동",
   "description": "매일 함께 운동해요",
-  "maxMembers": 10,
+  "maxMembers": 5,
   "currentMembers": 1,
   "createdAt": "2026-09-29T08:00:00.000Z",
   "members": [
@@ -236,4 +237,12 @@ npm run build
 npm run test:e2e -- test/groups.e2e-spec.ts
 ```
 
-운영에서는 먼저 새 마이그레이션을 적용한 뒤 새 서버를 배포한다. 서버 시작 시 자동 적용하지 않는다. 이 작업에서는 테스트 전용 DB의 임시 스키마에만 적용하며 개발/운영 DB에는 배포하지 않았다. 검사 결과와 변경 파일은 [검증 기록](groups-verification.md)을 참고한다.
+운영에서는 먼저 새 마이그레이션을 적용한 뒤 새 서버를 배포한다. 서버 시작 시 자동 적용하지 않는다. 초기 그룹 구현에서는 테스트 전용 DB의 임시 스키마에만 적용했다. 2026-10-02 통합 변경은 로컬 개발 DB에도 적용해 FE와 연결해서 검증했으며 운영 DB에는 적용하지 않았다. 검사 결과와 변경 파일은 [검증 기록](groups-verification.md)을 참고한다.
+
+## 2026-10-02 통합 변경
+
+사용자 결정으로 정원은 그룹장 포함 최대 5명이다. 생성 입력과 DB CHECK 제약 모두 1–5를 허용한다. 마이그레이션은 기존 정원 중 5 초과를 5로 낮추며 기존 멤버는 보존한다. 기존 구성원이 5명을 초과한 그룹은 `currentMembers > maxMembers`로 조회할 수 있고, 정원 미만이 될 때까지 추가 승인을 거절한다. 기존 그룹 잠금과 가입 트리거로 동시 승인에서도 여섯 번째 가입을 막는다. 가입 신청 자체는 기존과 같이 정원과 무관하게 가능하다.
+
+`GET /groups/overview`는 페이지 구분 없이 `{ "items": [...] }`를 반환한다. 각 항목은 그룹 상세와 같은 요약·`members`, 본인의 `role`을 포함한다. 현재 소속 그룹만 UUID 오름차순으로 조회하며, 한 RepeatableRead 트랜잭션 안에서 소속·전체 구성원·햄스터·운동 기록·미션 기여를 읽는다. 여러 그룹에 중복 소속된 구성원의 프로필은 한 번만 조회한다. 이메일·비밀번호·생년월일·초대 코드는 노출하지 않는다. 빈 소속은 `{ "items": [] }`다. 기존 목록·상세 API도 유지한다.
+
+모든 구성원 프로필의 `todayWorkoutCompleted`는 KST 오늘의 실제 완료 기록 유무다. 기존 일일 배정의 완료 또는 전체 항목이 완료된 루틴만 인정하고, 부분 완료·미래 완료는 제외한다. 홈은 이 응답을 한 번 받아 그룹 전환에 재사용하며, 기존 60초·창 포커스·명시적 재조회 시 전체 응답을 갱신한다.

@@ -44,19 +44,25 @@ test("가입 실패는 폼을 유지하고 성공하면 메인 경유 없이 온
   await page
     .getByLabel("이메일", { exact: true })
     .fill("duplicate@example.test");
-  await page
-    .getByLabel("비밀번호", { exact: true })
-    .fill("registration-onboarding-test!");
-  await page
-    .getByLabel("비밀번호 확인", { exact: true })
-    .fill("registration-onboarding-test!");
+  await page.getByLabel("비밀번호", { exact: true }).fill("regtest!");
+  await page.getByLabel("비밀번호 확인", { exact: true }).fill("regtest!");
+  await expect(page.getByLabel("비밀번호", { exact: true })).toHaveAttribute(
+    "minlength",
+    "8",
+  );
+  await page.getByLabel("비밀번호", { exact: true }).fill("1234567");
+  await page.getByLabel("비밀번호 확인", { exact: true }).fill("1234567");
+  await page.getByRole("button", { name: "가입하고 시작하기" }).click();
+  expect(attempts).toBe(0);
+  await page.getByLabel("비밀번호", { exact: true }).fill("regtest!");
+  await page.getByLabel("비밀번호 확인", { exact: true }).fill("regtest!");
   await page.getByRole("button", { name: "가입하고 시작하기" }).click();
   await expect(page.getByRole("main").getByRole("alert")).toContainText(
     "이미 가입된 이메일",
   );
   await expect(page).toHaveURL("/register?next=%2Faccount");
   await expect(page.getByLabel("비밀번호", { exact: true })).toHaveValue(
-    "registration-onboarding-test!",
+    "regtest!",
   );
   await page.getByLabel("이메일", { exact: true }).fill(testUser.email);
   await page.getByRole("button", { name: "가입하고 시작하기" }).click();

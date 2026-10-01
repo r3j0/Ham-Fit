@@ -20,7 +20,7 @@ describe('group input', () => {
     for (const body of [
       { name: '', description: '', maxMembers: 2 },
       { name: 'a', description: '', maxMembers: 0 },
-      { name: 'a', description: '', maxMembers: 101 },
+      { name: 'a', description: '', maxMembers: 6 },
       { name: 'a', description: '', maxMembers: 2.5 },
       { name: 'a\nB', description: '', maxMembers: 2 },
       { name: 'a', description: '', maxMembers: 2, visibility: 'public' },

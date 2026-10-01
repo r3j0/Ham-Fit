@@ -170,7 +170,7 @@ describe('daily whole-routine rewards and immutable HTTP receipts on PostgreSQL'
     const created = await groups.create(owner.user.id, randomUUID(), {
       name: '[TEST ONLY] evidence',
       description: '',
-      maxMembers: 10,
+      maxMembers: 5,
     });
     const invite = await groups.inviteCode(owner.user.id, created.id);
     const application = await groups.apply(

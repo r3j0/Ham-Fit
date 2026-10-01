@@ -40,6 +40,9 @@ export interface MyGroup extends Group {
 export interface GroupDetail extends Group {
   members: Member[];
 }
+export interface GroupOverview extends GroupDetail {
+  role: Role;
+}
 export interface JoinRequest {
   id: string;
   groupId: string;
@@ -90,9 +93,8 @@ export function parseGroup(value: unknown): Group {
     !text(row.name) ||
     typeof row.description !== "string" ||
     !integer(row.maxMembers, 1) ||
-    row.maxMembers > 100 ||
+    row.maxMembers > 5 ||
     !integer(row.currentMembers, 1) ||
-    row.currentMembers > row.maxMembers ||
     !timestamp(row.createdAt)
   )
     invalid();
@@ -153,6 +155,28 @@ export async function readPages<T extends { id: string }>(
 }
 export const getGroups = (signal?: AbortSignal) =>
   readPages("/groups", parseMyGroup, signal);
+export function parseGroupOverview(value: unknown): GroupOverview[] {
+  const row = object(value);
+  if (!Array.isArray(row.items)) invalid();
+  const items = row.items.map((value) => {
+    const group = parseGroupDetail(value);
+    parseMyGroup(value);
+    // The new aggregate contract always supplies today's completion status.
+    if (
+      group.members.some(
+        (member) => typeof member.todayWorkoutCompleted !== "boolean",
+      )
+    )
+      invalid();
+    return group as GroupOverview;
+  });
+  if (new Set(items.map((group) => group.id)).size !== items.length) invalid();
+  return items;
+}
+export const getGroupOverview = (signal?: AbortSignal) =>
+  api<unknown>("/groups/overview", { signal }).then(({ data }) =>
+    parseGroupOverview(data),
+  );
 export const getGroup = (id: string, signal?: AbortSignal) =>
   api<unknown>(`/groups/${id}`, { signal }).then(({ data }) => {
     const row = parseGroupDetail(data);
@@ -227,10 +251,10 @@ export function groupInput(
     result.description.length > 500 ||
     /[\p{Cc}\p{Cf}]/u.test(result.name + result.description) ||
     (maxMembers !== undefined &&
-      (!Number.isInteger(maxMembers) || maxMembers < 1 || maxMembers > 100))
+      (!Number.isInteger(maxMembers) || maxMembers < 1 || maxMembers > 5))
   )
     throw new Error(
-      "이름은 1~50자, 소개는 500자 이내로 줄바꿈 없이 입력해 주세요. 정원은 1~100명이에요.",
+      "이름은 1~50자, 소개는 500자 이내로 줄바꿈 없이 입력해 주세요. 정원은 1~5명이에요.",
     );
   return result;
 }

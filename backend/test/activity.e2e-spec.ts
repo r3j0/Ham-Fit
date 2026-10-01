@@ -138,6 +138,7 @@ describe('shared activity aggregation against PostgreSQL', () => {
       streak: 0,
       longestStreak: 0,
       totalWorkoutDays: 0,
+      todayWorkoutCompleted: false,
     });
     const service = app.get(WorkoutRoutinesService);
     const item = saved.items[1]; // Last completion is not necessarily the last ordered item.
@@ -162,11 +163,14 @@ describe('shared activity aggregation against PostgreSQL', () => {
       streak: 1,
       longestStreak: 1,
       totalWorkoutDays: 1,
+      todayWorkoutCompleted: true,
     });
     expect(await stats(new Date('2026-09-29T14:59:58Z'))).toMatchObject({
+      todayWorkoutCompleted: false,
       totalWorkoutDays: 0,
     });
     now = new Date('2026-09-29T15:00:00Z');
+    expect(await stats()).toMatchObject({ todayWorkoutCompleted: false });
     await service.event(owner.user.id, saved.id, item.id, key, input);
     const before = await db.workoutRoutineItem.findUniqueOrThrow({
       where: { id: item.id },

@@ -18,7 +18,7 @@ const text = (max: number, min = 0) =>
 export const createGroupSchema = z.strictObject({
   name: text(50, 1),
   description: text(500),
-  maxMembers: z.number().int().min(1).max(100),
+  maxMembers: z.number().int().min(1).max(5),
 });
 export const updateGroupSchema = createGroupSchema
   .pick({ name: true, description: true })

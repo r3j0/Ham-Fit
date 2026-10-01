@@ -136,8 +136,11 @@ test("실제 API: 생성·초대·승인/거절·멤버 조회·강퇴·위임·
       other.getByRole("heading", { name: "그룹원 프로필" }),
     ).toBeVisible();
     await expect(
-      other.getByText("연속 운동 0일", { exact: true }),
-    ).toBeVisible();
+      other
+        .getByRole("term")
+        .filter({ hasText: /^연속 운동$/ })
+        .locator(".."),
+    ).toHaveText("연속 운동0일");
     expect(
       (
         await other.request.patch(`${api}/groups/${groupId}`, {

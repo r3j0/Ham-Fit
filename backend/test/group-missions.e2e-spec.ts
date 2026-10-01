@@ -151,7 +151,7 @@ describe('group missions/roulette on real PostgreSQL', () => {
     const row = await groups.create(owner, randomUUID(), {
       name: '[TEST ONLY] mission',
       description: '',
-      maxMembers: 100,
+      maxMembers: 5,
     });
     for (const userId of members) await join(row.id, userId);
     return row.id;

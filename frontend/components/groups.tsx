@@ -204,10 +204,10 @@ function GroupRequestForm({
               <label>
                 <span className="sr-only">정원</span>
                 <input
-                  placeholder="정원 (최소 1, 최대 100)"
+                  placeholder="정원 (최소 1, 최대 5)"
                   type="number"
                   min={1}
-                  max={100}
+                  max={5}
                   required
                   value={max}
                   onChange={(e) => setMax(e.target.value)}

@@ -13,7 +13,7 @@ test("가입 신청 관리는 대기 요청만 조회·표시하고 승인과 �
         id,
         name: "함께 운동",
         description: "",
-        maxMembers: 10,
+        maxMembers: 5,
         currentMembers: 1,
         createdAt: "2026-09-29T00:00:00Z",
         members: [

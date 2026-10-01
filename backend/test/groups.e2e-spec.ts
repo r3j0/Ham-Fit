@@ -12,6 +12,7 @@ import { configureApp } from '../src/setup-app.js';
 import { Prisma } from '../src/generated/prisma/client.js';
 import { CurriculaService } from '../src/curricula/curricula.service.js';
 import { koreanDay, memberProfiles } from '../src/users/member-profile.js';
+import { observeClientQueries } from './helpers/pg-queries.js';
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -117,6 +118,86 @@ describe('groups and notifications against real PostgreSQL', () => {
     (await api(account, 'get', `/groups/${id}`).expect(200)).body as GroupView;
   const notificationCount = (requestId: string) =>
     db.groupNotification.count({ where: { requestId } });
+
+  it('loads all owned groups and safe member profiles in one overview, excluding other groups and departed members', async () => {
+    const first = await create();
+    await join(first.id);
+    await create(3, other);
+    const baseline = await observeClientQueries(() =>
+      groups.overview(owner.id),
+    );
+    // The overview is deliberately not truncated at the list API's 50-row page.
+    for (let i = 0; i < 50; i++) await create(1);
+    const aggregate = await observeClientQueries(() =>
+      groups.overview(owner.id),
+    );
+    expect(aggregate.queries.length).toBe(baseline.queries.length);
+    const response = await api(owner, 'get', '/groups/overview').expect(200);
+    const overview = response.body as { items: GroupView[] };
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(overview.items).toHaveLength(51);
+    expect(overview.items.map((g) => g.id)).toEqual(
+      overview.items.map((g) => g.id).sort(),
+    );
+    expect(overview.items.every((g) => g.role === 'leader')).toBe(true);
+    const full = overview.items.find((g) => g.id === first.id)!;
+    const { role: _role, ...withoutRole } = full;
+    expect(withoutRole).toEqual(await detail(first.id));
+    expect(full.members).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          userId: member.id,
+          todayWorkoutCompleted: false,
+        }),
+      ]),
+    );
+    expect(JSON.stringify(overview)).not.toMatch(
+      /email|password|inviteCode|dateOfBirth/,
+    );
+    const memberView = (
+      await api(member, 'get', '/groups/overview').expect(200)
+    ).body as { items: GroupView[] };
+    expect(memberView.items).toHaveLength(1);
+    expect(memberView.items[0].role).toBe('member');
+    await groups.leave(member.id, first.id);
+    expect(
+      (await api(member, 'get', '/groups/overview').expect(200)).body,
+    ).toEqual({ items: [] });
+    const refreshed = (await api(owner, 'get', '/groups/overview').expect(200))
+      .body as { items: GroupView[] };
+    expect(
+      refreshed.items.find((g) => g.id === first.id)!.members,
+    ).toHaveLength(1);
+    await request(app.getHttpServer())
+      .get('/api/v1/groups/overview')
+      .expect(401);
+  });
+
+  it('rejects a capacity above five in the API and database and admits only one winner for the fifth place', async () => {
+    await api(owner, 'post', '/groups')
+      .set('Idempotency-Key', randomUUID())
+      .send({ name: '큰 그룹', description: '', maxMembers: 6 })
+      .expect(400);
+    await expect(create(6)).rejects.toThrow();
+    const group = await create(5);
+    await join(group.id);
+    await join(group.id, other);
+    const fourth = await register('네번째');
+    await join(group.id, fourth);
+    const fifth = await register('다섯번째');
+    const sixth = await register('여섯번째');
+    const a = await apply(group.id, fifth);
+    const b = await apply(group.id, sixth);
+    const results = await Promise.allSettled([
+      groups.decide(owner.id, group.id, a.id, 'approved'),
+      groups.decide(owner.id, group.id, b.id, 'approved'),
+    ]);
+    expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
+    expect((await detail(group.id)).currentMembers).toBe(5);
+    await expect(
+      db.group.update({ where: { id: group.id }, data: { maxMembers: 6 } }),
+    ).rejects.toThrow();
+  });
 
   it('creates exactly one leader, keeps tokens private, validates input and deduplicates creation', async () => {
     const key = randomUUID();

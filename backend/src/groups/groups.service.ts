@@ -219,6 +219,66 @@ export class GroupsService {
       return memberId ? views[0] : { ...summary(group), members: views };
     }, true);
   }
+  async overview(userId: string) {
+    return this.transaction(async (tx) => {
+      const missionSelect = {
+        id: true,
+        groupId: true,
+        participants: {
+          where: { invalidatedAt: null },
+          select: { userId: true, waterCount: true },
+        },
+      } satisfies Prisma.GroupMissionRoundSelect;
+      const groups = await tx.group.findMany({
+        where: { members: { some: { userId } } },
+        orderBy: { id: 'asc' },
+        select: {
+          ...summarySelect,
+          members: { orderBy: { userId: 'asc' } },
+          missions: {
+            orderBy: [{ startedAt: 'desc' }, { id: 'desc' }],
+            take: 1,
+            select: missionSelect,
+          },
+        },
+      });
+      if (!groups.length) return { items: [] };
+      // Load shared members once, rather than repeating avatar/history queries
+      // for every group. All reads use the same membership snapshot.
+      const userIds = [
+        ...new Set(groups.flatMap((g) => g.members.map((m) => m.userId))),
+      ];
+      const profiles = await memberProfiles(tx, userIds);
+      const activeRounds = await tx.groupMissionRound.findMany({
+        where: { groupId: { in: groups.map((g) => g.id) }, completedAt: null },
+        select: missionSelect,
+      });
+      const active = new Map(
+        activeRounds.map((round) => [round.groupId, round]),
+      );
+      return {
+        items: groups.map((group) => {
+          const round = active.get(group.id) ?? group.missions[0];
+          const contributions = new Map(
+            round?.participants.map((p) => [
+              p.userId,
+              { roundId: round.id, waterCount: p.waterCount },
+            ]),
+          );
+          return {
+            ...summary(group),
+            role: role(group, userId),
+            members: group.members.map((member) => ({
+              ...profiles.get(member.userId)!,
+              role: role(group, member.userId),
+              joinedAt: member.joinedAt,
+              missionContribution: contributions.get(member.userId) ?? null,
+            })),
+          };
+        }),
+      };
+    }, true);
+  }
   async inviteCode(userId: string, groupId: string) {
     return this.transaction(async (tx) => {
       await this.memberGroup(tx, groupId, userId, false, true);

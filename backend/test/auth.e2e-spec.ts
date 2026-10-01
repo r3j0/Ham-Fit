@@ -74,6 +74,31 @@ describe('Email authentication against PostgreSQL', () => {
       .set('Authorization', `Bearer ${token}`);
   }
 
+  it('accepts eight-character passwords for registration and account changes, rejecting seven', async () => {
+    const loginEmail = email();
+    await post('register')
+      .send({ email: loginEmail, password: '1234567' })
+      .expect(400);
+    const response = await post('register')
+      .send({ email: loginEmail, password: '12345678' })
+      .expect(201);
+    const body = response.body as AuthBody;
+    const change = (newPassword: string) =>
+      request(app.getHttpServer())
+        .patch('/api/v1/users/me')
+        .set('Authorization', `Bearer ${body.access_token}`)
+        .set('X-CSRF-Protection', '1')
+        .send({ currentPassword: '12345678', newPassword });
+    await change('7654321').expect(400);
+    await change('87654321').expect(204);
+    await post('login')
+      .send({ email: loginEmail, password: '12345678' })
+      .expect(401);
+    await post('login')
+      .send({ email: loginEmail, password: '87654321' })
+      .expect(200);
+  });
+
   it('registers real data, stores only an Argon2id hash, and returns safe account fields', async () => {
     const inputEmail = email();
     const { body, cookie, response } = await register(

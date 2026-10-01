@@ -63,6 +63,10 @@ export class GroupsController {
       parseGroupInput(pageSchema, query),
     );
   }
+  @Get('overview')
+  overview(@Req() request: AuthenticatedRequest) {
+    return this.groups.overview(request.user.id);
+  }
   @Post('join-requests')
   async apply(
     @Req() request: AuthenticatedRequest,

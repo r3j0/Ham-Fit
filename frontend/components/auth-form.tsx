@@ -47,8 +47,8 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
     const next: Record<string, string> = {};
     if (!email.trim()) next.email = "이메일을 입력해 주세요.";
     if (!password) next.password = "비밀번호를 입력해 주세요.";
-    if (register && (password.length < 15 || password.length > 128))
-      next.password = "비밀번호는 15~128자로 입력해 주세요.";
+    if (register && (password.length < 8 || password.length > 128))
+      next.password = "비밀번호는 8~128자로 입력해 주세요.";
     if (register && password !== confirm)
       next.confirm = "비밀번호가 일치하지 않아요.";
     if (register) {
@@ -154,10 +154,10 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
                 autoComplete={register ? "new-password" : "current-password"}
                 required
                 maxLength={128}
-                minLength={register ? 15 : undefined}
+                minLength={register ? 8 : undefined}
                 placeholder={
                   register
-                    ? "15자 이상 입력해 주세요"
+                    ? "8자 이상 입력해 주세요"
                     : "비밀번호를 입력해 주세요"
                 }
                 value={password}
@@ -180,7 +180,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
             </div>
             {register && (
               <p id="password-hint" className="caption">
-                15~128자 · 공백도 사용할 수 있어요
+                8~128자 · 공백도 사용할 수 있어요
               </p>
             )}
             <FieldError id="password-error" message={fields.password} />

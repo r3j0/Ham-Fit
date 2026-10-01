@@ -5,7 +5,7 @@ const group = {
   id,
   name: "복원 그룹",
   description: "저장된 소개",
-  maxMembers: 10,
+  maxMembers: 5,
   currentMembers: 1,
   createdAt: "2026-09-29T00:00:00Z",
   role: "leader",
@@ -48,14 +48,14 @@ test("생성 응답 유실 후 입력과 요청 키를 유지해 새로고침에
   await page.goto("/groups");
   await page.getByLabel("그룹 이름", { exact: true }).fill(group.name);
   await page.getByLabel("그룹 소개", { exact: true }).fill(group.description);
-  for (const invalid of ["", "0", "101"]) {
+  for (const invalid of ["", "0", "6"]) {
     await page.getByLabel("정원", { exact: true }).fill(invalid);
     await page
       .getByRole("button", { name: "그룹 만들기", exact: true })
       .click();
     expect(requests).toHaveLength(0);
   }
-  await page.getByLabel("정원", { exact: true }).fill("10");
+  await page.getByLabel("정원", { exact: true }).fill("5");
   await page.getByRole("button", { name: "그룹 만들기", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "이전 요청 확인하기" }),
@@ -69,7 +69,7 @@ test("생성 응답 유실 후 입력과 요청 키를 유지해 새로고침에
   expect(JSON.parse(requests[1].body)).toEqual({
     name: group.name,
     description: group.description,
-    maxMembers: 10,
+    maxMembers: 5,
   });
 });
 test("권한 변경은 화면 복귀 시 반영되며 실패·잘못된 응답은 빈 그룹으로 오인시키지 않는다", async ({
@@ -165,10 +165,10 @@ test("그룹 생성과 초대 가입은 좁은 화면에서도 두 열로 배치
   );
   await expect(create.getByLabel("정원", { exact: true })).toHaveAttribute(
     "placeholder",
-    "정원 (최소 1, 최대 100)",
+    "정원 (최소 1, 최대 5)",
   );
   await expect(create.getByLabel("정원", { exact: true })).toHaveValue("");
-  await expect(page.getByText(/그룹장을 포함해 최대 100명/)).toHaveCount(0);
+  await expect(page.getByText(/그룹장을 포함해 최대 5명/)).toHaveCount(0);
   await create.getByLabel("그룹 이름").fill("함께 움직이기");
   await create.getByLabel("그룹 소개").fill("매일 조금씩 운동해요");
   await join.getByLabel("초대 코드", { exact: true }).fill("a".repeat(43));
