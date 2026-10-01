@@ -11,6 +11,42 @@ const group = {
   role: "leader",
 };
 
+test("가입한 그룹 목록의 모든 페이지를 표시하고 첫 번째 그룹의 정원을 배열 순번으로 검증하지 않는다", async ({
+  page,
+}) => {
+  await installApi(page);
+  const second = {
+    ...group,
+    id: "77777777-2222-4222-8222-111111111111",
+    name: "두 번째 그룹",
+    maxMembers: 2,
+  };
+  const cursors: (string | null)[] = [];
+  await page.route("**/api/v1/groups?*", (route) => {
+    const cursor = new URL(route.request().url()).searchParams.get("cursor");
+    cursors.push(cursor);
+    return route.fulfill({
+      json: {
+        items: [cursor ? second : group],
+        nextCursor: cursor ? null : group.id,
+      },
+    });
+  });
+  await page.goto("/groups");
+  const list = page.getByRole("list", { name: "가입한 그룹" });
+  await expect(list.getByRole("listitem")).toHaveCount(2);
+  await expect(
+    list.getByRole("link", { name: new RegExp(group.name) }),
+  ).toHaveAttribute("href", `/groups/${group.id}`);
+  await expect(
+    list.getByRole("link", { name: /두 번째 그룹/ }),
+  ).toHaveAttribute("href", `/groups/${second.id}`);
+  await expect(list).toContainText("1/5명");
+  await expect(list).toContainText("1/2명");
+  expect(cursors).toContain(group.id);
+  await expect(page.getByRole("main").getByRole("alert")).toHaveCount(0);
+});
+
 test("설정에서 정원을 현재 인원 이상·최대 5명으로 수정하고 만원일 때 신청 승인을 막는다", async ({
   page,
 }, info) => {
