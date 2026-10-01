@@ -1538,7 +1538,9 @@ describe('Multi-exercise routines with the real data-team Python algorithm', () 
   it('rolls back failed algorithm execution and reads existing results without Python', async () => {
     await prepare();
     const config = app.get(ConfigService);
-    const configured = config.get<string>('RECOMMENDATION_PYTHON');
+    // ConfigService.set also writes process.env; undefined becomes the literal
+    // executable name "undefined". Restore the runner's actual default instead.
+    const configured = config.get<string>('RECOMMENDATION_PYTHON') || 'python3';
     config.set('RECOMMENDATION_PYTHON', '/nonexistent/recommendation-python');
     try {
       const failed = await today().expect(503);
