@@ -112,9 +112,14 @@ for (const watched of [9.59, 9.6]) {
       await page.getByRole("button", { name: "종료 확인" }).click();
     } else {
       const dialog = page.getByRole("dialog", {
-        name: "운동 방법대로 운동했나요?",
+        name: "운동 방법대로 운동을 완수했나요?",
       });
-      await expect(dialog).toContainText("운동 방법대로 운동하고 완료하세요.");
+      await expect(dialog).toContainText(
+        "운동을 완료했다면 완료 처리를 눌러주세요.",
+      );
+      await expect(
+        dialog.getByRole("button", { name: "완료 처리", exact: true }),
+      ).toHaveCSS("color", "rgb(255, 255, 255)");
       await expect(
         dialog.getByRole("img", { name: "운동 완료를 응원하는 내 햄스터" }),
       ).toHaveAttribute("data-pose", "passion");
@@ -340,7 +345,7 @@ for (const dismissal of ["취소", "닫기", "Escape"]) {
     });
     await page.getByRole("button", { name: "여기서 종료" }).click();
     const dialog = page.getByRole("dialog", {
-      name: "운동 방법대로 운동했나요?",
+      name: "운동 방법대로 운동을 완수했나요?",
     });
     await expect(dialog).toBeVisible();
     await expect(
@@ -414,6 +419,12 @@ for (const width of [320, 1218]) {
     await expect
       .poll(() => guide.evaluate((el) => el.getAnimations().length))
       .toBe(1);
+    const frames = await guide.evaluate((el) =>
+      (el.getAnimations()[0].effect as KeyframeEffect).getKeyframes(),
+    );
+    expect(frames.every((frame) => frame.boxShadow !== undefined)).toBe(true);
+    expect(frames[0].boxShadow).not.toBe(frames[1].boxShadow);
+    await expect(guide).toHaveCSS("filter", "none");
     await expect(page.getByRole("dialog")).toHaveCount(0);
     await expect(page).toHaveURL(current);
     expect(item.status).toBe("in_progress");

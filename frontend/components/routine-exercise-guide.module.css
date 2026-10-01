@@ -72,20 +72,20 @@
 }
 
 .guide[data-highlighted] {
-  animation: guide-brightness 2.4s ease-in-out infinite;
+  animation: guide-outline 2.4s ease-in-out infinite;
 }
-@keyframes guide-brightness {
+@keyframes guide-outline {
   0%,
   100% {
-    filter: brightness(1);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--navy) 30%, transparent);
   }
   50% {
-    filter: brightness(1.06);
+    box-shadow: 0 0 0 2px var(--navy);
   }
 }
 @media (prefers-reduced-motion: reduce) {
   .guide[data-highlighted] {
     animation: none;
-    box-shadow: 0 0 0 2px var(--sky);
+    box-shadow: 0 0 0 2px var(--navy);
   }
 }

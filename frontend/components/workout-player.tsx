@@ -597,7 +597,7 @@ export function WorkoutPlayer({
           title={
             confirm === "complete"
               ? workout.routine
-                ? "운동 방법대로 운동했나요?"
+                ? "운동 방법대로 운동을 완수했나요?"
                 : "운동을 완료했나요?"
               : confirm === "end"
                 ? "운동을 여기서 종료할까요?"
@@ -618,7 +618,7 @@ export function WorkoutPlayer({
             )}
             <p className="muted">
               {workout.routine && confirm === "complete"
-                ? "운동 방법대로 운동하고 완료하세요."
+                ? "운동을 완료했다면 완료 처리를 눌러주세요."
                 : workout.routine && confirm === "end"
                   ? "시청량이 80% 미만이에요. 종료하면 이 영상은 미완료로 남고 다음 영상으로 이동해요. 미완료 영상은 운동 목록에서 다시 시작할 수 있어요."
                   : confirm === "complete"
@@ -636,7 +636,7 @@ export function WorkoutPlayer({
                 취소
               </button>
               <button
-                className="button primary"
+                className={`button primary${confirm === "complete" ? " workout-complete" : ""}`}
                 disabled={
                   state.saving ||
                   (confirm !== "reset" &&

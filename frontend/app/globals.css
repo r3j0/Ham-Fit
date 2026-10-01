@@ -1203,7 +1203,8 @@ fieldset:disabled select {
 .kspo-sky-theme .segmented button[aria-pressed="true"]:active:not(:disabled) {
   background: #31a3c9;
 }
-.button.primary.workout-request:not(:disabled) {
+.button.primary.workout-request:not(:disabled),
+.kspo-sky-theme .button.primary.workout-complete {
   color: var(--surface);
 }
 .workout-theme {

@@ -247,10 +247,10 @@ test("실제 추천 엔진: 준비 조건, 오늘 루틴 생성, 중복 방지�
       .getByRole("button", { name: "여기서 종료", exact: true })
       .click();
     const confirmation = page.getByRole("dialog", {
-      name: "운동 방법대로 운동했나요?",
+      name: "운동 방법대로 운동을 완수했나요?",
     });
     await expect(confirmation).toContainText(
-      "운동 방법대로 운동하고 완료하세요.",
+      "운동을 완료했다면 완료 처리를 눌러주세요.",
     );
     await confirmation
       .getByRole("button", { name: "취소", exact: true })
