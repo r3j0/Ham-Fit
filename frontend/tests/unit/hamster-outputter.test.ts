@@ -14,7 +14,7 @@ import { parseAvatarOutfit } from "../../lib/avatar-outfit.ts";
 
 const read = (path: string) =>
   readFileSync(new URL(`../../${path}`, import.meta.url));
-test("v2 원본 32장과 민트 티셔츠 2장의 해시·배치·등록 범위를 검증한다", () => {
+test("v2 원본과 사용자 지정 기본 캐릭터의 배치·등록 범위를 검증한다", () => {
   const integrity = JSON.parse(
     read("components/hamster/provenance/base-integrity.json").toString(),
   );
@@ -22,12 +22,12 @@ test("v2 원본 32장과 민트 티셔츠 2장의 해시·배치·등록 범위�
     if (path.startsWith("public/") && path.endsWith(".webp"))
       assert.equal(createHash("sha256").update(read(path)).digest("hex"), hash);
   }
-  assert.deepEqual(
-    POSES,
-    JSON.parse(
-      read("components/hamster/provenance/placements.json").toString(),
-    ),
+  const placements = JSON.parse(
+    read("components/hamster/provenance/placements.json").toString(),
   );
+  placements.basic.assets.cream.src = "/hamsters/base/basic-cream-hamdoli.webp";
+  placements.basic.assets.gray.src = "/hamsters/base/basic-gray-hamkong.webp";
+  assert.deepEqual(POSES, placements);
   assert.equal(Object.keys(POSES).length, 16);
   assert.deepEqual(Object.keys(DEFAULT_ITEMS), ["mint-shirt"]);
   const status = JSON.parse(
@@ -52,7 +52,11 @@ test("모든 자세·색상에서 의상 프레임을 빌려오지 않고 선택
       const result = resolveHamster(selection, DEFAULT_ITEMS);
       assert.equal(
         result.layers[0].src,
-        `/hamsters/base/${pose}-${variant}.webp`,
+        pose === "basic"
+          ? variant === "cream"
+            ? "/hamsters/base/basic-cream-hamdoli.webp"
+            : "/hamsters/base/basic-gray-hamkong.webp"
+          : `/hamsters/base/${pose}-${variant}.webp`,
       );
       assert.equal(result.layers.length, pose === "basic" ? 2 : 1);
       assert.equal(result.warnings.length, pose === "basic" ? 0 : 1);

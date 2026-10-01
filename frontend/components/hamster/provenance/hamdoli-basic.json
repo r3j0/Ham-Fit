@@ -1,0 +1,11 @@
+{
+  "source": "ChatGPT 이미지 2026년 10월 2일 오전 04_11_02.png",
+  "sourceSha256": "14f24340f819576c6634bfb48e086c8d8f001974f37b2967f4257abb34326b0b",
+  "selection": "Left cream Hamdoli from user supplied PNG",
+  "sourceCanvas": [1254, 1254],
+  "processing": "replacement-basic-artwork.json",
+  "asset": "/hamsters/base/basic-cream-hamdoli.webp",
+  "assetSha256": "726b7c17c74b00ca30b43515922bdee3ddc52f2e7b8d54f5aee0943fa64f9fd2",
+  "placement": "Existing basic cream placement retained for clothing alignment; original basic-cream.webp retained.",
+  "crop": [75, 289, 521, 669]
+}

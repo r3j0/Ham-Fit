@@ -4,14 +4,14 @@ export const POSES = {
     "label": "기본",
     "assets": {
       "cream": {
-        "src": "/hamsters/base/basic-cream.webp",
+        "src": "/hamsters/base/basic-cream-hamdoli.webp",
         "x": 244.7605,
         "y": 240.8084,
         "width": 510.479,
         "height": 655.6886
       },
       "gray": {
-        "src": "/hamsters/base/basic-gray.webp",
+        "src": "/hamsters/base/basic-gray-hamkong.webp",
         "x": 260.1048,
         "y": 240.8084,
         "width": 479.7904,

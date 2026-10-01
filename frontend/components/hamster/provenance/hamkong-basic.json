@@ -1,0 +1,11 @@
+{
+  "source": "ChatGPT 이미지 2026년 10월 2일 오전 04_11_02.png",
+  "sourceSha256": "14f24340f819576c6634bfb48e086c8d8f001974f37b2967f4257abb34326b0b",
+  "selection": "Right gray Hamkong from user supplied PNG",
+  "sourceCanvas": [1254, 1254],
+  "processing": "replacement-basic-artwork.json",
+  "asset": "/hamsters/base/basic-gray-hamkong.webp",
+  "assetSha256": "edc1e75e37817c1ef251e738d5578e300c0d9e587f781ccc3eaa6c91c191e485",
+  "placement": "Existing basic gray placement retained for clothing alignment; original basic-gray.webp retained.",
+  "crop": [666, 282, 498, 681]
+}
