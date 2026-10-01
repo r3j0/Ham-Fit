@@ -327,7 +327,11 @@ test("item playback reuses recovery, saves only the selected item and replays co
     .toBeGreaterThan(9.6);
   await page.getByRole("button", { name: "운동 완료", exact: true }).click();
   await page.getByRole("button", { name: "완료 확인", exact: true }).click();
-  await page.getByRole("link", { name: "운동 목록으로" }).click();
+  await page.getByRole("link", { name: "다음 운동으로" }).click();
+  await expect(page).toHaveURL(
+    `/workout-routines/${row.id}/items/${row.routine[1].id}`,
+  );
+  await page.getByRole("link", { name: "이전 화면", exact: true }).click();
   await expect(list.getByText("완료", { exact: true })).toHaveCount(1);
   expect(state.events.every((event) => event.item === row.routine[0].id)).toBe(
     true,

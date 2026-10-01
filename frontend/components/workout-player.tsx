@@ -14,6 +14,7 @@ import { useUnsaved } from "./use-unsaved";
 import { WorkoutError } from "./workout-error";
 import { useWorkoutHistory } from "./workout-history-provider";
 import { WorkoutSummary } from "./workout-summary";
+import { RoutineNext } from "./routine-next";
 
 export function WorkoutPlayer({
   initial,
@@ -381,22 +382,29 @@ export function WorkoutPlayer({
           )}
         </>
       )}
-      {(completed || readOnly) && (
-        <Link
-          className="button primary"
-          href={
-            readOnly
-              ? overviewHref
-              : replay && completedDay
-                ? `${basePath}/history/${completedDay}`
-                : replay
-                  ? overviewHref
-                  : "/workout"
-          }
-        >
-          {readOnly || replay ? "운동 기록으로" : "운동 목록으로"}
-        </Link>
+      {completed && !replay && workout.routine && (
+        <RoutineNext
+          routineId={workout.routine.id}
+          itemId={workout.routine.itemId}
+        />
       )}
+      {(completed || readOnly) &&
+        !(completed && !replay && workout.routine) && (
+          <Link
+            className="button primary"
+            href={
+              readOnly
+                ? overviewHref
+                : replay && completedDay
+                  ? `${basePath}/history/${completedDay}`
+                  : replay
+                    ? overviewHref
+                    : "/workout"
+            }
+          >
+            {readOnly || replay ? "운동 기록으로" : "운동 목록으로"}
+          </Link>
+        )}
       {confirm && !readOnly && (
         <Dialog
           title={

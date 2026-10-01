@@ -2,6 +2,10 @@ import { assessmentHref, resolveWorkoutMode } from "./workout-mode.ts";
 /** Keep only known local destinations, including the temporary assessment mode. */
 export function authDestination(next: string): string {
   if (
+    /^\/groups(?:\/[a-f0-9-]+(?:\/roulette)?)?$/.test(next) ||
+    /^\/workout-routines\/[a-f0-9-]+\/(?:items\/[a-f0-9-]+(?:\/practice|\/replay)?|complete(?:\/(?:streak|reward|water))?)$/.test(
+      next,
+    ) ||
     /^\/workouts(?:\/[a-f0-9-]+)?$/.test(next) ||
     /^\/account\/workouts(?:\/history\/\d{4}-\d{2}-\d{2}|\/[a-f0-9-]+\/replay)?$/.test(
       next,
@@ -9,6 +13,10 @@ export function authDestination(next: string): string {
     /^\/measurements(?:\/new|\/[a-f0-9-]+(?:\/edit)?)?$/.test(next) ||
     [
       "/",
+      "/welcome",
+      "/shop",
+      "/shop/wardrobe",
+      "/roulette/personal",
       "/account",
       "/account/settings",
       "/account/preferences",

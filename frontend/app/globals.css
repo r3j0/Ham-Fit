@@ -2435,6 +2435,94 @@ fieldset:disabled select {
   background: #fffdf4;
   font-size: 58px;
 }
+.reward-symbol {
+  font-size: 100px;
+  line-height: 1.6;
+}
+.completion-page {
+  align-items: center;
+  padding-top: 32px;
+  padding-bottom: 32px;
+}
+.completion-page > .button,
+.completion-page > .reward-links {
+  width: 100%;
+}
+.completion-page h1 {
+  font-size: 28px;
+  letter-spacing: -1px;
+}
+.streak-celebration {
+  font-size: 108px;
+  animation: streak-grow 0.6s cubic-bezier(0.2, 1.5, 0.5, 1);
+}
+.streak-marks {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  padding: 20px 0;
+}
+.streak-marks span {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: #edece7;
+  color: #aaa79b;
+}
+.streak-marks .filled {
+  background: #f8c36b;
+  color: #805622;
+  animation: streak-grow 0.5s both;
+}
+@keyframes streak-grow {
+  from {
+    opacity: 0;
+    transform: scale(0.5) translateY(15px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+.practice-progress {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+.practice-progress span {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  color: #849499;
+  background: #eef3f4;
+}
+.practice-progress .current {
+  background: #d4ebef;
+  color: #2b7280;
+  outline: 2px solid #5c9ba8;
+}
+.practice-progress .done {
+  background: #5396a3;
+  color: #fff;
+}
+.practice-set {
+  text-align: center;
+  font-weight: 600;
+}
+.practice-counter {
+  font-variant-numeric: tabular-nums;
+  font-size: 64px;
+  font-weight: 700;
+  letter-spacing: -2px;
+  text-align: center;
+  padding: 24px 0;
+  color: #376e7c;
+}
 @media (min-width: 700px) {
   .shop-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));

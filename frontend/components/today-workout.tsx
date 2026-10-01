@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { ApiError } from "@/lib/http";
 import { getCurrentRoutine, requestTodayRoutine } from "@/lib/workout-routines";
 import { routineWorkouts, type WorkoutRoutine } from "@/lib/workout-routine";
+import { nextRoutineHref } from "@/lib/workout-practice";
 import { assignedWorkoutsForDay } from "@/lib/assigned-workouts";
 import { workoutJournal, type WorkoutWriter } from "@/lib/workout-journal";
 import { useSession } from "./session-provider";
@@ -169,6 +170,29 @@ export function TodayWorkout({ embedded = false }: { embedded?: boolean }) {
                   · {todayRoutine.progress.completedItems}/
                   {todayRoutine.progress.totalItems}개 완료
                 </p>
+              )}
+              {todayRoutine && (
+                <div className="stack-sm">
+                  <Link
+                    className="button primary"
+                    href={nextRoutineHref(todayRoutine)}
+                  >
+                    {todayRoutine.status === "completed"
+                      ? "오늘 운동 완료 확인"
+                      : todayRoutine.progress.completedItems
+                        ? "다음 운동 이어 하기"
+                        : "첫 운동부터 시작"}
+                  </Link>
+                  {todayRoutine.progress.completedItems > 0 &&
+                    todayRoutine.status !== "completed" && (
+                      <Link
+                        className="button secondary"
+                        href={`/workout-routines/${todayRoutine.id}/items/${todayRoutine.routine[0].id}`}
+                      >
+                        첫 운동 다시 보기
+                      </Link>
+                    )}
+                </div>
               )}
               <AssignedWorkoutList workouts={todayItems} />
               {todayRoutine?.cardioRecommendation && (

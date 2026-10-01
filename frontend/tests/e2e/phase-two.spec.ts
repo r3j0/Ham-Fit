@@ -199,7 +199,7 @@ test("온보딩 직접 입력은 기존 폼을 복원하고 실제 저장 후 �
   const other = await page.context().newPage();
   await other.goto("/");
   await expect(
-    other.getByRole("img", { name: "편안하게 숨 쉬는 햄스터" }),
+    other.getByRole("img", { name: "나의 대표 캐릭터" }),
   ).toBeVisible();
   await expect(
     other.getByRole("heading", { name: "내 체력 기록부터 시작해요" }),
