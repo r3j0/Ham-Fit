@@ -26,7 +26,7 @@ async function renderedArt(page: Page) {
 }
 
 for (const width of [320, 390, 1280]) {
-  test(`${width}px 로그인은 서로 다른 자세 네 마리, 회원가입은 확대된 궁금 캐릭터를 표시한다`, async ({
+  test(`${width}px 로그인은 대각선 지그재그로 서로 다른 자세 네 마리, 회원가입은 확대된 궁금 캐릭터를 표시한다`, async ({
     page,
   }, info) => {
     const errors: string[] = [];
@@ -59,11 +59,12 @@ for (const width of [320, 390, 1280]) {
       expect(box!.x).toBeGreaterThanOrEqual(0);
       expect(box!.x + box!.width).toBeLessThanOrEqual(width);
     }
-    expect(boxes[1]!.x).toBeGreaterThan(boxes[0]!.x);
-    expect(boxes[1]!.y).toBeCloseTo(boxes[0]!.y, 0);
-    expect(boxes[2]!.y).toBeGreaterThanOrEqual(
-      boxes[0]!.y + boxes[0]!.height - 1,
-    );
+    for (let i = 1; i < boxes.length; i++) {
+      expect(boxes[i]!.x).toBeGreaterThan(boxes[i - 1]!.x);
+      if (i % 2) expect(boxes[i]!.y).toBeGreaterThan(boxes[i - 1]!.y);
+      else expect(boxes[i]!.y).toBeLessThan(boxes[i - 1]!.y);
+      await expect(characters.nth(i)).toHaveCSS("z-index", i % 2 ? "2" : "1");
+    }
     await page
       .getByLabel("이메일", { exact: true })
       .fill("mascot@example.test");
