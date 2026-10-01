@@ -7,7 +7,10 @@ backend/.local/
 backend/dist/
 backend/coverage/
 backend/src/generated/
-backend/test/
+backend/test/**
+!backend/test/
+!backend/test/fixtures/
+!backend/test/fixtures/deployment-routine.json
 backend/docs/
 backend/**/*.spec.ts
 backend/**/.env

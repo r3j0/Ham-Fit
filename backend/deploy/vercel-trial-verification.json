@@ -1,0 +1,80 @@
+{
+  "verifiedAt": "2026-10-01T11:58:23.464Z",
+  "project": "ham-fit-api",
+  "plan": "hobby",
+  "environment": "preview",
+  "region": "sin1",
+  "deploymentId": "dpl_2R2eXtvqdDwS8WuCkHrBLH4sHk5z",
+  "url": "https://ham-fit-6xxhgex5z-r3j0s-projects.vercel.app",
+  "inspectorUrl": "https://vercel.com/r3j0s-projects/ham-fit-api/2R2eXtvqdDwS8WuCkHrBLH4sHk5z",
+  "state": "READY",
+  "sourceCommit": "302421c19c88fb428e9477d6b2ae29a81a814b28",
+  "identicalRebasedCommit": "cda8278bfc18a26cc1be13b45b2ba8f898dd400f",
+  "sourceTree": "ee5db98fb46a2f90573e015b4032a27ab6fe3fb1",
+  "mainBase": "b839a0df3799ea789a53dcf6f17facf51489ff3b",
+  "imageDigest": "sha256:bbe3c98d5c95b9105a0cf903c3eab4fefd7e3f7a230787cfba40eba15795140d",
+  "checks": {
+    "linuxContainerBuild": true,
+    "realPythonRecommendationDuringBuild": true,
+    "runtimeMediaPreflight": true,
+    "catalogVideos": 272,
+    "numpy": "2.0.2",
+    "pandas": "2.2.3",
+    "health": {
+      "status": "ok",
+      "httpStatus": 200
+    },
+    "readiness": {
+      "status": "ok",
+      "database": "ok",
+      "httpStatus": 200
+    },
+    "mediaProbeTests": 11
+  },
+  "httpMeasurements": {
+    "method": "Authenticated Chrome DevTools Network; one sample per scenario; includes network and server time",
+    "firstAuthenticatedReadiness": {
+      "httpStatus": 200,
+      "durationSeconds": null
+    },
+    "idleReadiness": {
+      "httpStatus": 304,
+      "durationSeconds": 7.42,
+      "cache": "MISS",
+      "newStartupPreflightObserved": true
+    },
+    "consecutiveReadiness": {
+      "httpStatus": 304,
+      "durationSeconds": 0.305,
+      "cache": "MISS"
+    },
+    "idleHealth": {
+      "httpStatus": 200,
+      "durationSeconds": 6.52,
+      "newStartupPreflightObserved": true
+    },
+    "note": "304 was Express conditional revalidation. Browser displayed the health JSON and Vercel request logs show MISS. These samples do not guarantee latency or isolate Vercel startup from Neon resume."
+  },
+  "neon": {
+    "verifiedAt": "2026-10-01T11:57:10.074Z",
+    "users": 0,
+    "measurements": 0,
+    "routines": 0,
+    "currency_transactions": 0,
+    "receipts": 0,
+    "applied_migrations": 27
+  },
+  "security": {
+    "vercelAuthenticationPreserved": true,
+    "automationBypassSecretCreated": false,
+    "verification": "Existing authenticated browser session; automatic CLI token creation rejected by approval review"
+  },
+  "production": {
+    "successfulDeployment": false,
+    "environmentVariablesRegistered": false,
+    "githubActionsActive": false
+  },
+  "frontendModified": false,
+  "dataAlgorithmModified": false,
+  "localUserDataMigrated": false
+}

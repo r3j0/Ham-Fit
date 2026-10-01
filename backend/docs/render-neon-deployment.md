@@ -94,7 +94,7 @@ Linux Git 체크아웃의 CSV는 LF이고 로컬 Mac 체크아웃은 CRLF여서 
 로컬 Docker 검증 명령은 배포 파일 커밋 후 저장소 루트에서 실행한다. Git archive로 커밋된 LF 바이트를 사용하여 Mac의 줄바꿈 변환에 영향을 받지 않는다.
 
 ```bash
-git archive HEAD backend data-analysis/src/recommendation_v2.py data-analysis/data/processed/workout_videos_v2_complete.csv | docker build -f backend/Dockerfile -t ham-fit-api -
+git -c core.autocrlf=false archive HEAD backend data-analysis/src/recommendation_v2.py data-analysis/data/processed/workout_videos_v2_complete.csv | docker build -f backend/Dockerfile -t ham-fit-api -
 docker run --rm --memory=512m --cpus=1 --env-file backend/.env.render -p 10000:10000 ham-fit-api
 ```
 
