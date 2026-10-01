@@ -3,7 +3,18 @@ import { GroupMission } from "./group-mission";
 import Link from "next/link";
 import { useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Crown, Droplet, MoreHorizontal, X } from "lucide-react";
+import {
+  CalendarCheck,
+  CalendarDays,
+  Check,
+  Crown,
+  Droplet,
+  Flame,
+  MoreHorizontal,
+  Trophy,
+  UserRound,
+  X,
+} from "lucide-react";
 import { api } from "@/lib/session";
 import { object, invalid } from "@/lib/api-contract";
 import {
@@ -16,7 +27,6 @@ import {
   groupMutation,
   type GroupDetail as Detail,
   type Member,
-  type RequestStatus,
 } from "@/lib/groups";
 import { useSession } from "./session-provider";
 import { useApiResource } from "./use-api-resource";
@@ -25,8 +35,8 @@ import { Dialog, Header, Loading, Notice, Shell } from "./ui";
 import { GroupFields } from "./groups";
 import { ProfileCharacter } from "./profile-character";
 import styles from "./groups.module.css";
+import memberStyles from "./group-member-profile.module.css";
 
-const statusLabels = { pending: "대기", approved: "승인", rejected: "거절" };
 function Applications({
   id,
   onChanged,
@@ -34,16 +44,17 @@ function Applications({
   id: string;
   onChanged: () => void;
 }) {
-  const [status, setStatus] = useState<RequestStatus>("pending");
   const load = useCallback(
-    (signal: AbortSignal) => getRequests(id, status, signal),
-    [id, status],
+    (signal: AbortSignal) => getRequests(id, "pending", signal),
+    [id],
   );
   const resource = useApiResource(load),
     begin = useOperationScope();
   const [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     guard = useRef(false);
+  const pendingRequests =
+    resource.data?.filter((request) => request.status === "pending") ?? [];
   async function decide(requestId: string, action: "approve" | "reject") {
     if (guard.current) return;
     guard.current = true;
@@ -75,22 +86,6 @@ function Applications({
   return (
     <section className="stack" aria-label="가입 신청 관리">
       <h2>가입 신청 관리</h2>
-      <div
-        className={`segmented ${styles.statusFilter}`}
-        role="group"
-        aria-label="신청 상태"
-      >
-        {(["pending", "approved"] as const).map((value) => (
-          <button
-            key={value}
-            disabled={busy}
-            aria-pressed={status === value}
-            onClick={() => setStatus(value)}
-          >
-            {statusLabels[value]}
-          </button>
-        ))}
-      </div>
       {error && <Notice>{error}</Notice>}
       {resource.error !== undefined ? (
         <>
@@ -104,7 +99,7 @@ function Applications({
       ) : (
         <>
           <ul className={styles.list}>
-            {resource.data?.map((request) => (
+            {pendingRequests.map((request) => (
               <li className={styles.applicationRow} key={request.id}>
                 <strong
                   className={styles.nickname}
@@ -116,7 +111,7 @@ function Applications({
                   {new Date(request.createdAt).toLocaleDateString("ko-KR", {
                     timeZone: "Asia/Seoul",
                   })}{" "}
-                  · {statusLabels[request.status]}
+                  · 대기
                 </p>
                 {request.status === "pending" && (
                   <div className={styles.requestActions}>
@@ -143,8 +138,8 @@ function Applications({
               </li>
             ))}
           </ul>
-          {!resource.data?.length && (
-            <p className="muted">{statusLabels[status]} 중인 신청이 없어요.</p>
+          {!pendingRequests.length && (
+            <p className="muted">대기 중인 신청이 없어요.</p>
           )}
         </>
       )}
@@ -367,7 +362,7 @@ function GroupView({ row, refresh }: { row: Detail; refresh: () => void }) {
             <li key={member.userId} className={styles.memberRow}>
               <ProfileCharacter
                 outfit={member.profileCharacter}
-                size={50.4}
+                size={75.6}
                 label=""
               />
               <Link
@@ -591,27 +586,78 @@ export function GroupMember({ id, userId }: { id: string; userId: string }) {
             </button>
           </>
         ) : resource.data ? (
-          <section className={styles.card}>
-            <ProfileCharacter
-              outfit={resource.data.profileCharacter}
-              size={96}
-              label={`${resource.data.nickname ?? "닉네임 미설정"}의 햄스터`}
-            />
-            <h2>{resource.data.nickname ?? "닉네임 미설정"}</h2>
-            <p>{resource.data.role === "leader" ? "그룹장" : "그룹원"}</p>
-            <p>연속 운동 {resource.data.streak}일</p>
-            {resource.data.longestStreak !== undefined && (
-              <p>최장 연속 운동 {resource.data.longestStreak}일</p>
-            )}
-            {resource.data.totalWorkoutDays !== undefined && (
-              <p>총 운동 {resource.data.totalWorkoutDays}일</p>
-            )}
-            <p>
-              가입일{" "}
-              {new Date(resource.data.joinedAt).toLocaleDateString("ko-KR", {
-                timeZone: "Asia/Seoul",
-              })}
-            </p>
+          <section
+            className={memberStyles.profile}
+            aria-labelledby="group-member-name"
+          >
+            <div className={memberStyles.identity}>
+              <span className={memberStyles.role}>
+                {resource.data.role === "leader" ? (
+                  <Crown size={16} aria-hidden="true" />
+                ) : (
+                  <UserRound size={16} aria-hidden="true" />
+                )}
+                {resource.data.role === "leader" ? "그룹장" : "그룹원"}
+              </span>
+              <ProfileCharacter
+                outfit={resource.data.profileCharacter}
+                size={168}
+                label={`${resource.data.nickname ?? "닉네임 미설정"}의 햄스터`}
+              />
+              <h2 id="group-member-name">
+                {resource.data.nickname ?? "닉네임 미설정"}
+              </h2>
+            </div>
+            <div className={memberStyles.activity}>
+              <h3>함께 운동한 기록</h3>
+              <dl className={memberStyles.stats}>
+                <div className={memberStyles.stat}>
+                  <dt>
+                    <Flame size={20} aria-hidden="true" />
+                    연속 운동
+                  </dt>
+                  <dd>
+                    <strong>{resource.data.streak}</strong>
+                    <span>일</span>
+                  </dd>
+                </div>
+                {resource.data.longestStreak !== undefined && (
+                  <div className={memberStyles.stat}>
+                    <dt>
+                      <Trophy size={20} aria-hidden="true" />
+                      최장 연속 운동
+                    </dt>
+                    <dd>
+                      <strong>{resource.data.longestStreak}</strong>
+                      <span>일</span>
+                    </dd>
+                  </div>
+                )}
+                {resource.data.totalWorkoutDays !== undefined && (
+                  <div className={memberStyles.stat}>
+                    <dt>
+                      <CalendarCheck size={20} aria-hidden="true" />총 운동
+                    </dt>
+                    <dd>
+                      <strong>{resource.data.totalWorkoutDays}</strong>
+                      <span>일</span>
+                    </dd>
+                  </div>
+                )}
+              </dl>
+              <p className={memberStyles.joined}>
+                <CalendarDays size={18} aria-hidden="true" />
+                <span>그룹 가입일</span>
+                <time dateTime={resource.data.joinedAt}>
+                  {new Date(resource.data.joinedAt).toLocaleDateString(
+                    "ko-KR",
+                    {
+                      timeZone: "Asia/Seoul",
+                    },
+                  )}
+                </time>
+              </p>
+            </div>
           </section>
         ) : (
           <Loading />

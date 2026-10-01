@@ -262,41 +262,43 @@ export function Groups() {
   const resource = useApiResource(getGroups);
   return (
     <Shell>
-      <Header title="내 그룹" back="/" />
-      <div className="content stack">
+      <Header title="내 그룹" showBrand={false} />
+      <div className={`content ${styles.overview}`}>
         <div className={styles.mascotStage}>
-          <MemberMascot pose="phone" size={161.28} />
+          <MemberMascot pose="phone" size={225.792} />
         </div>
-        {resource.error !== undefined ? (
-          <>
-            <Notice>{groupError(resource.error)}</Notice>
-            <button className="button secondary" onClick={resource.reload}>
-              다시 불러오기
-            </button>
-          </>
-        ) : resource.data ? (
-          <>
-            <ul className={styles.list} aria-label="가입한 그룹">
-              {resource.data.map((row) => (
-                <li key={row.id}>
-                  <Link className={styles.card} href={`/groups/${row.id}`}>
-                    <h2>{row.name}</h2>
-                    <p>{row.description}</p>
-                    <p className={styles.meta}>
-                      {row.role === "leader" ? "그룹장" : "그룹원"} ·{" "}
-                      {row.currentMembers}/{row.maxMembers}명
-                    </p>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-            {!resource.data.length && (
-              <p className="muted">아직 가입한 그룹이 없어요.</p>
-            )}
-          </>
-        ) : (
-          <Loading />
-        )}
+        <div className={`stack ${styles.groupList}`}>
+          {resource.error !== undefined ? (
+            <>
+              <Notice>{groupError(resource.error)}</Notice>
+              <button className="button secondary" onClick={resource.reload}>
+                다시 불러오기
+              </button>
+            </>
+          ) : resource.data ? (
+            <>
+              <ul className={styles.list} aria-label="가입한 그룹">
+                {resource.data.map((row) => (
+                  <li key={row.id}>
+                    <Link className={styles.card} href={`/groups/${row.id}`}>
+                      <h2>{row.name}</h2>
+                      <p>{row.description}</p>
+                      <p className={styles.meta}>
+                        {row.role === "leader" ? "그룹장" : "그룹원"} ·{" "}
+                        {row.currentMembers}/{row.maxMembers}명
+                      </p>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+              {!resource.data.length && (
+                <p className="muted">아직 가입한 그룹이 없어요.</p>
+              )}
+            </>
+          ) : (
+            <Loading />
+          )}
+        </div>
         <div className={styles.requestGrid}>
           <GroupRequestForm kind="create" onSuccess={resource.reload} />
           <GroupRequestForm kind="join" onSuccess={resource.reload} />

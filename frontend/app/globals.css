@@ -138,6 +138,9 @@
   flex: 1;
   gap: 32px;
 }
+.content.home-content {
+  padding-top: 0;
+}
 .home-toolbar {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
@@ -160,11 +163,16 @@
 }
 @media (max-width: 959px) {
   .home-toolbar {
-    grid-template-columns: minmax(0, 1fr);
+    margin-bottom: 12px;
   }
-  .home-toolbar > .brand,
-  .home-toolbar-actions {
-    grid-column: 1;
+  .home-intro {
+    order: 1;
+  }
+  .home-companions {
+    order: 2;
+  }
+  .home-activity {
+    order: 3;
   }
 }
 .notification-bell {
@@ -181,9 +189,8 @@
   box-shadow: 0 0 0 2px var(--surface);
   pointer-events: none;
 }
-.home-balance-link {
-  color: inherit;
-  text-decoration: none;
+.home-information {
+  display: contents;
 }
 .home-companions,
 .home-activity {
@@ -206,7 +213,7 @@
   }
 }
 .home-companions {
-  --home-mascot-size: min(358.4px, 44.8svh);
+  --home-mascot-size: min(501.76px, 62.72svh);
   gap: 4px;
 }
 .home-mascot-stage {
@@ -217,7 +224,8 @@
 }
 .home-mascot-stage > span,
 .home-mascot-stage .my-character > [role="img"] {
-  width: min(80%, var(--home-mascot-size)) !important;
+  width: min(112%, var(--home-mascot-size), calc(100vw - 24px)) !important;
+  max-width: none;
 }
 .home-intro {
   background: var(--navy);
@@ -1250,7 +1258,8 @@ fieldset:disabled select {
   color: var(--navy);
 }
 .account-shell .profile-avatar {
-  width: clamp(188.16px, 33.6vw, 215.04px);
+  width: clamp(244.608px, 43.68vw, 279.552px);
+  flex: none;
 }
 .account-shell .menu-card {
   background: var(--canvas);
@@ -1393,7 +1402,7 @@ fieldset:disabled select {
 }
 @media (max-width: 959px) {
   .account-shell .profile-avatar {
-    width: 134.4px;
+    width: 174.72px;
   }
   .account-shell .latest-fitness .fitness-radar svg {
     width: 100%;
@@ -2053,8 +2062,9 @@ fieldset:disabled select {
   .home-content {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
     align-content: start;
-    align-items: start;
+    align-items: center;
     gap: 32px 48px;
     min-height: calc(100dvh - var(--bottom-navigation-height) - 64px);
   }
@@ -2062,31 +2072,25 @@ fieldset:disabled select {
     grid-column: 1 / -1;
     grid-row: 1;
   }
-  .home-content > .home-intro {
-    grid-column: 2;
-    grid-row: 2;
-  }
   .home-content > .loading,
   .home-content > div.stack {
     grid-column: 1 / -1;
   }
-  .home-content > .home-intro .button {
-    max-width: 320px;
-  }
-  .home-companions {
-    --home-mascot-size: 403.2px;
-    grid-column: 1;
-    grid-row: 2;
-  }
-  .home-activity {
+  .home-information {
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+    min-width: 0;
     grid-column: 2;
     grid-row: 2;
   }
-  .home-content:has(> .home-intro) > .home-companions {
-    grid-row: 2 / span 2;
+  .home-information > .home-intro .button {
+    max-width: 320px;
   }
-  .home-content:has(> .home-intro) > .home-activity {
-    grid-row: 3;
+  .home-companions {
+    --home-mascot-size: 564.48px;
+    grid-column: 1;
+    grid-row: 2;
   }
   .home-mascot-stage {
     min-height: 320px;
@@ -2206,10 +2210,6 @@ fieldset:disabled select {
   min-height: 80px;
   color: var(--muted);
   font-size: 12px;
-}
-.shop-balance-row {
-  display: flex;
-  justify-content: flex-end;
 }
 .shop-stage {
   display: flex;
@@ -2583,4 +2583,13 @@ fieldset:disabled select {
   .roulette-wheel {
     transition: none;
   }
+}
+
+@media (min-width: 960px) {
+  .content.home-content {
+    padding-top: 8px;
+  }
+}
+body:has(.auth-shell) {
+  background: var(--surface);
 }

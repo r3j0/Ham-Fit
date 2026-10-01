@@ -1,7 +1,7 @@
 .shell {
   display: flex;
   flex-direction: column;
-  background: var(--canvas);
+  background: var(--surface);
 }
 .header {
   background: var(--surface);

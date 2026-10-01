@@ -3,7 +3,7 @@ import { installApi, testOutfit } from "./integration-fixtures";
 import { installCommerce } from "./avatar-rewards-fixtures";
 
 for (const width of [320, 600, 1280]) {
-  test(`${width}px 상점 좌우 배치와 그룹의 공용 외곽선`, async ({
+  test(`${width}px 상점 좌우 배치와 외곽선 없는 그룹 양식`, async ({
     page,
   }, info) => {
     await page.emulateMedia({ reducedMotion: "reduce" });
@@ -49,7 +49,7 @@ for (const width of [320, 600, 1280]) {
     expect(boxes[0].y).toBeCloseTo(boxes[1].y, 0);
     for (const box of boxes) {
       expect(box.border).toBe("0px");
-      expect(box.parentBorder).toBe("1px");
+      expect(box.parentBorder).toBe("0px");
     }
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth),
@@ -74,8 +74,9 @@ test("로그인 햄스터는 확대된 크기로 방문마다 무작위 색상·
     const visit = Number(sessionStorage.getItem("test-mascot-visit") || "0");
     sessionStorage.setItem("test-mascot-visit", String(visit + 1));
     crypto.getRandomValues = ((values: Uint32Array) => {
-      if (values instanceof Uint32Array && values.length === 8) {
-        for (let i = 0; i < values.length; i++) values[i] = visit + i;
+      if (values instanceof Uint32Array && values.length === 1) {
+        for (let i = 0; i < values.length; i++)
+          values[i] = visit % 2 ? 0xffffffff : 0;
         return values;
       }
       return original(values);
@@ -85,7 +86,8 @@ test("로그인 햄스터는 확대된 크기로 방문마다 무작위 색상·
   const group = page.getByRole("group", { name: "함께 운동하는 햄스터" });
   const mascots = group.locator(":scope > span");
   await expect(mascots).toHaveCount(4);
-  await expect(mascots.first()).toHaveAttribute("data-variant", "cream");
+  await expect(group.locator('[data-variant="cream"]')).toHaveCount(2);
+  await expect(group.locator('[data-variant="gray"]')).toHaveCount(2);
   const before = await mascots.evaluateAll((nodes) =>
     nodes.map((n) => [
       n.getAttribute("data-pose"),
@@ -98,10 +100,8 @@ test("로그인 햄스터는 확대된 크기로 방문마다 무작위 색상·
     for (const node of await mascots.all()) {
       await expect(node).toHaveAttribute("data-wear", "none");
       const box = (await node.boundingBox())!;
-      expect(box.width / bounds!.width).toBeCloseTo(0.6076, 3);
-      expect(box.x + box.width).toBeLessThanOrEqual(
-        bounds!.x + bounds!.width + 1,
-      );
+      expect(box.width / bounds!.width).toBeCloseTo(0.6076 / 1.1519, 3);
+      expect(box.x + box.width).toBeLessThanOrEqual(page.viewportSize()!.width);
     }
     await page.screenshot({
       path: info.outputPath(`login-${width}.png`),
@@ -109,7 +109,7 @@ test("로그인 햄스터는 확대된 크기로 방문마다 무작위 색상·
     });
   }
   await page.reload();
-  await expect(mascots.first()).toHaveAttribute("data-variant", "gray");
+  await expect(mascots.nth(1)).toHaveAttribute("data-variant", "cream");
   expect(
     await mascots.evaluateAll((nodes) =>
       nodes.map((n) => [

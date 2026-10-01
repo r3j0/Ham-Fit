@@ -137,7 +137,7 @@ test("프로필은 재화·가입 경과일·활동 리포트와 대표 캐릭�
       0,
     );
     const avatarBox = (await avatar.boundingBox())!;
-    expect(avatarBox.width).toBeCloseTo(width < 960 ? 134.4 : 215.04, 1);
+    expect(avatarBox.width).toBeCloseTo(width < 960 ? 174.72 : 279.552, 1);
     await expect(avatar).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
     const chart = (await page.locator(".fitness-radar svg").boundingBox())!;
     const reportBox = (await report.boundingBox())!;
@@ -288,7 +288,9 @@ test("미측정 계정도 가입 당일 표시와 지원되는 활동 정보를 
   await expect(page.getByRole("region", { name: "활동 리포트" })).toBeVisible();
   await expect(page.locator(".fitness-radar")).toHaveCount(0);
   await page.getByRole("link", { name: "계정 설정", exact: true }).click();
-  await page.getByRole("button", { name: "생년월일", exact: true }).click();
+  await page
+    .getByRole("heading", { name: "생년월일", exact: true })
+    .scrollIntoViewIfNeeded();
   await expect(
     page.getByRole("heading", { name: "생년월일", exact: true }),
   ).toBeVisible();

@@ -16,6 +16,16 @@ for (const width of [320, 600, 1218]) {
     item.playbackStatus = "verified";
     item.verifiedDurationSeconds = item.progress.durationSeconds = 12;
     await installRoutine(page, row);
+    let variant = "gray";
+    await page.route("**/api/v1/users/me/avatar/outfit", (route) =>
+      route.fulfill({
+        json: {
+          ...testOutfit,
+          characterId: `character.${variant}`,
+          rendering: { ...testOutfit.rendering, variant },
+        },
+      }),
+    );
     await page.route(item.playbackUrl, async (route) =>
       route.fulfill({
         contentType: "video/mp4",
@@ -27,6 +37,7 @@ for (const width of [320, 600, 1218]) {
       ["hold", "20", "초 유지"],
       ["timed", "30", "초"],
     ] as const) {
+      variant = doseType === "hold" ? "cream" : "gray";
       item.prescription = {
         doseType,
         value,
@@ -37,6 +48,20 @@ for (const width of [320, 600, 1218]) {
       };
       await page.goto(`/workout-routines/${row.id}/items/${item.id}`);
       const guide = page.getByRole("region", { name: "운동 방법" });
+      const mascot = guide.getByRole("img", { name: "푸시업하는 내 햄스터" });
+      await expect(mascot).toHaveAttribute("data-pose", "pushup");
+      await expect(mascot).toHaveAttribute("data-variant", variant);
+      const headingBox = (await guide.getByRole("heading").boundingBox())!,
+        mascotBox = (await mascot.boundingBox())!,
+        instructionBox = (await guide
+          .getByText("아래와 같은 방식으로 운동하세요!")
+          .boundingBox())!;
+      expect(mascotBox.y).toBeGreaterThanOrEqual(
+        headingBox.y + headingBox.height,
+      );
+      expect(instructionBox.y).toBeGreaterThanOrEqual(
+        mascotBox.y + mascotBox.height,
+      );
       await expect(guide).toContainText("아래와 같은 방식으로 운동하세요!");
       await expect(
         guide.getByText("아래와 같은 방식으로 운동하세요!"),

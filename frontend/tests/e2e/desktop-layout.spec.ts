@@ -101,22 +101,35 @@ test("메인의 알림은 전체 콘텐츠 우측 상단에 두고 미등록 안
         };
       });
       const bellBox = (await bell.boundingBox())!;
-      const balanceBox = (await page
-        .getByRole("group", { name: "보유 재화" })
+      await expect(page.getByRole("group", { name: "보유 재화" })).toHaveCount(
+        0,
+      );
+      expect(bellBox.x + bellBox.width).toBeCloseTo(content.right, 1);
+      const brandBox = (await page
+        .locator(".home-toolbar > .brand")
         .boundingBox())!;
-      expect(balanceBox.x + balanceBox.width).toBeCloseTo(content.right, 1);
-      expect(bellBox.x + bellBox.width).toBeLessThanOrEqual(balanceBox.x);
+      expect(brandBox.y + brandBox.height / 2).toBeCloseTo(
+        bellBox.y + bellBox.height / 2,
+        1,
+      );
       const toolbarBox = (await page.locator(".home-toolbar").boundingBox())!;
+      const actionsBox = (await page
+        .locator(".home-toolbar-actions")
+        .boundingBox())!;
       expect(toolbarBox.y).toBeCloseTo(content.top, 1);
       expect(bellBox.y + bellBox.height / 2).toBeCloseTo(
-        toolbarBox.y + toolbarBox.height / 2,
+        actionsBox.y + actionsBox.height / 2,
         1,
       );
       const left = (await companions.boundingBox())!,
         right = (await activity.boundingBox())!;
       if (onboarded) {
         await expect(intro).toHaveCount(0);
-        if (width >= 960) expect(left.y).toBeCloseTo(right.y, 1);
+        if (width >= 960)
+          expect(left.y + left.height / 2).toBeCloseTo(
+            right.y + right.height / 2,
+            1,
+          );
       } else {
         await expect(intro).toBeVisible();
         const card = (await intro.boundingBox())!;
@@ -124,9 +137,28 @@ test("메인의 알림은 전체 콘텐츠 우측 상단에 두고 미등록 안
           expect(card.x).toBeCloseTo(right.x, 1);
           expect(card.width).toBeCloseTo(right.width, 1);
           expect(card.x).toBeGreaterThanOrEqual(left.x + left.width);
-          expect(card.y).toBeCloseTo(left.y, 1);
+          const information = (await page
+            .locator(".home-information")
+            .boundingBox())!;
+          expect(information.y + information.height / 2).toBeCloseTo(
+            left.y + left.height / 2,
+            1,
+          );
           expect(right.y).toBeGreaterThanOrEqual(card.y + card.height);
+          const today = (await activity
+            .locator(":scope > section")
+            .first()
+            .boundingBox())!;
+          const streak = (await activity
+            .locator(":scope > section")
+            .last()
+            .boundingBox())!;
+          expect(right.y - card.y - card.height).toBeCloseTo(
+            streak.y - today.y - today.height,
+            1,
+          );
         } else {
+          expect(card.y - toolbarBox.y - toolbarBox.height).toBeCloseTo(32, 1);
           expect(card.y + card.height).toBeLessThanOrEqual(left.y);
         }
       }
@@ -164,7 +196,13 @@ for (const width of [960, 1280, 1440]) {
         "/account/preferences",
         page.getByRole("radio", { name: "기본", exact: true }),
       ],
-      ["settings", "/account/settings", page.getByLabel("현재 비밀번호")],
+      [
+        "settings",
+        "/account/settings",
+        page
+          .getByRole("form", { name: "이메일 변경", exact: true })
+          .getByLabel("현재 비밀번호"),
+      ],
       ["records", "/measurements", page.locator(".record-card")],
       [
         "report",

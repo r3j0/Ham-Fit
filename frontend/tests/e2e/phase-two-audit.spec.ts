@@ -112,7 +112,10 @@ test("설정 요청 중 화면을 떠났다가 돌아와도 재시도할 수 있
   await page
     .getByLabel("새 이메일", { exact: true })
     .fill(`changed-${crypto.randomUUID()}@example.test`);
-  await page.getByLabel("현재 비밀번호").fill(password);
+  await page
+    .getByRole("form", { name: "이메일 변경", exact: true })
+    .getByLabel("현재 비밀번호")
+    .fill(password);
   await page
     .getByRole("button", { name: "이메일 변경", exact: true })
     .last()
@@ -124,7 +127,11 @@ test("설정 요청 중 화면을 떠났다가 돌아와도 재시도할 수 있
   release();
   await page.waitForTimeout(300);
   await page.goBack();
-  await expect(page.getByLabel("현재 비밀번호")).toBeEnabled();
+  await expect(
+    page
+      .getByRole("form", { name: "이메일 변경", exact: true })
+      .getByLabel("현재 비밀번호"),
+  ).toBeEnabled();
   await expect(
     page.getByRole("button", { name: "처리 중", exact: true }),
   ).toHaveCount(0);
@@ -145,7 +152,10 @@ test("계정 변경 응답을 잃어도 중복 제출 없이 다시 로그인할
     await route.abort("connectionreset");
   });
   await page.getByLabel("새 이메일", { exact: true }).fill(email);
-  await page.getByLabel("현재 비밀번호").fill(password);
+  await page
+    .getByRole("form", { name: "이메일 변경", exact: true })
+    .getByLabel("현재 비밀번호")
+    .fill(password);
   await page
     .getByRole("button", { name: "이메일 변경", exact: true })
     .last()
@@ -188,10 +198,12 @@ for (const committed of [false, true]) {
       await route.abort("connectionreset");
     });
     await page
-      .getByRole("button", { name: "회원 탈퇴", exact: true })
-      .first()
-      .click();
-    await page.getByLabel("현재 비밀번호").fill(password);
+      .getByRole("heading", { name: "회원 탈퇴", exact: true })
+      .scrollIntoViewIfNeeded();
+    await page
+      .getByRole("form", { name: "회원 탈퇴", exact: true })
+      .getByLabel("현재 비밀번호")
+      .fill(password);
     await page
       .getByRole("button", { name: "회원 탈퇴", exact: true })
       .last()

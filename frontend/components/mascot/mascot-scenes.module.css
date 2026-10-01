@@ -1,15 +1,17 @@
 .welcome {
   position: relative;
   isolation: isolate;
-  width: 100%;
-  max-width: 756px;
-  aspect-ratio: 1.25 / 1;
-  margin-inline: auto;
+  /* Add 25% of a hamster canvas (60.76% × .25) between the two zigzag pairs. */
+  width: min(115.19%, calc(100vw - 32px));
+  max-width: 870.8364px;
+  aspect-ratio: 1.1519 / 1;
+  left: 50%;
+  transform: translateX(-50%);
 }
 .welcome > span {
   position: absolute;
   top: 0;
-  width: 60.76%;
+  width: calc(60.76% / 1.1519);
   max-width: none;
   z-index: 1;
 }
@@ -17,25 +19,30 @@
   left: 0;
 }
 .welcome > span:nth-child(2) {
-  left: 13.08%;
+  left: calc(13.08% / 1.1519);
 }
 .welcome > span:nth-child(3) {
-  left: 26.16%;
+  left: calc(41.35% / 1.1519);
 }
 .welcome > span:nth-child(4) {
-  left: 39.24%;
+  left: calc(54.43% / 1.1519);
 }
 .welcome > span:nth-child(even) {
-  top: 30%;
+  top: 32%;
   z-index: 2;
 }
 .pair {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: center;
   justify-content: center;
-  gap: 16px;
+  gap: 0;
+  /* The enlarged square canvases overlap only in their transparent margins. */
+  overflow: clip;
   isolation: isolate;
 }
 .pair > span {
-  width: min(44.8%, 190.4px);
+  width: min(125.44%, 266.56px);
+  max-width: none;
+  justify-self: center;
 }

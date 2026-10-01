@@ -1,0 +1,130 @@
+.profile {
+  width: 100%;
+  max-width: 880px;
+  margin-inline: auto;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 28px;
+  background: var(--surface);
+}
+.identity {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 28px 20px;
+  background: linear-gradient(155deg, var(--canvas), var(--tint));
+  text-align: center;
+}
+.identity h2 {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  color: var(--navy);
+  font-size: clamp(24px, 3vw, 32px);
+}
+.role {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--navy);
+  font-size: 13px;
+  font-weight: 700;
+}
+.activity {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+  padding: 24px clamp(16px, 3vw, 32px);
+}
+.activity h3 {
+  font-size: 16px;
+  color: var(--navy);
+}
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+.stat {
+  min-width: 0;
+  padding: 20px 8px;
+  border-radius: 18px;
+  background: var(--canvas);
+  text-align: center;
+}
+.stat dt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.stat svg {
+  color: var(--accent);
+}
+.stat dd {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 4px;
+  margin: 8px 0 0;
+  color: var(--navy);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.stat strong {
+  min-width: 0;
+  font-size: clamp(26px, 4vw, 36px);
+  line-height: 1.2;
+}
+.stat dd span {
+  font-size: 13px;
+}
+.joined {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 13px;
+}
+.joined svg {
+  flex: none;
+  color: var(--accent);
+}
+.joined time {
+  margin-left: auto;
+  color: var(--navy);
+  font-weight: 600;
+}
+@media (min-width: 960px) {
+  .profile {
+    display: grid;
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.2fr);
+  }
+  .identity {
+    justify-content: center;
+    padding-block: 40px;
+  }
+  .activity {
+    align-content: center;
+    padding-block: 40px;
+  }
+}
+@media (max-width: 359px) {
+  .stats {
+    gap: 6px;
+  }
+  .stat dt {
+    font-size: 11px;
+  }
+}

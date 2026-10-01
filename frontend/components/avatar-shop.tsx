@@ -55,12 +55,8 @@ export function AvatarShop({ wardrobe = false }: { wardrobe?: boolean }) {
     <Shell>
       <Header
         title={wardrobe ? "내 옷장" : "상점"}
-        back={wardrobe ? "/shop" : "/"}
-        right={
-          <Link href={wardrobe ? "/shop" : "/shop/wardrobe"}>
-            {wardrobe ? "상점" : "내 옷장"}
-          </Link>
-        }
+        back={wardrobe ? "/shop" : undefined}
+        showBrand={false}
       />
       <div className="content stack">
         {resource.error ? (
@@ -189,19 +185,21 @@ function ShopView({
   }
   return (
     <>
-      <div className="shop-balance-row">
-        <SeedBalance balance={inventory.currency.balance} />
-      </div>
       <div className={styles.layout}>
         <div className={styles.preview}>
-          <section
-            className={`shop-stage ${styles.stage} ${draft.clothingIds.length ? styles.dressed : ""}`}
-            aria-label="코디 미리보기"
-          >
+          <section className="shop-stage" aria-label="코디 미리보기">
+            {!wardrobe && (
+              <Link
+                href="/shop/wardrobe"
+                className={`button ${styles.wardrobeLink}`}
+              >
+                내 옷장
+              </Link>
+            )}
             {preview ? (
               <ProfileCharacter
                 outfit={preview}
-                size={200}
+                size={280}
                 label="내 캐릭터 미리보기"
               />
             ) : (
@@ -247,6 +245,7 @@ function ShopView({
                 초기화
               </button>
             )}
+            <SeedBalance balance={inventory.currency.balance} />
           </section>
           {!wardrobe && selected && !owned.has(selected.id) && (
             <button

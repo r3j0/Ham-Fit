@@ -17,15 +17,18 @@
   }
 }
 
-.stage {
-  position: relative;
+.wardrobeLink {
+  width: auto;
+  min-width: 132px;
+  align-self: center;
+  background: var(--surface);
+  color: var(--navy);
+  border: 1px solid var(--border);
 }
-.dressed {
-  padding-bottom: 62px;
+.wardrobeLink:hover {
+  background: var(--tint);
 }
 .reset {
-  position: absolute;
-  right: 16px;
-  bottom: 12px;
+  align-self: flex-end;
   width: auto;
 }

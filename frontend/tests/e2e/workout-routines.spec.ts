@@ -150,7 +150,8 @@ for (const cardio of [
         );
       }),
     ).toBe(true);
-    await expect(page.getByLabel("예상 운동 시간 6분")).toBeVisible();
+    await expect(page.getByLabel("예상 운동 시간 6분")).toHaveCount(0);
+    await expect(page.getByLabel("완료한 운동 0/3")).toBeVisible();
     await expect(
       guidance.locator("button, input, video, progress"),
     ).toHaveCount(0);

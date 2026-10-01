@@ -35,17 +35,12 @@
   padding: 10px 8px;
   font-size: 14px;
 }
-.statusFilter {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
 .requestGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: start;
   gap: clamp(16px, 3vw, 32px);
   padding: clamp(16px, 3vw, 24px);
-  border: 1px solid var(--border);
   border-radius: 20px;
   background: var(--surface, #fff);
 }
@@ -111,6 +106,24 @@
   text-decoration: none;
   font-weight: 700;
 }
+.memberRow {
+  position: relative;
+}
+.memberName::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+}
+.memberName:focus-visible::after {
+  outline: 2px solid var(--orange);
+  outline-offset: 2px;
+}
+.memberRow > button,
+.memberRow :global(.character-unavailable button) {
+  position: relative;
+  z-index: 1;
+}
 .nickname {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -160,5 +173,32 @@
   .memberActivity,
   .requestMeta {
     font-size: 11px;
+  }
+}
+
+.overview {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
+  grid-template-areas: "mascot" "list" "requests";
+}
+.overview > .mascotStage {
+  grid-area: mascot;
+}
+.groupList {
+  grid-area: list;
+  min-width: 0;
+}
+.overview > .requestGrid {
+  grid-area: requests;
+}
+@media (min-width: 960px) {
+  .overview {
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+    grid-template-areas: "mascot list" "requests list";
+    grid-template-rows: auto 1fr;
+    align-items: start;
+    column-gap: 32px;
+    row-gap: 10px;
   }
 }

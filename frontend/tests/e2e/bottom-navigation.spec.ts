@@ -195,11 +195,8 @@ for (const [width, height] of [
     await expect(bell).toBeVisible();
     const toolbar = (await page.locator(".home-toolbar").boundingBox())!;
     const bellBox = (await bell.boundingBox())!;
-    const balance = (await page
-      .getByRole("group", { name: "보유 재화" })
-      .boundingBox())!;
-    expect(balance.x).toBeGreaterThan(bellBox.x + bellBox.width);
-    expect(balance.x + balance.width).toBeCloseTo(toolbar.x + toolbar.width, 1);
+    await expect(page.getByRole("group", { name: "보유 재화" })).toHaveCount(0);
+    expect(bellBox.x + bellBox.width).toBeCloseTo(toolbar.x + toolbar.width, 1);
     await expect(
       page.getByText("그룹 알림 확인하기", { exact: true }),
     ).toHaveCount(0);

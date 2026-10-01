@@ -177,7 +177,7 @@ function RecordFeed({ filters }: { filters: { from: string; to: string } }) {
   if (!page.items.length)
     return (
       <div className="empty-state">
-        <MemberMascot pose="situp" size={160} label="윗몸 운동하는 내 햄스터" />
+        <MemberMascot pose="situp" size={224} label="윗몸 운동하는 내 햄스터" />
         <h2>
           {filters.from || filters.to
             ? "이 기간에는 기록이 없어요"

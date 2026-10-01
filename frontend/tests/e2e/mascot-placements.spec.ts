@@ -26,7 +26,7 @@ async function renderedArt(page: Page) {
 }
 
 for (const width of [320, 390, 1280]) {
-  test(`${width}px 로그인 전 첫 화면의 교차 배치와 회원가입의 궁금 캐릭터를 표시한다`, async ({
+  test(`${width}px 로그인은 대각선 지그재그로 서로 다른 자세 네 마리, 회원가입은 확대된 궁금 캐릭터를 표시한다`, async ({
     page,
   }, info) => {
     const errors: string[] = [];
@@ -40,36 +40,43 @@ for (const width of [320, 390, 1280]) {
     const group = page.getByRole("group", { name: "함께 운동하는 햄스터" });
     const characters = group.getByRole("img");
     await expect(characters).toHaveCount(4);
-    const expected = [
-      ["cream", "victory", "none"],
-      ["gray", "run", "none"],
-      ["gray", "drink", "none"],
-      ["cream", "situp", "none"],
-    ];
-    for (const [index, [variant, pose, wear]] of expected.entries()) {
-      await expect(characters.nth(index)).toHaveAttribute(
-        "data-variant",
-        variant,
-      );
-      await expect(characters.nth(index)).toHaveAttribute("data-pose", pose);
-      await expect(characters.nth(index)).toHaveAttribute("data-wear", wear);
-      await expect(characters.nth(index)).toHaveCSS(
-        "z-index",
-        index % 2 ? "2" : "1",
-      );
-    }
+    await expect(page.locator("body")).toHaveCSS(
+      "background-color",
+      "rgb(255, 255, 255)",
+    );
+    await expect(group.locator('[data-variant="cream"]')).toHaveCount(2);
+    await expect(group.locator('[data-variant="gray"]')).toHaveCount(2);
+    const poses = await characters.evaluateAll((nodes) =>
+      nodes.map((n) => n.getAttribute("data-pose")),
+    );
+    expect(new Set(poses).size).toBe(4);
+    expect(poses).not.toContain("basic");
     await renderedArt(page);
     const boxes = await Promise.all(
       (await characters.all()).map((character) => character.boundingBox()),
     );
-    const frame = (await group.boundingBox())!;
-    for (const [i, box] of boxes.entries()) {
-      expect(box!.x).toBeGreaterThanOrEqual(frame.x);
-      expect(box!.x + box!.width).toBeLessThanOrEqual(
-        frame.x + frame.width + 1,
-      );
-      if (i > 0) expect(box!.x).toBeGreaterThan(boxes[i - 1]!.x);
-      if (i % 2) expect(box!.y).toBeGreaterThan(boxes[i - 1]!.y);
+    for (const box of boxes) {
+      expect(box!.x).toBeGreaterThanOrEqual(0);
+      expect(box!.x + box!.width).toBeLessThanOrEqual(width);
+    }
+    for (let i = 1; i < boxes.length; i++) {
+      expect(boxes[i]!.x).toBeGreaterThan(boxes[i - 1]!.x);
+      if (i % 2) expect(boxes[i]!.y).toBeGreaterThan(boxes[i - 1]!.y);
+      else expect(boxes[i]!.y).toBeLessThan(boxes[i - 1]!.y);
+      await expect(characters.nth(i)).toHaveCSS("z-index", i % 2 ? "2" : "1");
+    }
+    // Preserve each pair's diagonal offset and add one quarter of a canvas between pairs.
+    for (const [left, right] of [
+      [0, 2],
+      [1, 3],
+    ]) {
+      expect(
+        (boxes[right]!.x - boxes[left]!.x) / boxes[left]!.width,
+      ).toBeCloseTo(0.2616 / 0.6076 + 0.25, 3);
+    }
+    if (width >= 960) {
+      const illustration = (await group.locator("..").boundingBox())!;
+      expect(boxes[0]!.width).toBeCloseTo(illustration.width * 0.6076, 1);
     }
     await page
       .getByLabel("이메일", { exact: true })
@@ -85,6 +92,14 @@ for (const width of [320, 390, 1280]) {
     await page.goto("/register");
     const pair = page.getByRole("group", { name: "가입을 기다리는 햄스터" });
     await expect(pair.getByRole("img")).toHaveCount(2);
+    const pairBox = (await pair.boundingBox())!;
+    for (const mascot of await pair.getByRole("img").all()) {
+      const box = (await mascot.boundingBox())!;
+      expect(box.width).toBeCloseTo(
+        Math.min(pairBox.width * 0.6272, 266.56),
+        1,
+      );
+    }
     await expect(
       pair.locator(
         '[data-variant="cream"][data-pose="curious"][data-wear="none"]',
@@ -134,7 +149,7 @@ test("그룹·체력 기록·간이측정·탈퇴 확인의 캐릭터를 읽기 
     await page.setViewportSize({ width, height: 900 });
     for (const [path, variant, pose] of [
       ["/onboarding", "cream", "curious"],
-      ["/workout?mode=assessment", "gray", "situp"],
+      ["/workout?mode=assessment", "cream", "situp"],
     ]) {
       await page.goto(path);
       await expect(
@@ -153,6 +168,7 @@ test("그룹·체력 기록·간이측정·탈퇴 확인의 캐릭터를 읽기 
   await page.setViewportSize({ width: 320, height: 640 });
   await page.goto("/account/settings?tab=delete");
   await page
+    .getByRole("form", { name: "회원 탈퇴", exact: true })
     .getByLabel("현재 비밀번호", { exact: true })
     .fill("not-submitted-password");
   await page

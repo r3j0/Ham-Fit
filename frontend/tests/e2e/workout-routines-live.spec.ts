@@ -107,7 +107,7 @@ test("실제 추천 엔진: 준비 조건, 오늘 루틴 생성, 중복 방지�
     ).toHaveCount(0);
     await expect(
       page.getByLabel(`예상 운동 시간 ${routine.estimatedMinutes}분`),
-    ).toBeVisible();
+    ).toHaveCount(0);
     await expect(
       page.getByRole("list", { name: "오늘 배정된 운동" }).getByRole("heading"),
     ).toHaveText(routine.routine.map((item) => item.title));

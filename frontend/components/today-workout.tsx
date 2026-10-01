@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { ClipboardList, Clock3 } from "lucide-react";
+import { ClipboardList } from "lucide-react";
 import styles from "./today-workout.module.css";
 import { useEffect, useRef, useState } from "react";
 import { ApiError } from "@/lib/http";
@@ -177,13 +177,6 @@ export function TodayWorkout({
             role="group"
             aria-label="오늘의 운동 요약"
           >
-            <span
-              className={styles.badge}
-              aria-label={`예상 운동 시간 ${todayRoutine.estimatedMinutes}분`}
-            >
-              <Clock3 size={18} aria-hidden="true" />
-              <strong>{todayRoutine.estimatedMinutes}분</strong>
-            </span>
             <span
               className={styles.badge}
               aria-label={`완료한 운동 ${todayRoutine.progress.completedItems}/${todayRoutine.progress.totalItems}`}

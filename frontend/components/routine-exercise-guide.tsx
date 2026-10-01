@@ -1,5 +1,6 @@
 import { Clock3, Dumbbell, Repeat2 } from "lucide-react";
 import type { Prescription } from "@/lib/workout-routine";
+import { MemberMascot } from "./member-mascot";
 import styles from "./routine-exercise-guide.module.css";
 
 export function RoutineExerciseGuide({
@@ -14,6 +15,9 @@ export function RoutineExerciseGuide({
   return (
     <section className={styles.guide} aria-label="운동 방법">
       <h3>운동 방법</h3>
+      <div className={styles.mascot}>
+        <MemberMascot pose="pushup" size={140} label="푸시업하는 내 햄스터" />
+      </div>
       <p className={styles.instruction}>아래와 같은 방식으로 운동하세요!</p>
       <ol className={styles.steps}>
         <li>

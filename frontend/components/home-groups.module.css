@@ -93,3 +93,7 @@
     animation: none;
   }
 }
+
+.member[data-workout-completed="false"] > :global(.profile-character) {
+  opacity: 0.4;
+}
