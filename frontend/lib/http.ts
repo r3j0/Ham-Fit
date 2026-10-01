@@ -38,7 +38,7 @@ export async function request<T>(
   if (typeof options.body === "string" && !headers.has("Content-Type"))
     headers.set("Content-Type", "application/json");
   try {
-    // Direct browser requests keep each client's IP visible to the backend.
+    // Relative production URLs use the same-origin API proxy; local URLs stay direct.
     const configuredBase = (
       process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001/api/v1"
     ).replace(/\/$/, "");

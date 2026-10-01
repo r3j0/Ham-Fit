@@ -139,3 +139,57 @@ test("routine requests use v2 while authentication and measurements keep v1 and 
   assert.ok(calls[1].endsWith("/api/v1/measurements"));
   assert.ok(calls[2].endsWith("/api/v2/workout-routines/today"));
 });
+
+test("same-origin API URLs preserve credentials, CSRF, conditional writes and uncached ETags", async (t) => {
+  const previousBase = process.env.NEXT_PUBLIC_API_BASE_URL;
+  process.env.NEXT_PUBLIC_API_BASE_URL = "/api/v1";
+  const calls: string[] = [];
+  t.mock.method(
+    globalThis,
+    "fetch",
+    async (url: string, options: RequestInit) => {
+      calls.push(String(url));
+      assert.equal(options.credentials, "include");
+      assert.equal(options.cache, "no-store");
+      const headers = new Headers(options.headers);
+      assert.equal(headers.get("Authorization"), "Bearer test");
+      assert.equal(headers.get("X-CSRF-Protection"), "1");
+      assert.equal(headers.get("If-Match"), '"revision-1"');
+      return Response.json({ ok: true }, { headers: { ETag: '"revision-2"' } });
+    },
+  );
+  try {
+    const headers = {
+      Authorization: "Bearer test",
+      "X-CSRF-Protection": "1",
+      "If-Match": '"revision-1"',
+    };
+    const refresh = await request("/auth/refresh", {
+      method: "POST",
+      headers,
+      // Callers cannot accidentally opt authenticated responses into caching.
+      credentials: "omit",
+      cache: "force-cache",
+    });
+    assert.equal(refresh.headers.get("ETag"), '"revision-2"');
+    await request("/measurements/record", {
+      method: "PATCH",
+      headers,
+      body: "{}",
+    });
+    await request("/workout-routines/today", {
+      apiVersion: "v2",
+      method: "POST",
+      headers,
+      body: "{}",
+    });
+    assert.deepEqual(calls, [
+      "/api/v1/auth/refresh",
+      "/api/v1/measurements/record",
+      "/api/v2/workout-routines/today",
+    ]);
+  } finally {
+    if (previousBase === undefined) delete process.env.NEXT_PUBLIC_API_BASE_URL;
+    else process.env.NEXT_PUBLIC_API_BASE_URL = previousBase;
+  }
+});

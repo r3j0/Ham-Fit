@@ -17,16 +17,18 @@ export function BottomNavigation() {
     pathname.startsWith("/workout-routines/") ||
     pathname.startsWith("/workouts/");
   const groupRoute = pathname === "/groups" || pathname.startsWith("/groups/");
+  const shopRoute = pathname === "/shop" || pathname.startsWith("/shop/");
   const profileRoute =
     pathname === "/account" ||
     pathname.startsWith("/account/") ||
     pathname === "/measurements" ||
     pathname.startsWith("/measurements/");
-  const theme = workoutRoute
-    ? " kspo-sky-theme"
-    : profileRoute || groupRoute
-      ? " kspo-orange-theme"
-      : "";
+  const theme =
+    workoutRoute || shopRoute
+      ? " kspo-sky-theme"
+      : profileRoute || groupRoute
+        ? " kspo-orange-theme"
+        : "";
   const tabs = [
     {
       href: "/workout",
@@ -38,7 +40,7 @@ export function BottomNavigation() {
       href: "/shop",
       label: "상점",
       icon: Store,
-      active: pathname === "/shop" || pathname.startsWith("/shop/"),
+      active: shopRoute,
     },
     {
       href: "/",

@@ -38,7 +38,7 @@ export function ProfileCharacter({
   return (
     <span
       className="profile-character"
-      style={{ width: size }}
+      style={{ width: size * 1.4 }}
       role={label ? "img" : undefined}
       aria-label={label || undefined}
       aria-hidden={label ? undefined : true}

@@ -29,7 +29,7 @@ export function MascotPose({
   return (
     <span
       className={[styles.mascot, className].filter(Boolean).join(" ")}
-      style={{ "--pose-size": `${width}px` } as CSSProperties}
+      style={{ "--pose-size": `${width * 1.4}px` } as CSSProperties}
       role={title ? "img" : undefined}
       aria-label={title || undefined}
       aria-hidden={title ? undefined : true}

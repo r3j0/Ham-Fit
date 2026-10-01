@@ -153,7 +153,7 @@
   word-break: keep-all;
 }
 .intro .mascot {
-  width: clamp(96px, 28vw, 144px);
+  width: clamp(134.4px, 39.2vw, 201.6px);
 }
 @media (min-width: 960px) {
   .intro {
@@ -163,7 +163,7 @@
     gap: 24px;
   }
   .intro .mascot {
-    width: 200px;
+    width: 280px;
     align-self: center;
   }
 }

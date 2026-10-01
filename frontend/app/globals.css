@@ -139,12 +139,33 @@
   gap: 32px;
 }
 .home-toolbar {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   gap: 12px;
   justify-content: flex-end;
   min-height: 44px;
   margin-bottom: -16px;
+}
+.home-toolbar > .brand {
+  grid-column: 2;
+  justify-self: center;
+}
+.home-toolbar-actions {
+  grid-column: 3;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+@media (max-width: 959px) {
+  .home-toolbar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .home-toolbar > .brand,
+  .home-toolbar-actions {
+    grid-column: 1;
+  }
 }
 .notification-bell {
   position: relative;
@@ -185,7 +206,7 @@
   }
 }
 .home-companions {
-  --home-mascot-size: min(256px, 32svh);
+  --home-mascot-size: min(358.4px, 44.8svh);
   gap: 4px;
 }
 .home-mascot-stage {
@@ -1146,7 +1167,7 @@ fieldset:disabled select {
   font-size: 14px;
   margin-top: 10px;
 }
-/* Route-scoped KSPO Sky Blue colors for onboarding and workout screens. */
+/* Route-scoped KSPO Sky Blue colors for onboarding, workout and shop screens. */
 .kspo-sky-theme {
   --sky: #1b99c4;
   --accent: var(--sky);
@@ -1229,7 +1250,7 @@ fieldset:disabled select {
   color: var(--navy);
 }
 .account-shell .profile-avatar {
-  width: clamp(134.4px, 24vw, 153.6px);
+  width: clamp(188.16px, 33.6vw, 215.04px);
 }
 .account-shell .menu-card {
   background: var(--canvas);
@@ -1372,7 +1393,7 @@ fieldset:disabled select {
 }
 @media (max-width: 959px) {
   .account-shell .profile-avatar {
-    width: 96px;
+    width: 134.4px;
   }
   .account-shell .latest-fitness .fitness-radar svg {
     width: 100%;
@@ -2053,7 +2074,7 @@ fieldset:disabled select {
     max-width: 320px;
   }
   .home-companions {
-    --home-mascot-size: 288px;
+    --home-mascot-size: 403.2px;
     grid-column: 1;
     grid-row: 2;
   }
@@ -2192,13 +2213,15 @@ fieldset:disabled select {
 }
 .shop-stage {
   display: flex;
+  width: 100%;
+  min-width: 0;
   flex-direction: column;
   align-items: center;
   gap: 14px;
   padding: 22px 12px;
-  border: 1px solid #e9e0d0;
+  border: 1px solid var(--border);
   border-radius: 28px;
-  background: linear-gradient(#fffaf0, #fff 75%);
+  background: linear-gradient(var(--canvas), var(--surface) 75%);
 }
 .shop-character-choices {
   display: flex;
@@ -2228,7 +2251,7 @@ fieldset:disabled select {
   gap: 6px;
   padding: 6px;
   border-radius: 18px;
-  background: #f5efe5;
+  background: var(--tint);
 }
 .shop-categories button {
   min-height: 44px;
@@ -2238,9 +2261,9 @@ fieldset:disabled select {
   font-weight: 600;
 }
 .shop-categories button[aria-pressed="true"] {
-  background: #fff;
-  color: #82541d;
-  box-shadow: 0 2px 6px #73532412;
+  background: var(--surface);
+  color: var(--navy);
+  box-shadow: 0 2px 6px color-mix(in srgb, var(--navy) 8%, transparent);
 }
 .shop-grid {
   display: grid;
@@ -2253,20 +2276,20 @@ fieldset:disabled select {
   align-items: center;
   flex-direction: column;
   gap: 7px;
-  background: #fff;
-  border: 2px solid #eee8dd;
+  background: var(--surface);
+  border: 2px solid var(--border);
   border-radius: clamp(10px, 3vw, 20px);
   padding: 10px 4px 12px;
   font-size: clamp(11px, 2vw, 13px);
   overflow-wrap: anywhere;
 }
 .shop-item[aria-pressed="true"] {
-  border-color: #ce8c38;
-  background: #fffaf2;
+  border-color: var(--accent);
+  background: var(--canvas);
 }
 .shop-item-art {
   aspect-ratio: 1;
-  max-height: 124px;
+  max-height: 173.6px;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   place-items: center;
@@ -2277,7 +2300,7 @@ fieldset:disabled select {
   overflow-wrap: anywhere;
 }
 .shop-item > span:last-child {
-  color: #866026;
+  color: var(--navy);
 }
 .my-character {
   align-items: center;

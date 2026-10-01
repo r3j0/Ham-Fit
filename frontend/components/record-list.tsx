@@ -10,7 +10,8 @@ import {
 import { api } from "@/lib/session";
 import { errorMessage } from "@/lib/http";
 import type { MeasurementPage } from "@/lib/types";
-import { ArtworkSlot, Loading, Notice, Shell } from "./ui";
+import { Loading, Notice, Shell } from "./ui";
+import { MemberMascot } from "./member-mascot";
 export function RecordList() {
   const [filters, setFilters] = useState({ from: "", to: "" }),
     [open, setOpen] = useState(false),
@@ -176,7 +177,7 @@ function RecordFeed({ filters }: { filters: { from: string; to: string } }) {
   if (!page.items.length)
     return (
       <div className="empty-state">
-        <ArtworkSlot />
+        <MemberMascot pose="situp" size={160} label="윗몸 운동하는 내 햄스터" />
         <h2>
           {filters.from || filters.to
             ? "이 기간에는 기록이 없어요"
