@@ -1,0 +1,133 @@
+# Install at .github/workflows/backend-render.yml to activate GitHub Actions.
+# Kept under backend/ to respect the repository's backend ownership boundary.
+name: Backend Render CI/CD
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      [
+        'backend/**',
+        'data-analysis/src/recommendation_v2.py',
+        'data-analysis/data/processed/workout_videos_v2_complete.csv',
+        '.github/workflows/backend-render.yml',
+      ]
+  push:
+    branches: [main]
+    paths:
+      [
+        'backend/**',
+        'data-analysis/src/recommendation_v2.py',
+        'data-analysis/data/processed/workout_videos_v2_complete.csv',
+        '.github/workflows/backend-render.yml',
+      ]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: backend-render-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: ci_only
+          POSTGRES_PASSWORD: ci_only_not_a_production_secret
+          POSTGRES_DB: project_health_ci
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U ci_only -d project_health_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      NODE_ENV: test
+      FRONTEND_ORIGIN: http://localhost:3000
+      DATABASE_URL: postgresql://ci_only:ci_only_not_a_production_secret@127.0.0.1:5432/project_health_ci?schema=public
+      TEST_DATABASE_URL: postgresql://ci_only:ci_only_not_a_production_secret@127.0.0.1:5432/project_health_test?schema=public
+      RECOMMENDATION_PYTHON: python3
+      WORKOUT_MEDIA_REPORT_PATH: deploy/media-verification.json
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: '26.7.0'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: backend/requirements-recommendation.txt
+      - run: npm ci
+      - run: python -m pip install -r requirements-recommendation.txt
+      - name: Create isolated test database and ephemeral signing key
+        run: |
+          node --input-type=module <<'JS'
+          import pg from 'pg';
+          import { randomBytes } from 'node:crypto';
+          import { appendFileSync } from 'node:fs';
+          const client = new pg.Client({ connectionString: process.env.DATABASE_URL });
+          await client.connect();
+          await client.query('CREATE DATABASE project_health_test');
+          await client.end();
+          appendFileSync(process.env.GITHUB_ENV, `AUTH_JWT_SECRET=${randomBytes(32).toString('hex')}\n`);
+          JS
+      - run: npm run db:validate
+      - run: npm run format:check -- --end-of-line auto
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run test:e2e
+      - run: npm run build
+      - run: node --test scripts/probe-workout-media.test.mjs
+      - run: node scripts/verify-deployment.mjs --routine-input test/fixtures/deployment-routine.json
+      - name: Build production image
+        run: docker build -f backend/Dockerfile -t project-health-ci .
+        working-directory: .
+      - name: Verify recommendation in the image under the free memory limit
+        run: >-
+          docker run --rm --memory=512m --cpus=1
+          --entrypoint node
+          --mount type=bind,src="${{ github.workspace }}/backend/test/fixtures/deployment-routine.json",dst=/tmp/routine-input.json,readonly
+          project-health-ci scripts/verify-deployment.mjs --routine-input /tmp/routine-input.json
+  deploy:
+    needs: verify
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment: production
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: '26.7.0'
+      - run: npm ci
+      - name: Apply committed migrations to Neon
+        run: npm run db:migrate:deploy
+        env:
+          DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+      - name: Request Render deployment of the verified commit
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+          DEPLOY_COMMIT: ${{ github.sha }}
+        run: |
+          node --input-type=module <<'JS'
+          const url = new URL(process.env.RENDER_DEPLOY_HOOK_URL);
+          if (url.protocol !== 'https:' || url.hostname !== 'api.render.com') throw new Error('Invalid Render deploy hook');
+          url.searchParams.set('ref', process.env.DEPLOY_COMMIT);
+          const response = await fetch(url, { method: 'POST' });
+          if (!response.ok) throw new Error(`Render deploy request failed: ${response.status}`);
+          console.log('Render accepted the deployment request. Check its Deploys page for completion.');
+          JS

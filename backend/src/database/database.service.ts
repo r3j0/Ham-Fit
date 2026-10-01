@@ -100,6 +100,7 @@ export class DatabaseService
         this.streakRoulettePolicy.findFirst({ select: { version: true } }),
         this.streakRouletteTicket.findFirst({ select: { id: true } }),
         this.streakRouletteDraw.findFirst({ select: { id: true } }),
+        this.routineActivityReward.findFirst({ select: { routineId: true } }),
       ]);
       return definitions > 0;
     } catch {

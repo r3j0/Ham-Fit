@@ -99,6 +99,7 @@ model User {
   rouletteRewards             GroupRouletteReward[]
   streakRouletteTickets        StreakRouletteTicket[]
   streakRouletteDraws          StreakRouletteDraw[]
+  activityRewards             RoutineActivityReward[]
 
   @@map("users")
 }
@@ -387,6 +388,7 @@ model WorkoutProgressEvent {
 
 // Multi-exercise routines coexist with immutable legacy single-video assignments.
 model WorkoutRoutine {
+  activityReward RoutineActivityReward? @relation("RoutineRewardSource")
   id               String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   userId           String                  @map("user_id") @db.Uuid
   assignmentDate   DateTime                @map("assignment_date") @db.Date
@@ -403,6 +405,7 @@ model WorkoutRoutine {
   requests         WorkoutRoutineRequest[]
 
   @@unique([userId, assignmentDate])
+  @@unique([id, userId])
   @@map("workout_routines")
 }
 
@@ -636,8 +639,10 @@ model CurrencyTransaction {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict)
   rouletteReward GroupRouletteReward?
   streakDraw StreakRouletteDraw?
+  activityReward RoutineActivityReward? @relation("RoutineRewardTransaction")
   purchase AvatarPurchase? @relation(fields: [purchaseId], references: [id], onDelete: Cascade, onUpdate: Restrict)
   @@unique([userId, eventKey])
+  @@unique([id, userId])
   @@map("currency_transactions")
 }
 
@@ -823,4 +828,23 @@ model StreakRouletteDraw {
   @@unique([userId, key])
   @@index([userId, id])
   @@map("streak_roulette_draws")
+}
+
+// Immutable receipt of the first whole-routine completion. Daily seed grants
+// have a SQL partial unique index; group/ticket evidence is a saved snapshot.
+model RoutineActivityReward {
+  routineId String @id @map("routine_id") @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  koreanDate DateTime @map("korean_date") @db.Date
+  completedAt DateTime @map("completed_at") @db.Timestamptz(6)
+  seedStatus String @map("seed_status")
+  transactionId String? @unique @map("transaction_id") @db.Uuid
+  waters Json @db.JsonB
+  personalTicketIds String[] @map("personal_ticket_ids") @db.Uuid
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  routine WorkoutRoutine @relation("RoutineRewardSource", fields: [routineId, userId], references: [id, userId], onDelete: NoAction, onUpdate: Restrict, map: "routine_reward_source_fkey")
+  transaction CurrencyTransaction? @relation("RoutineRewardTransaction", fields: [transactionId, userId], references: [id, userId], onDelete: NoAction, onUpdate: Restrict, map: "routine_reward_transaction_fkey")
+  @@unique([routineId, userId])
+  @@unique([transactionId, userId])
+  @@map("routine_activity_rewards")
 }

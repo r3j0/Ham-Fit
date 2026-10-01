@@ -56,11 +56,20 @@ it('upgrades existing workouts, achievements, group tickets/draws, shop ledger a
     const member = await database.user.create({
       data: { email: `${randomUUID()}@example.test`, currency: { create: {} } },
     });
+    // Confirm legacy fixture prices without applying a later catalog upgrade.
+    await database.avatarProduct.updateMany({
+      where: { id: { in: ['pose.run', 'pose.curious'] } },
+      data: { priceProvisional: false },
+    });
     const shop = new AvatarService(database);
     await shop.grantCurrency(owner.id, `test:${randomUUID()}`, 150);
     await shop.purchase(owner.id, randomUUID(), {
       productId: 'pose.run',
-      catalogRevision: 1,
+      catalogRevision: (
+        await database.avatarProduct.findUniqueOrThrow({
+          where: { id: 'pose.run' },
+        })
+      ).catalogRevision,
     });
     await shop.saveOutfit(owner.id, 1, {
       characterId: 'character.gray',
@@ -152,7 +161,9 @@ it('upgrades existing workouts, achievements, group tickets/draws, shop ledger a
           .rows as unknown[],
       );
     for (const name of migrations.filter(
-      (name) => name >= '20261001000100_streak_roulette_tickets',
+      (name) =>
+        name >= '20261001000100_streak_roulette_tickets' &&
+        name <= '20261001000200_streak_roulette_draws',
     )) {
       await client.query(
         await readFile(new URL(`${name}/migration.sql`, root), 'utf8'),
@@ -189,7 +200,11 @@ it('upgrades existing workouts, achievements, group tickets/draws, shop ledger a
     // Existing sources still pass their CHECK, while roulette is added.
     await shop.purchase(owner.id, randomUUID(), {
       productId: 'pose.curious',
-      catalogRevision: 1,
+      catalogRevision: (
+        await database.avatarProduct.findUniqueOrThrow({
+          where: { id: 'pose.curious' },
+        })
+      ).catalogRevision,
     });
     expect((await shop.outfit(owner.id)).poseId).toBe('pose.run');
   } finally {

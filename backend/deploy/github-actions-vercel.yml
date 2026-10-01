@@ -1,0 +1,141 @@
+# Install at .github/workflows/backend-vercel.yml to activate GitHub Actions.
+# Kept under backend/ to respect the repository's backend ownership boundary.
+name: Backend Vercel CI/CD
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      [
+        'backend/**',
+        'data-analysis/src/recommendation_v2.py',
+        'data-analysis/data/processed/workout_videos_v2_complete.csv',
+        '.github/workflows/backend-vercel.yml',
+      ]
+  push:
+    branches: [main]
+    paths:
+      [
+        'backend/**',
+        'data-analysis/src/recommendation_v2.py',
+        'data-analysis/data/processed/workout_videos_v2_complete.csv',
+        '.github/workflows/backend-vercel.yml',
+      ]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: backend-vercel-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: ci_only
+          POSTGRES_PASSWORD: ci_only_not_a_production_secret
+          POSTGRES_DB: project_health_ci
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U ci_only -d project_health_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      NODE_ENV: test
+      FRONTEND_ORIGIN: http://localhost:3000
+      DATABASE_URL: postgresql://ci_only:ci_only_not_a_production_secret@127.0.0.1:5432/project_health_ci?schema=public
+      TEST_DATABASE_URL: postgresql://ci_only:ci_only_not_a_production_secret@127.0.0.1:5432/project_health_test?schema=public
+      RECOMMENDATION_PYTHON: python3
+      WORKOUT_MEDIA_REPORT_PATH: deploy/media-verification.json
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: '26.7.0'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: backend/requirements-recommendation.txt
+      - run: npm ci
+      - run: python -m pip install -r requirements-recommendation.txt
+      - name: Create isolated test database and ephemeral signing key
+        run: |
+          node --input-type=module <<'JS'
+          import pg from 'pg';
+          import { randomBytes } from 'node:crypto';
+          import { appendFileSync } from 'node:fs';
+          const client = new pg.Client({ connectionString: process.env.DATABASE_URL });
+          await client.connect();
+          await client.query('CREATE DATABASE project_health_test');
+          await client.end();
+          appendFileSync(process.env.GITHUB_ENV, `AUTH_JWT_SECRET=${randomBytes(32).toString('hex')}\n`);
+          JS
+      - run: npm run db:validate
+      - run: npm run format:check -- --end-of-line auto
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run test:e2e
+      - run: npm run build
+      - run: node --test scripts/probe-workout-media.test.mjs
+      - run: node scripts/verify-deployment.mjs --routine-input test/fixtures/deployment-routine.json
+      - name: Build production image
+        run: docker build -f backend/Dockerfile -t project-health-ci .
+        working-directory: .
+      - name: Verify recommendation in the image under the free memory limit
+        run: >-
+          docker run --rm --memory=2g --cpus=1
+          --entrypoint node
+          --mount type=bind,src="${{ github.workspace }}/backend/test/fixtures/deployment-routine.json",dst=/tmp/routine-input.json,readonly
+          project-health-ci scripts/verify-deployment.mjs --routine-input /tmp/routine-input.json
+  deploy:
+    needs: verify
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: production
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: '26.7.0'
+      - run: npm ci
+      - name: Apply committed migrations to Neon
+        run: npm run db:migrate:deploy
+        env:
+          DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+      - name: Package the verified main commit
+        run: node scripts/prepare-vercel.mjs --output "$RUNNER_TEMP/ham-fit-vercel"
+      - name: Deploy and verify the Vercel production API
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+        run: |
+          test -n "$VERCEL_TOKEN"
+          test -n "$VERCEL_ORG_ID"
+          test -n "$VERCEL_PROJECT_ID"
+          npx --yes vercel@62.1.0 deploy \
+            --cwd "$RUNNER_TEMP/ham-fit-vercel" \
+            --project "$VERCEL_PROJECT_ID" --scope "$VERCEL_ORG_ID" \
+            --target production --yes --json \
+            --meta "sourceCommit=$GITHUB_SHA" > "$RUNNER_TEMP/vercel-deployment.json"
+          deployment_url=$(node -e 'const r=require(process.argv[1]); const d=r.deployment; if (r.status!=="ok" || !d || d.readyState!=="READY" || d.target!=="production") throw new Error("Vercel production deployment did not complete"); console.log(d.url)' "$RUNNER_TEMP/vercel-deployment.json")
+          curl "$deployment_url/api/v1/health/ready" \
+            --silent --show-error --fail-with-body --max-time 60 \
+            --output "$RUNNER_TEMP/vercel-readiness.json"
+          node -e 'const r=require(process.argv[1]); if(r.status!=="ok" || r.database!=="ok") throw new Error("Deployed API is not ready"); console.log("Vercel API and Neon readiness verified.")' "$RUNNER_TEMP/vercel-readiness.json"

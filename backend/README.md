@@ -2,8 +2,13 @@
 
 Project Health의 NestJS API 서버입니다. 백엔드 코드·설정·문서·테스트는 이 디렉토리에서 관리합니다.
 
+- [Vercel Hobby + Neon 배포](docs/vercel-neon-deployment.md)
+- [Render Free + Neon Free 배포](docs/render-neon-deployment.md)
 - [그룹·가입 신청·알림 API](docs/groups-api.md)
 - [그룹 미션·룰렛 정책·API](docs/group-missions.md)
+- [하루 전체 루틴 씨앗 지급·완료 보상 영수증 API](docs/activity-rewards.md)
+- [캐릭터·코디·상점 API](docs/avatar-shop-api.md)
+- [출력기 v2 상품·확정 가격·a-plus 호환 정책](docs/avatar-outputter-v2.md)
 - [그룹 기능 검증·변경 파일](docs/groups-verification.md)
 - [개발 원칙](AGENTS.md)
 - [API 버전 관리](docs/api-versioning.md): 현재 `/api/v1`, DB·측정 기준·기록 수정 버전과 구분

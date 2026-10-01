@@ -261,6 +261,12 @@ export class AvatarService {
       product.price === null
     )
       avatarError(409, 'NOT_FOR_SALE', '판매 중인 상품이 아닙니다.');
+    if (product.priceProvisional)
+      avatarError(
+        409,
+        'PRICE_NOT_CONFIRMED',
+        '상품 가격이 아직 확정되지 않았습니다.',
+      );
   }
   private purchaseView(purchase: {
     id: string;
@@ -278,7 +284,7 @@ export class AvatarService {
     };
   }
 
-  // Server-internal only; no controller, automatic signup or workout reward.
+  // Server-internal only; callers supply trusted completion/roulette evidence.
   // Callers must validate a trusted event and derive the amount server-side.
   async grantCurrency(userId: string, eventKey: string, amount: number) {
     return this.database.$transaction(async (tx) => {
