@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { setTimeout as delay } from 'node:timers/promises';
 import {
   Inject,
   Injectable,
@@ -44,15 +45,36 @@ export class AvatarAssetStorage {
         detectSessionInUrl: false,
       },
       global: {
-        fetch: (input, init) => {
+        fetch: async (input, init) => {
           const timeout = AbortSignal.timeout(30000);
-          return fetch(input, {
-            ...init,
-            cache: 'no-store',
-            signal: init?.signal
-              ? AbortSignal.any([init.signal, timeout])
-              : timeout,
-          });
+          const signal = init?.signal
+            ? AbortSignal.any([init.signal, timeout])
+            : timeout;
+          // Large wardrobe imports must tolerate an occasional dropped connection.
+          // The same deadline covers all attempts, and immutable uploads never overwrite.
+          for (let attempt = 0; ; attempt++) {
+            try {
+              const response = await fetch(input, {
+                ...init,
+                cache: 'no-store',
+                signal,
+              });
+              if (
+                attempt === 2 ||
+                ![429, 500, 502, 503, 504].includes(response.status)
+              )
+                return response;
+              await response.body?.cancel();
+            } catch (error) {
+              if (
+                signal.aborted ||
+                attempt === 2 ||
+                !(error instanceof TypeError)
+              )
+                throw error;
+            }
+            await delay(250 * 2 ** attempt, undefined, { signal });
+          }
         },
       },
     });

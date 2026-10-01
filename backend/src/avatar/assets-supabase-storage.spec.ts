@@ -127,11 +127,52 @@ describe('Supabase avatar Storage through the real SDK', () => {
     const storage = service(),
       bytes = Buffer.from('available after outage');
     objects.set(name(bytes), bytes);
-    api.mockImplementationOnce(async () => failure(503, 'InternalError'));
+    for (let attempt = 0; attempt < 3; attempt++)
+      api.mockImplementationOnce(async () => failure(503, 'InternalError'));
     await expect(storage.read(name(bytes))).rejects.toBeInstanceOf(
       ServiceUnavailableException,
     );
     expect(await storage.read(name(bytes))).toEqual(bytes);
+  });
+  it('recovers from a temporary provider failure without failing the whole import', async () => {
+    const bytes = Buffer.from('retryable provider failure');
+    api.mockImplementationOnce(async () => failure(503, 'InternalError'));
+    await expect(service().write(name(bytes), bytes)).resolves.toBeUndefined();
+    expect(await service().read(name(bytes))).toEqual(bytes);
+  });
+  it('reuses an upload when the connection drops after the provider saved it', async () => {
+    const bytes = Buffer.from('connection dropped after immutable upload');
+    const normal = api.getMockImplementation()!;
+    let dropped = false;
+    api.mockImplementation(async (input, init) => {
+      if (init?.method === 'POST' && !dropped) {
+        dropped = true;
+        await normal(input, init);
+        throw new TypeError('fetch failed');
+      }
+      return normal(input, init);
+    });
+    await expect(service().write(name(bytes), bytes)).resolves.toBeUndefined();
+    expect(objects.size).toBe(1);
+    expect(await service().read(name(bytes))).toEqual(bytes);
+  });
+  it('bounds network retries and does not retry access errors', async () => {
+    api.mockImplementation(async () => {
+      throw new TypeError('fetch failed');
+    });
+    await expect(
+      service().write(
+        name(Buffer.from('network outage')),
+        Buffer.from('network outage'),
+      ),
+    ).rejects.toBeInstanceOf(ServiceUnavailableException);
+    expect(api).toHaveBeenCalledTimes(3);
+    api.mockClear();
+    api.mockImplementation(async () => failure(403, 'AccessDenied'));
+    await expect(
+      service().write(name(Buffer.from('denied')), Buffer.from('denied')),
+    ).rejects.toBeInstanceOf(ServiceUnavailableException);
+    expect(api).toHaveBeenCalledTimes(1);
   });
   it('recognizes legacy object-not-found and duplicate responses', async () => {
     const bytes = Buffer.from('legacy response');
