@@ -12,7 +12,7 @@ import { Brand, FieldError, Notice, Shell, SubmitLabel } from "./ui";
 import { SignupMascots, WelcomeMascots } from "./mascot/mascot-scenes";
 import { useSession } from "./session-provider";
 function destination(mode: "login" | "register") {
-  if (mode === "register") return "/onboarding";
+  if (mode === "register") return "/welcome";
   const next = new URLSearchParams(window.location.search).get("next") ?? "";
   return authDestination(next);
 }

@@ -60,7 +60,31 @@ test("가입 실패는 폼을 유지하고 성공하면 메인 경유 없이 온
   );
   await page.getByLabel("이메일", { exact: true }).fill(testUser.email);
   await page.getByRole("button", { name: "가입하고 시작하기" }).click();
+  await expect(page).toHaveURL("/welcome");
+  await expect(page.getByRole("navigation", { name: "하단 메뉴" })).toHaveCount(
+    0,
+  );
+  await page.getByLabel("닉네임", { exact: true }).fill("새로운햄스터");
+  await page.getByRole("button", { name: "그레이", exact: true }).click();
+  await page.getByRole("button", { name: "저장하고 다음으로" }).click();
   await expect(page).toHaveURL("/onboarding");
+  expect(server.mutations).toEqual([
+    {
+      path: "/users/me/profile",
+      method: "PATCH",
+      body: { nickname: "새로운햄스터" },
+    },
+    {
+      path: "/users/me/avatar/outfit",
+      method: "PUT",
+      body: {
+        characterId: "character.gray",
+        poseId: "pose.basic",
+        clothingIds: [],
+      },
+    },
+  ]);
+  server.mutations.length = 0;
   await expect(
     page.getByRole("heading", { name: "체력 기록 시작", exact: true }),
   ).toBeVisible();

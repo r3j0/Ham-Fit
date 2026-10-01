@@ -148,7 +148,7 @@ test("교차 윗몸일으키기와 YMCA의 실제 시간·맥박 환산·저장�
   });
   await page.getByRole("link", { name: "메인", exact: true }).click();
   await expect(
-    page.getByRole("img", { name: "편안하게 숨 쉬는 햄스터" }),
+    page.getByRole("img", { name: "나의 대표 캐릭터" }),
   ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "내 체력 기록부터 시작해요" }),

@@ -2255,6 +2255,29 @@ fieldset:disabled select {
   align-items: center;
   width: 100%;
 }
+.character-choices {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.character-choice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  border: 2px solid #e9e1d6;
+  padding: 18px 8px;
+  background: #fff;
+  border-radius: 24px;
+  min-width: 0;
+}
+.character-choice[aria-pressed="true"] {
+  border-color: #cb8d42;
+  background: #fff7e9;
+}
+.character-choice > span {
+  max-width: 100%;
+}
 @media (min-width: 700px) {
   .shop-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));

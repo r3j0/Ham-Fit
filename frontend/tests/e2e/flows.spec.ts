@@ -84,6 +84,9 @@ async function signup(page: Page, destination: "records" | "main" = "records") {
     ).toBeEnabled({ timeout: 65000 });
     await page.getByRole("button", { name: "가입하고 시작하기" }).click();
   }
+  await expect(page).toHaveURL("/welcome");
+  await page.getByLabel("닉네임", { exact: true }).fill("운동친구");
+  await page.getByRole("button", { name: "저장하고 다음으로" }).click();
   await expect(page).toHaveURL("/onboarding");
   await expect(page.getByRole("navigation", { name: "하단 메뉴" })).toHaveCount(
     0,
