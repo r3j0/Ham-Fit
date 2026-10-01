@@ -1,3 +1,4 @@
+import { setMeasurementAge } from "./measurement-age-helpers";
 import { test, expect } from "@playwright/test";
 import { installApi, catalog } from "./integration-fixtures";
 const png = {
@@ -232,13 +233,13 @@ test("사진 초안을 지우고 다시 선택해도 직접 입력 초안은 유
 }) => {
   await installApi(page);
   await page.goto("/onboarding/manual");
-  await page.getByLabel("측정 당시 만 나이", { exact: true }).fill("30");
+  await setMeasurementAge(page, "30");
   page.on("dialog", (dialog) => dialog.accept());
   await page.getByRole("link", { name: "이전 화면", exact: true }).click();
   await page.getByRole("link", { name: "결과표가 있어요" }).click();
   await page.getByLabel("결과표 파일 선택").setInputFiles(png);
   await page.getByRole("button", { name: "이 사진을 보며 직접 입력" }).click();
-  await page.getByLabel("측정 당시 만 나이", { exact: true }).fill("25");
+  await setMeasurementAge(page, "25");
   await page
     .getByRole("button", { name: "입력 지우고 다른 사진 선택" })
     .click();
@@ -287,7 +288,7 @@ test("사진을 보며 직접 입력해도 성별을 선택해야 측정값으�
   await page.getByLabel("결과표 파일 선택").setInputFiles(png);
   await page.getByRole("button", { name: "이 사진을 보며 직접 입력" }).click();
   await page.getByLabel("측정일", { exact: true }).fill("2026-09-01");
-  await page.getByLabel("측정 당시 만 나이", { exact: true }).fill("25");
+  await setMeasurementAge(page, "25");
   const sex = page.getByLabel("성별", { exact: true });
   await expect(sex).toBeVisible();
   await expect(sex).toHaveAttribute("required", "");

@@ -27,6 +27,7 @@ test.beforeEach(async ({ page }) => {
     data: {
       email: `fitness-live-${crypto.randomUUID()}@example.test`,
       password,
+      dateOfBirth: "2001-01-01",
     },
   });
   expect(r.status()).toBe(201);
@@ -86,7 +87,7 @@ test("실제 API: 6종목 직접 입력·상세 등급·기준·수정 재평가
   await expect(page).toHaveURL("/onboarding");
   await page.getByRole("link", { name: "직접 입력하기" }).click();
   await page.getByLabel("측정일", { exact: true }).fill(today());
-  await page.getByLabel("측정 당시 만 나이", { exact: true }).fill("25");
+  await expect(page.getByLabel("측정 당시 나이")).toContainText("만 25세");
   await page.getByText("추가 정보", { exact: false }).click();
   await page.getByLabel("성별", { exact: true }).selectOption("male");
   await page.getByRole("button", { name: "측정값 입력하기" }).click();
@@ -333,7 +334,7 @@ test("실제 API: 절대악력 저장·환산 리포트·체중 수정 및 제�
 }, info) => {
   await page.goto("/onboarding/manual");
   await page.getByLabel("측정일", { exact: true }).fill(today());
-  await page.getByLabel("측정 당시 만 나이", { exact: true }).fill("25");
+  await expect(page.getByLabel("측정 당시 나이")).toContainText("만 25세");
   await page.getByText("추가 정보", { exact: false }).click();
   await page.getByLabel("성별", { exact: true }).selectOption("male");
   await page.getByRole("button", { name: "측정값 입력하기" }).click();

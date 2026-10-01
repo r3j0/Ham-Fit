@@ -1,3 +1,4 @@
+import { setMeasurementAge } from "./measurement-age-helpers";
 import { test, expect, type Page, type Route } from "@playwright/test";
 // Keep actual authentication limits enabled. This large file can otherwise
 // exhaust the shared IP window halfway through a successful scenario.
@@ -117,7 +118,7 @@ async function openSavedRecord(page: Page) {
 async function startRecord(page: Page, age = "25") {
   await openManualRecord(page);
   await page.getByLabel("측정일", { exact: true }).fill("2026-09-17");
-  await page.getByLabel("측정 당시 만 나이", { exact: true }).fill(age);
+  await setMeasurementAge(page, age);
   await page.getByLabel("성별", { exact: true }).selectOption("male");
   await page.getByRole("button", { name: "측정값 입력하기" }).click();
   await expect(
@@ -495,7 +496,7 @@ test("청소년 항목과 나이 변경 검증, 입력 유지", async ({ page })
     .click();
   await page.getByLabel("반복점프", { exact: true }).fill("12");
   await page.getByRole("button", { name: "변경", exact: true }).click();
-  await page.getByLabel("측정 당시 만 나이", { exact: true }).fill("19");
+  await setMeasurementAge(page, "19");
   await page.getByRole("button", { name: "측정값 입력하기" }).click();
   await page.getByRole("button", { name: "1개 항목 저장하기" }).click();
   await expect(
@@ -569,7 +570,7 @@ test("카탈로그 장애 시 기본 정보를 유지하며 다시 불러올 수
   await signup(page);
   await openManualRecord(page);
   await page.getByLabel("측정일", { exact: true }).fill("2026-09-17");
-  await page.getByLabel("측정 당시 만 나이", { exact: true }).fill("25");
+  await setMeasurementAge(page, "25");
   await page.getByLabel("성별", { exact: true }).selectOption("male");
   await page.route("**/api/v1/measurement-catalog", (route) =>
     failApi(route, 503),

@@ -1,3 +1,7 @@
+import {
+  setMeasurementAge,
+  expectMeasurementAge,
+} from "./measurement-age-helpers";
 import { test, expect, type Page } from "@playwright/test";
 import { prepareAssessment, skipToFlexibility } from "./workout-helpers";
 // Keep the real authentication limiter enabled; start after the preceding group.
@@ -17,6 +21,7 @@ async function register(page: Page) {
     data: {
       email: `self-${crypto.randomUUID()}@example.test`,
       password: "self-assessment-test-2026!",
+      dateOfBirth: "2001-01-01",
     },
   });
   expect(response.status()).toBe(201);
@@ -27,8 +32,10 @@ test("성인 범위, 준비 화면, 잘못된 커리큘럼을 처리한다", asy
   await page.goto("/onboarding");
   await page.getByRole("link", { name: "결과표가 없어요" }).click();
   await expect(page).toHaveURL(/mode=assessment/);
-  await page.getByLabel("만 나이", { exact: true }).fill("18");
-  await page.getByRole("button", { name: "측정 준비 완료" }).click();
+  await setMeasurementAge(page, "18");
+  await expect(
+    page.getByRole("button", { name: "측정 준비 완료" }),
+  ).toBeDisabled();
   await expect(page.getByRole("main").getByRole("alert")).toContainText(
     "19~64",
   );
@@ -347,7 +354,7 @@ test("320px 측정 화면의 조작 버튼이 보이고 카탈로그 장애에�
   await register(page);
   await page.setViewportSize({ width: 320, height: 760 });
   await page.goto("/workout?mode=assessment");
-  await page.getByLabel("만 나이", { exact: true }).fill("25");
+  await setMeasurementAge(page, "25");
   await page.route(`${api}/measurement-catalog*`, async (route) =>
     route.fulfill({
       status: 503,
@@ -362,7 +369,7 @@ test("320px 측정 화면의 조작 버튼이 보이고 카탈로그 장애에�
   await expect(page.getByRole("main").getByRole("alert")).toBeVisible();
   await page.unroute(`${api}/measurement-catalog*`);
   await page.getByRole("button", { name: "다시 확인", exact: true }).click();
-  await expect(page.getByLabel("만 나이", { exact: true })).toHaveValue("25");
+  await expectMeasurementAge(page, "25");
   await page.getByRole("button", { name: "측정 준비 완료" }).click();
   await page.getByRole("button", { name: "이 항목 건너뛰기" }).click();
   await page.getByRole("button", { name: "안내 소리 켜기" }).click();
@@ -421,7 +428,7 @@ test("서버에서 삭제된 저장 요청은 재전송을 멈추고 새 측정�
   await page
     .getByRole("button", { name: "처음부터 시작", exact: true })
     .click();
-  await expect(page.getByLabel("만 나이", { exact: true })).toHaveValue("");
+  await expectMeasurementAge(page, "");
 });
 
 test("저장 완료 후 메인에서 다시 시작하면 이전 값 없이 별도 기록을 만든다", async ({
@@ -431,7 +438,7 @@ test("저장 완료 후 메인에서 다시 시작하면 이전 값 없이 별�
   await page.goto("/onboarding");
   await page.getByRole("link", { name: "결과표가 없어요" }).click();
   for (const value of ["1", "2"]) {
-    await expect(page.getByLabel("만 나이", { exact: true })).toHaveValue("");
+    await expectMeasurementAge(page, "");
     await prepareAssessment(page);
     await skipToFlexibility(page);
     await page.getByLabel("기준선에서 도달한 거리 (cm)").fill(value);

@@ -1,15 +1,16 @@
+import { setMeasurementAge } from "./measurement-age-helpers";
 import { test, expect } from "@playwright/test";
 import { installApi } from "./integration-fixtures";
 
-test("간이측정은 평가에 필요한 정보를 안내하면서 건너뛰기를 유지한다", async ({
+test("간이측정은 불필요한 평가 설명 없이 건너뛰기를 유지한다", async ({
   page,
 }) => {
   await installApi(page);
   await page.goto("/workout?mode=assessment");
   await expect(
     page.getByText(/스텝검사 평가에 필요한 정보: 성별 · 신장 · 체중/),
-  ).toBeVisible();
-  await page.getByLabel("만 나이", { exact: true }).fill("25");
+  ).toHaveCount(0);
+  await setMeasurementAge(page, "25");
   await page.getByRole("button", { name: "측정 준비 완료" }).click();
   await expect(
     page.getByRole("button", { name: "측정 시작", exact: true }),
@@ -28,7 +29,7 @@ test("직접 입력은 심박수 원본을 유지하고 환산에 필요한 신�
   const server = await installApi(page);
   await page.goto("/onboarding/manual");
   await page.locator("#measuredOn").fill("2026-09-01");
-  await page.locator("#age").fill("25");
+  await setMeasurementAge(page, "25");
   await page.getByLabel("성별", { exact: true }).selectOption("male");
   await page.getByRole("button", { name: "측정값 입력하기" }).click();
   await page

@@ -1,3 +1,7 @@
+import {
+  setMeasurementAge,
+  expectMeasurementAge,
+} from "./measurement-age-helpers";
 import { testWorkout } from "./integration-fixtures";
 import { prepareAssessment, skipToFlexibility } from "./workout-helpers";
 import { test, expect, type Page, type Route } from "@playwright/test";
@@ -18,7 +22,7 @@ async function register(page: Page) {
   const origin = new URL(test.info().project.use.baseURL as string).origin;
   const response = await page.request.post(`${api}/auth/register`, {
     headers: { Origin: origin, "X-CSRF-Protection": "1" },
-    data: { email, password },
+    data: { email, password, dateOfBirth: "2001-01-01" },
   });
   expect(response.status()).toBe(201);
   return { email, ...(await response.json()) };
@@ -166,7 +170,7 @@ test("온보딩 직접 입력은 기존 폼을 복원하고 실제 저장 후 �
   await expect(page).toHaveURL(/\/onboarding$/);
   await page.getByRole("link", { name: "직접 입력하기", exact: false }).click();
   await page.getByLabel("측정일", { exact: true }).fill("2026-09-17");
-  await page.getByLabel("측정 당시 만 나이", { exact: true }).fill("25");
+  await setMeasurementAge(page, "25");
   await page.getByLabel("성별", { exact: true }).selectOption("male");
   await page.reload();
   await expect(
@@ -314,7 +318,7 @@ test("로그아웃하면 간이측정 진행도 함께 지워진다", async ({ p
   await expect(page).toHaveURL(/\/login/);
   await login(page, email);
   await page.goto("/workout?mode=assessment");
-  await expect(page.getByLabel("만 나이", { exact: true })).toHaveValue("");
+  await expectMeasurementAge(page, "");
 });
 
 test("계정 수정은 비밀번호 오류를 재전송하지 않고 성공하면 모든 탭에서 로그아웃한다", async ({

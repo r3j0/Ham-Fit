@@ -1,3 +1,4 @@
+import { setMeasurementAge } from "./measurement-age-helpers";
 import { test, expect, type Page } from "@playwright/test";
 import {
   installApi,
@@ -186,7 +187,7 @@ for (const width of [960, 1280, 1440]) {
       [
         "assessment",
         "/workout?mode=assessment",
-        page.getByLabel("만 나이", { exact: true }),
+        page.getByLabel("측정 당시 나이"),
       ],
       [
         "not-found",
@@ -312,7 +313,7 @@ test("데스크톱 사진 입력은 결과표와 패널이 겹치지 않고 닫�
   const fields = (await panel.boundingBox())!;
   expect(canvas.x + canvas.width).toBeLessThanOrEqual(fields.x);
   expect(fields.y + fields.height).toBeLessThanOrEqual(900);
-  await page.getByLabel("측정 당시 만 나이", { exact: true }).fill("25");
+  await setMeasurementAge(page, "25");
   await page.getByRole("button", { name: "입력 패널 닫기" }).click();
   expect((await photo.boundingBox())!.width).toBeGreaterThan(canvas.width);
   await page.getByRole("button", { name: "사진 확대", exact: true }).click();

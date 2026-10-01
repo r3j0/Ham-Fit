@@ -1,3 +1,4 @@
+import { setMeasurementAge } from "./measurement-age-helpers";
 import { test, expect } from "@playwright/test";
 import { installApi } from "./integration-fixtures";
 import {
@@ -11,7 +12,7 @@ test("절대악력은 kg으로 입력하고 측정 당시 체중을 추가해 �
   const server = await installApi(page, undefined, gripCatalogFixture);
   await page.goto("/onboarding/manual");
   await page.locator("#measuredOn").fill("2026-09-01");
-  await page.locator("#age").fill("25");
+  await setMeasurementAge(page, "25");
   await page.getByLabel("성별", { exact: true }).selectOption("male");
   await page.getByRole("button", { name: "측정값 입력하기" }).click();
   await page

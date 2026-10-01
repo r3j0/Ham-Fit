@@ -216,7 +216,7 @@ export async function installApi(
       });
     if (path === "/users/me/profile") {
       if (method === "PATCH") nickname = request.postDataJSON().nickname;
-      return send({ dateOfBirth: null, currentAge: null, nickname });
+      return send({ dateOfBirth: "2001-01-01", currentAge: 25, nickname });
     }
     if (path === "/users/me/avatar/outfit") {
       if (method === "PUT") {

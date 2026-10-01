@@ -1,3 +1,4 @@
+import { setMeasurementAge } from "./measurement-age-helpers";
 import { test, expect, type Page } from "@playwright/test";
 
 // Keep the real API's authentication limit enabled between test groups.
@@ -64,7 +65,7 @@ test("저장 응답을 잃어도 메인은 실제 서버의 등록 상태를 반
   await page.getByRole("link", { name: "체력 기록 등록하기" }).click();
   await page.getByRole("link", { name: "직접 입력하기", exact: false }).click();
   await page.getByLabel("측정일", { exact: true }).fill("2026-09-17");
-  await page.getByLabel("측정 당시 만 나이", { exact: true }).fill("25");
+  await setMeasurementAge(page, "25");
   await page.getByLabel("성별", { exact: true }).selectOption("male");
   await page.getByRole("button", { name: "측정값 입력하기" }).click();
   await page

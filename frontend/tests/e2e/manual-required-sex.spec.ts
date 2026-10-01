@@ -17,7 +17,7 @@ test("직접 입력의 성별은 접힌 추가 정보 밖에 표시하며 미선
   await expect(progress).toHaveAttribute("aria-valuenow", "2");
   await expect(page.locator(".stepper")).toHaveCount(0);
   await page.getByLabel("측정일", { exact: true }).fill(meta.measuredOn);
-  await page.getByLabel("측정 당시 만 나이", { exact: true }).fill(meta.age);
+  await expect(page.getByLabel("측정 당시 나이")).toContainText("만 25세");
   const sex = page.getByLabel("성별", { exact: true });
   await expect(sex).toBeVisible();
   await expect(sex).toHaveAttribute("required", "");

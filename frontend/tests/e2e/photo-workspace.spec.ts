@@ -1,3 +1,4 @@
+import { setMeasurementAge } from "./measurement-age-helpers";
 import { test, expect, type Page } from "@playwright/test";
 import { installApi } from "./integration-fixtures";
 
@@ -45,7 +46,7 @@ async function openForm(page: Page) {
   await page.getByLabel("결과표 파일 선택").setInputFiles(photo);
   await page.getByRole("button", { name: "이 사진을 보며 직접 입력" }).click();
   await page.getByLabel("측정일", { exact: true }).fill("2026-09-01");
-  await page.getByLabel("측정 당시 만 나이", { exact: true }).fill("25");
+  await setMeasurementAge(page, "25");
   await page.getByLabel("성별", { exact: true }).selectOption("female");
   return photo;
 }

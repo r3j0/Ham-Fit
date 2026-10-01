@@ -1,3 +1,4 @@
+import { setMeasurementAge } from "./measurement-age-helpers";
 import { prepareAssessment } from "./workout-helpers";
 import { test, expect, type Page } from "@playwright/test";
 
@@ -17,7 +18,7 @@ async function register(page: Page) {
   const origin = new URL(test.info().project.use.baseURL as string).origin;
   const response = await page.request.post(`${api}/auth/register`, {
     headers: { Origin: origin, "X-CSRF-Protection": "1" },
-    data: { email, password },
+    data: { email, password, dateOfBirth: "2001-01-01" },
   });
   expect(response.status()).toBe(201);
   return { email, ...(await response.json()) };
@@ -58,7 +59,7 @@ test("사진 입력을 버리면 새 사진을 등록할 수 있고 초안이 �
   const preview = page.getByRole("img", { name: "선택한 국민체력100 결과표" });
   await expect(preview).toBeVisible();
   await page.getByRole("button", { name: "이 사진을 보며 직접 입력" }).click();
-  await page.getByLabel("측정 당시 만 나이", { exact: true }).fill("25");
+  await setMeasurementAge(page, "25");
   page.on("dialog", (dialog) => dialog.accept());
   await expect(
     page.getByRole("navigation", { name: "하단 메뉴" }),
