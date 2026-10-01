@@ -1,5 +1,7 @@
 # 계정 정보 변경·온보딩·재화·운동 배정·영구 탈퇴
 
+2026-09-27 추가: `/users/me/profile` GET/PATCH에서 생년월일·닉네임을 별도로 보완하며 `/auth/me`는 `dateOfBirth`, `currentAge`, `nickname`을 추가한다. 이메일·비밀번호 PATCH와 세션 해제는 그대로다. [생년월일 계약](recommendations/birth-profile.md), [중복 허용 닉네임 계약](nickname-profile.md), [일별 추천·진행 API](recommendations/workouts-api.md)를 함께 따른다. 아래 초기 배정/완료 설명은 기존 내부 커리큘럼에 적용하며 일별 추천의 진행 전이는 새 문서에 정의한다.
+
 2026-09-21 사용자 정정: **User UPDATE는 이메일·비밀번호 변경**을 뜻한다. 이전에 추가한 선호 운동·운동 목적·개인별 목표 체력은 폐기하고, `currentFitness` 프로필 응답도 제거한다. 사용자가 확인한 범위에 따라 기존 Measurement·MeasurementItem 측정 CRUD와 실제 저장 데이터는 유지한다. 온보딩 완료 조건도 유지한다.
 
 2026-09-26 추가 결정: 별도 `UserPreference`의 운동량·운동 목적 API를 제공한다. [개인 운동 설정 명세](user-preferences-api.md)의 enum·부분 수정·오류·배포 계약을 따른다. 기존 계정 PATCH와 세션 해제 정책은 그대로다.
@@ -12,6 +14,8 @@
 | ----------------------------- | ---- | --------------------------------------------------------------- |
 | `GET /auth/me`                | 200  | 공개 계정 정보·온보딩·재화·현재 운동 배정                       |
 | `PATCH /users/me`             | 204  | 현재 비밀번호 확인 후 이메일·비밀번호 변경, 모든 기존 세션 해제 |
+| `GET /users/me/profile`       | 200  | 본인 생년월일·현재 나이·닉네임 조회                             |
+| `PATCH /users/me/profile`     | 200  | 생년월일·닉네임 부분 수정, 현재 로그인 유지                     |
 | `GET /users/me/preferences`   | 200  | 본인 운동량·운동 목적·수정 시각 조회                            |
 | `PATCH /users/me/preferences` | 200  | 개인 운동 설정 부분 수정, 현재 로그인 유지                      |
 | `DELETE /users/me`            | 204  | 현재 비밀번호 확인 후 즉시 영구 탈퇴                            |
@@ -26,6 +30,9 @@
   "email": "member@example.test",
   "created_at": "2026-09-21T00:00:00.000Z",
   "updated_at": "2026-09-21T00:00:00.000Z",
+  "dateOfBirth": null,
+  "currentAge": null,
+  "nickname": null,
   "isOnboarded": false,
   "currency": { "balance": 0 },
   "currentCurriculum": null
@@ -165,3 +172,9 @@ Content-Type: application/json
 `npm run check`는 스키마·생성·서식·린트·타입·단위·실제 DB 통합 검사·빌드를 실행한다. 마이그레이션 검사는 초기 스키마부터 전체 적용/재적용뿐 아니라 이전 기능에 실제 선호/목적/목표 fixture가 있던 상태에서 제거 SQL을 적용해 폐기 데이터 제거와 유지 대상 데이터 보존을 확인한다.
 
 후속 범위: 과거 대비 변화/성장, 운동 콘텐츠·추천 알고리즘, 재화 지급·차감·구매·교환·거래 이력, 추천 호출 화면/시점, 온보딩 조건 재검토. 단일 운동량·운동 목적은 2026-09-26에 별도 운동 설정으로 추가했다. 선호 운동 배열·개인별 수치 목표/기준값은 복원하지 않는다.
+
+## 그룹 도입에 따른 계정 탈퇴 조건 (2026-09-29)
+
+그룹장인 계정은 영구 탈퇴 시 409를 반환한다. 먼저 그룹장을 위임하고 탈퇴하거나 해당 그룹을 삭제해야 한다. 단독 그룹장은 그룹 탈퇴로 그룹을 삭제할 수 있다. 일반 구성원 계정의 영구 삭제는 기존대로 가능하며 해당 멤버십·본인 가입 신청·수신 알림이 함께 정리된다. 다른 구성원과 그룹은 보존한다. 추가 `GET /api/v1/users/me/profile/activity`는 본인의 닉네임·미설정 캐릭터(null)와 `streak`, `longestStreak`, `totalWorkoutDays`를 그룹원 프로필과 같은 함수로 제공한다. 기존 일별 완료와 신규 루틴 전체 완료를 실제 완료일(KST)로 합산하며 [활동 집계 정책·기존 기록 호환](activity-streaks.md)을 따른다. 기존 프로필 응답은 변경하지 않는다. [그룹 API](groups-api.md)에 상세 계약을 정리했다.
+
+2026-10-01 [개인 스트릭 룰렛](streak-roulette.md)의 본인 권/추첨/결과 API를 추가했다. 계정 영구 삭제 시 개인 권·추첨·달성·소유권·거래도 기존 개인 데이터와 함께 CASCADE 삭제한다. 그룹 탈퇴/삭제와 계정 영구 삭제는 별개다.

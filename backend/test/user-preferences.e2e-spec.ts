@@ -16,6 +16,10 @@ import {
 import { AppModule } from '../src/app.module.js';
 import { CurriculaService } from '../src/curricula/curricula.service.js';
 import { DatabaseService } from '../src/database/database.service.js';
+import { RecommendationsService } from '../src/recommendations/recommendations.service.js';
+import { WorkoutAlgorithm } from '../src/recommendations/workout-algorithm.js';
+import { RoutineAlgorithm } from '../src/recommendations/routine-algorithm.js';
+import { WorkoutRoutinesService } from '../src/recommendations/workout-routines.service.js';
 import { configureApp } from '../src/setup-app.js';
 import { UserPreferencesService } from '../src/users/user-preferences.service.js';
 
@@ -35,6 +39,7 @@ type Account = {
 type Preferences = {
   exerciseVolume: (typeof volumes)[number];
   exerciseGoal: (typeof goals)[number] | null;
+  ownedTools: string[];
   updatedAt: string;
 };
 
@@ -109,6 +114,118 @@ describe('Personal exercise preferences against PostgreSQL', () => {
       where: { userId: account.user.id },
     });
 
+  it('normalizes all tools as a set, preserves omitted fields, replaces and clears the list', async () => {
+    const account = await register();
+    const ownedTools = [
+      'band',
+      'dumbbell',
+      'gym_ball',
+      'jump_rope',
+      'step_box',
+      'ball',
+    ];
+    const saved = await patch(account, {
+      ownedTools: [...ownedTools].reverse().concat('band'),
+      exerciseVolume: 'more',
+      exerciseGoal: 'general_fitness_improvement',
+    }).expect(200);
+    expect(saved.body).toMatchObject({ ownedTools });
+    const row = await stored(account);
+    await patch(account, { ownedTools }).expect(200, saved.body);
+    await patch(account, { ownedTools: [...ownedTools].reverse() }).expect(
+      200,
+      saved.body,
+    );
+    expect(await stored(account)).toEqual(row);
+    const legacy = await patch(account, { exerciseVolume: 'less' }).expect(200);
+    expect(legacy.body).toMatchObject({
+      ownedTools,
+      exerciseGoal: 'general_fitness_improvement',
+    });
+    const replacement = await patch(account, {
+      ownedTools: ['dumbbell'],
+    }).expect(200);
+    expect(replacement.body).toMatchObject({
+      ownedTools: ['dumbbell'],
+      exerciseVolume: 'less',
+    });
+    await read(account).expect(200, replacement.body);
+    const cleared = await patch(account, { ownedTools: [] }).expect(200);
+    expect(cleared.body).toMatchObject({ ownedTools: [] });
+    await read(account).expect(200, cleared.body);
+    await patch(account, { ownedTools: [] }).expect(200, cleared.body);
+  });
+
+  it.each([
+    null,
+    'band',
+    1,
+    true,
+    {},
+    ['none'],
+    ['band', 'foam_roller'],
+    ['band', 'bosu'],
+    ['band', 'agility_ladder'],
+    ['band', 'cone'],
+    ['밴드'],
+    ['barbell'],
+    ['band', null],
+    ['band', 1],
+    [['band']],
+  ])(
+    'rejects invalid tools atomically with other valid changes: %j',
+    async (ownedTools) => {
+      const account = await register();
+      await patch(account, { ownedTools: ['band'] }).expect(200);
+      const before = await stored(account);
+      const response = await patch(account, {
+        exerciseVolume: 'more',
+        exerciseGoal: 'fitness_grade_improvement',
+        ownedTools,
+      }).expect(400);
+      expect(response.body).toMatchObject({
+        errors: expect.arrayContaining([
+          expect.objectContaining({
+            field: expect.stringMatching(/^ownedTools/),
+          }),
+        ]),
+      });
+      expect(await stored(account)).toEqual(before);
+      await patch(account, {
+        exerciseVolume: 'invalid',
+        ownedTools: ['dumbbell'],
+      }).expect(400);
+      expect(await stored(account)).toEqual(before);
+    },
+  );
+
+  it('keeps concurrent volume, goal and tool edits and isolates users', async () => {
+    const account = await register();
+    const other = await register();
+    await patch(other, { ownedTools: ['gym_ball'] }).expect(200);
+    const otherBefore = await stored(other);
+    const responses = await Promise.all([
+      patch(account, { exerciseVolume: 'less' }),
+      patch(account, { exerciseGoal: 'general_fitness_improvement' }),
+      patch(account, { ownedTools: ['dumbbell', 'band'] }),
+    ]);
+    expect(responses.map((r) => r.status)).toEqual([200, 200, 200]);
+    expect((await read(account).expect(200)).body).toMatchObject({
+      exerciseVolume: 'less',
+      exerciseGoal: 'general_fitness_improvement',
+      ownedTools: ['band', 'dumbbell'],
+    });
+    const unchanged = await stored(account);
+    const retries = await Promise.all([
+      patch(account, { ownedTools: ['band', 'dumbbell'] }),
+      patch(account, { ownedTools: ['dumbbell', 'band', 'band'] }),
+    ]);
+    expect(retries.map((r) => r.status)).toEqual([200, 200]);
+    expect(retries[0].body).toEqual(retries[1].body);
+    expect(await stored(account)).toEqual(unchanged);
+    expect(await stored(other)).toEqual(otherBefore);
+  });
+
   it('creates exactly one default preference with signup and returns only the public fields with a UTC timestamp', async () => {
     const startedAt = Date.now();
     const account = await register();
@@ -117,6 +234,7 @@ describe('Personal exercise preferences against PostgreSQL', () => {
     expect(body).toEqual({
       exerciseVolume: 'standard',
       exerciseGoal: null,
+      ownedTools: [],
       updatedAt: expect.any(String),
     });
     expect(body.updatedAt).toMatch(
@@ -149,6 +267,7 @@ describe('Personal exercise preferences against PostgreSQL', () => {
       expect(response.body).toEqual({
         exerciseVolume,
         exerciseGoal: null,
+        ownedTools: [],
         updatedAt: expect.any(String),
       });
       await read(account).expect(200, response.body);
@@ -168,6 +287,7 @@ describe('Personal exercise preferences against PostgreSQL', () => {
       expect(response.body).toEqual({
         exerciseVolume: 'less',
         exerciseGoal,
+        ownedTools: [],
         updatedAt: expect.any(String),
       });
       await read(account).expect(200, response.body);
@@ -187,6 +307,7 @@ describe('Personal exercise preferences against PostgreSQL', () => {
     expect(both.body).toEqual({
       exerciseVolume: 'more',
       exerciseGoal: 'fitness_grade_improvement',
+      ownedTools: [],
       updatedAt: expect.any(String),
     });
     await read(account).expect(200, both.body);
@@ -196,6 +317,7 @@ describe('Personal exercise preferences against PostgreSQL', () => {
     expect(volume.body).toEqual({
       exerciseVolume: 'standard',
       exerciseGoal: 'fitness_grade_improvement',
+      ownedTools: [],
       updatedAt: expect.any(String),
     });
     await read(account).expect(200, volume.body);
@@ -287,6 +409,12 @@ describe('Personal exercise preferences against PostgreSQL', () => {
   );
 
   it.each([
+    { exerciseVolume: 'light', exerciseGoal: 'fitness_grade_improvement' },
+    { exerciseVolume: 'normal', exerciseGoal: 'fitness_grade_improvement' },
+    { exerciseVolume: 'full', exerciseGoal: 'fitness_grade_improvement' },
+    { exerciseVolume: 'more', exerciseGoal: 'grade' },
+    { exerciseVolume: 'more', exerciseGoal: 'body' },
+    { exerciseVolume: 'more', exerciseGoal: 'general' },
     { exerciseVolume: 'more', exerciseGoal: null },
     { exerciseVolume: 'more', exerciseGoal: '' },
     { exerciseVolume: 'more', exerciseGoal: 'invalid' },
@@ -371,11 +499,13 @@ describe('Personal exercise preferences against PostgreSQL', () => {
         expect(Object.keys(response.body as object).sort()).toEqual([
           'exerciseGoal',
           'exerciseVolume',
+          'ownedTools',
           'updatedAt',
         ]);
       expect((await read(account).expect(200)).body).toEqual({
         exerciseVolume,
         exerciseGoal,
+        ownedTools: [],
         updatedAt: expect.any(String),
       });
     }
@@ -620,10 +750,93 @@ describe('Personal exercise preferences against PostgreSQL', () => {
     }
   });
 
+  it('preserves current and future routines and progress without entering recommendation paths on GET or PATCH', async () => {
+    const account = await register();
+    const curriculum = await database.workoutCurriculum.create({
+      data: { name: '[TEST ONLY] Stored daily routine' },
+    });
+    curriculumIds.push(curriculum.id);
+    // Persist synthetic existing routines directly; no algorithm is connected.
+    for (const isCurrent of [true, false]) {
+      await database.userCurriculumAssignment.create({
+        data: {
+          userId: account.user.id,
+          curriculumId: curriculum.id,
+          requestKey: randomUUID(),
+          currentForUserId: isCurrent ? account.user.id : null,
+          assignmentDate: new Date(
+            isCurrent ? '2026-09-29T00:00:00Z' : '2026-09-30T00:00:00Z',
+          ),
+          algorithmVersion: 'test-only-existing-routine',
+          inputSnapshot: { fixture: true },
+          status: isCurrent ? 'in_progress' : 'assigned',
+          intervals: isCurrent ? [[0, 20]] : [],
+          positionSeconds: isCurrent ? 20 : 0,
+          revision: isCurrent ? 2 : 1,
+          requests: {
+            create: { userId: account.user.id, key: randomUUID() },
+          },
+          ...(isCurrent
+            ? {
+                events: {
+                  create: {
+                    key: randomUUID(),
+                    requestHash: 'a'.repeat(64),
+                    deviceId: randomUUID(),
+                    sequence: 1,
+                    type: 'progress',
+                    intervals: [[0, 20]],
+                    positionSeconds: 20,
+                    receivedAt: new Date(),
+                    resultingRevision: 2,
+                  },
+                },
+              }
+            : {}),
+        },
+      });
+    }
+    const snapshot = () =>
+      database.userCurriculumAssignment.findMany({
+        where: { userId: account.user.id },
+        orderBy: { id: 'asc' },
+        include: { curriculum: true, events: true, requests: true },
+      });
+    const before = await snapshot();
+    const recommendations = app.get(RecommendationsService);
+    const algorithm = app.get(WorkoutAlgorithm);
+    const spies = [
+      vi.spyOn(recommendations, 'today'),
+      vi.spyOn(recommendations, 'current'),
+      vi.spyOn(algorithm, 'recommend'),
+      vi.spyOn(algorithm, 'weightAdjustment'),
+      vi.spyOn(app.get(CurriculaService), 'assign'),
+      vi.spyOn(app.get(RoutineAlgorithm), 'recommend'),
+      vi.spyOn(app.get(WorkoutRoutinesService), 'today'),
+    ];
+    try {
+      await read(account).expect(200);
+      await patch(account, { exerciseVolume: 'less' }).expect(200);
+      const input = {
+        exerciseVolume: 'more',
+        exerciseGoal: 'general_fitness_improvement',
+        ownedTools: ['band', 'step_box'],
+      };
+      const saved = await patch(account, input).expect(200);
+      await patch(account, input).expect(200, saved.body);
+      await read(account).expect(200, saved.body);
+      for (const spy of spies) expect(spy).not.toHaveBeenCalled();
+      expect(await snapshot()).toEqual(before);
+    } finally {
+      for (const spy of spies) spy.mockRestore();
+    }
+  });
+
   it('deletes preferences through the real account withdrawal flow and leaves another account intact', async () => {
     const account = await register();
     const other = await register();
     await patch(account, {
+      ownedTools: ['band', 'dumbbell'],
       exerciseVolume: 'more',
       exerciseGoal: 'general_fitness_improvement',
     }).expect(200);

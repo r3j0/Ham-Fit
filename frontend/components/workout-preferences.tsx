@@ -14,6 +14,8 @@ import {
   parseExercisePreferences,
   exerciseGoalOptions,
   exerciseVolumeOptions,
+  ownedToolOptions,
+  normalizeOwnedTools,
   type ExercisePreferences,
   type ExercisePreferencesPatch,
   type StoredExercisePreferences,
@@ -129,6 +131,53 @@ export function WorkoutPreferenceFields({
           })}
         </div>
         <FieldError id={`${id}-goal-error`} message={errors.exerciseGoal} />
+      </fieldset>
+      <fieldset
+        className={styles.group}
+        disabled={disabled}
+        aria-invalid={!!errors.ownedTools}
+        aria-describedby={`${id}-tools-hint${errors.ownedTools ? ` ${id}-tools-error` : ""}`}
+      >
+        <legend>보유 운동 도구</legend>
+        <p id={`${id}-tools-hint`} className={styles.hint}>
+          사용할 수 있는 도구를 모두 골라 주세요. 저장한 도구는 이후 새 운동
+          추천에 반영돼요.
+        </p>
+        <div className={`${styles.choices} ${styles.toolChoices}`}>
+          {ownedToolOptions.map((option) => (
+            <label
+              key={option.value}
+              className={`${styles.choice} ${styles.toolChoice}`}
+            >
+              <input
+                type="checkbox"
+                name={`${id}-ownedTools`}
+                value={option.value}
+                checked={value.ownedTools.includes(option.value)}
+                onChange={(event) =>
+                  onChange({
+                    ...value,
+                    ownedTools: event.target.checked
+                      ? normalizeOwnedTools([...value.ownedTools, option.value])
+                      : value.ownedTools.filter(
+                          (tool) => tool !== option.value,
+                        ),
+                  })
+                }
+              />
+              <span>{option.label}</span>
+            </label>
+          ))}
+          <label className={`${styles.choice} ${styles.toolChoice}`}>
+            <input
+              type="checkbox"
+              checked={value.ownedTools.length === 0}
+              onChange={() => onChange({ ...value, ownedTools: [] })}
+            />
+            <span>없음</span>
+          </label>
+        </div>
+        <FieldError id={`${id}-tools-error`} message={errors.ownedTools} />
       </fieldset>
     </div>
   );

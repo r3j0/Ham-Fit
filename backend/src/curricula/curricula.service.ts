@@ -53,7 +53,7 @@ export class CurriculaService {
       const current = await tx.userCurriculumAssignment.findUnique({
         where: { currentForUserId: userId },
       });
-      if (current?.status === 'assigned')
+      if (current && current.status !== 'completed')
         throw new ConflictException(
           '현재 운동을 완료한 뒤 다음 운동을 배정할 수 있습니다.',
         );
@@ -86,6 +86,10 @@ export class CurriculaService {
         include: includeAssignment,
       });
       if (!row) throw new NotFoundException('배정 내역을 찾을 수 없습니다.');
+      if (row.assignmentDate)
+        throw new ConflictException(
+          '일자별 운동은 운동 결과 API로 완료해 주세요.',
+        );
       if (row.status === 'completed') return serializeAssignment(row);
       // DB clock sampled after the owner lock, never transaction start time.
       await tx.$executeRaw`

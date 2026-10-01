@@ -22,6 +22,7 @@ import { validateEnvironment } from '../src/config/environment.js';
 import { CurriculaService } from '../src/curricula/curricula.service.js';
 import { DatabaseService } from '../src/database/database.service.js';
 import { configureApp } from '../src/setup-app.js';
+import { observeClientQueries } from './helpers/pg-queries.js';
 
 const password = 'user integration test password';
 const version = 'nfa100-2026-09-19';
@@ -42,6 +43,7 @@ describe('User profile and permanent deletion against PostgreSQL', () => {
   let database: DatabaseService;
   let owner: Account;
   let other: Account;
+  let curriculumCountBeforeRegistration: number;
   const ids: string[] = [];
   const definitionIds: string[] = [];
   let afterMeasurementRead: (() => Promise<unknown>) | undefined;
@@ -86,6 +88,8 @@ describe('User profile and permanent deletion against PostgreSQL', () => {
     configureApp(app);
     await app.listen(0, '127.0.0.1');
     database = app.get(DatabaseService);
+    curriculumCountBeforeRegistration =
+      await database.workoutCurriculum.count();
     owner = await register();
     other = await register();
   });
@@ -169,7 +173,9 @@ describe('User profile and permanent deletion against PostgreSQL', () => {
       .expect(204);
 
   it('initializes stored currency and exposes only real empty states without loading details in authentication', async () => {
-    const response = await me().expect(200);
+    const observed = await observeClientQueries(async () => me().expect(200));
+    expect(observed.overlaps).toBe(0);
+    const response = observed.value;
     expect(response.headers['cache-control']).toBe('no-store');
     expect(response.body).toMatchObject({
       id: owner.user.id,
@@ -177,6 +183,9 @@ describe('User profile and permanent deletion against PostgreSQL', () => {
       isOnboarded: false,
       currency: { balance: 0 },
       currentCurriculum: null,
+      dateOfBirth: null,
+      nickname: null,
+      currentAge: null,
     });
     expect(Object.keys(response.body as object).sort()).toEqual(
       [
@@ -187,6 +196,9 @@ describe('User profile and permanent deletion against PostgreSQL', () => {
         'isOnboarded',
         'currency',
         'currentCurriculum',
+        'dateOfBirth',
+        'nickname',
+        'currentAge',
       ].sort(),
     );
     expect(
@@ -200,7 +212,9 @@ describe('User profile and permanent deletion against PostgreSQL', () => {
       /"(?:measurements|measurement_items|user_fitness_goals|user_curriculum_assignments|user_currencies)"/,
     );
     observedQueries = undefined;
-    expect(await database.workoutCurriculum.count()).toBe(0);
+    expect(await database.workoutCurriculum.count()).toBe(
+      curriculumCountBeforeRegistration,
+    );
   });
 
   it('does not expose discarded profile fields or fitness goal routes', async () => {

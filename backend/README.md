@@ -2,12 +2,16 @@
 
 Project Health의 NestJS API 서버입니다. 백엔드 코드·설정·문서·테스트는 이 디렉토리에서 관리합니다.
 
+- [그룹·가입 신청·알림 API](docs/groups-api.md)
+- [그룹 미션·룰렛 정책·API](docs/group-missions.md)
+- [그룹 기능 검증·변경 파일](docs/groups-verification.md)
 - [개발 원칙](AGENTS.md)
 - [API 버전 관리](docs/api-versioning.md): 현재 `/api/v1`, DB·측정 기준·기록 수정 버전과 구분
 - [계정 스키마](docs/account-schema.md): 이메일·비밀번호 등 계정 필드와 사용자 관계
 - [계정 정보 변경·온보딩·재화·커리큘럼·영구 탈퇴 API](docs/users-api.md)
 - [개인 운동 설정 API·가입/탈퇴·배포 순서](docs/user-preferences-api.md)
 - [회원가입·로그인·로그아웃·토큰 갱신 API와 직접 테스트](docs/auth-api.md)
+- [회원가입 닉네임·프로필 조회/수정과 프론트 연동](docs/nickname-profile.md)
 - [측정 데이터 명세](docs/measurement-data-spec.md)
 - [측정 기록 CRUD API와 직접 테스트](docs/measurements-api.md)
 - [간이측정·공식 종목 평가·6축 조회 API](docs/measurement-evaluation-api.md)
@@ -15,6 +19,14 @@ Project Health의 NestJS API 서버입니다. 백엔드 코드·설정·문서·
 - [공식 평가 기준 조사·적용 범위](docs/research-fitness-criteria.md)
 - [국민체력100 사진 추출 API·환경설정·프론트 연동](docs/measurement-extraction-api.md)
 - [DB 설계와 마이그레이션](docs/database.md)
+- [일별 운동·수행 결과 API 설계](docs/recommendations/workouts-api.md)
+- [생년월일 프로필 API와 KST 만 나이](docs/recommendations/birth-profile.md)
+- [추천 알고리즘 연결 상태·재연결 경계](docs/recommendations/provenance.md)
+- [여러 운동 루틴 API·실제 Python 연결·런타임 설정](docs/recommendations/routines-api.md)
+- [영상 HTTPS·Range·메타데이터 검증 범위](docs/recommendations/media-verification.md)
+- [알고리즘 연결 제거·BE 계약 검증](docs/recommendations/verification.md)
+
+2026-09-29 사용자 결정으로 `/api/v2/workout-routines/today`에서 원본 Python의 당일 추천 함수를 직접 호출하고 하루 한 루틴의 여러 운동·처방·진행을 저장한다. 당일 재요청은 저장값을 반환하며 영상의 실제 시청률 80% 이상에서 중단·종료하면 완료로 기록한다. Python 환경과 읽기 전용 원본 데이터가 필요하며 [준비 절차](docs/recommendations/routines-api.md)를 따른다. 기존 `/api/v1/workouts` 단일 영상 API는 미연결 상태와 기존 계약을 유지한다. 운영 경로에 복사한 알고리즘이나 대체 추천 계산은 없다.
 
 ## 개발 환경
 
@@ -50,7 +62,7 @@ curl http://localhost:3001/api/v1/health/ready
 
 2026-09-21 정정으로 선호 운동·운동 목적·개인별 목표/기준값과 `currentFitness` 프로필 응답을 제거했습니다. 기존 측정 CRUD·저장 데이터와 유효한 기록 1건 이상의 온보딩 조건은 유지합니다.
 
-2026-09-26부터 별도 UserPreference에 운동량 선호·단일 운동 목적을 저장합니다. 기존 프로필·계정 변경 계약과 온보딩을 유지하며 운동 알고리즘에는 아직 반영하지 않습니다. 가입 중지 → 마이그레이션 → 모든 신규 서버 교체 → 누락 점검 → 가입 재개 순서가 필요합니다. [운동 설정 API](docs/user-preferences-api.md)에 요청·응답·복구 절차를 정리했습니다.
+2026-09-26부터 별도 UserPreference에 운동량 선호·단일 운동 목적을 저장하며 2026-09-29 보유 도구 목록을 추가했습니다. 기존 프로필·계정 변경 계약과 온보딩을 유지하며 신규 루틴 추천에서 저장된 운동량·목적·보유 도구를 사용합니다. 가입 중지 → 마이그레이션 → 모든 신규 서버 교체 → 누락 점검 → 가입 재개 순서가 필요합니다. [운동 설정 API](docs/user-preferences-api.md)에 요청·응답·복구 절차를 정리했습니다.
 
 2026-09-24부터 공식 수치 기준을 확보하지 못한 성인 `self_curl_up`은 신규 입력에서 제외합니다. 최신 카탈로그는 `nfa100-2026-09-24`이며, 기존 기록·과거 카탈로그와 청소년 `curl_up`은 유지합니다. [평가 API](docs/measurement-evaluation-api.md)에 신규 입력과 기존 기록 수정 계약을 정리했습니다.
 
@@ -158,3 +170,9 @@ Prisma 구성은 [공식 NestJS 안내](https://docs.prisma.io/docs/guides/frame
 ## 성인 스텝검사 참고 평가 (2026-09-24)
 
 회복 심박수 원본을 보존하고 측정 당시 성별·나이·신장·체중으로 최대산소섭취량을 추정합니다. 부분 저장, 계산 근거 및 참고 등급 계약은 [스텝검사 안내](docs/step-assessment.md)를 따릅니다. 과거의 YMCA 기준 미확보 설명은 새로 저장·수정하는 성인 기록에 한해 이 계약으로 대체되며, 기존 스냅샷은 유지됩니다.
+
+- [캐릭터·대표 코디·해바라기씨 상점 API 및 FE 연동](docs/avatar-shop-api.md) · [검증 결과](docs/avatar-shop-verification.md)
+
+2026-09-30 그룹 미션·룰렛을 `/api/v1/groups/:groupId` 아래에 추가했다. 그룹장 수동 시작, 고정 구성원 스냅샷, 당일 전체 운동 성공의 자동 물 주기, 14N 성장 목표, 누적 기여 기반 룰렛권과 기존 개인 재화 지급을 제공한다. [정책·권한·멱등성·삭제·동시성](docs/group-missions.md), [실제 검증 결과](docs/group-missions-verification.md)를 참고한다.
+
+2026-10-01 개인 연속 운동 룰렛을 `/api/v1/users/me/streak-roulette`에 추가했다. 실제 연속 5배수 달성의 자동 권 발급, 수동 추첨, 기존 재화·미보유 상점 아이템 지급과 결과 복구를 제공한다. [정책·API·DB·마이그레이션](docs/streak-roulette.md), [단계별 검증](docs/streak-roulette-verification.md)을 참고한다.

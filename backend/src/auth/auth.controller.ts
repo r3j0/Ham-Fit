@@ -39,7 +39,12 @@ export class AuthController {
     const input = parseCredentials(body, true);
     await this.limits.consume(`register:${input.email}`, 5, 900);
     return this.respond(
-      await this.auth.register(input.email, input.password),
+      await this.auth.register(
+        input.email,
+        input.password,
+        input.dateOfBirth,
+        input.nickname,
+      ),
       response,
     );
   }

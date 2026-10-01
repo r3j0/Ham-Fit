@@ -18,3 +18,9 @@
 - 2026-09-24 사용자 결정으로 성인 YMCA 심박수의 최대산소섭취량 환산과 참고 등급을 지원한다. [스텝검사 계약](docs/step-assessment.md)을 따르며, 수동 자가측정 결과를 공식 인증으로 표현하지 않는다.
 
 - 2026-09-24 사용자 결정으로 새 측정 목록은 대표 다각형과 같은 `measuredOn DESC, createdAt DESC, id ASC` 순서로 조회한다. v2 커서는 생성 시각의 마이크로초를 보존하며, 기존 v1 커서 체인은 원래 정렬로 끝까지 이어본다. [측정 API 안내](docs/measurements-api.md)를 따른다.
+
+- 2026-09-27 추가 결정으로 User는 기존 계정 5개 컬럼과 nullable `date_of_birth`, `nickname`을 가진다. 가입에서 두 필드를 받고 `/users/me/profile`에서 조회·부분 수정하며 기존 v1의 생략 요청은 유지한다. 닉네임 중복을 허용하고 세션을 해제하지 않는다. [닉네임 계약](docs/nickname-profile.md)과 [생년월일 계약](docs/recommendations/birth-profile.md)을 따른다.
+
+- 2026-09-28 사용자 결정: 추천 API·DB·프로필·진행 저장 설계는 유지하고 데이터 팀 알고리즘의 BE 연결만 제거한다. 복사한 소스/카탈로그와 TypeScript 계산 엔진은 운영 경로에 두지 않는다. 데이터 브랜치 수정 → main 병합 → BE rebase 이후 새 코드에 맞춰 별도 재연결한다. 현재 연결 상태는 [추천 연결 경계](docs/recommendations/provenance.md)를 따른다.
+
+- 2026-09-29 사용자 결정: 여러 운동 루틴에 맞춰 BE를 확장하고 원본 Python 알고리즘 호출까지 연결한다. 신규 `/api/v1/workout-routines`와 별도 루틴·항목·진행 테이블을 사용하고 기존 `/workouts` 단일 영상 계약·기록을 보존한다. `data-analysis/`는 읽기 전용이며 알고리즘 복사·재구현을 하지 않는다. [루틴 API·런타임·검증 계약](docs/recommendations/routines-api.md)을 따른다. 설정 GET/PATCH는 계속 추천을 호출하지 않는다.

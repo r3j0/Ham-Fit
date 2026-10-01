@@ -1,5 +1,11 @@
 # DB 설계와 운영
 
+2026-09-29 여러 운동 루틴: `20260929000100_workout_routines`는 `workout_routines`, `workout_routine_items`, `workout_routine_requests`, `workout_routine_events`를 추가한다. 기존 단일 영상 배정과 데이터는 보존한다. [루틴 API·Python 런타임·배포 준비](recommendations/routines-api.md)를 따르며, 이 작업에서 마이그레이션은 격리 테스트 DB에만 적용한다.
+
+2026-09-27 닉네임 확장: `20260927000200_user_nickname`은 nullable `nickname VARCHAR(20)`과 길이·문자 CHECK를 추가한다. 중복을 허용하며 기존 계정·생년월일·관계 데이터는 보존한다. 새 서버 시작 전에 마이그레이션을 적용한다. [가입·프로필 닉네임 계약](nickname-profile.md)을 따른다.
+
+2026-09-27 추가 마이그레이션 `20260927000100_daily_workouts`는 nullable 생년월일 DATE, 버전별 운동 카탈로그/영상, 기존 배정의 한국 날짜·진행·입력 스냅샷, 일별 요청 키·이벤트를 추가한다. 기존 행을 지우거나 추정값으로 채우지 않는다. [일별 운동 API 및 적용/수입 절차](recommendations/workouts-api.md)를 따른다. 운영 DB에는 자동 적용하지 않는다.
+
 PostgreSQL 17과 Prisma 7.10을 사용한다. 정밀한 측정값, 고유 키·외래키, 트랜잭션과 명시적인 마이그레이션을 사용하는 구조다.
 
 ## 계정과 측정 데이터
@@ -14,7 +20,7 @@ PostgreSQL 17과 Prisma 7.10을 사용한다. 정밀한 측정값, 고유 키·�
 
 Prisma 관계를 통한 조회는 비밀번호 필드를 포함할 수 있다. 인증 발급 응답은 기존 공개 4개 필드를 직렬화하고, `/api/v1/auth/me`는 그 필드와 본인의 온보딩·재화·현재 운동 배정을 반환한다. 비밀번호·세션은 명시적 select/serializer로 제외한다.
 
-- `user_preferences`: userId PK/FK, 단일 선택 운동량 enum 기본 standard, nullable 목적 enum 초기 null, 생성·실제 변경 시각. [운동 설정 API](user-preferences-api.md)의 가입·배포·부분 수정 계약을 따른다.
+- `user_preferences`: userId PK/FK, 단일 선택 운동량 enum 기본 standard, nullable 목적 enum 초기 null, 보유 도구 OwnedTool enum 배열 기본 [], 생성·실제 변경 시각. [운동 설정 API](user-preferences-api.md)의 가입·배포·부분 수정 계약을 따른다.
 - `user_currencies`: userId PK/FK, balance INTEGER DEFAULT 0, 비음수 CHECK. 허용 잔액 0~2,147,483,647.
 - `workout_curricula`: 공용 운동 1회분 정의의 최소 식별 구조. 콘텐츠·추천 seed 없음, 정의 수정 금지.
 - `user_curriculum_assignments`: 배정·완료 상태, 시각, 요청 키, 이력. 현재는 nullable currentForUserId UNIQUE로 표시하며 소유자 일치 CHECK가 있다. 사용자 행 잠금으로 다음 배정과 완료를 직렬화한다.
@@ -91,3 +97,41 @@ Prisma Client·PostgreSQL 어댑터·CLI를 7.10.0으로 맞췄다. 이 버전�
 `20260924000100_retire_self_curl_up`은 이전 카탈로그에서 `self_curl_up`만 제외한 `nfa100-2026-09-24`를 추가한다. 전체 20개, 성인 16개, 청소년 15개이며 청소년 `curl_up`은 그대로다. 불변 카탈로그를 수정하거나 기존 측정 항목·평가·생성 요청 키를 삭제하지 않는다. 공식 수치 기준을 확보하지 못해 신규 입력에서 제외한다는 2026-09-24 사용자 결정을 반영한다.
 
 서버는 카탈로그 버전·등록 방식에 관계없이 해당 코드의 신규 POST를 거절한다. PATCH는 잠금 후 읽은 현재 기록에 이미 있는 항목만 유지·수정·제거할 수 있고, 제거 후 재추가할 수 없다. 기존 생성 요청 재시도와 과거 조회는 유지한다. 이전 DB 검증 함수의 8개 코드 허용은 과거 항목을 보존하기 위해 유지하며, 현재 API의 간이측정 신규 입력 목록은 7개다. 저장된 과거 평가의 일괄 변경은 없다. 새 서버 시작 전에 `npm run db:migrate:deploy`로 새 카탈로그를 적용한다.
+
+2026-09-29 후속 `20260929000200_owned_tools`: 기존 `user_preferences`에 `owned_tools` enum 배열과 빈 배열 기본값·NOT NULL·null 원소 금지 제약을 추가한다. 기존 설정·생성/수정 시각·루틴을 보존하며 추가 가입 백필은 필요 없다. [보유 도구 계약](owned-tools.md)을 따른다.
+
+후속 `20260929000300_home_training_tools`는 `OwnedTool`에 ball·cone·agility_ladder·bosu를 추가해 홈트 소도구 10종을 지원한다. 기존 배열·기본값·수정 시각은 변경하지 않는다.
+
+## 그룹·가입 신청·알림 (2026-09-29)
+
+`20260929000400_groups`는 그룹·멤버십·생성 재시도 키·가입 신청·알림 테이블을 추가한다. 단일 그룹장 포인터와 지연 검사 멤버십 FK, 대기 신청 partial unique, 정원 검사 trigger는 SQL 마이그레이션의 일부다. 기존 계정·운동 데이터는 변경하지 않는다. 그룹장이 계정 영구 삭제로 그룹을 고아 상태로 만들 수 없도록 RESTRICT하며 먼저 위임/탈퇴 또는 그룹 삭제가 필요하다. [모델·삭제 정책·배포·API 계약](groups-api.md)을 참고한다. 2026-09-30 `20260930000400_group_missions`는 미션 스냅샷·일별 달성·기여·룰렛권·추첨/지급 명세를 추가한다. 기존 데이터 백필은 없다. 그룹 삭제 CASCADE와 멤버십 자격 영구 무효화/계정 삭제 익명화를 적용하며 개인 지급 거래는 그룹 삭제에 보존한다. [미션 모델·잠금·배포 순서](group-missions.md)를 따른다.
+
+## 2026-09-30 캐릭터·상점
+
+`20260930000300_avatar_shop`은 상품·렌더링 조합·영구 소유·대표 코디·구매·재화 거래 테이블을 추가한다. 기존 UserCurrency 잔액을 재사용하고 기본 지급/백필은 계정·잔액·기존 소유/코디를 덮어쓰지 않는다. users INSERT trigger는 같은 트랜잭션에서 캐릭터 2종·basic·최초 코디를 지급한다. 개발·운영 DB 적용은 이번 작업에서 수행하지 않는다. [API·정책·등록/가격 변경·배포 계약](avatar-shop-api.md), [검증 기록](avatar-shop-verification.md)을 따른다.
+
+## 2026-10-01 개인 스트릭 룰렛
+
+`20261001000100_streak_roulette_tickets`와 `20261001000200_streak_roulette_draws`는 불변 정책·달성 근거 연결·개인 권·단일 추첨/지급 기록과 소유 경로 CHECK를 추가한다. 기존 마이그레이션·운동·그룹·재화·코디 데이터는 보존하며 달성 백필은 없다. 순서대로 적용한 뒤 새 서버를 시작한다. 개발·운영 DB 적용은 이번 작업에 포함하지 않는다. [상세 제약·잠금·적용 순서](streak-roulette.md), [격리 DB 검증](streak-roulette-verification.md)을 따른다.
+
+## 2026-10-01 단일 연결의 동시 조회 경고 수정
+
+Prisma 7.10의 여러 관계 `include`는 트랜잭션의 같은 `pg` 연결에서 하위 조회를 동시에 호출할 수 있다. 설치된 `pg` 8.23은 내부 쿼리 대기열로 처리하면서 deprecation 경고를 출력했다. 일반 Prisma 쿼리를 트랜잭션 안에서 `Promise.all`로 호출하는 것과는 별개로, 단일 관계 포함 쿼리에서도 재현했다.
+
+다음 조회를 기존 트랜잭션 안에서 순차 처리하도록 수정했다.
+
+- 그룹 룰렛권 조회·추첨: 권을 읽고 회차·참가자·추첨 정보를 각각 묶어서 조회한다. 목록의 관계 조회는 항목별 반복 대신 페이지 전체에서 관계당 한 번 실행한다.
+- 사용자 상세 조회: 계정·재화·현재 커리큘럼·측정 존재 여부를 같은 Repeatable Read 스냅샷에서 순서대로 읽는다.
+- 대표 코디 조회·저장 및 개인/그룹 프로필: 코디 조합·의상 관계를 읽은 뒤 캐릭터·자세 렌더링 상품을 한 번에 가져온다. 여러 사용자의 공유 조합도 묶어서 조회한다.
+
+권 발급 조건·확률·보상, 소유권/권한 검사, 중복 추첨 방지·재시도·지급 실패 시 전체 롤백, 코디 revision, 스트릭 계산과 API 응답 형식은 유지한다. 기존 잠금·격리 수준·외래키·마이그레이션 및 패키지 버전은 변경하지 않았다.
+
+`test/helpers/pg-queries.ts`는 실제 트랜잭션 client의 미완료 쿼리를 관찰한다. 경고가 프로세스당 한 번만 출력되는 특성에 의존하지 않고, 조회·추첨·재전송·코디 저장·다중 사용자 프로필에서 같은 연결의 쿼리 겹침이 없는지 검사한다. 룰렛 목록과 다중 사용자 코디 조회는 항목 수가 늘어도 관계 조회 횟수가 늘지 않는지 확인한다. 기존 통합 검사의 동시 삭제 스냅샷·중복 추첨·전체 지급 롤백·코디 충돌·의상 렌더링·페이지 조회도 통과했다.
+
+최종 실행:
+
+```bash
+NODE_OPTIONS=--trace-deprecation PYTHONDONTWRITEBYTECODE=1 RECOMMENDATION_PYTHON=.local/recommendation-venv/bin/python npm run check
+```
+
+Prisma 검증/생성·전체 서식·타입 인식 린트·타입 검사·Nest 빌드, 단위 23개 파일/357개, 실제 PostgreSQL 통합 26개 파일/504개가 모두 통과했다. 최종 전체 로그에 PG deprecation 경고는 0건이다. 전용 `project_health_test` DB의 임시 스키마에서 25개 마이그레이션 적용·재적용 후 정리했으며 개발·운영 DB와 배포는 변경하지 않았다. 실행 로그는 `backend/.local/pg-fix-check.log`에 보관한다. 작업 시작부터 존재한 미디어 관련 변경은 보존했다.
