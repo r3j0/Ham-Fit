@@ -1,94 +1,10 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { installApi, testRecord, testUser } from "./integration-fixtures";
+import { testUser } from "./integration-fixtures";
 import { routineFixture } from "../fixtures/routine";
 import type { WorkoutRoutine } from "../../lib/workout-routine";
-async function setup(
-  page: Page,
-  row: WorkoutRoutine | null = routineFixture(),
-  generated = routineFixture(),
-) {
-  await installApi(page, testRecord());
-  const state = {
-    row,
-    requests: [] as { key: string; body: string }[],
-    events: [] as { item: string; key: string; type: string }[],
-  };
-  await page.route("**/api/v1/workouts/history?*", (route) =>
-    route.fulfill({ json: { items: [], nextCursor: null } }),
-  );
-  await page.route("**/api/v2/workout-routines/**", async (route) => {
-    const req = route.request(),
-      url = new URL(req.url());
-    const row = state.row;
-    if (url.pathname.endsWith("/current"))
-      return route.fulfill({
-        json: row && row.koreanDate === row.serverKoreanDate ? row : null,
-      });
-    if (url.pathname.endsWith("/history"))
-      return route.fulfill({
-        json: { items: row ? [row] : [], nextCursor: null },
-      });
-    if (url.pathname.endsWith("/today")) {
-      state.requests.push({
-        key: req.headers()["idempotency-key"],
-        body: req.postData()!,
-      });
-      expect(req.headers()["x-csrf-protection"]).toBe("1");
-      if (row && row.koreanDate === row.serverKoreanDate)
-        return route.fulfill({ status: 200, json: row });
-      state.row = generated;
-      return route.fulfill({ status: 201, json: state.row });
-    }
-    if (url.pathname.endsWith("/events") && row) {
-      const itemId = url.pathname.split("/").at(-2)!;
-      const item = row.routine.find((item) => item.id === itemId)!;
-      const body = req.postDataJSON();
-      state.events.push({
-        item: itemId,
-        key: req.headers()["idempotency-key"],
-        type: body.type,
-      });
-      expect(req.headers()["x-csrf-protection"]).toBe("1");
-      item.revision++;
-      if (body.intervals.length) {
-        const end = Math.max(
-          ...body.intervals.map((r: { end: number }) => r.end),
-          item.progress.watchedSeconds,
-        );
-        item.progress = {
-          ...item.progress,
-          watchedSeconds: end,
-          positionSeconds: body.positionSeconds,
-          intervals: [{ start: 0, end }],
-        };
-      }
-      item.status = ["pause", "end", "complete"].includes(body.type)
-        ? item.progress.watchedSeconds / item.progress.durationSeconds >= 0.8
-          ? "completed"
-          : item.progress.watchedSeconds > 0
-            ? "interrupted"
-            : "not_performed"
-        : "in_progress";
-      if (item.status === "completed") {
-        item.resultStatus = "completed";
-        item.completedAt = "2026-09-29T03:00:00Z";
-      }
-      item.performedAt = "2026-09-29T03:00:00Z";
-      row.progress.completedItems = row.routine.filter(
-        (i) => i.status === "completed",
-      ).length;
-      row.status =
-        row.progress.completedItems === row.routine.length
-          ? "completed"
-          : "in_progress";
-      return route.fulfill({ json: row });
-    }
-    return route.fulfill({ json: row });
-  });
-  return state;
-}
+import { installRoutine as setup } from "./workout-routine-fixtures";
 
 for (const route of ["/", "/workout"])
   test(`${route}에서는 화면별 목록과 중단·완료 이력을 표시한다`, async ({
@@ -141,9 +57,13 @@ for (const route of ["/", "/workout"])
         row.status = phase === "complete" ? "completed" : "in_progress";
       }
       await page.goto(route);
+      const cardio = page.getByRole("region", { name: "유산소 운동 안내" });
+      if (route === "/workout") await expect(cardio).toContainText("걷기 20분");
+      else await expect(cardio).toHaveCount(0);
       await expect(
-        page.getByRole("region", { name: "유산소 운동 안내" }),
-      ).toContainText("걷기 20분");
+        page.getByRole("button", { name: "앞 운동 완료 후 시작" }),
+      ).toHaveCount(0);
+      await expect(list.getByText(/휴식/)).toHaveCount(0);
       await expect(
         page.getByText(
           /첫 운동부터 시작|첫 운동 다시 보기|영상 운동을 마친 뒤 권장하는 활동이에요/,
@@ -158,7 +78,8 @@ for (const route of ["/", "/workout"])
           page.getByText("오늘의 모든 운동을 완료했어요."),
         ).toBeVisible();
       } else {
-        const current = row.routine[phase === "next" ? 1 : 0];
+        const current =
+          row.routine[phase === "next" || phase === "interrupted" ? 1 : 0];
         await expect(list.getByRole("listitem")).toHaveCount(
           route === "/" ? 1 : 3,
         );
@@ -167,7 +88,9 @@ for (const route of ["/", "/workout"])
             ? [current.title]
             : row.routine.map((item) => item.title),
         );
-        await expect(list.getByRole("link")).toHaveCount(1);
+        await expect(list.getByRole("link")).toHaveCount(
+          route === "/workout" && phase === "interrupted" ? 2 : 1,
+        );
         await expect(
           list.getByRole("link", {
             name: phase === "new" ? "운동 시작하기" : "운동 이어하기",
@@ -227,9 +150,7 @@ for (const cardio of [
         );
       }),
     ).toBe(true);
-    await expect(
-      page.getByText("영상 운동 예상 6분", { exact: false }),
-    ).toBeVisible();
+    await expect(page.getByLabel("예상 운동 시간 6분")).toBeVisible();
     await expect(
       guidance.locator("button, input, video, progress"),
     ).toHaveCount(0);
@@ -416,20 +337,26 @@ test("item playback reuses recovery, saves only the selected item and replays co
   await page.goto("/workout");
   const list = page.getByRole("list", { name: "오늘 배정된 운동" });
   await expect(list.getByRole("listitem")).toHaveCount(3);
-  await expect(list).toContainText("10회 × 2세트 · 휴식 30초");
+  await expect(list).toContainText("10회 × 2세트");
+  await expect(list.getByText(/휴식/)).toHaveCount(0);
   await list.getByRole("link", { name: "운동 시작하기" }).first().click();
   await page.getByRole("button", { name: "운동 시작", exact: true }).click();
   await expect(
-    page.getByRole("button", { name: "운동 완료", exact: true }),
+    page.getByRole("button", { name: "여기서 종료", exact: true }),
   ).toBeEnabled();
   await expect
     .poll(() =>
       page.locator("video").evaluate((v: HTMLVideoElement) => v.currentTime),
     )
     .toBeGreaterThan(9.6);
-  await page.getByRole("button", { name: "운동 완료", exact: true }).click();
-  await page.getByRole("button", { name: "완료 확인", exact: true }).click();
-  await page.getByRole("link", { name: "다음 운동으로" }).click();
+  await page.getByRole("button", { name: "여기서 종료", exact: true }).click();
+  const confirmation = page.getByRole("dialog", {
+    name: "운동 방법대로 운동했나요?",
+  });
+  await expect(confirmation).toBeVisible();
+  await confirmation
+    .getByRole("button", { name: "완료 처리", exact: true })
+    .click();
   await expect(page).toHaveURL(
     `/workout-routines/${row.id}/items/${row.routine[1].id}`,
   );
@@ -503,7 +430,7 @@ test("lost generation responses replay the same key across reload and readiness 
   ).toHaveAttribute("href", "/account/preferences");
 });
 
-test("완료 확인을 취소하면 실제 일시정지를 저장하고 start로 재개한다", async ({
+test("미완료 종료 확인을 취소하면 실제 일시정지를 저장하고 start로 재개한다", async ({
   page,
 }) => {
   const row = routineFixture();
@@ -525,7 +452,7 @@ test("완료 확인을 취소하면 실제 일시정지를 저장하고 start로
       page.locator("video").evaluate((v: HTMLVideoElement) => v.currentTime),
     )
     .toBeGreaterThan(0.2);
-  await page.getByRole("button", { name: "운동 완료", exact: true }).click();
+  await page.getByRole("button", { name: "여기서 종료", exact: true }).click();
   await page
     .getByRole("dialog")
     .getByRole("button", { name: "취소", exact: true })
@@ -537,7 +464,7 @@ test("완료 확인을 취소하면 실제 일시정지를 저장하고 start로
   expect(state.events.map((event) => event.type)).not.toContain("complete");
   await page.getByRole("button", { name: "이어서 운동하기" }).click();
   await expect(
-    page.getByRole("button", { name: "운동 완료", exact: true }),
+    page.getByRole("button", { name: "여기서 종료", exact: true }),
   ).toBeEnabled();
   expect(state.events.filter((event) => event.type === "start")).toHaveLength(
     2,
@@ -636,4 +563,110 @@ test("달력은 루틴 이력의 다음 페이지 실패를 복구하고 중복 
   await expect(
     page.getByRole("heading", { name: "운동 다시보기", exact: true }),
   ).toBeVisible();
+});
+
+for (const pendingPause of [false, true]) {
+  test(`영상의 기본 재생 버튼은 ${pendingPause ? "일시정지 저장 중에도" : "중단 저장 후에도"} 다시 재생하고 기록한다`, async ({
+    page,
+  }) => {
+    const row = routineFixture();
+    const item = row.routine[0];
+    item.playbackUrl =
+      "https://openapi.kspo.or.kr/web/video/native-controls.mp4";
+    item.playbackStatus = "verified";
+    item.verifiedDurationSeconds = item.progress.durationSeconds = 12;
+    const state = await setup(page, row);
+    await page.route(item.playbackUrl, async (route) =>
+      route.fulfill({
+        contentType: "video/mp4",
+        body: await readFile(path.resolve("tests/fixtures/workout.mp4")),
+      }),
+    );
+    let releasePause: (() => void) | undefined;
+    const delay = new Promise<void>((resolve) => {
+      releasePause = resolve;
+    });
+    if (pendingPause)
+      await page.route(
+        "**/api/v2/workout-routines/**/events",
+        async (route) => {
+          if (route.request().postDataJSON().type === "pause") await delay;
+          await route.fallback();
+        },
+      );
+    await page.goto(`/workout-routines/${row.id}/items/${item.id}`);
+    const video = page.getByLabel("운동 영상");
+    await expect
+      .poll(() => video.evaluate((v: HTMLVideoElement) => v.readyState))
+      .toBeGreaterThanOrEqual(1);
+    await expect(video).toHaveAttribute("controls", "");
+    // Native media gestures fire the same play/pause events as the video controls.
+    await video.evaluate((v: HTMLVideoElement) => v.play());
+    await expect.poll(() => item.status).toBe("in_progress");
+    await expect
+      .poll(() => video.evaluate((v: HTMLVideoElement) => v.currentTime))
+      .toBeGreaterThan(1);
+    await video.evaluate((v: HTMLVideoElement) => v.pause());
+    if (!pendingPause) await expect.poll(() => item.status).toBe("interrupted");
+    await expect(video).toHaveAttribute("controls", "");
+    const before = await video.evaluate((v: HTMLVideoElement) => v.currentTime);
+    await video.evaluate((v: HTMLVideoElement) => v.play());
+    releasePause?.();
+    await expect
+      .poll(() => state.events.map((event) => event.type).slice(0, 3))
+      .toEqual(["start", "pause", "start"]);
+    await expect
+      .poll(() => video.evaluate((v: HTMLVideoElement) => v.currentTime))
+      .toBeGreaterThan(before + 1);
+    await expect(
+      page.getByRole("button", { name: "이어서 운동하기" }),
+    ).toHaveCount(0);
+    await video.evaluate((v: HTMLVideoElement) => v.pause());
+    await expect.poll(() => item.progress.watchedSeconds).toBeGreaterThan(2);
+    await expect.poll(() => item.status).toBe("interrupted");
+  });
+}
+
+test("기본 재생의 시작 저장 중 일시정지해도 시작 뒤 정지와 실제 시청 구간을 저장한다", async ({
+  page,
+}) => {
+  const row = routineFixture(),
+    item = row.routine[0];
+  item.playbackUrl = "https://openapi.kspo.or.kr/web/video/native-start.mp4";
+  item.playbackStatus = "verified";
+  item.verifiedDurationSeconds = item.progress.durationSeconds = 12;
+  const state = await setup(page, row);
+  await page.route(item.playbackUrl, async (route) =>
+    route.fulfill({
+      contentType: "video/mp4",
+      body: await readFile(path.resolve("tests/fixtures/workout.mp4")),
+    }),
+  );
+  let releaseStart!: () => void;
+  const delay = new Promise<void>((resolve) => {
+    releaseStart = resolve;
+  });
+  await page.route("**/api/v2/workout-routines/**/events", async (route) => {
+    if (route.request().postDataJSON().type === "start") await delay;
+    await route.fallback();
+  });
+  await page.goto(`/workout-routines/${row.id}/items/${item.id}`);
+  const video = page.getByLabel("운동 영상");
+  await expect
+    .poll(() => video.evaluate((v: HTMLVideoElement) => v.readyState))
+    .toBeGreaterThanOrEqual(1);
+  await video.evaluate((v: HTMLVideoElement) => v.play());
+  await expect
+    .poll(() => video.evaluate((v: HTMLVideoElement) => v.currentTime))
+    .toBeGreaterThan(0.5);
+  await video.evaluate((v: HTMLVideoElement) => v.pause());
+  releaseStart();
+  await expect
+    .poll(() => state.events.map((event) => event.type))
+    .toEqual(["start", "pause"]);
+  await expect.poll(() => item.status).toBe("interrupted");
+  expect(item.progress.watchedSeconds).toBeGreaterThan(0.5);
+  await expect
+    .poll(() => video.evaluate((v: HTMLVideoElement) => v.paused))
+    .toBe(true);
 });

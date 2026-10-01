@@ -45,7 +45,7 @@ test("today advances through the ordered first unfinished item without changing 
   );
 });
 
-test("started or interrupted workouts resume even before the first item is completed", () => {
+test("active videos resume, while stopped videos leave the next assigned item available", () => {
   for (const status of [
     "in_progress",
     "interrupted",
@@ -54,7 +54,7 @@ test("started or interrupted workouts resume even before the first item is compl
     const rows = routineWorkouts(routineFixture());
     rows[0].status = status;
     assert.deepEqual(currentWorkoutStep(rows), {
-      workout: rows[0],
+      workout: rows[status === "in_progress" ? 0 : 1],
       started: true,
     });
   }
@@ -95,4 +95,13 @@ test("current/history overlap keeps the newest revision without duplicating or l
     ),
     [current, second],
   );
+});
+
+test("unfinished attempts never complete a routine and remain available after the last video", () => {
+  const rows = routineWorkouts(routineFixture());
+  rows[0].status = "interrupted";
+  rows[1].status = "in_progress";
+  assert.equal(currentWorkoutStep(rows).workout, rows[1]);
+  rows[1].status = rows[2].status = "completed";
+  assert.equal(currentWorkoutStep(rows).workout, rows[0]);
 });

@@ -222,7 +222,7 @@ async function testMedia(page: Page, workout: Workout) {
     });
   });
 }
-test("실제 시청은 탐색을 제외하고 80% 미만 완료 요청을 중단으로 저장하며 재접속 후 이어간다", async ({
+test("실제 시청은 탐색을 제외하고 80% 미만 종료 요청을 중단으로 저장하며 재접속 후 이어간다", async ({
   page,
 }, info) => {
   const { workout, read } = await prepare(page);
@@ -243,16 +243,16 @@ test("실제 시청은 탐색을 제외하고 80% 미만 완료 요청을 중단
   await expect
     .poll(() => video.evaluate((v: HTMLVideoElement) => v.currentTime))
     .toBeGreaterThan(7);
-  await page.getByRole("button", { name: "운동 완료", exact: true }).click();
+  await page.getByRole("button", { name: "여기서 종료", exact: true }).click();
   await expect(page.getByRole("dialog")).toContainText("80%");
-  await page.getByRole("button", { name: "완료 확인" }).click();
+  await page.getByRole("button", { name: "종료 확인" }).click();
   await expect.poll(async () => (await read()).status).toBe("interrupted");
   const saved = await read();
   expect(saved.progress.watchedSeconds).toBeGreaterThan(1);
   expect(saved.progress.watchedSeconds).toBeLessThan(5);
   expect(saved.progress.intervals.some((r) => r.start >= 5)).toBeTruthy();
   expect(saved.completedAt).toBeNull();
-  await openAuthenticated(page);
+  await openAuthenticated(page, workoutHref(workout));
   await expect(
     page.getByRole("button", { name: "이어서 운동하기" }),
   ).toBeEnabled();
@@ -263,9 +263,20 @@ test("실제 시청은 탐색을 제외하고 80% 미만 완료 요청을 중단
   await expect.poll(async () => (await read()).status).toBe("in_progress");
   await video.evaluate((v: HTMLVideoElement) => v.pause());
   await expect.poll(async () => (await read()).status).toBe("interrupted");
+  await expect(video).toHaveAttribute("controls", "");
+  const resumePosition = await video.evaluate(
+    (v: HTMLVideoElement) => v.currentTime,
+  );
+  await video.evaluate((v: HTMLVideoElement) => v.play());
+  await expect.poll(async () => (await read()).status).toBe("in_progress");
+  await expect
+    .poll(() => video.evaluate((v: HTMLVideoElement) => v.currentTime))
+    .toBeGreaterThan(resumePosition + 0.5);
   await expect(
     page.getByRole("button", { name: "이어서 운동하기" }),
-  ).toBeEnabled();
+  ).toHaveCount(0);
+  await video.evaluate((v: HTMLVideoElement) => v.pause());
+  await expect.poll(async () => (await read()).status).toBe("interrupted");
   await page.screenshot({
     path: info.outputPath("v2-interrupted.png"),
     fullPage: true,
@@ -302,7 +313,7 @@ test("a lost start response survives reload with the original event key and body
   await expect.poll(() => requests.length).toBe(2);
   expect(requests[0]).toEqual(requests[1]);
   await expect(
-    page.getByRole("button", { name: "운동 완료", exact: true }),
+    page.getByRole("button", { name: "여기서 종료", exact: true }),
   ).toBeEnabled();
   expect((await read()).revision).toBeGreaterThanOrEqual(2);
 });
@@ -357,9 +368,7 @@ test("unavailable media has an explicit retry and never uses originalUrl", async
   expect(originalRequests).toEqual([]);
 });
 
-test("50% 시청은 완료 버튼으로 우회하지 못하고 80% 구간에서만 완료된다", async ({
-  page,
-}) => {
+test("50% 종료는 미완료로 남고 80% 구간에서만 완료된다", async ({ page }) => {
   const { workout, headers, read } = await prepare(page);
   const deviceId = crypto.randomUUID();
   for (const [sequence, type, intervals, positionSeconds] of [
@@ -385,9 +394,10 @@ test("50% 시청은 완료 버튼으로 우회하지 못하고 80% 구간에서�
   await page.getByRole("button", { name: "여기서 종료" }).click();
   await page.getByRole("button", { name: "종료 확인" }).click();
   await expect.poll(async () => (await read()).status).toBe("interrupted");
+  await openAuthenticated(page, workoutHref(workout));
   await page.getByRole("button", { name: "이어서 운동하기" }).click();
-  await page.getByRole("button", { name: "운동 완료", exact: true }).click();
-  await page.getByRole("button", { name: "완료 확인" }).click();
+  await page.getByRole("button", { name: "여기서 종료", exact: true }).click();
+  await page.getByRole("button", { name: "종료 확인" }).click();
   await expect
     .poll(async () => (await read()).resultStatus)
     .toBe("interrupted");
@@ -415,7 +425,7 @@ test("50% 시청은 완료 버튼으로 우회하지 못하고 80% 구간에서�
     );
     expect(response.status()).toBe(200);
   }
-  await openAuthenticated(page);
+  await openAuthenticated(page, workoutHref(workout));
   const currentRoutine = parseRoutine(
     await (
       await page.request.get(

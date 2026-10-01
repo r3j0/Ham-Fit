@@ -97,7 +97,7 @@ test("티셔츠 선택은 자세 변경에도 유지되고 미지원 코디의 �
   expect(state.puts).toBe(1);
   state.owned = state.owned.filter((id) => id !== "clothing.mint-shirt");
   await page.goto("/shop");
-  await page.getByRole("button", { name: "의상 없이 미리 보기" }).click();
+  await page.getByRole("button", { name: "초기화" }).click();
   await page.getByRole("button", { name: "자세", exact: true }).click();
   await page.getByRole("button", { name: /달리기.*보유 중/ }).click();
   await page.getByRole("button", { name: "상의", exact: true }).click();

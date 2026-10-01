@@ -28,6 +28,19 @@ export function nextRoutineHref(routine: WorkoutRoutine) {
     ? `/workout-routines/${routine.id}/items/${next.id}`
     : `/workout-routines/${routine.id}/complete`;
 }
+/** Advance in video order; an incomplete last item returns to the reviewable list. */
+export function afterRoutineItemHref(routine: WorkoutRoutine, itemId: string) {
+  const items = [...routine.routine].sort((a, b) => a.order - b.order);
+  const current = items.findIndex((item) => item.id === itemId);
+  if (current < 0) return "/workout";
+  const next = items
+    .slice(current + 1)
+    .find((item) => item.status !== "completed");
+  if (next) return `/workout-routines/${routine.id}/items/${next.id}`;
+  return items.every((item) => item.status === "completed")
+    ? `/workout-routines/${routine.id}/complete`
+    : "/workout";
+}
 export interface PracticeState {
   phase: "ready" | "work" | "rest" | "done";
   set: number;

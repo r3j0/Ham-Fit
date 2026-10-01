@@ -3,6 +3,7 @@ import Link from "next/link";
 import { assessmentHref } from "@/lib/workout-mode";
 import { TodayWorkout } from "./today-workout";
 import { WorkoutCalendar } from "./workout-calendar";
+import { WorkoutHistoryMascot } from "./workout-history-mascot";
 import { Header, Notice, Shell } from "./ui";
 import styles from "./workout-overview.module.css";
 
@@ -26,13 +27,16 @@ export function WorkoutOverview({
         </div>
       ) : (
         <div className={`content ${styles.overview}`}>
+          <WorkoutHistoryMascot />
           <section
             className={styles.assignment}
             aria-labelledby="today-workout-title"
           >
             <TodayWorkout embedded showAll />
           </section>
-          <WorkoutCalendar />
+          <div className={styles.history}>
+            <WorkoutCalendar />
+          </div>
         </div>
       )}
     </Shell>

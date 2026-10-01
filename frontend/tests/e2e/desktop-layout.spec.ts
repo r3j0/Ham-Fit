@@ -1,4 +1,7 @@
-import { setMeasurementAge } from "./measurement-age-helpers";
+import {
+  setMeasurementAge,
+  expectMeasurementAge,
+} from "./measurement-age-helpers";
 import { test, expect, type Page } from "@playwright/test";
 import {
   installApi,
@@ -98,8 +101,17 @@ test("메인의 알림은 전체 콘텐츠 우측 상단에 두고 미등록 안
         };
       });
       const bellBox = (await bell.boundingBox())!;
-      expect(bellBox.x + bellBox.width).toBeCloseTo(content.right, 1);
-      expect(bellBox.y).toBeCloseTo(content.top, 1);
+      const balanceBox = (await page
+        .getByRole("group", { name: "보유 재화" })
+        .boundingBox())!;
+      expect(balanceBox.x + balanceBox.width).toBeCloseTo(content.right, 1);
+      expect(bellBox.x + bellBox.width).toBeLessThanOrEqual(balanceBox.x);
+      const toolbarBox = (await page.locator(".home-toolbar").boundingBox())!;
+      expect(toolbarBox.y).toBeCloseTo(content.top, 1);
+      expect(bellBox.y + bellBox.height / 2).toBeCloseTo(
+        toolbarBox.y + toolbarBox.height / 2,
+        1,
+      );
       const left = (await companions.boundingBox())!,
         right = (await activity.boundingBox())!;
       if (onboarded) {
@@ -313,14 +325,13 @@ test("데스크톱 사진 입력은 결과표와 패널이 겹치지 않고 닫�
   const fields = (await panel.boundingBox())!;
   expect(canvas.x + canvas.width).toBeLessThanOrEqual(fields.x);
   expect(fields.y + fields.height).toBeLessThanOrEqual(900);
+  await page.getByLabel("측정일", { exact: true }).fill("2026-09-01");
   await setMeasurementAge(page, "25");
   await page.getByRole("button", { name: "입력 패널 닫기" }).click();
   expect((await photo.boundingBox())!.width).toBeGreaterThan(canvas.width);
   await page.getByRole("button", { name: "사진 확대", exact: true }).click();
   await page.getByRole("button", { name: "입력 패널 열기" }).click();
-  await expect(
-    page.getByLabel("측정 당시 만 나이", { exact: true }),
-  ).toHaveValue("25");
+  await expectMeasurementAge(page, "25");
   await noOverflow(page);
   await page.screenshot({
     path: info.outputPath("photo-workspace-desktop.png"),

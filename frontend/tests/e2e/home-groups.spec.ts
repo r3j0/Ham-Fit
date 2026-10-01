@@ -134,7 +134,7 @@ test("빈 그룹·한 그룹·삭제·조회 실패를 구분하고 실패를 �
   await installApi(page);
   await page.goto("/");
   const region = page.getByRole("region", { name: "내 그룹의 햄스터" });
-  await expect(region.getByText("아직 가입한 그룹이 없어요.")).toBeVisible();
+  await expect(region).toHaveCount(0);
   await expect(
     page.getByRole("link", { name: "그룹 만들기·가입하기" }),
   ).toHaveCount(0);
@@ -175,7 +175,7 @@ test("빈 그룹·한 그룹·삭제·조회 실패를 구분하고 실패를 �
   await expect(region.getByText("아직 가입한 그룹이 없어요.")).toHaveCount(0);
   await installHomeGroups(page, []);
   await region.getByRole("button", { name: "내 그룹 다시 불러오기" }).click();
-  await expect(region.getByText("아직 가입한 그룹이 없어요.")).toBeVisible();
+  await expect(region).toHaveCount(0);
 });
 
 test("빠른 그룹 전환에서 늦게 도착한 이전 응답을 현재 그룹에 표시하지 않는다", async ({

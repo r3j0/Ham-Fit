@@ -1,0 +1,55 @@
+.heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+.title {
+  color: var(--navy);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.title svg {
+  flex: none;
+}
+.title h2 {
+  color: inherit;
+  font-size: clamp(16px, 2vw, 22px);
+  white-space: nowrap;
+}
+.badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  background: var(--canvas);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+@media (max-width: 359px) {
+  .title {
+    gap: 4px;
+  }
+  .title svg {
+    width: 18px;
+  }
+  .badges {
+    gap: 4px;
+  }
+  .badge {
+    gap: 4px;
+    padding: 6px 8px;
+    font-size: 12px;
+  }
+}

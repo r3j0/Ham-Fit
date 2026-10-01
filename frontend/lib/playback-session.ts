@@ -35,6 +35,29 @@ export function samplePlayback(
   }
   return { positionSeconds, intervals };
 }
+/** Decide whether a stop needs confirmation; only the server finalizes completion. */
+export function hasWatchedEnough(workout: Workout, sample: PlaybackSample) {
+  const duration = workout.progress.durationSeconds;
+  const intervals = [...workout.progress.intervals, ...sample.intervals]
+    .map(({ start, end }) => ({ start, end: Math.min(end, duration) }))
+    .filter(({ start, end }) => end > start)
+    .sort((a, b) => a.start - b.start);
+  let watched = 0,
+    end = 0,
+    correction = 0;
+  for (const interval of intervals) {
+    const length =
+      Math.max(0, interval.end - Math.max(end, interval.start)) - correction;
+    const next = watched + length;
+    correction = next - watched - length;
+    watched = next;
+    end = Math.max(end, interval.end);
+  }
+  const threshold = duration * 0.8;
+  return (
+    watched >= threshold - 8 * Number.EPSILON * Math.max(watched, threshold)
+  );
+}
 interface PlaybackSnapshot {
   workout: Workout;
   pending: number;
@@ -302,6 +325,11 @@ export function createPlaybackSession(options: {
       if (
         type !== "start" &&
         state.workout.status !== "in_progress" &&
+        !(
+          state.workout.routine &&
+          ["pause", "end", "complete"].includes(type) &&
+          ["interrupted", "not_performed"].includes(state.workout.status)
+        ) &&
         !starting
       )
         return;

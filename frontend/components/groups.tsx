@@ -20,7 +20,7 @@ import { useSession } from "./session-provider";
 import { useOperationScope } from "./use-operation-scope";
 import { useApiResource } from "./use-api-resource";
 import { Header, Loading, Notice, Shell } from "./ui";
-import { MascotPose } from "./mascot/MascotPose";
+import { MemberMascot } from "./member-mascot";
 import styles from "./groups.module.css";
 
 export function GroupFields({
@@ -265,12 +265,7 @@ export function Groups() {
       <Header title="내 그룹" back="/" />
       <div className="content stack">
         <div className={styles.mascotStage}>
-          <MascotPose
-            pose="phone"
-            variant="cream"
-            size={115.2}
-            label="핸드폰을 보는 햄돌이"
-          />
+          <MemberMascot pose="phone" size={161.28} />
         </div>
         {resource.error !== undefined ? (
           <>

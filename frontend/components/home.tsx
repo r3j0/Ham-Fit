@@ -5,7 +5,7 @@ import { NotificationBell } from "./notification-bell";
 import { SeedBalance } from "./seed-balance";
 import { MyCharacter } from "./my-character";
 import { RewardLinks } from "./personal-roulette";
-import { ArrowRight, ClipboardList } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Loading, Notice, Shell } from "./ui";
 import { TodayWorkout } from "./today-workout";
 import { WorkoutStreak } from "./workout-streak";
@@ -71,10 +71,6 @@ export function Home() {
               }
             >
               <section className="stack" aria-labelledby="today-title">
-                <div className="section-heading">
-                  <ClipboardList size={22} />
-                  <h2 id="today-title">오늘의 운동</h2>
-                </div>
                 <TodayWorkout embedded />
               </section>
               <WorkoutStreak />

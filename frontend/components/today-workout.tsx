@@ -1,5 +1,7 @@
 "use client";
 import Link from "next/link";
+import { ClipboardList, Clock3 } from "lucide-react";
+import styles from "./today-workout.module.css";
 import { useEffect, useRef, useState } from "react";
 import { ApiError } from "@/lib/http";
 import { getCurrentRoutine, requestTodayRoutine } from "@/lib/workout-routines";
@@ -160,17 +162,40 @@ export function TodayWorkout({
     today,
   );
   const step = currentWorkoutStep(todayItems);
-  const summary = todayRoutine
-    ? `영상 운동 예상 ${todayRoutine.estimatedMinutes}분 · ${todayRoutine.progress.completedItems}/${todayRoutine.progress.totalItems}개 완료`
-    : null;
   const content = (
     <div className={embedded ? "stack" : "content stack"}>
-      {showAll && (
-        <div className="between">
-          <h2 id="today-workout-title">오늘의 운동</h2>
-          {summary && <span className="caption">{summary}</span>}
+      <div className={styles.heading}>
+        <div className={styles.title}>
+          {!showAll && <ClipboardList size={22} aria-hidden="true" />}
+          <h2 id={showAll ? "today-workout-title" : "today-title"}>
+            오늘의 운동
+          </h2>
         </div>
-      )}
+        {todayRoutine && (
+          <div
+            className={styles.badges}
+            role="group"
+            aria-label="오늘의 운동 요약"
+          >
+            <span
+              className={styles.badge}
+              aria-label={`예상 운동 시간 ${todayRoutine.estimatedMinutes}분`}
+            >
+              <Clock3 size={18} aria-hidden="true" />
+              <strong>{todayRoutine.estimatedMinutes}분</strong>
+            </span>
+            <span
+              className={styles.badge}
+              aria-label={`완료한 운동 ${todayRoutine.progress.completedItems}/${todayRoutine.progress.totalItems}`}
+            >
+              <strong>
+                {todayRoutine.progress.completedItems}/
+                {todayRoutine.progress.totalItems}
+              </strong>
+            </span>
+          </div>
+        )}
+      </div>
       {!loaded && !history.ready ? (
         <>
           <Loading />
@@ -183,12 +208,14 @@ export function TodayWorkout({
           {error !== undefined && <WorkoutError error={error} />}
           {todayItems.length ? (
             <>
-              {!showAll && summary && <p className="caption">{summary}</p>}
               {(showAll || step.workout) && (
                 <AssignedWorkoutList
                   workouts={showAll ? todayItems : [step.workout!]}
                   started={step.started}
                   activeId={showAll ? step.workout?.id : undefined}
+                  cardioRecommendation={
+                    showAll ? todayRoutine?.cardioRecommendation : null
+                  }
                 />
               )}
               {!step.workout && (
@@ -203,18 +230,6 @@ export function TodayWorkout({
                     </Link>
                   )}
                 </>
-              )}
-              {todayRoutine?.cardioRecommendation && (
-                <section
-                  className="feature-card stack-sm"
-                  aria-label="유산소 운동 안내"
-                >
-                  <h3>마무리 유산소</h3>
-                  <p>
-                    {todayRoutine.cardioRecommendation.activity}{" "}
-                    {todayRoutine.cardioRecommendation.minutes}분
-                  </p>
-                </section>
               )}
             </>
           ) : (

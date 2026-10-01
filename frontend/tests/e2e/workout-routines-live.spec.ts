@@ -106,9 +106,7 @@ test("실제 추천 엔진: 준비 조건, 오늘 루틴 생성, 중복 방지�
       guidance.locator("button, input, video, progress"),
     ).toHaveCount(0);
     await expect(
-      page.getByText(`영상 운동 예상 ${routine.estimatedMinutes}분`, {
-        exact: false,
-      }),
+      page.getByLabel(`예상 운동 시간 ${routine.estimatedMinutes}분`),
     ).toBeVisible();
     await expect(
       page.getByRole("list", { name: "오늘 배정된 운동" }).getByRole("heading"),
@@ -189,11 +187,9 @@ test("실제 추천 엔진: 준비 조건, 오늘 루틴 생성, 중복 방지�
     await page.goto(
       `/workout-routines/${routine.id}/items/${routine.routine[0].id}`,
     );
-    await expect(
-      page
-        .getByText(routine.routine[0].prescription.text, { exact: false })
-        .first(),
-    ).toBeVisible();
+    await expect(page.getByRole("region", { name: "운동 방법" })).toContainText(
+      `${routine.routine[0].prescription.value}${routine.routine[0].prescription.unit}`,
+    );
 
     // Explicit played-range fixtures verify server aggregation, not external media playback.
     const firstItem = routine.routine[0],
@@ -237,8 +233,41 @@ test("실제 추천 엔진: 준비 조건, 오늘 루틴 생성, 중복 방지�
       longestStreak: 0,
       totalWorkoutDays: 0,
     });
-    let final = unchanged;
-    for (const item of routine.routine) {
+    // The real server finalizes pause at 80%. FE must keep confirmation/cancel nonterminal.
+    await send(firstItem.id, "start");
+    const awaitingConfirmation = await send(
+      firstItem.id,
+      "progress",
+      firstItem.progress.durationSeconds * 0.8,
+    );
+    expect(awaitingConfirmation.routine[0].status).toBe("in_progress");
+    const current = `/workout-routines/${routine.id}/items/${firstItem.id}`;
+    await page.goto(current);
+    await page
+      .getByRole("button", { name: "여기서 종료", exact: true })
+      .click();
+    const confirmation = page.getByRole("dialog", {
+      name: "운동 방법대로 운동했나요?",
+    });
+    await expect(confirmation).toContainText(
+      "운동 방법대로 운동하고 완료하세요.",
+    );
+    await confirmation
+      .getByRole("button", { name: "취소", exact: true })
+      .click();
+    await page.reload();
+    await expect(page).toHaveURL(current);
+    await page
+      .getByRole("button", { name: "여기서 종료", exact: true })
+      .click();
+    await confirmation
+      .getByRole("button", { name: "완료 처리", exact: true })
+      .click();
+    await expect(page).toHaveURL(
+      `/workout-routines/${routine.id}/items/${routine.routine[1].id}`,
+    );
+    let final = awaitingConfirmation;
+    for (const item of routine.routine.slice(1)) {
       await send(item.id, "start");
       final = await send(
         item.id,
@@ -257,12 +286,15 @@ test("실제 추천 엔진: 준비 조건, 오늘 루틴 생성, 중복 방지�
       totalWorkoutDays: 1,
     });
     await page.goto("/account");
-    const metrics = page
-      .getByRole("region", { name: "활동 리포트" })
-      .locator("dd");
-    await expect(metrics.nth(0)).toHaveText("1일");
-    await expect(metrics.nth(1)).toHaveText("1일");
-    await expect(metrics.nth(4)).toHaveText("1일");
+    const metrics = page.getByRole("region", { name: "활동 리포트" });
+    for (const label of [
+      "현재 연속 스트릭",
+      "최장 연속 스트릭",
+      "총 운동 일수",
+    ])
+      await expect(
+        metrics.getByText(label, { exact: true }).locator("..").locator("dd"),
+      ).toHaveText("1일");
     await page.goto("/workout");
     await expect(
       page.getByText("오늘의 모든 운동을 완료했어요."),
