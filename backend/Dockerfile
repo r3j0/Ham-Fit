@@ -35,3 +35,12 @@ USER node
 RUN node scripts/verify-deployment.mjs
 EXPOSE 10000
 CMD ["node", "scripts/start-render.mjs"]
+
+# Verify the real Python recommendation in an intermediate stage. The fixture
+# stays out of the final image and its output never reaches application data.
+FROM runtime AS recommendation-check
+COPY backend/test/fixtures/deployment-routine.json /tmp/deployment-routine.json
+RUN node scripts/verify-deployment.mjs --routine-input /tmp/deployment-routine.json > /tmp/recommendation-verification.json
+
+FROM runtime AS deployment
+COPY --from=recommendation-check /tmp/recommendation-verification.json ./deploy/recommendation-verification.json
