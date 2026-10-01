@@ -1,10 +1,26 @@
 import type { Page } from "@playwright/test";
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { DEFAULT_ITEMS } from "../../components/hamster/items";
+import type { ItemCatalog } from "../../components/hamster/types";
 import type { AvatarOutfit } from "../../lib/avatar-outfit";
 import type { Product } from "../../lib/shop-contract";
 import { installApi, testOutfit, testRecord } from "./integration-fixtures";
 export const rewardId = (n: number) =>
   `30000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 export const rewardDate = "2026-10-01T00:00:00.000Z";
+const renderCatalog: ItemCatalog = structuredClone(DEFAULT_ITEMS);
+const assetBodies = new Map<string, Buffer>();
+export const shirtAssets: Record<string, string> = {};
+for (const variant of ["cream", "gray"] as const) {
+  const layer = renderCatalog["mint-shirt"].poses.basic![variant]!.layers[0];
+  const body = readFileSync(resolve(__dirname, `../../public${layer.src}`));
+  const path = `/api/v1/avatar/assets/${createHash("sha256").update(body).digest("hex")}.png`;
+  layer.src = path;
+  shirtAssets[variant] = path;
+  assetBodies.set(path, body);
+}
 export const products: Product[] = [
   ...["cream", "gray"].map((v) => ({
     id: `character.${v}`,
@@ -84,6 +100,10 @@ export async function installCommerce(page: Page, allOwned = false) {
   await page.route("**/api/v1/**", async (route) => {
     const req = route.request(),
       path = new URL(req.url()).pathname.replace("/api/v1", "");
+    if (path === "/avatar/render-catalog")
+      return route.fulfill({ json: { revision: 1, catalog: renderCatalog } });
+    const asset = assetBodies.get(new URL(req.url()).pathname);
+    if (asset) return route.fulfill({ contentType: "image/png", body: asset });
     if (path === "/shop/products")
       return route.fulfill({ json: { products, combinations } });
     if (path === "/users/me/avatar/inventory")

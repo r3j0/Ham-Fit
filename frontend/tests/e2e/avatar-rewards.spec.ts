@@ -4,6 +4,7 @@ import {
   rewardId as id,
   rewardDate as date,
   products as originalProducts,
+  shirtAssets,
 } from "./avatar-rewards-fixtures";
 import { installApi, testUser, testRecord } from "./integration-fixtures";
 import { routineFixture } from "../fixtures/routine";
@@ -263,14 +264,14 @@ test("민트 티셔츠 합성, 햄돌이·햄콩이 전환, 412 충돌과 작은
   await expect(layers).toHaveCount(2);
   await expect(layers.nth(1)).toHaveAttribute(
     "href",
-    "/hamsters/wardrobe/set-001/top/basic-cream.png",
+    new RegExp(`${shirtAssets.cream}$`),
   );
   await page.emulateMedia({ reducedMotion: "reduce" });
   for (const variant of ["햄돌이", "햄콩이"]) {
     await page.getByRole("button", { name: variant, exact: true }).click();
     await expect(layers.nth(1)).toHaveAttribute(
       "href",
-      `/hamsters/wardrobe/set-001/top/basic-${variant === "햄돌이" ? "cream" : "gray"}.png`,
+      new RegExp(`${shirtAssets[variant === "햄돌이" ? "cream" : "gray"]}$`),
     );
     for (const width of [320, 390, 1280]) {
       await page.setViewportSize({ width, height: 900 });

@@ -214,6 +214,8 @@ export async function installApi(
         currency: { balance: 0 },
         currentCurriculum: assignment,
       });
+    if (path === "/avatar/render-catalog")
+      return send({ revision: 0, catalog: {} });
     if (path === "/users/me/profile") {
       if (method === "PATCH") nickname = request.postDataJSON().nickname;
       return send({ dateOfBirth: "2001-01-01", currentAge: 25, nickname });
