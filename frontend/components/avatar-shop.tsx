@@ -190,7 +190,10 @@ function ShopView({
       </div>
       <div className={styles.layout}>
         <div className={styles.preview}>
-          <section className="shop-stage" aria-label="코디 미리보기">
+          <section
+            className={`shop-stage ${styles.stage} ${draft.clothingIds.length ? styles.dressed : ""}`}
+            aria-label="코디 미리보기"
+          >
             {preview ? (
               <ProfileCharacter
                 outfit={preview}
@@ -231,14 +234,34 @@ function ShopView({
                   ))}
               </div>
             )}
+            {!!draft.clothingIds.length && (
+              <button
+                className={`text-button ${styles.reset}`}
+                disabled={busy}
+                onClick={() => setDraft({ ...draft, clothingIds: [] })}
+              >
+                초기화
+              </button>
+            )}
           </section>
-          {!wardrobe && !!draft.clothingIds.length && (
+          {!wardrobe && selected && !owned.has(selected.id) && (
             <button
-              className="text-button"
-              disabled={busy}
-              onClick={() => setDraft({ ...draft, clothingIds: [] })}
+              className="button primary"
+              disabled={
+                busy ||
+                !!purchaseMutation.pending ||
+                selected.saleStatus !== "on_sale" ||
+                selected.priceProvisional ||
+                !preview ||
+                (selected.price ?? Infinity) > inventory.currency.balance
+              }
+              onClick={() => setConfirm(true)}
             >
-              의상 없이 미리 보기
+              {selected.priceProvisional
+                ? "가격 확정 후 구매할 수 있어요"
+                : (selected.price ?? Infinity) > inventory.currency.balance
+                  ? "해바라기씨가 부족해요"
+                  : `${productName(selected)} 구매하기 · ${selected.price}개`}
             </button>
           )}
           {error && <Notice>{error}</Notice>}
@@ -279,7 +302,7 @@ function ShopView({
                     setMessage("");
                   }}
                 >
-                  저장된 코디로 되돌리기
+                  되돌리기
                 </button>
                 <button
                   className="button primary"
@@ -295,15 +318,6 @@ function ShopView({
                   <SubmitLabel busy={saving}>코디 저장</SubmitLabel>
                 </button>
               </div>
-              {!!draft.clothingIds.length && (
-                <button
-                  className="text-link"
-                  disabled={busy}
-                  onClick={() => setDraft({ ...draft, clothingIds: [] })}
-                >
-                  의상 모두 벗기
-                </button>
-              )}
             </div>
           )}
         </div>
@@ -386,26 +400,6 @@ function ShopView({
               );
             })}
           </div>
-          {!wardrobe && selected && !owned.has(selected.id) && (
-            <button
-              className="button primary"
-              disabled={
-                busy ||
-                !!purchaseMutation.pending ||
-                selected.saleStatus !== "on_sale" ||
-                selected.priceProvisional ||
-                !preview ||
-                (selected.price ?? Infinity) > inventory.currency.balance
-              }
-              onClick={() => setConfirm(true)}
-            >
-              {selected.priceProvisional
-                ? "가격 확정 후 구매할 수 있어요"
-                : (selected.price ?? Infinity) > inventory.currency.balance
-                  ? "해바라기씨가 부족해요"
-                  : `${productName(selected)} 구매하기 · ${selected.price}개`}
-            </button>
-          )}
         </div>
       </div>
       {confirm && selected && (

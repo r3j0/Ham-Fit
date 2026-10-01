@@ -292,7 +292,7 @@ test("민트 티셔츠 합성, 햄돌이·햄콩이 전환, 412 충돌과 작은
   await expect(
     page.getByRole("button", { name: "코디 저장", exact: true }),
   ).toBeDisabled();
-  await page.getByRole("button", { name: "저장된 코디로 되돌리기" }).click();
+  await page.getByRole("button", { name: "되돌리기" }).click();
   expect(state.outfit.clothingIds).toEqual([]);
 });
 test("그룹 미션은 시작 인원과 참여 자격을 표시하고 룰렛 응답 유실을 복구한다", async ({
