@@ -293,7 +293,7 @@ describe('Authenticated measurement CRUD against PostgreSQL', () => {
     const record = created.body as RecordBody;
     expect(created.headers.etag).toBe('"1"');
     expect(created.headers.location).toBe(`/api/v1/measurements/${record.id}`);
-    expect(created.headers['cache-control']).toBe('no-store');
+    expect(created.headers['cache-control']).toBe('no-store, no-transform');
     expect(record.items).toEqual([
       {
         measurementCode: 'sit_and_reach',
@@ -1095,6 +1095,46 @@ describe('Authenticated measurement CRUD against PostgreSQL', () => {
     expect(preflight.headers['access-control-allow-headers']).toContain(
       'If-Match',
     );
+  });
+
+  it('protects strong revision ETags from intermediary transformation on create, replay, read and update', async () => {
+    const key = randomUUID();
+    const body = payload();
+    const created = await create(body, key)
+      .set('Origin', 'http://localhost:3000')
+      .set('Accept-Encoding', 'gzip, br')
+      .expect(201);
+    const id = (created.body as RecordBody).id;
+    const replay = await create(body, key)
+      .set('Origin', 'http://localhost:3000')
+      .set('Accept-Encoding', 'gzip, br')
+      .expect(200);
+    const fetched = await get(id)
+      .set('Origin', 'http://localhost:3000')
+      .set('Accept-Encoding', 'gzip, br')
+      .expect(200);
+    const updated = await patch(id, { centerName: 'Updated center' })
+      .set('Origin', 'http://localhost:3000')
+      .set('Accept-Encoding', 'gzip, br')
+      .expect(200);
+    for (const [response, revision] of [
+      [created, 1],
+      [replay, 1],
+      [fetched, 1],
+      [updated, 2],
+    ] as const) {
+      expect(response.headers.etag).toBe(`"${revision}"`);
+      expect((response.body as RecordBody).revision).toBe(revision);
+      expect(response.headers['cache-control']).toBe('no-store, no-transform');
+      expect(response.headers['content-encoding']).toBe('identity');
+      expect(response.headers['access-control-expose-headers']).toContain(
+        'ETag',
+      );
+    }
+    await patch(id, { centerName: 'Stale update' }, 1).expect(412);
+    await patch(id, { centerName: 'Weak validator' })
+      .set('If-Match', 'W/"2"')
+      .expect(400);
   });
 
   it('uses live authentication state instead of accepting a revoked Bearer token', async () => {
