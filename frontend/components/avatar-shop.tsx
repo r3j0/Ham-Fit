@@ -197,35 +197,37 @@ function ShopView({
         ) : (
           <p>이 코디의 이미지는 준비 중이에요.</p>
         )}
-        <div
-          className="shop-character-choices"
-          role="group"
-          aria-label="캐릭터 선택"
-        >
-          {catalog.products
-            .filter(
-              (p) =>
-                p.kind === "character" &&
-                owned.has(p.id) &&
-                ["cream", "gray"].includes(p.renderKey),
-            )
-            .map((p) => (
-              <button
-                type="button"
-                key={p.id}
-                aria-label={productName(p)}
-                title={productName(p)}
-                aria-pressed={draft.characterId === p.id}
-                disabled={busy}
-                onClick={() => {
-                  setDraft(selectProduct(draft, p, catalog));
-                  setMessage("");
-                }}
-              >
-                <HamsterFace variant={p.renderKey as "cream" | "gray"} />
-              </button>
-            ))}
-        </div>
+        {wardrobe && (
+          <div
+            className="shop-character-choices"
+            role="group"
+            aria-label="캐릭터 선택"
+          >
+            {catalog.products
+              .filter(
+                (p) =>
+                  p.kind === "character" &&
+                  owned.has(p.id) &&
+                  ["cream", "gray"].includes(p.renderKey),
+              )
+              .map((p) => (
+                <button
+                  type="button"
+                  key={p.id}
+                  aria-label={productName(p)}
+                  title={productName(p)}
+                  aria-pressed={draft.characterId === p.id}
+                  disabled={busy}
+                  onClick={() => {
+                    setDraft(selectProduct(draft, p, catalog));
+                    setMessage("");
+                  }}
+                >
+                  <HamsterFace variant={p.renderKey as "cream" | "gray"} />
+                </button>
+              ))}
+          </div>
+        )}
       </section>
       {!wardrobe && !!draft.clothingIds.length && (
         <button

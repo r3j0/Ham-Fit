@@ -3,9 +3,129 @@ import {
   installCommerce,
   rewardId as id,
   rewardDate as date,
+  products as originalProducts,
 } from "./avatar-rewards-fixtures";
 import { installApi, testUser, testRecord } from "./integration-fixtures";
 import { routineFixture } from "../fixtures/routine";
+import type { Product } from "../../lib/shop-contract";
+
+test("상점·옷장의 모든 아이템 종류를 작은 화면에서도 4열로 표시한다", async ({
+  page,
+}, info) => {
+  const state = await installCommerce(page);
+  const poses = [
+    "basic",
+    "cant-hear",
+    "curious",
+    "drink",
+    "droopy",
+    "foam-roller",
+    "lying",
+    "run",
+  ];
+  const products: Product[] = [
+    ...originalProducts.filter((p) => p.kind === "character"),
+    ...poses.map((renderKey, index) => ({
+      ...originalProducts.find(
+        (p) => p.kind === "pose" && p.renderKey === "basic",
+      )!,
+      id: `pose.${renderKey}`,
+      renderKey,
+      saleStatus: index ? ("on_sale" as const) : ("default" as const),
+      price: index ? 70 : null,
+      priceProvisional: index > 3,
+    })),
+    ...(["hat", "top", "bottom"] as const).flatMap((slot) =>
+      Array.from({ length: 8 }, (_, i) => ({
+        ...originalProducts.find((p) => p.kind === "clothing")!,
+        id: `clothing.${slot}.${i}`,
+        slot,
+        occupiesSlots: [slot],
+        renderKey: slot === "top" ? "mint-shirt" : `${slot}-${i}`,
+        price: slot === "hat" ? 30 : slot === "top" ? 25 : 20,
+        priceProvisional: i > 3,
+      })),
+    ),
+  ];
+  await page.route("**/api/v1/shop/products", (route) =>
+    route.fulfill({
+      json: {
+        products,
+        combinations: ["cream", "gray"].flatMap((v) =>
+          poses.map((pose) => ({
+            characterId: `character.${v}`,
+            poseId: `pose.${pose}`,
+            clothingIds: [],
+          })),
+        ),
+      },
+    }),
+  );
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  for (const route of ["/shop", "/shop/wardrobe"]) {
+    if (route === "/shop/wardrobe")
+      state.owned.push(
+        ...products.map((p) => p.id).filter((id) => !state.owned.includes(id)),
+      );
+    await page.goto(route);
+    for (const width of [320, 600, 1280]) {
+      await page.setViewportSize({ width, height: 900 });
+      for (const category of ["모자", "상의", "하의", "자세"]) {
+        await page.getByRole("button", { name: category, exact: true }).click();
+        const grid = page.locator(".shop-grid");
+        await expect(grid.locator(".shop-item")).toHaveCount(8);
+        const boxes = await grid.locator(".shop-item").evaluateAll((nodes) =>
+          nodes.map((n) => {
+            const r = n.getBoundingClientRect();
+            return { x: r.x, y: r.y, width: r.width, right: r.right };
+          }),
+        );
+        for (let i = 0; i < 4; i++) {
+          expect(boxes[i].y).toBeCloseTo(boxes[0].y, 1);
+          expect(boxes[i].width).toBeGreaterThanOrEqual(44);
+          if (i) expect(boxes[i].x).toBeGreaterThanOrEqual(boxes[i - 1].right);
+        }
+        expect(boxes[4].y).toBeGreaterThan(boxes[0].y);
+        expect(boxes[4].x).toBeCloseTo(boxes[0].x, 1);
+        const artwork = await grid
+          .locator(".shop-item-art .profile-character")
+          .evaluateAll((nodes) =>
+            nodes.map((node) => {
+              const image = node.getBoundingClientRect(),
+                frame = node.parentElement!.getBoundingClientRect();
+              return {
+                left: image.left,
+                right: image.right,
+                top: image.top,
+                bottom: image.bottom,
+                frameLeft: frame.left,
+                frameRight: frame.right,
+                frameTop: frame.top,
+                frameBottom: frame.bottom,
+              };
+            }),
+          );
+        for (const image of artwork) {
+          expect(image.left).toBeGreaterThanOrEqual(image.frameLeft - 1);
+          expect(image.right).toBeLessThanOrEqual(image.frameRight + 1);
+          expect(image.top).toBeGreaterThanOrEqual(image.frameTop - 1);
+          expect(image.bottom).toBeLessThanOrEqual(image.frameBottom + 1);
+        }
+        expect(
+          await page.evaluate(() => document.documentElement.scrollWidth),
+        ).toBeLessThanOrEqual(width);
+      }
+      await page.screenshot({
+        path: info.outputPath(
+          `${route === "/shop" ? "shop" : "wardrobe"}-four-columns-${width}.png`,
+        ),
+        fullPage: true,
+      });
+    }
+  }
+  expect(state.puts).toBe(0);
+  expect(state.purchases).toEqual([]);
+});
 
 test("구매 응답 유실을 같은 키로 복구하고 구매와 대표 코디 저장을 구분한다", async ({
   page,
@@ -57,19 +177,30 @@ test("구매 응답 유실을 같은 키로 복구하고 구매와 대표 코디
     page.getByRole("img", { name: "나의 대표 캐릭터", exact: true }),
   ).toHaveAttribute("data-pose", "curious");
 });
-test("상점과 옷장은 공통 재화 UI와 얼굴 버튼을 사용하고 명시적으로 저장한 선택만 유지한다", async ({
+test("상점은 캐릭터 전환을 숨기고 옷장에서만 얼굴 선택을 저장한다", async ({
   page,
 }, info) => {
   const state = await installCommerce(page);
   for (const route of ["/shop", "/shop/wardrobe"]) {
     await page.goto(route);
     const choices = page.getByRole("group", { name: "캐릭터 선택" });
+    if (route === "/shop") {
+      await expect(choices).toHaveCount(0);
+      await expect(
+        page.getByRole("img", { name: "내 캐릭터 미리보기" }),
+      ).toHaveAttribute("data-variant", "cream");
+      await expect(page.getByRole("group", { name: "보유 재화" })).toHaveText(
+        "100",
+      );
+      expect(state.puts).toBe(0);
+      continue;
+    }
     const cream = choices.getByRole("button", {
-      name: "크림 햄스터",
+      name: "햄돌이",
       exact: true,
     });
     const gray = choices.getByRole("button", {
-      name: "그레이 햄스터",
+      name: "햄콩이",
       exact: true,
     });
     await expect(choices.getByRole("button")).toHaveCount(2);
@@ -116,10 +247,10 @@ test("상점과 옷장은 공통 재화 UI와 얼굴 버튼을 사용하고 명�
   expect(state.outfit.characterId).toBe("character.gray");
   await page.reload();
   await expect(
-    page.getByRole("button", { name: "그레이 햄스터", exact: true }),
+    page.getByRole("button", { name: "햄콩이", exact: true }),
   ).toHaveAttribute("aria-pressed", "true");
 });
-test("민트 티셔츠 합성, 크림·그레이 전환, 412 충돌과 작은 화면을 검증한다", async ({
+test("민트 티셔츠 합성, 햄돌이·햄콩이 전환, 412 충돌과 작은 화면을 검증한다", async ({
   page,
 }, info) => {
   const state = await installCommerce(page, true);
@@ -135,13 +266,11 @@ test("민트 티셔츠 합성, 크림·그레이 전환, 412 충돌과 작은 �
     "/hamsters/wardrobe/set-001/top/basic-cream.png",
   );
   await page.emulateMedia({ reducedMotion: "reduce" });
-  for (const variant of ["크림", "그레이"]) {
-    await page
-      .getByRole("button", { name: `${variant} 햄스터`, exact: true })
-      .click();
+  for (const variant of ["햄돌이", "햄콩이"]) {
+    await page.getByRole("button", { name: variant, exact: true }).click();
     await expect(layers.nth(1)).toHaveAttribute(
       "href",
-      `/hamsters/wardrobe/set-001/top/basic-${variant === "크림" ? "cream" : "gray"}.png`,
+      `/hamsters/wardrobe/set-001/top/basic-${variant === "햄돌이" ? "cream" : "gray"}.png`,
     );
     for (const width of [320, 390, 1280]) {
       await page.setViewportSize({ width, height: 900 });
