@@ -32,6 +32,9 @@ test("구매 응답 유실을 같은 키로 복구하고 구매와 대표 코디
   expect(state.purchases[0]).toEqual(state.purchases[1]);
   expect(state.balance).toBe(50);
   await page.getByRole("link", { name: "내 옷장", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "내 옷장", exact: true }),
+  ).toBeVisible();
   await page.getByRole("button", { name: "자세", exact: true }).click();
   await page.getByRole("button", { name: /궁금.*보유 중/ }).click();
   await page.getByRole("button", { name: "코디 저장", exact: true }).click();
@@ -50,26 +53,30 @@ test("구매 응답 유실을 같은 키로 복구하고 구매와 대표 코디
     page.getByRole("img", { name: "나의 대표 캐릭터", exact: true }),
   ).toHaveAttribute("data-pose", "curious");
 });
-test("의상 3부위 합성, 크림·그레이 전환, 412 충돌과 작은 화면을 검증한다", async ({
+test("민트 티셔츠 합성, 크림·그레이 전환, 412 충돌과 작은 화면을 검증한다", async ({
   page,
 }, info) => {
   const state = await installCommerce(page, true);
   await page.goto("/shop/wardrobe");
-  await page.getByRole("button", { name: /헬멧.*보유 중/ }).click();
   await page.getByRole("button", { name: "상의", exact: true }).click();
-  await page.getByRole("button", { name: /노란 야구점퍼.*보유 중/ }).click();
-  await page.getByRole("button", { name: "하의", exact: true }).click();
-  await page.getByRole("button", { name: /하얀 테니스 치마.*보유 중/ }).click();
-  await expect(
-    page
-      .getByRole("img", { name: "내 캐릭터 미리보기" })
-      .locator(".wardrobe-layer"),
-  ).toHaveCount(3);
+  await page.getByRole("button", { name: /민트 티셔츠.*보유 중/ }).click();
+  const layers = page
+    .getByRole("img", { name: "내 캐릭터 미리보기" })
+    .locator("image");
+  await expect(layers).toHaveCount(2);
+  await expect(layers.nth(1)).toHaveAttribute(
+    "href",
+    "/hamsters/wardrobe/set-001/top/basic-cream.png",
+  );
   await page.emulateMedia({ reducedMotion: "reduce" });
   for (const variant of ["크림", "그레이"]) {
     await page
       .getByRole("button", { name: `${variant} 햄스터`, exact: true })
       .click();
+    await expect(layers.nth(1)).toHaveAttribute(
+      "href",
+      `/hamsters/wardrobe/set-001/top/basic-${variant === "크림" ? "cream" : "gray"}.png`,
+    );
     for (const width of [320, 390, 1280]) {
       await page.setViewportSize({ width, height: 900 });
       expect(

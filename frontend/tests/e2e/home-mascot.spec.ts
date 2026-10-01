@@ -33,10 +33,14 @@ test("메인은 중앙 캐릭터와 운동을 보여 주고 기록은 내 프로
   ).toHaveCount(0);
   await expect(mascot.locator("svg image")).toHaveAttribute(
     "href",
-    "/mascots/cream-belly.svg",
+    "/hamsters/base/basic-cream.webp",
   );
-  expect((await page.request.get("/mascots/cream-belly.svg")).ok()).toBe(true);
-  expect((await page.request.get("/mascots/gray-belly.svg")).ok()).toBe(true);
+  expect((await page.request.get("/hamsters/base/basic-cream.webp")).ok()).toBe(
+    true,
+  );
+  expect((await page.request.get("/hamsters/base/basic-gray.webp")).ok()).toBe(
+    true,
+  );
   const group = page.getByRole("region", { name: "내 그룹의 햄스터" });
   const companions = group.getByRole("img");
   await expect(group).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
@@ -120,7 +124,7 @@ test("메인은 중앙 캐릭터와 운동을 보여 주고 기록은 내 프로
   ).toBeVisible();
 });
 
-test("대기 호흡은 동작 줄이기와 숨겨진 탭을 따르고 페이지 이탈 시 해제한다", async ({
+test("새 출력기는 동작 줄이기 설정과 화면 이동에도 원본 자세를 유지한다", async ({
   page,
 }) => {
   const errors: string[] = [];
@@ -128,68 +132,20 @@ test("대기 호흡은 동작 줄이기와 숨겨진 탭을 따르고 페이지 
   await installApi(page);
   await installHomeGroups(page);
   await page.goto("/");
-  await expect(page.getByRole("img", { name: mascotName })).toBeVisible();
-  await expect(
-    page.getByRole("link", { name: "체력 기록 등록하기" }),
-  ).toHaveAttribute("href", "/onboarding");
-  const head = page
-    .getByRole("img", { name: mascotName, exact: true })
-    .locator('[data-part="head"]');
-  const groupImages = page
-    .getByRole("region", { name: "내 그룹의 햄스터" })
-    .locator("svg image");
-  await expect(groupImages).toHaveCount(3);
-  const stillPoses = await groupImages.evaluateAll((nodes) =>
-    nodes.map((node) => node.getAttribute("href")),
-  );
-  const pose = await head.getAttribute("transform");
-  await expect.poll(() => head.getAttribute("transform")).not.toBe(pose);
-  expect(
-    await groupImages.evaluateAll((nodes) =>
-      nodes.map((node) => node.getAttribute("href")),
-    ),
-  ).toEqual(stillPoses);
-  await page.emulateMedia({ reducedMotion: "reduce" });
-  await expect(head).toHaveAttribute(
-    "transform",
-    "translate(0.0000 0.0000) rotate(0.0000 400 610)",
-  );
-  await page.waitForTimeout(250);
-  await expect(head).toHaveAttribute(
-    "transform",
-    "translate(0.0000 0.0000) rotate(0.0000 400 610)",
-  );
-  await page.emulateMedia({ reducedMotion: "no-preference" });
-  await expect
-    .poll(() => head.getAttribute("transform"))
-    .not.toBe("translate(0.0000 0.0000) rotate(0.0000 400 610)");
-  await page.evaluate(() => {
-    Object.defineProperties(document, {
-      hidden: { configurable: true, value: true },
-      visibilityState: { configurable: true, value: "hidden" },
-    });
-    document.dispatchEvent(new Event("visibilitychange"));
-  });
-  const hiddenPose = await head.getAttribute("transform");
-  await page.waitForTimeout(250);
-  expect(hiddenPose).not.toBeNull();
-  expect(await head.getAttribute("transform")).toBe(hiddenPose);
-  await page.evaluate(() => {
-    delete (document as unknown as { hidden?: boolean }).hidden;
-    delete (document as unknown as { visibilityState?: string })
-      .visibilityState;
-    document.dispatchEvent(new Event("visibilitychange"));
-  });
-  await expect(head).toHaveAttribute("transform", /translate/);
-  await expect.poll(() => head.getAttribute("transform")).not.toBe(hiddenPose);
-  const detachedHead = await head.elementHandle();
+  const mascot = page.getByRole("img", { name: mascotName, exact: true });
+  await expect(mascot).toBeVisible();
+  for (const reducedMotion of ["reduce", "no-preference"] as const) {
+    await page.emulateMedia({ reducedMotion });
+    await expect(mascot.locator("svg")).toHaveAttribute(
+      "viewBox",
+      "0 0 1000 1000",
+    );
+    await expect(mascot.locator('image[data-layer="base"]')).toHaveAttribute(
+      "href",
+      "/hamsters/base/basic-cream.webp",
+    );
+  }
   await page.getByRole("link", { name: "체력 기록 등록하기" }).click();
   await expect(page).toHaveURL("/onboarding");
-  const finalPose = await detachedHead!.getAttribute("transform");
-  await page.waitForTimeout(250);
-  expect(await detachedHead!.getAttribute("transform")).toBe(finalPose);
-  expect(await detachedHead!.evaluate((element) => element.isConnected)).toBe(
-    false,
-  );
   expect(errors).toEqual([]);
 });

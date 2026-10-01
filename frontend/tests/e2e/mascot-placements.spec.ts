@@ -41,10 +41,10 @@ for (const width of [320, 390, 1280]) {
     const characters = group.getByRole("img");
     await expect(characters).toHaveCount(4);
     const expected = [
-      ["cream", "victory", "green-sportswear"],
-      ["gray", "run", "white-sportswear"],
-      ["gray", "drink", "blue-sportswear"],
-      ["cream", "situp", "black-sportswear"],
+      ["cream", "victory", "none"],
+      ["gray", "run", "none"],
+      ["gray", "drink", "none"],
+      ["cream", "situp", "none"],
     ];
     for (const [index, [variant, pose, wear]] of expected.entries()) {
       await expect(characters.nth(index)).toHaveAttribute(

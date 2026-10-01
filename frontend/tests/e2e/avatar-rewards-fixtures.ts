@@ -32,25 +32,21 @@ export const products: Product[] = [
     priceProvisional: false,
     catalogRevision: 1,
   })),
-  ...(
-    [
-      ["helmet", "hat", "item-mumcdhbz", 30],
-      ["jacket", "top", "item-mumd1fjp", 25],
-      ["skirt", "bottom", "item-mumdmxtg", 20],
-    ] as const
-  ).map(([id, slot, renderKey, price]) => ({
-    id: `clothing.${id}`,
-    kind: "clothing" as const,
-    renderKey,
-    slot,
-    occupiesSlots: [slot],
-    ownershipScope: "shared" as const,
-    scopeCharacterId: null,
-    saleStatus: "on_sale" as const,
-    price,
-    priceProvisional: false,
-    catalogRevision: 1,
-  })),
+  ...([["mint-shirt", "top", "mint-shirt", 25]] as const).map(
+    ([id, slot, renderKey, price]) => ({
+      id: `clothing.${id}`,
+      kind: "clothing" as const,
+      renderKey,
+      slot,
+      occupiesSlots: [slot],
+      ownershipScope: "shared" as const,
+      scopeCharacterId: null,
+      saleStatus: "on_sale" as const,
+      price,
+      priceProvisional: false,
+      catalogRevision: 1,
+    }),
+  ),
 ];
 export async function installCommerce(page: Page, allOwned = false) {
   await installApi(page, testRecord());
@@ -75,7 +71,7 @@ export async function installCommerce(page: Page, allOwned = false) {
   });
   const combinations = ["cream", "gray"].flatMap((v) =>
     ["basic", "curious", "run"].flatMap((p) =>
-      Array.from({ length: 8 }, (_, mask) => ({
+      Array.from({ length: 2 }, (_, mask) => ({
         characterId: `character.${v}`,
         poseId: `pose.${p}`,
         clothingIds: products

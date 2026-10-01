@@ -1,24 +1,13 @@
 import { invalid, integer, object, timestamp, text } from "./api-contract.ts";
+import { POSES } from "../components/hamster/poses.ts";
 import type {
-  MascotPoseId,
-  MascotVariant,
-} from "../components/mascot/mascot-poses.js";
+  HamsterPose,
+  HamsterVariant,
+} from "../components/hamster/types.ts";
 
-export const avatarPoses = [
-  "basic",
-  "curious",
-  "a-plus",
-  "drink",
-  "lying",
-  "stretch",
-  "run",
-  "passion",
-  "victory",
-  "pushup",
-  "situp",
-  "droopy",
-  "cant-hear",
-];
+// Keep BE's legacy a-plus readable so its owner can change their saved outfit.
+// There is no v2 artwork for it; rendering support is checked separately.
+export const avatarPoses = [...Object.keys(POSES), "a-plus"];
 export interface AvatarOutfit {
   characterId: string;
   poseId: string;
@@ -26,8 +15,8 @@ export interface AvatarOutfit {
   revision: number;
   updatedAt: string;
   rendering: {
-    variant: MascotVariant;
-    pose: MascotPoseId;
+    variant: HamsterVariant;
+    pose: HamsterPose | "a-plus";
     clothing: AvatarClothing[];
   };
 }
@@ -53,7 +42,7 @@ export function parseAvatarClothing(value: unknown): AvatarClothing {
   return row as unknown as AvatarClothing;
 }
 
-/** Only render server identifiers supported by the current asset layer. */
+/** Validate the server contract; artwork support is checked separately. */
 export function parseAvatarOutfit(value: unknown): AvatarOutfit {
   const row = object(value),
     rendering = object(row.rendering);

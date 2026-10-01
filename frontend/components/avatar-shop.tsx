@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useRef, useState } from "react";
 import type { AvatarOutfit } from "@/lib/avatar-outfit";
+import { isExcludedSportswear } from "@/lib/avatar-rendering";
 import {
   getCatalog,
   getInventory,
@@ -117,6 +118,7 @@ function ShopView({
   useUnsaved((wardrobe && dirty) || busy);
   const products = catalog.products.filter(
     (p) =>
+      !isExcludedSportswear(p.renderKey) &&
       (category === "pose" ? p.kind === "pose" : p.slot === category) &&
       (wardrobe ? owned.has(p.id) : p.saleStatus !== "retired"),
   );

@@ -10,7 +10,7 @@ import {
   storedCatalogFixture,
 } from "../fixtures/measurement-evaluation";
 
-test("프로필은 재화·가입 경과일·활동 리포트와 얼굴 모션을 표시하고 기록 상세로 이어진다", async ({
+test("프로필은 재화·가입 경과일·활동 리포트와 대표 캐릭터를 표시하고 기록 상세로 이어진다", async ({
   page,
 }, info) => {
   const errors: string[] = [];
@@ -80,19 +80,14 @@ test("프로필은 재화·가입 경과일·활동 리포트와 얼굴 모션�
   ]);
   await expect(report.getByText(/EXP/)).toHaveCount(0);
   const avatar = page.getByRole("img", {
-    name: "편안하게 숨 쉬는 햄스터 얼굴",
+    name: "나의 대표 캐릭터",
   });
   await expect(avatar).toBeVisible();
-  const head = avatar.locator('[data-part="head"]');
-  await expect(head).toHaveAttribute("transform", /translate/);
-  const pose = await head.getAttribute("transform");
-  await expect.poll(() => head.getAttribute("transform")).not.toBe(pose);
-  await expect(avatar.locator('[data-part="torso"]')).toBeHidden();
-  await page.emulateMedia({ reducedMotion: "reduce" });
-  await expect(head).toHaveAttribute(
-    "transform",
-    "translate(0.0000 0.0000) rotate(0.0000 400 610)",
+  await expect(avatar.locator('image[data-layer="base"]')).toHaveAttribute(
+    "href",
+    "/hamsters/base/basic-cream.webp",
   );
+  await page.emulateMedia({ reducedMotion: "reduce" });
   await expect(
     page.getByRole("heading", { name: "나의 체력 프로필" }),
   ).toHaveCount(0);
@@ -196,7 +191,10 @@ test("프로필은 재화·가입 경과일·활동 리포트와 얼굴 모션�
   ).toHaveCount(6);
   await page.getByRole("link", { name: "메인", exact: true }).click();
   const fullBody = page.getByRole("img", { name: "나의 대표 캐릭터" });
-  await expect(fullBody.locator('[data-part="torso"]')).toBeVisible();
+  await expect(fullBody.locator('image[data-layer="base"]')).toHaveAttribute(
+    "href",
+    "/hamsters/base/basic-cream.webp",
+  );
   await expect(
     page.getByRole("navigation", { name: "하단 메뉴" }),
   ).not.toHaveClass(/kspo-orange-theme/);

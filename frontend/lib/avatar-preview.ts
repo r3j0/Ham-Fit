@@ -1,6 +1,7 @@
 import { avatarPoses, type AvatarOutfit } from "./avatar-outfit";
-import { clothingAsset, clothingPlacement } from "./wardrobe-assets";
-import { MASCOT_POSES } from "@/components/mascot/mascot-poses.js";
+import { canRenderAvatar, clothingAsset } from "./avatar-rendering.ts";
+import { POSES } from "../components/hamster/poses.ts";
+import type { HamsterPose } from "../components/hamster/types.ts";
 import type { Catalog, OutfitSelection, Product } from "./shop-contract";
 
 export function productName(product: Product) {
@@ -12,10 +13,11 @@ export function productName(product: Product) {
         : "새로운 햄스터";
   if (product.kind === "pose")
     return (
-      MASCOT_POSES.find((p) => p.id === product.renderKey)?.label ??
-      product.renderKey
+      (Object.hasOwn(POSES, product.renderKey)
+        ? POSES[product.renderKey as HamsterPose].label
+        : undefined) ?? product.renderKey
     );
-  return clothingAsset(product.renderKey)?.name ?? "새로운 의상";
+  return clothingAsset(product.renderKey)?.label ?? "새로운 의상";
 }
 export function previewOutfit(
   catalog: Catalog,
@@ -38,15 +40,11 @@ export function previewOutfit(
   );
   if (
     clothing.some(
-      (p) =>
-        !p ||
-        !p.slot ||
-        clothingAsset(p.renderKey)?.slot !== p.slot ||
-        !clothingPlacement(p.renderKey, pose.renderKey, character.renderKey),
+      (p) => !p || !p.slot || clothingAsset(p.renderKey)?.slot !== p.slot,
     )
   )
     return null;
-  return {
+  const preview: AvatarOutfit = {
     ...saved,
     ...selection,
     rendering: {
@@ -60,6 +58,7 @@ export function previewOutfit(
       })),
     },
   };
+  return canRenderAvatar(preview.rendering) ? preview : null;
 }
 export function selectProduct(
   selection: OutfitSelection,

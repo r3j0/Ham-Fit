@@ -20,7 +20,7 @@ test("unsupported assets, mismatched identifiers and incomplete outfits fail clo
     { revision: 0 },
     { updatedAt: "invalid" },
     { clothingIds: ["clothing.unknown"] },
-    { rendering: { variant: "gray", pose: "phone", clothing: [] } },
+    { rendering: { variant: "gray", pose: "unknown", clothing: [] } },
     { rendering: { variant: "gray", pose: "run", clothing: ["unknown"] } },
   ])
     assert.throws(() => parseAvatarOutfit({ ...outfit(), ...patch }));

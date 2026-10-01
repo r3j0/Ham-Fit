@@ -2,10 +2,10 @@ import { MascotPose, type MascotPoseProps } from "./MascotPose";
 import styles from "./mascot-scenes.module.css";
 
 const welcome = [
-  { variant: "cream", pose: "victory", outfit: { wear: "green-sportswear" } },
-  { variant: "gray", pose: "run", outfit: { wear: "white-sportswear" } },
-  { variant: "gray", pose: "drink", outfit: { wear: "blue-sportswear" } },
-  { variant: "cream", pose: "situp", outfit: { wear: "black-sportswear" } },
+  { variant: "cream", pose: "victory" },
+  { variant: "gray", pose: "run" },
+  { variant: "gray", pose: "drink" },
+  { variant: "cream", pose: "situp" },
 ] as const satisfies readonly MascotPoseProps[];
 
 export function WelcomeMascots() {
