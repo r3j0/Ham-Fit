@@ -206,7 +206,7 @@
   }
 }
 .home-companions {
-  --home-mascot-size: min(358.4px, 44.8svh);
+  --home-mascot-size: min(501.76px, 62.72svh);
   gap: 4px;
 }
 .home-mascot-stage {
@@ -217,7 +217,8 @@
 }
 .home-mascot-stage > span,
 .home-mascot-stage .my-character > [role="img"] {
-  width: min(80%, var(--home-mascot-size)) !important;
+  width: min(112%, var(--home-mascot-size), calc(100vw - 24px)) !important;
+  max-width: none;
 }
 .home-intro {
   background: var(--navy);
@@ -1250,7 +1251,8 @@ fieldset:disabled select {
   color: var(--navy);
 }
 .account-shell .profile-avatar {
-  width: clamp(188.16px, 33.6vw, 215.04px);
+  width: clamp(244.608px, 43.68vw, 279.552px);
+  flex: none;
 }
 .account-shell .menu-card {
   background: var(--canvas);
@@ -1393,7 +1395,7 @@ fieldset:disabled select {
 }
 @media (max-width: 959px) {
   .account-shell .profile-avatar {
-    width: 134.4px;
+    width: 174.72px;
   }
   .account-shell .latest-fitness .fitness-radar svg {
     width: 100%;
@@ -2074,7 +2076,7 @@ fieldset:disabled select {
     max-width: 320px;
   }
   .home-companions {
-    --home-mascot-size: 403.2px;
+    --home-mascot-size: 564.48px;
     grid-column: 1;
     grid-row: 2;
   }

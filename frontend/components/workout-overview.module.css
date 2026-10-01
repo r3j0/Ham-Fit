@@ -3,6 +3,7 @@
   gap: 24px;
   align-items: start;
   grid-template-areas: "mascot" "assignment" "history";
+  grid-template-columns: minmax(0, 1fr);
 }
 .assignment {
   grid-area: assignment;
@@ -19,6 +20,8 @@
 .mascotStage {
   grid-area: mascot;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
   place-items: center;
   min-height: 160px;
 }

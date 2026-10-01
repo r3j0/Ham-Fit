@@ -265,7 +265,7 @@ export function Groups() {
       <Header title="내 그룹" back="/" />
       <div className="content stack">
         <div className={styles.mascotStage}>
-          <MemberMascot pose="phone" size={161.28} />
+          <MemberMascot pose="phone" size={225.792} />
         </div>
         {resource.error !== undefined ? (
           <>

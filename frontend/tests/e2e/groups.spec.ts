@@ -181,8 +181,9 @@ test("그룹 생성과 초대 가입은 좁은 화면에서도 두 열로 배치
     await expect(mascot).toHaveAttribute("data-variant", "cream");
     const art = (await mascot.boundingBox())!,
       frame = (await mascot.locator("..").boundingBox())!;
-    expect(art.width).toBeCloseTo(161.28, 1);
-    expect(art.height).toBeCloseTo(161.28, 1);
+    const expectedSize = Math.min(225.792 * 1.4, frame.width);
+    expect(art.width).toBeCloseTo(expectedSize, 1);
+    expect(art.height).toBeCloseTo(expectedSize, 1);
     expect(art.x + art.width / 2).toBeCloseTo(frame.x + frame.width / 2, 1);
     expect(
       await create.evaluate((el) =>
@@ -279,8 +280,8 @@ test("그룹원과 신청을 한 행에 표시하며 오늘 상태를 검증하�
     const row = region.getByRole("listitem").last(),
       name = row.getByRole("link");
     const hamster = (await row.locator(".profile-character").boundingBox())!;
-    expect(hamster.width).toBeCloseTo(36 * 1.4, 1);
-    expect(hamster.height).toBeCloseTo(36 * 1.4, 1);
+    expect(hamster.width).toBeCloseTo(50.4 * 1.4, 1);
+    expect(hamster.height).toBeCloseTo(50.4 * 1.4, 1);
     await expect(name).toHaveCSS("text-decoration-line", "none");
     const boxes = await row.evaluate((el) =>
       [...el.children].map((child) => {

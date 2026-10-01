@@ -201,7 +201,7 @@ function ShopView({
             {preview ? (
               <ProfileCharacter
                 outfit={preview}
-                size={200}
+                size={280}
                 label="내 캐릭터 미리보기"
               />
             ) : (

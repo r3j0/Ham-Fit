@@ -17,7 +17,11 @@ export function AccountCharacter() {
   const outfit = resource.data;
   return (
     <div className="profile-avatar">
-      <ProfileCharacter outfit={outfit} size={153.6} label="나의 대표 캐릭터" />
+      <ProfileCharacter
+        outfit={outfit}
+        size={199.68}
+        label="나의 대표 캐릭터"
+      />
     </div>
   );
 }
