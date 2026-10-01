@@ -17,9 +17,6 @@
   }
 }
 
-.stage {
-  position: relative;
-}
 .wardrobeLink {
   width: auto;
   min-width: 132px;
@@ -31,12 +28,7 @@
 .wardrobeLink:hover {
   background: var(--tint);
 }
-.dressed {
-  padding-bottom: 62px;
-}
 .reset {
-  position: absolute;
-  right: 16px;
-  bottom: 12px;
+  align-self: flex-end;
   width: auto;
 }

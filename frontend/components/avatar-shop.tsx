@@ -184,15 +184,9 @@ function ShopView({
   }
   return (
     <>
-      <div className="shop-balance-row">
-        <SeedBalance balance={inventory.currency.balance} />
-      </div>
       <div className={styles.layout}>
         <div className={styles.preview}>
-          <section
-            className={`shop-stage ${styles.stage} ${draft.clothingIds.length ? styles.dressed : ""}`}
-            aria-label="코디 미리보기"
-          >
+          <section className="shop-stage" aria-label="코디 미리보기">
             {!wardrobe && (
               <Link
                 href="/shop/wardrobe"
@@ -250,6 +244,7 @@ function ShopView({
                 초기화
               </button>
             )}
+            <SeedBalance balance={inventory.currency.balance} />
           </section>
           {!wardrobe && selected && !owned.has(selected.id) && (
             <button

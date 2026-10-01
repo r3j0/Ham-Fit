@@ -2211,10 +2211,6 @@ fieldset:disabled select {
   color: var(--muted);
   font-size: 12px;
 }
-.shop-balance-row {
-  display: flex;
-  justify-content: flex-end;
-}
 .shop-stage {
   display: flex;
   width: 100%;
