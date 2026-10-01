@@ -259,6 +259,9 @@ test("그룹원과 신청을 한 행에 표시하며 오늘 상태를 검증하�
       },
     }),
   );
+  await page.route(`**/api/v1/groups/${id}/members/${other}`, (route) =>
+    route.fulfill({ json: members[1] }),
+  );
   await page.goto(`/groups/${id}`);
   const region = page.getByRole("region", { name: "그룹원", exact: true });
   await expect(region.getByRole("img", { name: "그룹장" })).toHaveCount(1);
@@ -321,6 +324,38 @@ test("그룹원과 신청을 한 행에 표시하며 오늘 상태를 검증하�
       fullPage: true,
     });
   }
+  const memberRow = region.getByRole("listitem").last();
+  for (const target of ["mascot", "activity", "padding", "keyboard"]) {
+    if (target === "keyboard") {
+      await memberRow.getByRole("link").focus();
+      await page.keyboard.press("Enter");
+    } else {
+      const position = await memberRow.evaluate((el, target) => {
+        const box = el.getBoundingClientRect();
+        const child =
+          target === "mascot" ? el.firstElementChild! : el.children[2];
+        const area = child.getBoundingClientRect();
+        return target === "padding"
+          ? { x: box.width / 2, y: 2 }
+          : {
+              x: area.x - box.x + area.width / 2,
+              y: area.y - box.y + area.height / 2,
+            };
+      }, target);
+      await memberRow.click({ position });
+    }
+    await expect(page).toHaveURL(`/groups/${id}/members/${other}`);
+    await expect(
+      page.getByRole("heading", { name: "그룹원 프로필" }),
+    ).toBeVisible();
+    await page.goBack();
+    await expect(memberRow).toBeVisible();
+  }
+  await memberRow.getByRole("button", { name: "다른 그룹원 관리" }).click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await expect(page).toHaveURL(`/groups/${id}`);
+  await page.getByRole("button", { name: "닫기", exact: true }).click();
+  await expect(memberRow.getByRole("button")).toBeFocused();
   await page.getByRole("button", { name: "그룹 설정" }).click();
   await expect(page.getByRole("dialog")).toHaveAccessibleName("그룹 설정");
   await expect(
