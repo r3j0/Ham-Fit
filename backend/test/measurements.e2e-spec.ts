@@ -1126,6 +1126,7 @@ describe('Authenticated measurement CRUD against PostgreSQL', () => {
       expect(response.headers.etag).toBe(`"${revision}"`);
       expect((response.body as RecordBody).revision).toBe(revision);
       expect(response.headers['cache-control']).toBe('no-store, no-transform');
+      expect(response.headers['content-encoding']).toBe('identity');
       expect(response.headers['access-control-expose-headers']).toContain(
         'ETag',
       );

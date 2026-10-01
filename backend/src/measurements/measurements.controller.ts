@@ -55,6 +55,7 @@ export class MeasurementsController {
 
   @Post()
   @Header('Cache-Control', 'no-store, no-transform')
+  @Header('Content-Encoding', 'identity')
   async create(
     @Req() request: AuthenticatedRequest,
     @Headers('idempotency-key') key: unknown,
@@ -88,6 +89,7 @@ export class MeasurementsController {
 
   @Get(':id')
   @Header('Cache-Control', 'no-store, no-transform')
+  @Header('Content-Encoding', 'identity')
   async get(
     @Req() request: AuthenticatedRequest,
     @Param('id') id: string,
@@ -100,6 +102,7 @@ export class MeasurementsController {
 
   @Patch(':id')
   @Header('Cache-Control', 'no-store, no-transform')
+  @Header('Content-Encoding', 'identity')
   async patch(
     @Req() request: AuthenticatedRequest,
     @Param('id') id: string,
