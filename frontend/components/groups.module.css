@@ -162,3 +162,29 @@
     font-size: 11px;
   }
 }
+
+.overview {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
+  grid-template-areas: "mascot" "list" "requests";
+}
+.overview > .mascotStage {
+  grid-area: mascot;
+}
+.groupList {
+  grid-area: list;
+  min-width: 0;
+}
+.overview > .requestGrid {
+  grid-area: requests;
+}
+@media (min-width: 960px) {
+  .overview {
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+    grid-template-areas: "mascot list" "requests list";
+    grid-template-rows: auto 1fr;
+    align-items: start;
+    column-gap: 32px;
+  }
+}
