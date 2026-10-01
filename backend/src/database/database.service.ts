@@ -95,6 +95,9 @@ export class DatabaseService
         this.groupNotification.findFirst({ select: { id: true } }),
         this.groupMissionRound.findFirst({ select: { id: true } }),
         this.activityAchievement.findFirst({ select: { id: true } }),
+        this.groupMissionWaterChoice.findFirst({
+          select: { achievementId: true },
+        }),
         this.groupRouletteTicket.findFirst({ select: { id: true } }),
         this.groupRouletteDraw.findFirst({ select: { id: true } }),
         this.streakRoulettePolicy.findFirst({ select: { version: true } }),

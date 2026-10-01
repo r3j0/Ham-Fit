@@ -10,6 +10,7 @@ import {
   useSyncExternalStore,
 } from "react";
 import { completedDate } from "@/lib/workout-history";
+import { WorkoutWater } from "./workout-water";
 import { ApiError, errorMessage } from "@/lib/http";
 import {
   createPlaybackSession,
@@ -574,6 +575,9 @@ export function WorkoutPlayer({
           routineId={workout.routine.id}
           itemId={workout.routine.itemId}
         />
+      )}
+      {completed && !replay && !readOnly && !workout.routine && (
+        <WorkoutWater id={workout.id} sourceKind="daily_assignment" next="/" />
       )}
       {(completed || readOnly) &&
         !(completed && !replay && workout.routine) && (

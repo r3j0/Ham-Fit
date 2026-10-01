@@ -10,6 +10,7 @@ import { useApiResource } from "./use-api-resource";
 import { Header, Loading, Notice, Shell } from "./ui";
 import { MascotPose } from "./mascot/MascotPose";
 import { SeedIcon } from "./seed-icon";
+import { WorkoutWater } from "./workout-water";
 export function WorkoutCompletion({
   id,
   step = "complete",
@@ -82,17 +83,19 @@ function Completed({
   );
   const receipt = reward.data,
     base = `/workout-routines/${id}/complete`;
-  const rewardNext = receipt?.waters.length ? `${base}/water` : "/";
   const next =
     step === "complete"
       ? `${base}/streak`
       : step === "streak"
-        ? receipt?.seed.status === "granted"
-          ? `${base}/reward`
-          : rewardNext
-        : step === "reward"
-          ? rewardNext
-          : "/";
+        ? `${base}/water`
+        : "/";
+  if (step === "water")
+    return (
+      <WorkoutWater
+        id={id}
+        next={receipt?.seed.status === "granted" ? `${base}/reward` : "/"}
+      />
+    );
   return (
     <>
       {step === "complete" && (
@@ -164,26 +167,6 @@ function Completed({
             <Notice tone="info">
               이번 운동의 해바라기씨 지급 내역이 없어요.
             </Notice>
-          )
-        ))}
-      {step === "water" &&
-        (receipt?.waters.length ? (
-          <>
-            <div className="reward-symbol" aria-hidden="true">
-              💧
-            </div>
-            <h1>해바라기에 물을 줬어요!</h1>
-            {receipt.waters.map((w) => (
-              <p key={w.groupId}>
-                {w.groupName} · 물 {w.amount}번{" "}
-                <Link href={`/groups/${w.groupId}`}>해바라기 보기</Link>
-              </p>
-            ))}
-          </>
-        ) : (
-          !reward.loading &&
-          !reward.error && (
-            <Notice tone="info">이번 운동의 그룹 물 주기 내역이 없어요.</Notice>
           )
         ))}
       {reward.error ? (
