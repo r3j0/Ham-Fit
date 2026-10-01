@@ -64,6 +64,7 @@ export interface Workout {
   weightAdjustment: unknown;
 }
 export interface WorkoutPage {
+  serverKoreanDate?: string;
   items: Workout[];
   nextCursor: string | null;
 }

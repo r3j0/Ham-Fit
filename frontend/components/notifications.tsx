@@ -15,7 +15,10 @@ const labels = {
   join_rejected: "그룹 가입 신청이 거절됐어요.",
 };
 export function Notifications() {
-  const resource = useApiResource(getNotifications),
+  const resource = useApiResource(getNotifications, {
+      refreshIntervalMs: 60000,
+      staleTimeMs: 60000,
+    }),
     begin = useOperationScope(),
     guard = useRef(false);
   const [busy, setBusy] = useState(false),

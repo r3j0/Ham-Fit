@@ -6,7 +6,10 @@ import { getNotifications } from "@/lib/notifications";
 import { useApiResource } from "./use-api-resource";
 
 export function NotificationBell() {
-  const notifications = useApiResource(getNotifications);
+  const notifications = useApiResource(getNotifications, {
+    refreshIntervalMs: 60000,
+    staleTimeMs: 60000,
+  });
   const descriptionId = useId();
   const unread =
     notifications.error === undefined &&

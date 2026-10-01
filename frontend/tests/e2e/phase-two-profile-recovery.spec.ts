@@ -122,6 +122,9 @@ test("focus 없이 화면이 다시 표시되어도 외부 변경을 반영한�
     document.dispatchEvent(new Event("visibilitychange"));
   });
   await createRecord(page, account.access_token);
+  await page.clock.setSystemTime(
+    new Date((await page.evaluate(() => Date.now())) + 60000),
+  );
   await page.evaluate(() => {
     Object.defineProperty(document, "visibilityState", {
       configurable: true,

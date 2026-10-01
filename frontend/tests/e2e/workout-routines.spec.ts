@@ -1,3 +1,4 @@
+import { refreshOnFocus } from "./resource-refresh";
 import { test, expect } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
@@ -188,7 +189,7 @@ for (const cardio of [
     );
     expect(state.requests).toHaveLength(2);
     expect(state.row).toEqual(generated);
-    await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+    await refreshOnFocus(page);
     await expect(guidance).toContainText(
       `${cardio.activity} ${cardio.minutes}분`,
     );

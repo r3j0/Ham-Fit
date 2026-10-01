@@ -1,3 +1,4 @@
+import { refreshOnFocus } from "./resource-refresh";
 import { test, expect, type Page } from "@playwright/test";
 import {
   installApi,
@@ -97,7 +98,7 @@ test("영상 일부 완료는 씨앗, 전체 루틴 완료는 해바라기로 �
   routine.koreanDate = "2026-09-24";
   routine.recordingAllowed = false;
   routine.recordingExpiresAt = "2026-09-24T15:00:00.000Z";
-  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await refreshOnFocus(page);
   await expect(today).toHaveAccessibleName("9월 27일 오늘, 운동 루틴 완료");
   await expect(
     today.locator('[data-workout-status="routine_completed"]'),
@@ -420,11 +421,14 @@ test("날짜 상세의 빈 날짜·잘못된 날짜와 이력 조회 실패를 �
         }),
   );
   await page.goto("/workouts/history/2026-09-27");
-  await expect(page.getByRole("main").getByRole("alert")).toBeVisible();
+  await expect(
+    page.getByText("선택한 날짜의 기록을 불러오지 못했어요."),
+  ).toBeVisible();
   await expect(
     page.getByText("이 날짜에 완료한 운동 기록이 없어요."),
   ).toHaveCount(0);
   fail = false;
+  await page.getByRole("button", { name: "선택한 날짜 다시 불러오기" }).click();
   await page.getByRole("button", { name: "운동 기록 다시 불러오기" }).click();
   await expect(
     page

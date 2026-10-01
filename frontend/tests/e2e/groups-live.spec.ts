@@ -1,3 +1,4 @@
+import { refreshOnFocus } from "./resource-refresh";
 import { test, expect, type Page } from "@playwright/test";
 const api = process.env.E2E_API_BASE_URL ?? "http://localhost:3001/api/v1";
 const password = "group-live-test-password-2026!";
@@ -116,7 +117,7 @@ test("실제 API: 생성·초대·승인/거절·멤버 조회·강퇴·위임·
     ).toBeVisible();
     await other.reload();
     await expect(other.getByText("아직 가입한 그룹이 없어요.")).toBeVisible();
-    await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+    await refreshOnFocus(page);
     await page
       .getByRole("button", { name: "가입 신청 관리", exact: true })
       .click();
@@ -130,7 +131,7 @@ test("실제 API: 생성·초대·승인/거절·멤버 조회·강퇴·위임·
     await expect(
       other.getByText("가입을 신청했어요.", { exact: false }),
     ).toBeVisible();
-    await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+    await refreshOnFocus(page);
     await page.getByRole("button", { name: "가입 승인" }).click();
     await expect(
       page.getByRole("region", { name: "그룹원", exact: true }),
@@ -207,7 +208,7 @@ test("실제 API: 생성·초대·승인/거절·멤버 조회·강퇴·위임·
     await expect(
       other.getByText("가입을 신청했어요.", { exact: false }),
     ).toBeVisible();
-    await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+    await refreshOnFocus(page);
     await page
       .getByRole("button", { name: "가입 신청 관리", exact: true })
       .click();

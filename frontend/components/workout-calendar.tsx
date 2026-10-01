@@ -9,18 +9,32 @@ import {
   calendarWeeks,
   completedDate,
   dateFromKey,
+  koreanDateKey,
   shiftDay,
   shiftMonth,
 } from "@/lib/workout-history";
-import {
-  useWorkoutHistory,
-  WorkoutHistoryFeedback,
-} from "./workout-history-provider";
+import { useActivityHistory } from "./use-activity-history";
+import { Loading } from "./ui";
 import styles from "./workout-history.module.css";
 
 export function WorkoutCalendar({ selectedDate }: { selectedDate?: string }) {
-  const { today, ready, error, loading, legacyUnavailable } =
-    useWorkoutHistory();
+  const [today, setToday] = useState(() => koreanDateKey(new Date()));
+  const [view, setView] = useState<"week" | "month">(
+    selectedDate ? "week" : "month",
+  );
+  const [anchor, setAnchor] = useState<string>();
+  const focusDate = anchor ?? selectedDate ?? today;
+  const month = focusDate.slice(0, 7);
+  const days =
+    view === "week"
+      ? calendarWeek(focusDate)
+      : calendarWeeks(month)
+          .flat()
+          .filter((day): day is string => day !== null);
+  const history = useActivityHistory(days[0], days.at(-1)!, {
+    onServerDate: setToday,
+  });
+  const { ready, error, loading, legacyUnavailable } = history;
   return (
     <section
       className={styles.calendar}
@@ -32,7 +46,22 @@ export function WorkoutCalendar({ selectedDate }: { selectedDate?: string }) {
           <div className={styles.heading}>
             <h2 id="workout-history-title">운동 기록</h2>
           </div>
-          <WorkoutHistoryFeedback />
+          {error ? (
+            <>
+              <Notice>
+                운동 기록을 불러오지 못했어요. 다시 확인해 주세요.
+              </Notice>
+              <button
+                className="text-button"
+                disabled={loading}
+                onClick={history.reload}
+              >
+                운동 기록 다시 불러오기
+              </button>
+            </>
+          ) : (
+            <Loading label="운동 기록을 불러오고 있어요" />
+          )}
         </>
       ) : (
         <>
@@ -42,8 +71,14 @@ export function WorkoutCalendar({ selectedDate }: { selectedDate?: string }) {
             </Notice>
           )}
           <CalendarBody
-            key={`${today}:${selectedDate ?? ""}`}
             selectedDate={selectedDate}
+            history={history}
+            view={view}
+            setView={setView}
+            focusDate={focusDate}
+            setFocusDate={(next) =>
+              setAnchor(typeof next === "function" ? next(focusDate) : next)
+            }
           />
         </>
       )}
@@ -51,15 +86,25 @@ export function WorkoutCalendar({ selectedDate }: { selectedDate?: string }) {
   );
 }
 
-function CalendarBody({ selectedDate }: { selectedDate?: string }) {
+function CalendarBody({
+  selectedDate,
+  history,
+  view,
+  setView,
+  focusDate,
+  setFocusDate,
+}: {
+  selectedDate?: string;
+  history: ReturnType<typeof useActivityHistory>;
+  view: "week" | "month";
+  setView: React.Dispatch<React.SetStateAction<"week" | "month">>;
+  focusDate: string;
+  setFocusDate: React.Dispatch<React.SetStateAction<string>>;
+}) {
   const { basePath } = useWorkoutHistoryLinks();
 
-  const { today, completed, workouts } = useWorkoutHistory();
+  const { today, completed, workouts } = history;
   const currentMonth = today.slice(0, 7);
-  const [view, setView] = useState<"week" | "month">(
-    selectedDate ? "week" : "month",
-  );
-  const [focusDate, setFocusDate] = useState(selectedDate ?? today);
   const month = focusDate.slice(0, 7);
   const [year, monthNumber] = month.split("-").map(Number);
   const monthLabel = `${year}년 ${monthNumber}월`;

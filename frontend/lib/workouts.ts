@@ -1,3 +1,4 @@
+import { historyRangeQuery, type HistoryRange } from "./history-range";
 import { api } from "./session";
 import type { BirthProfile, Workout, WorkoutPage } from "./workout-types";
 import { routineIdentity, routineWorkouts } from "./workout-routine";
@@ -33,9 +34,13 @@ export const getWorkout = (id: string, signal?: AbortSignal) => {
     (r) => r.data,
   );
 };
-export const getWorkoutHistory = (cursor?: string, signal?: AbortSignal) =>
+export const getWorkoutHistory = (
+  cursor?: string,
+  signal?: AbortSignal,
+  range?: HistoryRange,
+) =>
   api<WorkoutPage>(
-    `/workouts/history?limit=20${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`,
+    `/workouts/history?limit=20${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}${historyRangeQuery(range)}`,
     { signal },
   ).then((r) => r.data);
 export const requestTodayWorkout = (key: string) =>
@@ -55,26 +60,34 @@ export const sendWorkoutEvent = (id: string, key: string, body: string) => {
   }).then((r) => r.data);
 };
 
-export async function getActivityHistory(signal?: AbortSignal) {
+export async function getActivityHistory(
+  signal?: AbortSignal,
+  range?: HistoryRange,
+) {
   const routineRead = async () => {
     const rows = new Map<string, WorkoutRoutine>();
     const cursors = new Set<string>();
+    let serverKoreanDate: string | undefined;
     let cursor: string | undefined;
     do {
       signal?.throwIfAborted();
-      const page = await getRoutineHistory(cursor, signal);
+      const page = await getRoutineHistory(cursor, signal, range);
       signal?.throwIfAborted();
+      serverKoreanDate =
+        page.serverKoreanDate ??
+        page.items[0]?.serverKoreanDate ??
+        serverKoreanDate;
       for (const row of page.items) rows.set(row.id, row);
       cursor = page.nextCursor ?? undefined;
       if (cursor && cursors.has(cursor))
         throw new Error("운동 이력의 페이지를 확인할 수 없어요.");
       if (cursor) cursors.add(cursor);
     } while (cursor);
-    return [...rows.values()];
+    return { rows: [...rows.values()], serverKoreanDate };
   };
   const [legacy, current] = await Promise.allSettled([
     collectWorkoutHistory(
-      (cursor) => getWorkoutHistory(cursor, signal),
+      (cursor) => getWorkoutHistory(cursor, signal, range),
       signal,
     ),
     routineRead(),
@@ -87,11 +100,16 @@ export async function getActivityHistory(signal?: AbortSignal) {
     legacy.reason.code === "RECOMMENDATION_NOT_CONNECTED";
   if (legacy.status === "rejected" && !legacyUnavailable) throw legacy.reason;
   return {
-    routines: current.value,
+    serverKoreanDate:
+      current.value.serverKoreanDate ??
+      (legacy.status === "fulfilled"
+        ? legacy.value[0]?.serverKoreanDate
+        : undefined),
+    routines: current.value.rows,
     legacyUnavailable,
     workouts: [
       ...(legacy.status === "fulfilled" ? legacy.value : []),
-      ...current.value.flatMap(routineWorkouts),
+      ...current.value.rows.flatMap(routineWorkouts),
     ].sort(
       (a, b) =>
         b.koreanDate.localeCompare(a.koreanDate) ||

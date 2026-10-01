@@ -1,15 +1,8 @@
 "use client";
 import { usePathname } from "next/navigation";
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  useReducer,
-  useState,
-} from "react";
-import { completedDate, koreanDateKey } from "@/lib/workout-history";
-import { getActivityHistory } from "@/lib/workouts";
+import { createContext, useContext } from "react";
+import { completedDate, koreanDateKey, shiftDay } from "@/lib/workout-history";
+import { useActivityHistory } from "./use-activity-history";
 import type { Workout } from "@/lib/workout-types";
 import type { WorkoutRoutine } from "@/lib/workout-routine";
 import { Loading, Notice } from "./ui";
@@ -35,85 +28,22 @@ export function WorkoutHistoryProvider({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const active =
-    pathname === "/" ||
-    pathname === "/workout" ||
-    pathname.startsWith("/workouts/history/") ||
-    pathname.startsWith("/account/workouts/history/");
-  const [data, setData] = useState<{
-    workouts: Workout[];
-    routines: WorkoutRoutine[];
-    legacyUnavailable: boolean;
-    today: string;
-  } | null>(null);
-  const [error, setError] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [retry, reload] = useReducer((version: number) => version + 1, 0);
-  useEffect(() => {
-    if (!active) return;
-    const controller = new AbortController();
-    let reading = false;
-    async function load() {
-      if (reading) return;
-      reading = true;
-      setLoading(true);
-      try {
-        const activity = await getActivityHistory(controller.signal);
-        if (controller.signal.aborted) return;
-        setData({
-          ...activity,
-          today:
-            activity.workouts[0]?.serverKoreanDate ?? koreanDateKey(new Date()),
-        });
-        setError(false);
-      } catch {
-        if (!controller.signal.aborted) setError(true);
-      } finally {
-        if (!controller.signal.aborted) setLoading(false);
-        reading = false;
-      }
-    }
-    const focus = () => {
-      if (document.visibilityState === "visible") void load();
-    };
-    void load();
-    window.addEventListener("focus", focus);
-    document.addEventListener("visibilitychange", focus);
-    const interval = setInterval(focus, 60000);
-    return () => {
-      controller.abort();
-      clearInterval(interval);
-      window.removeEventListener("focus", focus);
-      document.removeEventListener("visibilitychange", focus);
-    };
-  }, [retry, active]);
-  const completed = useMemo(
-    () =>
-      new Set(
-        (data?.workouts ?? [])
-          .map(completedDate)
-          .filter((day): day is string => day !== null),
-      ),
-    [data],
-  );
+  const active = pathname === "/" || pathname === "/workout";
+  const today = koreanDateKey(new Date());
+  const history = useActivityHistory(shiftDay(today, -6), today, {
+    enabled: active,
+    recentDays: 7,
+  });
   return (
     <HistoryContext.Provider
       value={{
-        today: data?.today ?? koreanDateKey(new Date()),
-        workouts: data?.workouts ?? [],
-        routines: data?.routines ?? [],
-        legacyUnavailable: data?.legacyUnavailable ?? false,
+        ...history,
         legacyCompleted: new Set(
-          (data?.workouts ?? [])
+          history.workouts
             .filter((row) => !row.routine)
             .map(completedDate)
             .filter((day): day is string => day !== null),
         ),
-        completed,
-        ready: data !== null,
-        loading,
-        error,
-        reload,
       }}
     >
       {children}

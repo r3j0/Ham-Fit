@@ -1,3 +1,4 @@
+import { refreshOnFocus } from "./resource-refresh";
 import { expect, test } from "@playwright/test";
 import { homeGroup, installHomeGroups } from "./home-groups-fixtures";
 import { installApi } from "./integration-fixtures";
@@ -135,7 +136,7 @@ test("빈 그룹·한 그룹·삭제·조회 실패를 구분하고 실패를 �
   const row = homeGroup(1, 2);
   row.members[1].nickname = null;
   await installHomeGroups(page, [row]);
-  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await refreshOnFocus(page);
   await expect(region.getByRole("listitem")).toHaveCount(1);
   await expect(
     region.getByText("닉네임 미설정", { exact: true }),
@@ -146,7 +147,7 @@ test("빈 그룹·한 그룹·삭제·조회 실패를 구분하고 실패를 �
   await page.route("**/api/v1/groups/overview", (route) =>
     route.fulfill({ status: 503, json: {} }),
   );
-  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await refreshOnFocus(page);
   await expect(region.getByRole("alert")).toBeVisible();
   await expect(region.getByRole("img")).toHaveCount(0);
   await page.route("**/api/v1/groups/overview", (route) =>
@@ -157,7 +158,7 @@ test("빈 그룹·한 그룹·삭제·조회 실패를 구분하고 실패를 �
   await page.route("**/api/v1/groups/overview", (route) =>
     route.fulfill({ json: { items: [{ id: row.id }] } }),
   );
-  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await refreshOnFocus(page);
   await expect(region.getByRole("alert")).toContainText(
     "서버 응답을 확인할 수 없어요",
   );
@@ -225,6 +226,6 @@ test("홈 그룹원의 미완료 햄스터만 40% 불투명도로 표시하고 �
   await expect(images.nth(2)).toHaveCSS("opacity", "1");
   await expect(region.locator("span[title]").first()).toHaveCSS("opacity", "1");
   row.members[1].todayWorkoutCompleted = true;
-  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await refreshOnFocus(page);
   await expect(images.first()).toHaveCSS("opacity", "1");
 });

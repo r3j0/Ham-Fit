@@ -1356,6 +1356,94 @@ describe('Multi-exercise routines with the real data-team Python algorithm', () 
     await read(routine.id).expect(401);
   });
 
+  it('bounds history by assignment or Korean completion date, pages without gaps and checks ownership', async () => {
+    const empty = await read('history?from=2026-09-01&to=2026-09-01').expect(
+      200,
+    );
+    expect(empty.body).toMatchObject({
+      items: [],
+      nextCursor: null,
+      serverKoreanDate: '2026-09-29',
+    });
+    const rows = await Promise.all(
+      Array.from({ length: 32 }, (_, index) => {
+        const day = new Date(Date.UTC(2026, 7, 31 + index));
+        const completedAt =
+          index === 0
+            ? new Date('2026-08-31T15:00:00Z')
+            : index === 31
+              ? new Date('2026-09-30T15:00:00Z')
+              : null;
+        return db.workoutRoutine.create({
+          data: {
+            userId: owner.user.id,
+            assignmentDate: day,
+            referenceDate: day,
+            algorithmVersion: 'test-history-only',
+            dataVersion: 'test-history-only',
+            estimatedMinutes: 1,
+            inputSnapshot: {},
+            items: {
+              create: {
+                order: 1,
+                videoId: 'TEST.mp4',
+                title: '[TEST ONLY] bounded history',
+                videoUrl: 'http://openapi.kspo.or.kr/web/video/TEST.mp4',
+                durationSeconds: 60,
+                slot: 'strength_group',
+                prescription: {},
+                ...(completedAt
+                  ? {
+                      status: 'completed',
+                      resultStatus: 'completed',
+                      performedAt: completedAt,
+                      completedAt,
+                    }
+                  : {}),
+              },
+            },
+          },
+        });
+      }),
+    );
+    const first = await read('history?from=2026-09-01&to=2026-09-30').expect(
+      200,
+    );
+    const second = await read(
+      `history?from=2026-09-01&to=2026-09-30&cursor=${first.body.nextCursor}`,
+    ).expect(200);
+    const found = [...first.body.items, ...second.body.items] as Routine[];
+    expect(found).toHaveLength(31);
+    expect(new Set(found.map((row) => row.id))).toEqual(
+      new Set(rows.slice(0, 31).map((row) => row.id)),
+    );
+    expect(second.body.nextCursor).toBeNull();
+    // Aug 31 assignment completed at Korean Sep 1 midnight is retained.
+    const boundary = await read('history?from=2026-09-01&to=2026-09-01').expect(
+      200,
+    );
+    expect(
+      new Set((boundary.body.items as Routine[]).map((row) => row.id)),
+    ).toEqual(new Set([rows[0].id, rows[1].id]));
+    const nextMidnight = await read(
+      'history?from=2026-09-30&to=2026-09-30',
+    ).expect(200);
+    expect((nextMidnight.body.items as Routine[]).map((row) => row.id)).toEqual(
+      [rows[30].id],
+    );
+    await read(
+      `history?from=2026-09-01&to=2026-09-30&cursor=${rows[0].id}`,
+      await register(),
+    ).expect(404);
+    for (const query of [
+      'from=2026-09-01',
+      'from=2026-02-30&to=2026-03-01',
+      'from=2026-01-01&to=2026-04-01',
+    ]) {
+      await read(`history?${query}`).expect(400);
+    }
+  });
+
   it('preserves account, settings, sessions, measurements, currency and existing single-video assignments', async () => {
     await prepare(owner, 'less');
     const curriculum = await db.workoutCurriculum.create({

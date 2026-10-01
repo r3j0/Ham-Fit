@@ -1,3 +1,4 @@
+import { parseHistoryQuery } from './history-query.js';
 import {
   Body,
   Controller,
@@ -62,17 +63,12 @@ export class RecommendationsController {
   }
   @Get('history')
   history(@Req() request: AuthenticatedRequest, @Query() query: unknown) {
-    const parsed = z
-      .strictObject({
-        limit: z.coerce.number().int().min(1).max(50).default(20),
-        cursor: z.uuid().optional(),
-      })
-      .safeParse(query);
-    if (!parsed.success) playbackInvalid('이력 조회 조건을 확인해 주세요.');
+    const parsed = parseHistoryQuery(query);
     return this.workouts.history(
       request.user.id,
-      parsed.data.limit,
-      parsed.data.cursor,
+      parsed.limit,
+      parsed.cursor,
+      parsed.range,
     );
   }
   @Get(':id')

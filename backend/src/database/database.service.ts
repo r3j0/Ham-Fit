@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Prisma, PrismaClient } from '../generated/prisma/client.js';
 import { databaseOptions } from './database-options.js';
+import { readinessSchema } from './readiness-schema.js';
 
 @Injectable()
 export class DatabaseService
@@ -54,55 +55,22 @@ export class DatabaseService
 
   async isReady(): Promise<boolean> {
     try {
-      // Both account columns and the catalog must exist, not just the connection.
-      const [, definitions] = await this.$transaction([
-        this.user.findFirst({
-          select: {
-            id: true,
-            email: true,
-            updatedAt: true,
-          },
-        }),
-        this.measurementDefinition.count(),
-        this.authSession.findFirst({ select: { id: true } }),
-        this.authRefreshToken.findFirst({ select: { createdAt: true } }),
-        this.authRateLimit.findFirst({ select: { attempts: true } }),
-        this.measurementCreateRequest.findFirst({ select: { key: true } }),
-        this.avatarProduct.findFirst({ select: { catalogRevision: true } }),
-        this.avatarOutfit.findFirst({ select: { revision: true } }),
-        this.avatarOwnership.findFirst({ select: { source: true } }),
-        this.avatarPurchase.findFirst({ select: { price: true } }),
-        this.currencyTransaction.findFirst({ select: { amount: true } }),
-        this.userCurrency.findFirst({ select: { balance: true } }),
-        this.userPreference.findFirst({
-          select: {
-            exerciseVolume: true,
-            exerciseGoal: true,
-            ownedTools: true,
-            updatedAt: true,
-          },
-        }),
-        this.workoutCurriculum.findFirst({ select: { id: true } }),
-        this.userCurriculumAssignment.findFirst({ select: { id: true } }),
-        this.workoutRoutine.findFirst({ select: { id: true } }),
-        this.workoutRoutineItem.findFirst({ select: { id: true } }),
-        this.workoutRoutineRequest.findFirst({ select: { key: true } }),
-        this.workoutRoutineEvent.findFirst({ select: { key: true } }),
-        this.group.findFirst({ select: { id: true } }),
-        this.groupMembership.findFirst({ select: { groupId: true } }),
-        this.groupJoinRequest.findFirst({ select: { id: true } }),
-        this.groupCreateRequest.findFirst({ select: { key: true } }),
-        this.groupNotification.findFirst({ select: { id: true } }),
-        this.groupMissionRound.findFirst({ select: { id: true } }),
-        this.activityAchievement.findFirst({ select: { id: true } }),
-        this.groupRouletteTicket.findFirst({ select: { id: true } }),
-        this.groupRouletteDraw.findFirst({ select: { id: true } }),
-        this.streakRoulettePolicy.findFirst({ select: { version: true } }),
-        this.streakRouletteTicket.findFirst({ select: { id: true } }),
-        this.streakRouletteDraw.findFirst({ select: { id: true } }),
-        this.routineActivityReward.findFirst({ select: { routineId: true } }),
-      ]);
-      return definitions > 0;
+      // PostgreSQL resolves every CTE's table/columns during parsing, including
+      // unused CTEs. The planner discards these checks, so no account/history
+      // rows are read. Only the catalog EXISTS executes, in one round trip.
+      const checks = readinessSchema.map(
+        ({ table, columns }, index) =>
+          Prisma.sql`${Prisma.raw(`schema_check_${index}`)} AS (
+          SELECT ${Prisma.join(columns.map((column) => Prisma.raw(`"${column}"`)))}
+          FROM ${Prisma.raw(`"${this.dbSchema.replaceAll('"', '""')}"."${table}"`)}
+          LIMIT 0
+        )`,
+      );
+      const [row] = await this.$queryRaw<Array<{ ready: boolean }>>`
+        WITH ${Prisma.join(checks)}
+        SELECT EXISTS(SELECT 1 FROM ${Prisma.raw(`"${this.dbSchema.replaceAll('"', '""')}"."measurement_definitions"`)} LIMIT 1) AS ready
+      `;
+      return row?.ready === true;
     } catch {
       return false;
     }

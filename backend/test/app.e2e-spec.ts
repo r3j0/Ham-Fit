@@ -93,7 +93,38 @@ describe('API bootstrap (e2e)', () => {
       .expect(204);
   });
 
-  it('reports readiness only after connecting to the migrated real database', async () => {
+  it('uses one small query per readiness probe instead of the full schema scan', async () => {
+    const db = app.get(DatabaseService);
+    const query = vi.spyOn(db, '$queryRaw');
+    try {
+      for (let i = 0; i < 3; i++) {
+        await request(app.getHttpServer())
+          .get('/api/v1/health/ready')
+          .expect(200, { status: 'ok', database: 'ok' });
+      }
+      expect(query).toHaveBeenCalledTimes(3);
+      query.mockRejectedValueOnce(new Error('private connection failure'));
+      await request(app.getHttpServer())
+        .get('/api/v1/health/ready')
+        .expect(503, { status: 'unavailable', database: 'unavailable' });
+    } finally {
+      query.mockRestore();
+    }
+  });
+
+  it('still detects a missing account column even though schema CTEs read no rows', async () => {
+    expect(
+      new URL(process.env.DATABASE_URL!).searchParams.get('schema'),
+    ).toMatch(/^test_/);
+    const db = app.get(DatabaseService);
+    await db.$executeRaw`ALTER TABLE ${db.table('users')} RENAME COLUMN updated_at TO readiness_test_updated_at`;
+    try {
+      await request(app.getHttpServer())
+        .get('/api/v1/health/ready')
+        .expect(503, { status: 'unavailable', database: 'unavailable' });
+    } finally {
+      await db.$executeRaw`ALTER TABLE ${db.table('users')} RENAME COLUMN readiness_test_updated_at TO updated_at`;
+    }
     await request(app.getHttpServer())
       .get('/api/v1/health/ready')
       .expect(200, { status: 'ok', database: 'ok' });

@@ -1,3 +1,4 @@
+import { refreshOnFocus } from "./resource-refresh";
 import { expect, test } from "@playwright/test";
 import { homeGroup, installHomeGroups } from "./home-groups-fixtures";
 import { installApi } from "./integration-fixtures";
@@ -86,7 +87,7 @@ for (const status of [400, 404]) {
     rows[0].maxMembers = 5;
     await installHomeGroups(page, rows);
     const restoredCalls = calls.length;
-    await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+    await refreshOnFocus(page);
     await expect(region.getByText("오늘 확인 불가")).toHaveCount(0);
     await expect(region.locator(".profile-character")).toHaveCSS(
       "opacity",

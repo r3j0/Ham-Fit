@@ -1,3 +1,4 @@
+import { refreshOnFocus } from "./resource-refresh";
 import { expect, test } from "@playwright/test";
 import { installApi, testRecord } from "./integration-fixtures";
 
@@ -86,20 +87,20 @@ test("새 알림·읽음 상태는 포커스 복귀와 주기 갱신에 반영�
   await expect.poll(() => requests).toBeGreaterThan(0);
   await expect(dot).toHaveCount(0);
   mode = "unread";
-  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await refreshOnFocus(page);
   await expect(dot).toBeVisible();
   mode = "read";
   await page.clock.fastForward(60000);
   await expect(dot).toHaveCount(0);
   for (const failure of ["failure", "invalid"]) {
     mode = failure;
-    await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+    await refreshOnFocus(page);
     await expect(bell).toHaveAccessibleDescription(
       "알림 상태를 확인하지 못했어요",
     );
     await expect(dot).toHaveCount(0);
   }
   mode = "unread";
-  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await refreshOnFocus(page);
   await expect(dot).toBeVisible();
 });

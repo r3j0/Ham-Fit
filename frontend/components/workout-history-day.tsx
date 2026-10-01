@@ -6,14 +6,17 @@ import { completedDate } from "@/lib/workout-history";
 import { workoutHref } from "@/lib/workout-routine";
 import { displayDate } from "@/lib/measurements";
 import { WorkoutCalendar } from "./workout-calendar";
-import { useWorkoutHistory } from "./workout-history-provider";
-import { Header, Shell } from "./ui";
+import { useActivityHistory } from "./use-activity-history";
+import { Header, Loading, Notice, Shell } from "./ui";
 import styles from "./workout-history.module.css";
 
 export function WorkoutHistoryDay({ date }: { date: string }) {
   const { basePath, overviewHref } = useWorkoutHistoryLinks();
 
-  const { workouts, ready, error } = useWorkoutHistory();
+  const { workouts, ready, error, loading, reload } = useActivityHistory(
+    date,
+    date,
+  );
   const records = workouts
     .filter((workout) => completedDate(workout) === date)
     .sort(
@@ -25,8 +28,17 @@ export function WorkoutHistoryDay({ date }: { date: string }) {
     <Shell>
       <Header title="운동 기록 상세" back={overviewHref} />
       <div className={`content stack ${styles.detail}`}>
-        <WorkoutCalendar selectedDate={date} />
-        {ready && !error && (
+        <WorkoutCalendar key={date} selectedDate={date} />
+        {error ? (
+          <>
+            <Notice>선택한 날짜의 기록을 불러오지 못했어요.</Notice>
+            <button className="text-button" disabled={loading} onClick={reload}>
+              선택한 날짜 다시 불러오기
+            </button>
+          </>
+        ) : !ready ? (
+          <Loading label="선택한 날짜의 기록을 불러오고 있어요" />
+        ) : (
           <section
             className={styles.records}
             aria-labelledby="daily-workouts-title"

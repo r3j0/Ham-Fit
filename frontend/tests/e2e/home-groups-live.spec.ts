@@ -1,3 +1,4 @@
+import { refreshOnFocus } from "./resource-refresh";
 import { expect, test, type Page } from "@playwright/test";
 import { respectRateLimit } from "./live-api-fixtures";
 
@@ -155,7 +156,7 @@ test("실제 API: 가입한 두 그룹의 멤버·닉네임을 표시하고 탈�
         })
       ).status(),
     ).toBe(200);
-    await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+    await refreshOnFocus(page);
     await expect(
       region.getByText("바뀐운동친구", { exact: true }),
     ).toBeVisible();
@@ -174,7 +175,7 @@ test("실제 API: 가입한 두 그룹의 멤버·닉네임을 표시하고 탈�
         })
       ).status(),
     ).toBe(204);
-    await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+    await refreshOnFocus(page);
     await expect(region.getByText("아직 다른 그룹원이 없어요.")).toBeVisible();
     await expect(region.getByRole("img")).toHaveCount(0);
     expect(
@@ -185,7 +186,7 @@ test("실제 API: 가입한 두 그룹의 멤버·닉네임을 표시하고 탈�
       ).status(),
     ).toBe(204);
     ids.pop();
-    await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+    await refreshOnFocus(page);
     await expect(region.getByRole("link")).toHaveAttribute(
       "href",
       `/groups/${ids[0]}`,
