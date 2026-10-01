@@ -2,7 +2,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { BreathingMascot } from "./mascot/BreathingMascot";
+import { AccountCharacter } from "./account-character";
 import { LatestFitness } from "./latest-fitness";
 import { ProfileActivityReport } from "./profile-activity-report";
 import { useRouter } from "next/navigation";
@@ -55,12 +55,7 @@ export function Account() {
         {user ? (
           <div className="profile-card">
             <div className="profile-identity">
-              <BreathingMascot
-                framing="face"
-                size={128}
-                label="편안하게 숨 쉬는 햄스터 얼굴"
-                className="profile-avatar"
-              />
+              <AccountCharacter />
               <div className="profile-copy">
                 <div className="profile-heading">
                   <h2>{user.nickname ?? "닉네임"}</h2>

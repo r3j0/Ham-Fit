@@ -197,7 +197,7 @@ test("프로필은 재화·가입 경과일·활동 리포트와 얼굴 모션�
     page.locator(".fitness-radar:not(.fitness-radar-compact) .radar-grade"),
   ).toHaveCount(6);
   await page.getByRole("link", { name: "메인", exact: true }).click();
-  const fullBody = page.getByRole("img", { name: "편안하게 숨 쉬는 햄스터" });
+  const fullBody = page.getByRole("img", { name: "나의 대표 캐릭터" });
   await expect(fullBody.locator('[data-part="torso"]')).toBeVisible();
   await expect(
     page.getByRole("navigation", { name: "하단 메뉴" }),

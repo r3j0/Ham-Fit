@@ -4,14 +4,14 @@ import { installApi, testRecord, testWorkout } from "./integration-fixtures";
 async function expectBottomMenu(page: Page, current: string) {
   const nav = page.getByRole("navigation", { name: "하단 메뉴" });
   await expect(nav).toBeVisible();
-  await expect(nav.getByRole("link")).toHaveText(["", "", "", ""]);
+  await expect(nav.getByRole("link")).toHaveText(["", "", "", "", ""]);
   expect(
     await nav
       .getByRole("link")
       .evaluateAll((links) =>
         links.map((link) => link.getAttribute("aria-label")),
       ),
-  ).toEqual(["운동", "메인", "내 그룹", "내 프로필"]);
+  ).toEqual(["운동", "상점", "메인", "내 그룹", "내 프로필"]);
   await expect(
     nav.getByRole("link", { name: current, exact: true }),
   ).toHaveAttribute("aria-current", /page|location/);
@@ -140,7 +140,12 @@ for (const [width, height] of [
     }
     await workout.focus();
     await page.keyboard.press("Tab");
+    await expect(
+      nav.getByRole("link", { name: "상점", exact: true }),
+    ).toBeFocused();
+    await page.keyboard.press("Tab");
     await expect(home).toBeFocused();
+    await page.keyboard.press("Shift+Tab");
     await page.keyboard.press("Shift+Tab");
     await expect(workout).toBeFocused();
     await page.keyboard.press("Enter");

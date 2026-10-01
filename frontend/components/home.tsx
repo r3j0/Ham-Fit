@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { HomeGroups } from "./home-groups";
-import { BreathingMascot } from "./mascot/BreathingMascot";
+import { MyCharacter } from "./my-character";
 import { ArrowRight, Bell, ClipboardList } from "lucide-react";
 import { Loading, Notice, Shell } from "./ui";
 import { TodayWorkout } from "./today-workout";
@@ -51,7 +51,7 @@ export function Home() {
             )}
             <div className="home-companions">
               <div className="home-mascot-stage">
-                <BreathingMascot size={256} label="편안하게 숨 쉬는 햄스터" />
+                <MyCharacter />
               </div>
               <HomeGroups />
             </div>

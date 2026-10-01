@@ -3,7 +3,7 @@ import { installApi, testRecord } from "./integration-fixtures";
 
 import { installHomeGroups } from "./home-groups-fixtures";
 
-const mascotName = "편안하게 숨 쉬는 햄스터";
+const mascotName = "나의 대표 캐릭터";
 
 test("메인은 중앙 캐릭터와 운동을 보여 주고 기록은 내 프로필에서 연다", async ({
   page,

@@ -2,11 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { House, UserRound, UsersRound, Dumbbell } from "lucide-react";
+import { House, UserRound, UsersRound, Dumbbell, Store } from "lucide-react";
 
 export function BottomNavigation() {
   const pathname = usePathname();
-  if (pathname === "/onboarding" || pathname.startsWith("/onboarding/"))
+  if (
+    pathname === "/welcome" ||
+    pathname === "/onboarding" ||
+    pathname.startsWith("/onboarding/")
+  )
     return null;
   const workoutRoute =
     pathname === "/workout" ||
@@ -30,6 +34,12 @@ export function BottomNavigation() {
       label: "운동",
       icon: Dumbbell,
       active: workoutRoute,
+    },
+    {
+      href: "/shop",
+      label: "상점",
+      icon: Store,
+      active: pathname === "/shop" || pathname.startsWith("/shop/"),
     },
     {
       href: "/",

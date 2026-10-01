@@ -124,7 +124,7 @@ test("본인은 ID로 제외하고 닉네임이 같은 다른 그룹원과 그�
   await expect(region.getByText("같은닉네임", { exact: true })).toHaveCount(2);
   await expect(region.getByRole("img")).toHaveCount(2);
   await expect(
-    page.getByRole("img", { name: "편안하게 숨 쉬는 햄스터" }),
+    page.getByRole("img", { name: "나의 대표 캐릭터" }),
   ).toBeVisible();
 });
 

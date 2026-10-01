@@ -1,0 +1,831 @@
+{
+  "coordinateSpace": "little-wardrobe-stage/v1",
+  "items": [
+    {
+      "id": "item-mumdmxtg",
+      "name": "하얀 테니스 치마",
+      "slot": "bottom",
+      "placements": {
+        "cant-hear:cream": {
+          "naturalWidth": 423,
+          "naturalHeight": 116,
+          "transform": {
+            "x": -0.13560149629237306,
+            "y": 32.159332792637706,
+            "width": 69.99220244487607,
+            "rotation": 0
+          },
+          "src": "/mascots/registered/images/bottom--item-mumdmxtg/cant-hear--cream.png"
+        },
+        "curious:cream": {
+          "naturalWidth": 428,
+          "naturalHeight": 134,
+          "transform": {
+            "x": 6.237286066604874,
+            "y": 31.725416280455512,
+            "width": 64.70590372267185,
+            "rotation": 4.321923464907059
+          },
+          "src": "/mascots/registered/images/bottom--item-mumdmxtg/curious--cream.png"
+        },
+        "curious:gray": {
+          "naturalWidth": 428,
+          "naturalHeight": 134,
+          "transform": {
+            "x": -10.033890029131356,
+            "y": 28.79660189353814,
+            "width": 63.10604759815882,
+            "rotation": 4.321923464907059
+          },
+          "src": "/mascots/registered/images/bottom--item-mumdmxtg/curious--gray.png"
+        },
+        "cant-hear:gray": {
+          "naturalWidth": 423,
+          "naturalHeight": 116,
+          "transform": {
+            "x": 0.13559115135063537,
+            "y": 32.15932865466102,
+            "width": 68.47246638130868,
+            "rotation": 0
+          },
+          "src": "/mascots/registered/images/bottom--item-mumdmxtg/cant-hear--gray.png"
+        },
+        "drink:cream": {
+          "naturalWidth": 430,
+          "naturalHeight": 124,
+          "transform": {
+            "x": -0.5423749503442795,
+            "y": 30.640678793697035,
+            "width": 68.96815540317158,
+            "rotation": 0
+          },
+          "src": "/mascots/registered/images/bottom--item-mumdmxtg/drink--cream.png"
+        },
+        "drink:gray": {
+          "naturalWidth": 430,
+          "naturalHeight": 124,
+          "transform": {
+            "x": -0.2711823027012711,
+            "y": 30.640678793697035,
+            "width": 68.187094383308,
+            "rotation": 0
+          },
+          "src": "/mascots/registered/images/bottom--item-mumdmxtg/drink--gray.png"
+        },
+        "basic:cream": {
+          "naturalWidth": 430,
+          "naturalHeight": 124,
+          "transform": {
+            "x": -0.8135675979872883,
+            "y": 30.857632911811443,
+            "width": 67.55769349916216,
+            "rotation": 0
+          },
+          "src": "/mascots/registered/images/bottom--item-mumdmxtg/basic--cream.png"
+        },
+        "basic:gray": {
+          "naturalWidth": 430,
+          "naturalHeight": 124,
+          "transform": {
+            "x": -0.5423749503442798,
+            "y": 31.291528734110173,
+            "width": 57.50873627549554,
+            "rotation": 0
+          },
+          "src": "/mascots/registered/images/bottom--item-mumdmxtg/basic--gray.png"
+        },
+        "droopy:cream": {
+          "naturalWidth": 437,
+          "naturalHeight": 133,
+          "transform": {
+            "x": 8.94916081832627,
+            "y": 31.18304753707627,
+            "width": 74.86570641219693,
+            "rotation": 0
+          },
+          "src": "/mascots/registered/images/bottom--item-mumdmxtg/droopy--cream.png"
+        },
+        "droopy:gray": {
+          "naturalWidth": 437,
+          "naturalHeight": 133,
+          "transform": {
+            "x": 9.898319567664194,
+            "y": 31.399997517213983,
+            "width": 74.86570641219693,
+            "rotation": 0
+          },
+          "src": "/mascots/registered/images/bottom--item-mumdmxtg/droopy--gray.png"
+        },
+        "passion:cream": {
+          "naturalWidth": 430,
+          "naturalHeight": 124,
+          "transform": {
+            "x": 0.6779661016949152,
+            "y": 33.786439022775426,
+            "width": 56.36405994736299,
+            "rotation": 0
+          },
+          "src": "/mascots/registered/images/bottom--item-mumdmxtg/passion--cream.png"
+        },
+        "passion:gray": {
+          "naturalWidth": 430,
+          "naturalHeight": 124,
+          "transform": {
+            "x": -0.8135572530455508,
+            "y": 34.00338486493644,
+            "width": 56.36405994736299,
+            "rotation": 0
+          },
+          "src": "/mascots/registered/images/bottom--item-mumdmxtg/passion--gray.png"
+        },
+        "run:cream": {
+          "naturalWidth": 400,
+          "naturalHeight": 115,
+          "transform": {
+            "x": 4.338968567929026,
+            "y": 30.749147576800844,
+            "width": 69.06249758710044,
+            "rotation": -1.0123266646876345
+          },
+          "src": "/mascots/registered/images/bottom--item-mumdmxtg/run--cream.png"
+        },
+        "run:gray": {
+          "naturalWidth": 400,
+          "naturalHeight": 115,
+          "transform": {
+            "x": 4.7457523669226696,
+            "y": 31.942366260593218,
+            "width": 67.51593226137204,
+            "rotation": -1.0123266646876345
+          },
+          "src": "/mascots/registered/images/bottom--item-mumdmxtg/run--gray.png"
+        },
+        "stretch:cream": {
+          "naturalWidth": 417,
+          "naturalHeight": 152,
+          "transform": {
+            "x": -12.203389830508474,
+            "y": 27.494918564618644,
+            "width": 67.98228714506205,
+            "rotation": 3.0609516748185115
+          },
+          "src": "/mascots/registered/images/bottom--item-mumdmxtg/stretch--cream.png"
+        },
+        "stretch:gray": {
+          "naturalWidth": 424,
+          "naturalHeight": 150,
+          "transform": {
+            "x": 11.118639929819915,
+            "y": 25.976264565677965,
+            "width": 64.9958378962303,
+            "rotation": -3.7427010318849625
+          },
+          "src": "/mascots/registered/images/bottom--item-mumdmxtg/stretch--gray.png"
+        },
+        "victory:cream": {
+          "naturalWidth": 429,
+          "naturalHeight": 129,
+          "transform": {
+            "x": 4.067796610169491,
+            "y": 17.515256720074152,
+            "width": 65.11715040383413,
+            "rotation": 0
+          },
+          "src": "/mascots/registered/images/bottom--item-mumdmxtg/victory--cream.png"
+        },
+        "victory:gray": {
+          "naturalWidth": 429,
+          "naturalHeight": 129,
+          "transform": {
+            "x": -4.338978912870763,
+            "y": 17.62372964115466,
+            "width": 63.95730618387618,
+            "rotation": 0
+          },
+          "src": "/mascots/registered/images/bottom--item-mumdmxtg/victory--gray.png"
+        }
+      }
+    },
+    {
+      "id": "item-mumcdhbz",
+      "name": "헬멧",
+      "slot": "hat",
+      "placements": {
+        "basic:cream": {
+          "naturalWidth": 617,
+          "naturalHeight": 417,
+          "transform": {
+            "x": -0.16949152542372747,
+            "y": -21.966101694915256,
+            "width": 99.52494479788406,
+            "rotation": 0
+          },
+          "src": "/mascots/registered/images/head--item-mumcdhbz/basic--cream.png"
+        },
+        "basic:gray": {
+          "naturalWidth": 617,
+          "naturalHeight": 417,
+          "transform": {
+            "x": 1.3322676295501878e-15,
+            "y": -21.152542372881356,
+            "width": 91.4291488720027,
+            "rotation": 0
+          },
+          "src": "/mascots/registered/images/head--item-mumcdhbz/basic--gray.png"
+        },
+        "cant-hear:cream": {
+          "naturalWidth": 565,
+          "naturalHeight": 382,
+          "transform": {
+            "x": -0.16949152542372814,
+            "y": -21.830508474576273,
+            "width": 97.53070988647598,
+            "rotation": 0
+          },
+          "src": "/mascots/registered/images/head--item-mumcdhbz/cant-hear--cream.png"
+        },
+        "cant-hear:gray": {
+          "naturalWidth": 565,
+          "naturalHeight": 382,
+          "transform": {
+            "x": -0.16949152542372814,
+            "y": -21.830508474576273,
+            "width": 97.92603377955639,
+            "rotation": 0
+          },
+          "src": "/mascots/registered/images/head--item-mumcdhbz/cant-hear--gray.png"
+        },
+        "curious:cream": {
+          "naturalWidth": 546,
+          "naturalHeight": 394,
+          "transform": {
+            "x": 4.576271186440677,
+            "y": -18.71186440677966,
+            "width": 85.6924833624662,
+            "rotation": -2.173152966561247
+          },
+          "src": "/mascots/registered/images/head--item-mumcdhbz/curious--cream.png"
+        },
+        "curious:gray": {
+          "naturalWidth": 546,
+          "naturalHeight": 394,
+          "transform": {
+            "x": -2.033898305084746,
+            "y": -17.220338983050844,
+            "width": 80.78897702376246,
+            "rotation": 29.035817529951373
+          },
+          "src": "/mascots/registered/images/head--item-mumcdhbz/curious--gray.png"
+        },
+        "drink:cream": {
+          "naturalWidth": 582,
+          "naturalHeight": 335,
+          "transform": {
+            "x": 1.8644067796610173,
+            "y": -26.57627118644068,
+            "width": 94.11962406428158,
+            "rotation": 0
+          },
+          "src": "/mascots/registered/images/head--item-mumcdhbz/drink--cream.png"
+        },
+        "drink:gray": {
+          "naturalWidth": 582,
+          "naturalHeight": 335,
+          "transform": {
+            "x": 1.8644067796610173,
+            "y": -26.57627118644068,
+            "width": 92.25474004905132,
+            "rotation": 0
+          },
+          "src": "/mascots/registered/images/head--item-mumcdhbz/drink--gray.png"
+        },
+        "droopy:cream": {
+          "naturalWidth": 565,
+          "naturalHeight": 359,
+          "transform": {
+            "x": -0.8474576271186436,
+            "y": -21.830508474576273,
+            "width": 97.9327752116531,
+            "rotation": 0
+          },
+          "src": "/mascots/registered/images/head--item-mumcdhbz/droopy--cream.png"
+        },
+        "droopy:gray": {
+          "naturalWidth": 565,
+          "naturalHeight": 359,
+          "transform": {
+            "x": -0.8474576271186436,
+            "y": -20.474576271186443,
+            "width": 97.9327752116531,
+            "rotation": 0
+          },
+          "src": "/mascots/registered/images/head--item-mumcdhbz/droopy--gray.png"
+        },
+        "lying:cream": {
+          "naturalWidth": 555,
+          "naturalHeight": 447,
+          "transform": {
+            "x": 6.2711864406779645,
+            "y": -15.1864406779661,
+            "width": 84.48009087575777,
+            "rotation": 0.9980100026677974
+          },
+          "src": "/mascots/registered/images/head--item-mumcdhbz/lying--cream.png"
+        },
+        "lying:gray": {
+          "naturalWidth": 555,
+          "naturalHeight": 447,
+          "transform": {
+            "x": 6.2711864406779645,
+            "y": -15.1864406779661,
+            "width": 84.48009087575777,
+            "rotation": 0.9980100026677974
+          },
+          "src": "/mascots/registered/images/head--item-mumcdhbz/lying--gray.png"
+        },
+        "passion:cream": {
+          "naturalWidth": 585,
+          "naturalHeight": 554,
+          "transform": {
+            "x": 0.508474576271186,
+            "y": -14.644067796610168,
+            "width": 86.41526142702877,
+            "rotation": 0
+          },
+          "src": "/mascots/registered/images/head--item-mumcdhbz/passion--cream.png"
+        },
+        "passion:gray": {
+          "naturalWidth": 585,
+          "naturalHeight": 554,
+          "transform": {
+            "x": -1.52542372881356,
+            "y": -14.644067796610168,
+            "width": 86.41526142702877,
+            "rotation": 0
+          },
+          "src": "/mascots/registered/images/head--item-mumcdhbz/passion--gray.png"
+        },
+        "pushup:cream": {
+          "naturalWidth": 630,
+          "naturalHeight": 449,
+          "transform": {
+            "x": 6.271186440677966,
+            "y": -9.627118644067798,
+            "width": 92.9675623665886,
+            "rotation": 0
+          },
+          "src": "/mascots/registered/images/head--item-mumcdhbz/pushup--cream.png"
+        },
+        "pushup:gray": {
+          "naturalWidth": 630,
+          "naturalHeight": 449,
+          "transform": {
+            "x": 5.593220338983051,
+            "y": -10.033898305084747,
+            "width": 95.65526773593145,
+            "rotation": 0
+          },
+          "src": "/mascots/registered/images/head--item-mumcdhbz/pushup--gray.png"
+        },
+        "run:cream": {
+          "naturalWidth": 601,
+          "naturalHeight": 447,
+          "transform": {
+            "x": -2.711864406779662,
+            "y": -23.050847457627118,
+            "width": 104.34129319781388,
+            "rotation": 0
+          },
+          "src": "/mascots/registered/images/head--item-mumcdhbz/run--cream.png"
+        },
+        "run:gray": {
+          "naturalWidth": 601,
+          "naturalHeight": 447,
+          "transform": {
+            "x": -2.711864406779662,
+            "y": -23.050847457627118,
+            "width": 101.83815159426305,
+            "rotation": 0
+          },
+          "src": "/mascots/registered/images/head--item-mumcdhbz/run--gray.png"
+        },
+        "stretch:cream": {
+          "naturalWidth": 583,
+          "naturalHeight": 512,
+          "transform": {
+            "x": 9.152542372881356,
+            "y": -18.440677966101692,
+            "width": 82.46277969482084,
+            "rotation": 6.798906551511777
+          },
+          "src": "/mascots/registered/images/head--item-mumcdhbz/stretch--cream.png"
+        },
+        "stretch:gray": {
+          "naturalWidth": 583,
+          "naturalHeight": 512,
+          "transform": {
+            "x": -14.576271186440678,
+            "y": -16.406779661016948,
+            "width": 82.46277969482084,
+            "rotation": -46.79540552075969
+          },
+          "src": "/mascots/registered/images/head--item-mumcdhbz/stretch--gray.png"
+        },
+        "victory:cream": {
+          "naturalWidth": 621,
+          "naturalHeight": 396,
+          "transform": {
+            "x": 5.084745762711864,
+            "y": -30.10169491525424,
+            "width": 85.83855722279648,
+            "rotation": 2.3551727556400692
+          },
+          "src": "/mascots/registered/images/head--item-mumcdhbz/victory--cream.png"
+        },
+        "victory:gray": {
+          "naturalWidth": 621,
+          "naturalHeight": 396,
+          "transform": {
+            "x": -3.3898305084745766,
+            "y": -28.74576271186441,
+            "width": 80.13024269291098,
+            "rotation": 2.3551727556400692
+          },
+          "src": "/mascots/registered/images/head--item-mumcdhbz/victory--gray.png"
+        }
+      }
+    },
+    {
+      "id": "item-mumd1fjp",
+      "name": "노란 야구점퍼",
+      "slot": "top",
+      "placements": {
+        "run:cream": {
+          "naturalWidth": 467,
+          "naturalHeight": 219,
+          "transform": {
+            "x": 3.220338983050847,
+            "y": 16.54237288135593,
+            "width": 79.37674525776957,
+            "rotation": 0
+          },
+          "src": "/mascots/registered/images/top--item-mumd1fjp/run--cream.png"
+        },
+        "run:gray": {
+          "naturalWidth": 467,
+          "naturalHeight": 219,
+          "transform": {
+            "x": 2.8813559322033893,
+            "y": 17.89830508474576,
+            "width": 79.09721220436901,
+            "rotation": 0
+          },
+          "src": "/mascots/registered/images/top--item-mumd1fjp/run--gray.png"
+        },
+        "victory:cream": {
+          "naturalWidth": 557,
+          "naturalHeight": 307,
+          "transform": {
+            "x": 3.2542186672404667,
+            "y": -0.2440702793961872,
+            "width": 86.25021299449877,
+            "rotation": 1.3926442842534925
+          },
+          "src": "/mascots/registered/images/top--item-mumd1fjp/victory--cream.png"
+        },
+        "victory:gray": {
+          "naturalWidth": 557,
+          "naturalHeight": 307,
+          "transform": {
+            "x": -4.339009947695974,
+            "y": 0.29831087791313476,
+            "width": 80.71359194307618,
+            "rotation": 3.308562765109059
+          },
+          "src": "/mascots/registered/images/top--item-mumd1fjp/victory--gray.png"
+        },
+        "stretch:cream": {
+          "naturalWidth": 468,
+          "naturalHeight": 300,
+          "transform": {
+            "x": -5.96611410884534,
+            "y": 6.5898271980932215,
+            "width": 75.6721513279027,
+            "rotation": 17.759115128496887
+          },
+          "src": "/mascots/registered/images/top--item-mumd1fjp/stretch--cream.png"
+        },
+        "stretch:gray": {
+          "naturalWidth": 468,
+          "naturalHeight": 300,
+          "transform": {
+            "x": 6.237296411546611,
+            "y": 6.698304257150425,
+            "width": 74.15014593758156,
+            "rotation": -16.977726602582834
+          },
+          "src": "/mascots/registered/images/top--item-mumd1fjp/stretch--gray.png"
+        },
+        "basic:cream": {
+          "naturalWidth": 517,
+          "naturalHeight": 220,
+          "transform": {
+            "x": -0.13559115135063537,
+            "y": 18.088138903601696,
+            "width": 80.33098412033236,
+            "rotation": 0
+          },
+          "src": "/mascots/registered/images/top--item-mumd1fjp/basic--cream.png"
+        },
+        "basic:gray": {
+          "naturalWidth": 517,
+          "naturalHeight": 220,
+          "transform": {
+            "x": -0.2711926476430082,
+            "y": 19.715253409692796,
+            "width": 74.78390047944917,
+            "rotation": 0.6904315434951513
+          },
+          "src": "/mascots/registered/images/top--item-mumd1fjp/basic--gray.png"
+        },
+        "cant-hear:cream": {
+          "naturalWidth": 500,
+          "naturalHeight": 212,
+          "transform": {
+            "x": 0.5423749503442798,
+            "y": 17.328816042108052,
+            "width": 80.3832813840639,
+            "rotation": 0
+          },
+          "src": "/mascots/registered/images/top--item-mumd1fjp/cant-hear--cream.png"
+        },
+        "cant-hear:gray": {
+          "naturalWidth": 500,
+          "naturalHeight": 212,
+          "transform": {
+            "x": -0.40677345405190657,
+            "y": 18.08812648967161,
+            "width": 78.84433132055527,
+            "rotation": 0
+          },
+          "src": "/mascots/registered/images/top--item-mumd1fjp/cant-hear--gray.png"
+        },
+        "curious:cream": {
+          "naturalWidth": 465,
+          "naturalHeight": 250,
+          "transform": {
+            "x": 9.355913582494706,
+            "y": 16.786439022775422,
+            "width": 68.52332255005004,
+            "rotation": 3.557602839625133
+          },
+          "src": "/mascots/registered/images/top--item-mumd1fjp/curious--cream.png"
+        },
+        "curious:gray": {
+          "naturalWidth": 465,
+          "naturalHeight": 250,
+          "transform": {
+            "x": -8.00002275887182,
+            "y": 15.484751555879235,
+            "width": 65.15246310192168,
+            "rotation": 6.947623587482667
+          },
+          "src": "/mascots/registered/images/top--item-mumd1fjp/curious--gray.png"
+        },
+        "droopy:cream": {
+          "naturalWidth": 470,
+          "naturalHeight": 207,
+          "transform": {
+            "x": 1.8983174986758478,
+            "y": 20.040672172934325,
+            "width": 74.16368612311811,
+            "rotation": 0
+          },
+          "src": "/mascots/registered/images/top--item-mumd1fjp/droopy--cream.png"
+        },
+        "droopy:gray": {
+          "naturalWidth": 470,
+          "naturalHeight": 207,
+          "transform": {
+            "x": 3.525442349708687,
+            "y": 20.799990896451273,
+            "width": 69.51482987318329,
+            "rotation": 0
+          },
+          "src": "/mascots/registered/images/top--item-mumd1fjp/droopy--gray.png"
+        },
+        "lying:cream": {
+          "naturalWidth": 462,
+          "naturalHeight": 318,
+          "transform": {
+            "x": -4.474590754104874,
+            "y": 14.7254245564089,
+            "width": 68.45807602249143,
+            "rotation": 2.4031657645416544
+          },
+          "src": "/mascots/registered/images/top--item-mumd1fjp/lying--cream.png"
+        },
+        "lying:gray": {
+          "naturalWidth": 462,
+          "naturalHeight": 318,
+          "transform": {
+            "x": -4.745773056806145,
+            "y": 14.616951635328391,
+            "width": 68.45807602249143,
+            "rotation": 2.4031657645416544
+          },
+          "src": "/mascots/registered/images/top--item-mumd1fjp/lying--gray.png"
+        },
+        "passion:cream": {
+          "naturalWidth": 464,
+          "naturalHeight": 186,
+          "transform": {
+            "x": 0.9491484043961865,
+            "y": 22.535599013506356,
+            "width": 63.05814594330388,
+            "rotation": 0
+          },
+          "src": "/mascots/registered/images/top--item-mumd1fjp/passion--cream.png"
+        },
+        "passion:gray": {
+          "naturalWidth": 464,
+          "naturalHeight": 186,
+          "transform": {
+            "x": -0.4067837989936439,
+            "y": 22.644071934586865,
+            "width": 63.05814594330388,
+            "rotation": 0
+          },
+          "src": "/mascots/registered/images/top--item-mumd1fjp/passion--gray.png"
+        }
+      }
+    }
+  ],
+  "poses": [
+    {
+      "id": "basic",
+      "file": "basic.png",
+      "width": 1600,
+      "height": 1000,
+      "viewports": {
+        "cream": [-2.7907, -11.4884, 805.5814, 1006.9767],
+        "gray": [798.1744, -11.407, 804.6512, 1005.814]
+      },
+      "clips": {
+        "cream": [0, 0, 800, 1000],
+        "gray": [800, 0, 800, 1000]
+      },
+      "src": "/mascots/poses/basic.png"
+    },
+    {
+      "id": "cant-hear",
+      "file": "cant-hear.png",
+      "width": 1254,
+      "height": 1254,
+      "viewports": {
+        "cream": [25.9419, 239.5523, 615.1163, 768.8953],
+        "gray": [601.8721, 230.4651, 623.2558, 779.0698]
+      },
+      "clips": {
+        "cream": [0, 0, 627, 1254],
+        "gray": [627, 0, 627, 1254]
+      },
+      "src": "/mascots/poses/cant-hear.png"
+    },
+    {
+      "id": "curious",
+      "file": "curious.png",
+      "width": 1254,
+      "height": 1254,
+      "viewports": {
+        "cream": [50.3023, 261.6279, 581.3953, 726.7442],
+        "gray": [614.1628, 262.4535, 597.6744, 747.093]
+      },
+      "clips": {
+        "cream": [0, 0, 627, 1254],
+        "gray": [627, 0, 627, 1254]
+      },
+      "src": "/mascots/poses/curious.png"
+    },
+    {
+      "id": "drink",
+      "file": "drink.png",
+      "width": 1254,
+      "height": 1254,
+      "viewports": {
+        "cream": [19.2907, 239.4884, 634.4186, 793.0233],
+        "gray": [594.3953, 238.2442, 637.2093, 796.5116]
+      },
+      "clips": {
+        "cream": [0, 0, 627, 1254],
+        "gray": [627, 0, 627, 1254]
+      },
+      "src": "/mascots/poses/drink.png"
+    },
+    {
+      "id": "droopy",
+      "file": "droopy.png",
+      "width": 1254,
+      "height": 1254,
+      "viewports": {
+        "cream": [50.8605, 317.3256, 556.2791, 695.3488],
+        "gray": [632.8488, 313.936, 559.3023, 699.1279]
+      },
+      "clips": {
+        "cream": [0, 0, 627, 1254],
+        "gray": [627, 0, 627, 1254]
+      },
+      "src": "/mascots/poses/droopy.png"
+    },
+    {
+      "id": "lying",
+      "file": "lying-white.png",
+      "width": 1448,
+      "height": 1086,
+      "viewports": {
+        "cream": [162.5, 196.75, 550.0, 687.5],
+        "gray": [711.7442, 207.4302, 546.5116, 683.1395]
+      },
+      "clips": {
+        "cream": [0, 0, 724, 1086],
+        "gray": [724, 0, 724, 1086]
+      },
+      "src": "/mascots/poses/lying-white.png"
+    },
+    {
+      "id": "passion",
+      "file": "passion.png",
+      "width": 1254,
+      "height": 1254,
+      "viewports": {
+        "cream": [-39.0349, 145.0814, 719.0698, 898.8372],
+        "gray": [569.4651, 145.0814, 719.0698, 898.8372]
+      },
+      "clips": {
+        "cream": [0, 0, 627, 1254],
+        "gray": [627, 0, 627, 1254]
+      },
+      "src": "/mascots/poses/passion.png"
+    },
+    {
+      "id": "pushup",
+      "file": "pushup-white.png",
+      "width": 1448,
+      "height": 1086,
+      "viewports": {
+        "cream": [100.5, 191.25, 650.0, 812.5],
+        "gray": [699.314, 191.5174, 638.3721, 797.9651]
+      },
+      "clips": {
+        "cream": [0, 0, 724, 1086],
+        "gray": [724, 0, 724, 1086]
+      },
+      "src": "/mascots/poses/pushup-white.png"
+    },
+    {
+      "id": "run",
+      "file": "run-white.png",
+      "width": 1448,
+      "height": 1086,
+      "viewports": {
+        "cream": [178.9651, 212.3314, 529.0698, 661.3372],
+        "gray": [701.1744, 217.093, 524.6512, 655.814]
+      },
+      "clips": {
+        "cream": [0, 0, 724, 1086],
+        "gray": [724, 0, 724, 1086]
+      },
+      "src": "/mascots/poses/run-white.png"
+    },
+    {
+      "id": "stretch",
+      "file": "stretch.png",
+      "width": 1254,
+      "height": 1254,
+      "viewports": {
+        "cream": [24.1047, 228.0058, 612.7907, 765.9884],
+        "gray": [609.8605, 225.8256, 616.2791, 770.3488]
+      },
+      "clips": {
+        "cream": [0, 0, 627, 1254],
+        "gray": [627, 0, 627, 1254]
+      },
+      "src": "/mascots/poses/stretch.png"
+    },
+    {
+      "id": "victory",
+      "file": "victory.png",
+      "width": 1254,
+      "height": 1254,
+      "viewports": {
+        "cream": [-9.2326, 229.7093, 660.4651, 825.5814],
+        "gray": [585.6279, 224.0349, 676.7442, 845.9302]
+      },
+      "clips": {
+        "cream": [0, 0, 627, 1254],
+        "gray": [627, 0, 627, 1254]
+      },
+      "src": "/mascots/poses/victory.png"
+    }
+  ]
+}
