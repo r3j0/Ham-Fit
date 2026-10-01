@@ -10,11 +10,12 @@ export default async function Page({
 }) {
   const { tab } = await searchParams;
   const initialMode: AccountSettingsMode =
+    tab === "email" ||
     tab === "birth" ||
     tab === "nickname" ||
     tab === "password" ||
     tab === "delete"
       ? tab
-      : "email";
+      : "birth";
   return <AccountSettings initialMode={initialMode} />;
 }

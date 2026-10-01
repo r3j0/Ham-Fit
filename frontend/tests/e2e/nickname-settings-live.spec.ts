@@ -30,9 +30,8 @@ test("실제 PR #9 닉네임 저장·재조회·프로필 표시·생년월일 �
     ).toBeVisible();
     await page.getByRole("link", { name: "계정 설정", exact: true }).click();
     await page
-      .getByRole("group", { name: "설정 항목" })
-      .getByRole("button", { name: "닉네임 변경", exact: true })
-      .click();
+      .getByRole("heading", { name: "닉네임 변경", exact: true })
+      .scrollIntoViewIfNeeded();
     await page.getByLabel("닉네임", { exact: true }).fill("  건강_친구2  ");
     const waiting = page.waitForResponse(
       (r) =>
@@ -52,7 +51,9 @@ test("실제 PR #9 닉네임 저장·재조회·프로필 표시·생년월일 �
     await expect(page.getByLabel("닉네임", { exact: true })).toHaveValue(
       "건강_친구2",
     );
-    await page.getByRole("button", { name: "생년월일", exact: true }).click();
+    await page
+      .getByRole("heading", { name: "생년월일", exact: true })
+      .scrollIntoViewIfNeeded();
     await page.getByLabel("생년월일 입력").fill("1999-03-01");
     const birthWaiting = page.waitForResponse(
       (r) =>

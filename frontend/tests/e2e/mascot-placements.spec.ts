@@ -134,7 +134,7 @@ test("그룹·체력 기록·간이측정·탈퇴 확인의 캐릭터를 읽기 
     await page.setViewportSize({ width, height: 900 });
     for (const [path, variant, pose] of [
       ["/onboarding", "cream", "curious"],
-      ["/workout?mode=assessment", "gray", "situp"],
+      ["/workout?mode=assessment", "cream", "situp"],
     ]) {
       await page.goto(path);
       await expect(
@@ -153,6 +153,7 @@ test("그룹·체력 기록·간이측정·탈퇴 확인의 캐릭터를 읽기 
   await page.setViewportSize({ width: 320, height: 640 });
   await page.goto("/account/settings?tab=delete");
   await page
+    .getByRole("form", { name: "회원 탈퇴", exact: true })
     .getByLabel("현재 비밀번호", { exact: true })
     .fill("not-submitted-password");
   await page

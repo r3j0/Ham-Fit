@@ -539,7 +539,9 @@ test("legacy users are guided to a birth profile, measurement, or unsupported-ag
     .getByRole("link", { name: "내 프로필", exact: true })
     .click();
   await page.getByRole("link", { name: "계정 설정", exact: true }).click();
-  await page.getByRole("button", { name: "생년월일", exact: true }).click();
+  await page
+    .getByRole("heading", { name: "생년월일", exact: true })
+    .scrollIntoViewIfNeeded();
   await page.getByLabel("생년월일 입력", { exact: true }).fill("1950-01-01");
   await saveBirthProfile(page);
   await page

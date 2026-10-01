@@ -288,7 +288,9 @@ test("미측정 계정도 가입 당일 표시와 지원되는 활동 정보를 
   await expect(page.getByRole("region", { name: "활동 리포트" })).toBeVisible();
   await expect(page.locator(".fitness-radar")).toHaveCount(0);
   await page.getByRole("link", { name: "계정 설정", exact: true }).click();
-  await page.getByRole("button", { name: "생년월일", exact: true }).click();
+  await page
+    .getByRole("heading", { name: "생년월일", exact: true })
+    .scrollIntoViewIfNeeded();
   await expect(
     page.getByRole("heading", { name: "생년월일", exact: true }),
   ).toBeVisible();

@@ -167,7 +167,13 @@ for (const width of [960, 1280, 1440]) {
         "/account/preferences",
         page.getByRole("radio", { name: "기본", exact: true }),
       ],
-      ["settings", "/account/settings", page.getByLabel("현재 비밀번호")],
+      [
+        "settings",
+        "/account/settings",
+        page
+          .getByRole("form", { name: "이메일 변경", exact: true })
+          .getByLabel("현재 비밀번호"),
+      ],
       ["records", "/measurements", page.locator(".record-card")],
       [
         "report",

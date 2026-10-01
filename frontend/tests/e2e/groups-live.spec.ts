@@ -155,7 +155,10 @@ test("실제 API: 생성·초대·승인/거절·멤버 조회·강퇴·위임·
       ).status(),
     ).toBe(403);
     await page.goto("/account/settings?tab=delete");
-    await page.getByLabel("현재 비밀번호", { exact: true }).fill(password);
+    await page
+      .getByRole("form", { name: "회원 탈퇴", exact: true })
+      .getByLabel("현재 비밀번호", { exact: true })
+      .fill(password);
     await page
       .getByRole("form", { name: "회원 탈퇴" })
       .getByRole("button", { name: "회원 탈퇴", exact: true })

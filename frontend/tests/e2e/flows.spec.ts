@@ -251,7 +251,9 @@ test("생년월일은 계정 설정에서 수정·복원하고 조회·저장 �
   await expect(input).toHaveCount(0);
   await page.getByRole("link", { name: "계정 설정", exact: true }).click();
   await expect(page).toHaveURL(/\/account\/settings$/);
-  await page.getByRole("button", { name: "생년월일", exact: true }).click();
+  await page
+    .getByRole("heading", { name: "생년월일", exact: true })
+    .scrollIntoViewIfNeeded();
   await expect(input).toHaveValue("2000-02-29");
   await input.fill("1999-03-01");
   const saved = page.waitForResponse(
@@ -278,7 +280,9 @@ test("생년월일은 계정 설정에서 수정·복원하고 조회·저장 �
     .first()
     .click();
   await expect(page.getByLabel("새 이메일", { exact: true })).toBeEnabled();
-  await page.getByRole("button", { name: "생년월일", exact: true }).click();
+  await page
+    .getByRole("heading", { name: "생년월일", exact: true })
+    .scrollIntoViewIfNeeded();
   failRead = false;
   await page.getByRole("button", { name: "생년월일 다시 불러오기" }).click();
   await expect(input).toHaveValue("1999-03-01");

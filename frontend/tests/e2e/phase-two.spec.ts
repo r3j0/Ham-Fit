@@ -335,7 +335,10 @@ test("계정 수정은 비밀번호 오류를 재전송하지 않고 성공하�
   });
   const email = `changed-${crypto.randomUUID()}@example.test`;
   await page.getByLabel("새 이메일", { exact: true }).fill(email);
-  await page.getByLabel("현재 비밀번호").fill("incorrect-password");
+  await page
+    .getByRole("form", { name: "이메일 변경", exact: true })
+    .getByLabel("현재 비밀번호")
+    .fill("incorrect-password");
   await page
     .getByRole("button", { name: "이메일 변경", exact: true })
     .last()
@@ -345,7 +348,10 @@ test("계정 수정은 비밀번호 오류를 재전송하지 않고 성공하�
   );
   expect(updates).toBe(1);
   await expect(other.getByText(account.email, { exact: true })).toBeVisible();
-  await page.getByLabel("현재 비밀번호").fill(password);
+  await page
+    .getByRole("form", { name: "이메일 변경", exact: true })
+    .getByLabel("현재 비밀번호")
+    .fill(password);
   await page
     .getByRole("button", { name: "이메일 변경", exact: true })
     .last()
@@ -374,12 +380,15 @@ test("새 비밀번호 확인 후 변경하고 재로그인하여 영구 탈퇴�
   const { email } = await register(page);
   await page.goto("/account/settings");
   await page
-    .getByRole("button", { name: "비밀번호 변경", exact: true })
-    .click();
+    .getByRole("heading", { name: "비밀번호 변경", exact: true })
+    .scrollIntoViewIfNeeded();
   const updated = "new-password-with-spaces 2026! ";
   await page.getByLabel("새 비밀번호", { exact: true }).fill(updated);
   await page.getByLabel("새 비밀번호 확인").fill("does-not-match-2026");
-  await page.getByLabel("현재 비밀번호").fill(password);
+  await page
+    .getByRole("form", { name: "비밀번호 변경", exact: true })
+    .getByLabel("현재 비밀번호")
+    .fill(password);
   await page
     .getByRole("button", { name: "비밀번호 변경", exact: true })
     .last()
@@ -393,8 +402,13 @@ test("새 비밀번호 확인 후 변경하고 재로그인하여 영구 탈퇴�
   await expect(page).toHaveURL(/\/login/);
   await login(page, email, updated);
   await page.goto("/account/settings");
-  await page.getByRole("button", { name: "회원 탈퇴", exact: true }).click();
-  await page.getByLabel("현재 비밀번호").fill(updated);
+  await page
+    .getByRole("heading", { name: "회원 탈퇴", exact: true })
+    .scrollIntoViewIfNeeded();
+  await page
+    .getByRole("form", { name: "회원 탈퇴", exact: true })
+    .getByLabel("현재 비밀번호")
+    .fill(updated);
   await page
     .getByRole("button", { name: "회원 탈퇴", exact: true })
     .last()
@@ -421,7 +435,10 @@ test("중복 이메일과 요청 제한은 입력을 보존하고 재시도할 �
   await register(page);
   await page.goto("/account/settings");
   await page.getByLabel("새 이메일", { exact: true }).fill(owner.email);
-  await page.getByLabel("현재 비밀번호").fill(password);
+  await page
+    .getByRole("form", { name: "이메일 변경", exact: true })
+    .getByLabel("현재 비밀번호")
+    .fill(password);
   await page
     .getByRole("button", { name: "이메일 변경", exact: true })
     .last()
