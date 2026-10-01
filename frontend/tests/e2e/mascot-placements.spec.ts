@@ -78,6 +78,14 @@ for (const width of [320, 390, 1280]) {
     await page.goto("/register");
     const pair = page.getByRole("group", { name: "가입을 기다리는 햄스터" });
     await expect(pair.getByRole("img")).toHaveCount(2);
+    const pairBox = (await pair.boundingBox())!;
+    for (const mascot of await pair.getByRole("img").all()) {
+      const box = (await mascot.boundingBox())!;
+      expect(box.width).toBeCloseTo(
+        Math.min(pairBox.width * 0.6272, 266.56),
+        1,
+      );
+    }
     await expect(
       pair.locator(
         '[data-variant="cream"][data-pose="curious"][data-wear="none"]',

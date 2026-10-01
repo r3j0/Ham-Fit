@@ -12,12 +12,17 @@
   justify-self: center;
 }
 .pair {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: center;
   justify-content: center;
-  gap: 16px;
+  gap: 0;
+  /* The enlarged square canvases overlap only in their transparent margins. */
+  overflow: clip;
   isolation: isolate;
 }
 .pair > span {
-  width: min(44.8%, 190.4px);
+  width: min(125.44%, 266.56px);
+  max-width: none;
+  justify-self: center;
 }

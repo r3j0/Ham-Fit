@@ -44,8 +44,8 @@ export function SignupMascots() {
       role="group"
       aria-label="가입을 기다리는 햄스터"
     >
-      <MascotPose pose="curious" variant="cream" size={136} />
-      <MascotPose pose="curious" variant="gray" size={136} />
+      <MascotPose pose="curious" variant="cream" size={190.4} />
+      <MascotPose pose="curious" variant="gray" size={190.4} />
     </div>
   );
 }
