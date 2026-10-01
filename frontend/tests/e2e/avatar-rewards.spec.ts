@@ -13,6 +13,9 @@ test("구매 응답 유실을 같은 키로 복구하고 구매와 대표 코디
   const state = await installCommerce(page);
   state.losePurchase = true;
   await page.goto("/shop");
+  const balance = page.getByRole("group", { name: "보유 재화" });
+  await expect(balance.getByRole("img", { name: "해바라기씨" })).toBeVisible();
+  await expect(balance).toHaveText("100");
   await page.getByRole("button", { name: "자세", exact: true }).click();
   await page.getByRole("button", { name: /궁금.*50개/ }).click();
   await page.getByRole("button", { name: /궁금 구매하기/ }).click();
@@ -32,6 +35,7 @@ test("구매 응답 유실을 같은 키로 복구하고 구매와 대표 코디
   expect(state.purchases[0]).toEqual(state.purchases[1]);
   expect(state.balance).toBe(50);
   await page.getByRole("link", { name: "내 옷장", exact: true }).click();
+  await expect(balance).toHaveText("50");
   await expect(
     page.getByRole("heading", { name: "내 옷장", exact: true }),
   ).toBeVisible();
@@ -52,6 +56,68 @@ test("구매 응답 유실을 같은 키로 복구하고 구매와 대표 코디
   await expect(
     page.getByRole("img", { name: "나의 대표 캐릭터", exact: true }),
   ).toHaveAttribute("data-pose", "curious");
+});
+test("상점과 옷장은 공통 재화 UI와 얼굴 버튼을 사용하고 명시적으로 저장한 선택만 유지한다", async ({
+  page,
+}, info) => {
+  const state = await installCommerce(page);
+  for (const route of ["/shop", "/shop/wardrobe"]) {
+    await page.goto(route);
+    const choices = page.getByRole("group", { name: "캐릭터 선택" });
+    const cream = choices.getByRole("button", {
+      name: "크림 햄스터",
+      exact: true,
+    });
+    const gray = choices.getByRole("button", {
+      name: "그레이 햄스터",
+      exact: true,
+    });
+    await expect(choices.getByRole("button")).toHaveCount(2);
+    await expect(cream).toHaveText("");
+    await expect(gray).toHaveText("");
+    await expect(cream.locator("svg")).toHaveAttribute(
+      "data-face-variant",
+      "cream",
+    );
+    await expect(gray.locator("svg")).toHaveAttribute(
+      "data-face-variant",
+      "gray",
+    );
+    await expect(cream).toHaveAttribute("aria-pressed", "true");
+    await gray.focus();
+    await page.keyboard.press("Enter");
+    await expect(gray).toHaveAttribute("aria-pressed", "true");
+    await expect(cream).toHaveAttribute("aria-pressed", "false");
+    await expect(
+      page.getByRole("img", { name: "내 캐릭터 미리보기" }),
+    ).toHaveAttribute("data-variant", "gray");
+    await expect(page.getByText(/현재 대표 코디|미리 보는 중/)).toHaveCount(0);
+    await expect(page.getByRole("group", { name: "보유 재화" })).toHaveText(
+      "100",
+    );
+    await expect(page.locator(".shop-balance")).toHaveCount(0);
+    expect(state.puts).toBe(0);
+    for (const width of [320, 600]) {
+      await page.setViewportSize({ width, height: 786 });
+      expect(
+        await page.evaluate(() => document.documentElement.scrollWidth),
+      ).toBeLessThanOrEqual(width);
+      await page.screenshot({
+        path: info.outputPath(
+          `${route === "/shop" ? "shop" : "wardrobe"}-${width}.png`,
+        ),
+        fullPage: true,
+      });
+    }
+  }
+  await page.getByRole("button", { name: "코디 저장", exact: true }).click();
+  await expect(page.getByText("대표 코디를 저장했어요.")).toBeVisible();
+  expect(state.puts).toBe(1);
+  expect(state.outfit.characterId).toBe("character.gray");
+  await page.reload();
+  await expect(
+    page.getByRole("button", { name: "그레이 햄스터", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
 });
 test("민트 티셔츠 합성, 크림·그레이 전환, 412 충돌과 작은 화면을 검증한다", async ({
   page,

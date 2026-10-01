@@ -27,6 +27,8 @@ import { useDurableMutation } from "./use-durable-mutation";
 import { useOperationScope } from "./use-operation-scope";
 import { useUnsaved } from "./use-unsaved";
 import { ProfileCharacter } from "./profile-character";
+import { HamsterFace } from "./hamster-face";
+import { SeedBalance } from "./seed-balance";
 import { Dialog, Header, Loading, Notice, Shell, SubmitLabel } from "./ui";
 
 const loadShop = async (signal: AbortSignal) => {
@@ -182,12 +184,8 @@ function ShopView({
   }
   return (
     <>
-      <div
-        className="shop-balance"
-        aria-label={`보유 해바라기씨 ${inventory.currency.balance}개`}
-      >
-        <span aria-hidden="true">🌻</span> 해바라기씨{" "}
-        <strong>{inventory.currency.balance.toLocaleString()}개</strong>
+      <div className="shop-balance-row">
+        <SeedBalance balance={inventory.currency.balance} />
       </div>
       <section className="shop-stage" aria-label="코디 미리보기">
         {preview ? (
@@ -199,18 +197,24 @@ function ShopView({
         ) : (
           <p>이 코디의 이미지는 준비 중이에요.</p>
         )}
-        <p className="caption">
-          {dirty
-            ? "미리 보는 중 · 저장하면 대표 코디가 돼요"
-            : "현재 대표 코디"}
-        </p>
-        <div className="segmented" aria-label="캐릭터 선택">
+        <div
+          className="shop-character-choices"
+          role="group"
+          aria-label="캐릭터 선택"
+        >
           {catalog.products
-            .filter((p) => p.kind === "character" && owned.has(p.id))
+            .filter(
+              (p) =>
+                p.kind === "character" &&
+                owned.has(p.id) &&
+                ["cream", "gray"].includes(p.renderKey),
+            )
             .map((p) => (
               <button
                 type="button"
                 key={p.id}
+                aria-label={productName(p)}
+                title={productName(p)}
                 aria-pressed={draft.characterId === p.id}
                 disabled={busy}
                 onClick={() => {
@@ -218,7 +222,7 @@ function ShopView({
                   setMessage("");
                 }}
               >
-                {productName(p)}
+                <HamsterFace variant={p.renderKey as "cream" | "gray"} />
               </button>
             ))}
         </div>
