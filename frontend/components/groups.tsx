@@ -269,7 +269,7 @@ export function Groups() {
             pose="phone"
             variant="cream"
             size={96}
-            label="핸드폰을 보는 크림 햄스터"
+            label="핸드폰을 보는 햄돌이"
           />
         </div>
         {resource.error !== undefined ? (

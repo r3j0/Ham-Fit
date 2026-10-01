@@ -7,9 +7,9 @@ import type { Catalog, OutfitSelection, Product } from "./shop-contract";
 export function productName(product: Product) {
   if (product.kind === "character")
     return product.renderKey === "gray"
-      ? "그레이 햄스터"
+      ? "햄콩이"
       : product.renderKey === "cream"
-        ? "크림 햄스터"
+        ? "햄돌이"
         : "새로운 햄스터";
   if (product.kind === "pose")
     return (

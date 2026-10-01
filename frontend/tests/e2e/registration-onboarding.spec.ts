@@ -65,7 +65,7 @@ test("가입 실패는 폼을 유지하고 성공하면 메인 경유 없이 온
     0,
   );
   await page.getByLabel("닉네임", { exact: true }).fill("새로운햄스터");
-  await page.getByRole("button", { name: "그레이", exact: true }).click();
+  await page.getByRole("button", { name: "햄콩이", exact: true }).click();
   await page.getByRole("button", { name: "저장하고 다음으로" }).click();
   await expect(page).toHaveURL("/onboarding");
   expect(server.mutations).toEqual([

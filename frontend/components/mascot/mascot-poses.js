@@ -552,7 +552,7 @@ export function createMascotPose(container, initial = {}) {
     svg.style.width = `${Math.min(2000, options.size)}px`;
     const label =
       options.label ??
-      `${options.variant === "cream" ? "크림" : "그레이"} 햄스터 · ${art.label}${options.outfit.wear ? " · " + WARDROBE.find((item) => item.id === options.outfit.wear).label : ""}`;
+      `${options.variant === "cream" ? "햄돌이" : "햄콩이"} · ${art.label}${options.outfit.wear ? " · " + WARDROBE.find((item) => item.id === options.outfit.wear).label : ""}`;
     if (label) {
       svg.setAttribute("role", "img");
       svg.setAttribute("aria-label", label);

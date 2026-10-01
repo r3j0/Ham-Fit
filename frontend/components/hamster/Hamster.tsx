@@ -36,7 +36,7 @@ export function Hamster({
   );
   const name =
     label ??
-    `${resolved.variant === "cream" ? "크림" : "그레이"} 햄스터 · ${POSES[resolved.pose].label}`;
+    `${resolved.variant === "cream" ? "햄돌이" : "햄콩이"} · ${POSES[resolved.pose].label}`;
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"

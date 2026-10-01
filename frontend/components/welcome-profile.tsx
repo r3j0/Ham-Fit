@@ -149,7 +149,7 @@ function ProfileChoice({
             onClick={() => setVariant(v)}
           >
             <MascotPose variant={v} pose="basic" size={140} label="" />
-            <strong>{v === "cream" ? "크림" : "그레이"}</strong>
+            <strong>{v === "cream" ? "햄돌이" : "햄콩이"}</strong>
           </button>
         ))}
       </div>

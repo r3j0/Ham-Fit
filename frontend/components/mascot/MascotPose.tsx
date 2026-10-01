@@ -25,7 +25,7 @@ export function MascotPose({
     : 160;
   const title =
     label ??
-    `${variant === "cream" ? "크림" : "그레이"} 햄스터 · ${POSES[pose].label}`;
+    `${variant === "cream" ? "햄돌이" : "햄콩이"} · ${POSES[pose].label}`;
   return (
     <span
       className={[styles.mascot, className].filter(Boolean).join(" ")}
