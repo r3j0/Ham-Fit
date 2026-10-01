@@ -11,7 +11,7 @@ export const POSES = {
         "height": 655.6886
       },
       "gray": {
-        "src": "/hamsters/base/basic-gray.webp",
+        "src": "/hamsters/base/basic-gray-hamkong.svg",
         "x": 260.1048,
         "y": 240.8084,
         "width": 479.7904,
