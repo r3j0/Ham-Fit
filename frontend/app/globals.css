@@ -139,12 +139,33 @@
   gap: 32px;
 }
 .home-toolbar {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   gap: 12px;
   justify-content: flex-end;
   min-height: 44px;
   margin-bottom: -16px;
+}
+.home-toolbar > .brand {
+  grid-column: 2;
+  justify-self: center;
+}
+.home-toolbar-actions {
+  grid-column: 3;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+@media (max-width: 959px) {
+  .home-toolbar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .home-toolbar > .brand,
+  .home-toolbar-actions {
+    grid-column: 1;
+  }
 }
 .notification-bell {
   position: relative;

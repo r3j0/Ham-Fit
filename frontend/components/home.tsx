@@ -5,7 +5,7 @@ import { NotificationBell } from "./notification-bell";
 import { SeedBalance } from "./seed-balance";
 import { MyCharacter } from "./my-character";
 import { ArrowRight } from "lucide-react";
-import { Loading, Notice, Shell } from "./ui";
+import { Brand, Loading, Notice, Shell } from "./ui";
 import { TodayWorkout } from "./today-workout";
 import { WorkoutStreak } from "./workout-streak";
 import { useUserProfile } from "./user-profile-provider";
@@ -18,16 +18,19 @@ export function Home() {
       <h1 className="sr-only">메인</h1>
       <div className="content stack home-content">
         <header className="home-toolbar">
-          <NotificationBell />
-          {user && (
-            <Link
-              href="/shop"
-              className="home-balance-link"
-              aria-label={`상점, 보유 해바라기씨 ${user.currency.balance.toLocaleString("ko-KR")}개`}
-            >
-              <SeedBalance balance={user.currency.balance} />
-            </Link>
-          )}
+          <Brand />
+          <div className="home-toolbar-actions">
+            <NotificationBell />
+            {user && (
+              <Link
+                href="/shop"
+                className="home-balance-link"
+                aria-label={`상점, 보유 해바라기씨 ${user.currency.balance.toLocaleString("ko-KR")}개`}
+              >
+                <SeedBalance balance={user.currency.balance} />
+              </Link>
+            )}
+          </div>
         </header>
         {profile.status === "loading" && (
           <Loading label="나의 기록을 확인하고 있어요" />
