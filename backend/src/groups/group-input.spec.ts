@@ -9,7 +9,7 @@ import {
 } from './group-input.js';
 
 describe('group input', () => {
-  it('normalizes text and permits a one-person group, without visibility or capacity updates', () => {
+  it('normalizes text and accepts creation and capacity updates up to five', () => {
     expect(
       parseGroupInput(createGroupSchema, {
         name: '  모임  ',
@@ -28,11 +28,14 @@ describe('group input', () => {
       expect(() => parseGroupInput(createGroupSchema, body)).toThrow();
     for (const body of [
       {},
-      { maxMembers: 4 },
+      { maxMembers: 6 },
       { name: 'a'.repeat(51) },
       { description: 'x'.repeat(501) },
     ])
       expect(() => parseGroupInput(updateGroupSchema, body)).toThrow();
+    expect(parseGroupInput(updateGroupSchema, { maxMembers: 4 })).toEqual({
+      maxMembers: 4,
+    });
   });
   it('validates opaque codes, request keys, and bounded pages without echoing codes', () => {
     expect(() => requestKey(undefined)).toThrow();

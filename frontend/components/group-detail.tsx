@@ -1,7 +1,7 @@
 "use client";
 import { GroupMission } from "./group-mission";
 import Link from "next/link";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   CalendarCheck,
@@ -40,9 +40,13 @@ import memberStyles from "./group-member-profile.module.css";
 function Applications({
   id,
   onChanged,
+  onBusyChange,
+  full,
 }: {
   id: string;
   onChanged: () => void;
+  onBusyChange: (busy: boolean) => void;
+  full: boolean;
 }) {
   const load = useCallback(
     (signal: AbortSignal) => getRequests(id, "pending", signal),
@@ -55,10 +59,12 @@ function Applications({
     guard = useRef(false);
   const pendingRequests =
     resource.data?.filter((request) => request.status === "pending") ?? [];
+  useEffect(() => () => onBusyChange(false), [onBusyChange]);
   async function decide(requestId: string, action: "approve" | "reject") {
     if (guard.current) return;
     guard.current = true;
     setBusy(true);
+    onBusyChange(true);
     setError("");
     const current = begin();
     try {
@@ -80,12 +86,17 @@ function Applications({
       if (current()) {
         guard.current = false;
         setBusy(false);
+        onBusyChange(false);
       }
     }
   }
   return (
     <section className="stack" aria-label="가입 신청 관리">
-      <h2>가입 신청 관리</h2>
+      {full && (
+        <Notice tone="info">
+          정원이 가득 찼어요. 정원을 늘리거나 빈자리가 생기면 승인할 수 있어요.
+        </Notice>
+      )}
       {error && <Notice>{error}</Notice>}
       {resource.error !== undefined ? (
         <>
@@ -119,7 +130,7 @@ function Applications({
                       className="icon-button"
                       aria-label="가입 승인"
                       title="가입 승인"
-                      disabled={busy}
+                      disabled={busy || full}
                       onClick={() => void decide(request.id, "approve")}
                     >
                       <Check size={20} aria-hidden="true" />
@@ -159,13 +170,21 @@ function GroupView({ row, refresh }: { row: Detail; refresh: () => void }) {
   const [action, setAction] = useState<Action>(),
     [managed, setManaged] = useState<Member>(),
     [editing, setEditing] = useState(false),
+    [applicationsOpen, setApplicationsOpen] = useState(false),
+    [applicationsBusy, setApplicationsBusy] = useState(false),
     [name, setName] = useState(row.name),
-    [description, setDescription] = useState(row.description);
-  const editBase = useRef({ name: row.name, description: row.description });
+    [description, setDescription] = useState(row.description),
+    [maxMembers, setMaxMembers] = useState(String(row.maxMembers));
+  const editBase = useRef({
+    name: row.name,
+    description: row.description,
+    maxMembers: row.maxMembers,
+  });
   const settingsButton = useRef<HTMLButtonElement>(null),
     memberButton = useRef<HTMLButtonElement | null>(null);
   function closeSettings() {
     setEditing(false);
+    setInvite("");
     queueMicrotask(() => settingsButton.current?.focus());
   }
   function closeManaged() {
@@ -227,11 +246,21 @@ function GroupView({ row, refresh }: { row: Detail; refresh: () => void }) {
     event.preventDefault();
     let body;
     try {
-      const input = groupInput(name, description);
+      const input = groupInput(name, description, Number(maxMembers));
+      if (
+        input.maxMembers! < row.currentMembers &&
+        input.maxMembers !== editBase.current.maxMembers
+      )
+        throw new Error(
+          `현재 그룹원 ${row.currentMembers}명보다 정원을 줄일 수 없어요.`,
+        );
       body = {
         ...(input.name !== editBase.current.name ? { name: input.name } : {}),
         ...(input.description !== editBase.current.description
           ? { description: input.description }
+          : {}),
+        ...(input.maxMembers !== editBase.current.maxMembers
+          ? { maxMembers: input.maxMembers }
           : {}),
       };
       if (!Object.keys(body).length) {
@@ -251,7 +280,8 @@ function GroupView({ row, refresh }: { row: Detail; refresh: () => void }) {
         saved.id !== row.id ||
         (body.name !== undefined && saved.name !== body.name) ||
         (body.description !== undefined &&
-          saved.description !== body.description)
+          saved.description !== body.description) ||
+        (body.maxMembers !== undefined && saved.maxMembers !== body.maxMembers)
       )
         invalid();
       setEditing(false);
@@ -308,13 +338,15 @@ function GroupView({ row, refresh }: { row: Detail; refresh: () => void }) {
           {leader ? "그룹장" : "그룹원"}
         </p>
         <div className={styles.actions}>
-          <button
-            className="button secondary"
-            disabled={busy}
-            onClick={() => void loadInvite()}
-          >
-            초대 코드 보기
-          </button>
+          {leader && (
+            <button
+              className="button secondary"
+              disabled={busy}
+              onClick={() => setApplicationsOpen(true)}
+            >
+              가입 신청 관리
+            </button>
+          )}
           <button
             ref={settingsButton}
             className="button secondary"
@@ -323,35 +355,20 @@ function GroupView({ row, refresh }: { row: Detail; refresh: () => void }) {
               editBase.current = {
                 name: row.name,
                 description: row.description,
+                maxMembers: row.maxMembers,
               };
               setName(row.name);
               setDescription(row.description);
+              setMaxMembers(String(row.maxMembers));
+              setInvite("");
+              setMessage("");
+              setError("");
               setEditing(true);
             }}
           >
             그룹 설정
           </button>
         </div>
-        {invite && (
-          <div className="field">
-            <label>
-              그룹 초대 코드
-              <input
-                className={styles.code}
-                readOnly
-                value={invite}
-                onFocus={(e) => e.target.select()}
-              />
-            </label>
-            <button
-              className="text-button"
-              disabled={busy}
-              onClick={() => void copyInvite()}
-            >
-              초대 코드 복사
-            </button>
-          </div>
-        )}
       </section>
       {error && <Notice>{error}</Notice>}
       {message && <Notice tone="success">{message}</Notice>}
@@ -420,7 +437,20 @@ function GroupView({ row, refresh }: { row: Detail; refresh: () => void }) {
           ))}
         </ul>
       </section>
-      {leader && <Applications id={row.id} onChanged={refresh} />}
+      {leader && applicationsOpen && (
+        <Dialog
+          title="가입 신청 관리"
+          busy={applicationsBusy}
+          onClose={() => setApplicationsOpen(false)}
+        >
+          <Applications
+            id={row.id}
+            onChanged={refresh}
+            onBusyChange={setApplicationsBusy}
+            full={row.currentMembers >= row.maxMembers}
+          />
+        </Dialog>
+      )}
       {editing && !action && (
         <Dialog title="그룹 설정" busy={busy} onClose={closeSettings}>
           <div className="stack">
@@ -433,11 +463,60 @@ function GroupView({ row, refresh }: { row: Detail; refresh: () => void }) {
                   onDescription={setDescription}
                   disabled={busy}
                 />
+                <div className="field">
+                  <label htmlFor="group-capacity">정원</label>
+                  <input
+                    id="group-capacity"
+                    type="number"
+                    min={1}
+                    max={5}
+                    required
+                    disabled={busy}
+                    value={maxMembers}
+                    onChange={(event) => setMaxMembers(event.target.value)}
+                    aria-describedby="group-capacity-hint"
+                  />
+                  <p id="group-capacity-hint" className="caption">
+                    그룹장 포함 최대 5명 · 현재 {row.currentMembers}명
+                  </p>
+                </div>
                 <button className="button primary" disabled={busy}>
                   그룹 정보 저장
                 </button>
               </form>
             )}
+            <section className="stack" aria-label="그룹 초대">
+              <button
+                type="button"
+                className="button secondary"
+                disabled={busy}
+                onClick={() => void loadInvite()}
+              >
+                초대 코드 보기
+              </button>
+              {invite && (
+                <div className="field">
+                  <label>
+                    그룹 초대 코드
+                    <input
+                      className={styles.code}
+                      readOnly
+                      value={invite}
+                      onFocus={(event) => event.target.select()}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    className="text-button"
+                    disabled={busy}
+                    onClick={() => void copyInvite()}
+                  >
+                    초대 코드 복사
+                  </button>
+                </div>
+              )}
+              {message && <Notice tone="success">{message}</Notice>}
+            </section>
             {error && <Notice>{error}</Notice>}
             {leader && row.currentMembers > 1 && (
               <p className="caption">

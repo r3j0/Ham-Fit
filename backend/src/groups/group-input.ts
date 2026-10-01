@@ -21,7 +21,6 @@ export const createGroupSchema = z.strictObject({
   maxMembers: z.number().int().min(1).max(5),
 });
 export const updateGroupSchema = createGroupSchema
-  .pick({ name: true, description: true })
   .partial()
   .refine(
     (value) => Object.keys(value).length > 0,

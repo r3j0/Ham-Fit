@@ -45,3 +45,14 @@ NEXT_BUILD_DIR=.next-local-test-server npm run dev -- --hostname 127.0.0.1 --por
 - BE `/health/ready`는 DB 정상인 200, FE 로그인 페이지는 200, 비인증 overview 요청은 401을 확인했다.
 
 BE 로그는 작업 디렉터리의 `backend/.local/`에, FE 검증 로그는 `/private/tmp/project-health-integrated-fe-*.log`에 저장했다. 브라우저 스크린샷은 `frontend/test-results/`에 저장하며 Git에서 제외한다. 개발 모드 StrictMode에서는 최초 효과가 취소·재실행될 수 있지만 그룹 전환은 추가 API 요청을 하지 않는다.
+
+## 그룹 설정·운동 아이콘 후속 검증
+
+2026-10-02 후속 사용자 요청으로 그룹 설정의 정원 수정, 설정 내부 초대 코드 조회·복사, 그룹장용 대기 신청 팝업을 추가했다. 최근 7일 운동 표시는 영상 하나 이상 완료 시 씨앗, 전체 루틴 완료 시 해바라기이며 완료 시각의 한국 날짜를 사용한다. 연속 운동 일수는 기존 서버 기준을 유지한다.
+
+- FE·BE lint, typecheck, 프로덕션 build 통과.
+- FE 단위 174개, BE 단위 363개 통과.
+- BE 실제 PostgreSQL 통합 541개 통과. 정원 변경 권한·1–5 범위·현재 인원 미만 축소 거절·축소와 동시 승인 경쟁을 검증했다.
+- 관련 FE 브라우저 17개 통과. 실제 BE와의 정원 수정·초대·승인/거절·위임·탈퇴·삭제, 일반 그룹원의 초대 조회 권한, 팝업 닫기·초점 복원, 320–1280px 배치, 씨앗→해바라기 전환·새로고침·완료일 구분을 확인했다.
+
+후속 실행 로그는 `/private/tmp/project-health-followup-*.log`, 스크린샷은 작업 디렉터리의 `frontend/test-results/`에 저장했다. 서버는 같은 localhost 3000/3001 포트에서 계속 실행한다.

@@ -220,6 +220,8 @@ export async function groupMutation(
 }
 export function groupError(error: unknown) {
   if (error instanceof ApiError) {
+    if (error.code === "GROUP_CAPACITY_BELOW_MEMBERS")
+      return "현재 그룹원 수보다 정원을 줄일 수 없어요. 최신 인원을 확인해 주세요.";
     if (error.status === 403)
       return "그룹장만 처리할 수 있어요. 최신 권한을 다시 확인해 주세요.";
     if (error.status === 404)

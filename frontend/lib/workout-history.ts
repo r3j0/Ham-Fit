@@ -1,4 +1,5 @@
 import type { Workout, WorkoutPage } from "./workout-types.ts";
+import type { WorkoutRoutine } from "./workout-routine.ts";
 
 /** Completion dates use Korea time, independently of the viewer's timezone. */
 export function koreanDateKey(date: Date): string {
@@ -16,6 +17,16 @@ export function completedDate(
   if (workout.status !== "completed" || !workout.completedAt) return null;
   const date = new Date(workout.completedAt);
   return Number.isFinite(date.getTime()) ? koreanDateKey(date) : null;
+}
+
+/** A sunflower represents all videos in a routine, dated by its last KST completion. */
+export function completedRoutineDate(
+  routine: Pick<WorkoutRoutine, "status" | "routine">,
+): string | null {
+  if (routine.status !== "completed" || !routine.routine.length) return null;
+  const days = routine.routine.map(completedDate);
+  if (days.some((day) => day === null)) return null;
+  return (days as string[]).sort().at(-1)!;
 }
 
 /** Assignment order is not completion order. Read all pages before deriving calendar/streak totals. */

@@ -291,10 +291,18 @@ export class GroupsService {
   async update(
     userId: string,
     groupId: string,
-    input: { name?: string; description?: string },
+    input: { name?: string; description?: string; maxMembers?: number },
   ) {
     return this.transaction(async (tx) => {
-      await this.memberGroup(tx, groupId, userId, true);
+      const group = await this.memberGroup(tx, groupId, userId, true);
+      if (
+        input.maxMembers !== undefined &&
+        input.maxMembers < group._count.members
+      )
+        throw new ConflictException({
+          code: 'GROUP_CAPACITY_BELOW_MEMBERS',
+          message: '현재 그룹원 수보다 정원을 줄일 수 없습니다.',
+        });
       return summary(
         await tx.group.update({
           where: { id: groupId },

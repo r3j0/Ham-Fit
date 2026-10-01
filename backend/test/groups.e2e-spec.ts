@@ -264,6 +264,47 @@ describe('groups and notifications against real PostgreSQL', () => {
     await api(owner, 'get', '/groups?search=public').expect(400);
   });
 
+  it('lets only the leader resize a group within five and serializes shrinking against admission', async () => {
+    const group = await create(2);
+    await api(owner, 'patch', `/groups/${group.id}`)
+      .send({ maxMembers: 5 })
+      .expect(200);
+    await join(group.id);
+    await api(member, 'patch', `/groups/${group.id}`)
+      .send({ maxMembers: 3 })
+      .expect(403);
+    const resized = await api(owner, 'patch', `/groups/${group.id}`)
+      .send({ maxMembers: 2 })
+      .expect(200);
+    expect(resized.body).toMatchObject({ maxMembers: 2, currentMembers: 2 });
+    const conflict = await api(owner, 'patch', `/groups/${group.id}`)
+      .send({ maxMembers: 1 })
+      .expect(409);
+    expect(conflict.body).toMatchObject({
+      code: 'GROUP_CAPACITY_BELOW_MEMBERS',
+    });
+    await api(owner, 'patch', `/groups/${group.id}`)
+      .send({ maxMembers: 6 })
+      .expect(400);
+    const racing = await create(2);
+    const pending = await apply(racing.id);
+    const results = await Promise.allSettled([
+      groups.update(owner.id, racing.id, { maxMembers: 1 }),
+      groups.decide(owner.id, racing.id, pending.id, 'approved'),
+    ]);
+    expect(
+      results.filter((result) => result.status === 'fulfilled'),
+    ).toHaveLength(1);
+    for (const result of results)
+      if (result.status === 'rejected')
+        expect(result.reason).toMatchObject({ status: 409 });
+    const saved = await db.group.findUniqueOrThrow({
+      where: { id: racing.id },
+      include: { _count: { select: { members: true } } },
+    });
+    expect(saved._count.members).toBe(saved.maxMembers);
+  });
+
   it('requires approval, supports multiple groups, rejects duplicates and unknown codes, and permits reapplication', async () => {
     const first = await create();
     const second = await create();
