@@ -86,29 +86,32 @@ export function parseMember(value: unknown): Member {
   }
   return row as unknown as Member;
 }
-export function parseGroup(value: unknown): Group {
+export function parseGroup(value: unknown, capacityLimit = 5): Group {
   const row = object(value);
   if (
     !uuid(row.id) ||
     !text(row.name) ||
     typeof row.description !== "string" ||
     !integer(row.maxMembers, 1) ||
-    row.maxMembers > 5 ||
+    row.maxMembers > capacityLimit ||
     !integer(row.currentMembers, 1) ||
     !timestamp(row.createdAt)
   )
     invalid();
   return row as unknown as Group;
 }
-export function parseMyGroup(value: unknown): MyGroup {
+export function parseMyGroup(value: unknown, capacityLimit = 5): MyGroup {
   const row = object(value);
-  parseGroup(row);
+  parseGroup(row, capacityLimit);
   if (!role(row.role)) invalid();
   return row as unknown as MyGroup;
 }
-export function parseGroupDetail(value: unknown): GroupDetail {
+export function parseGroupDetail(
+  value: unknown,
+  capacityLimit = 5,
+): GroupDetail {
   const row = object(value);
-  parseGroup(row);
+  parseGroup(row, capacityLimit);
   if (!Array.isArray(row.members)) invalid();
   const members = row.members.map(parseMember);
   if (
@@ -173,16 +176,51 @@ export function parseGroupOverview(value: unknown): GroupOverview[] {
   if (new Set(items.map((group) => group.id)).size !== items.length) invalid();
   return items;
 }
-export const getGroupOverview = (signal?: AbortSignal) =>
-  api<unknown>("/groups/overview", { signal }).then(({ data }) =>
-    parseGroupOverview(data),
-  );
+export async function getGroupOverview(
+  signal?: AbortSignal,
+): Promise<GroupOverview[]> {
+  try {
+    const { data } = await api<unknown>("/groups/overview", { signal });
+    return parseGroupOverview(data);
+  } catch (error) {
+    // Older deployments route "overview" through /groups/:groupId and reject
+    // it as a UUID. Only an absent endpoint permits the legacy read path.
+    const unavailable =
+      error instanceof ApiError &&
+      (error.status === 404 ||
+        (error.status === 400 &&
+          [error.message, ...Object.values(error.fields)].some(
+            (message) => message === "Invalid UUID",
+          )));
+    if (!unavailable) throw error;
+    signal?.throwIfAborted();
+    // The former API allowed capacities up to 100. Read its actual values;
+    // all new API contracts and group writes retain the five-member limit.
+    const groups = await readPages(
+      "/groups",
+      (value) => parseMyGroup(value, 100),
+      signal,
+    );
+    return Promise.all(
+      groups.map(async (group) => ({
+        ...(await readGroup(group.id, signal, 100)),
+        role: group.role,
+      })),
+    );
+  }
+}
+async function readGroup(
+  id: string,
+  signal: AbortSignal | undefined,
+  capacityLimit: number,
+) {
+  const { data } = await api<unknown>(`/groups/${id}`, { signal });
+  const row = parseGroupDetail(data, capacityLimit);
+  if (row.id !== id) invalid();
+  return row;
+}
 export const getGroup = (id: string, signal?: AbortSignal) =>
-  api<unknown>(`/groups/${id}`, { signal }).then(({ data }) => {
-    const row = parseGroupDetail(data);
-    if (row.id !== id) invalid();
-    return row;
-  });
+  readGroup(id, signal, 5);
 export const getMember = (id: string, userId: string, signal?: AbortSignal) =>
   api<unknown>(`/groups/${id}/members/${userId}`, { signal }).then(
     ({ data }) => {

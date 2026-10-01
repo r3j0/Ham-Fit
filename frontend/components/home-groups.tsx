@@ -51,6 +51,9 @@ function GroupSlide({
               >
                 {member.nickname ?? "닉네임 미설정"}
               </span>
+              {member.todayWorkoutCompleted === undefined && (
+                <span className="caption">오늘 확인 불가</span>
+              )}
             </li>
           ))}
         </ul>
