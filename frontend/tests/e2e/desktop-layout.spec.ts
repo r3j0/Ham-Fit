@@ -135,6 +135,18 @@ test("메인의 알림은 전체 콘텐츠 우측 상단에 두고 미등록 안
           expect(card.x).toBeGreaterThanOrEqual(left.x + left.width);
           expect(card.y).toBeCloseTo(left.y, 1);
           expect(right.y).toBeGreaterThanOrEqual(card.y + card.height);
+          const today = (await activity
+            .locator(":scope > section")
+            .first()
+            .boundingBox())!;
+          const streak = (await activity
+            .locator(":scope > section")
+            .last()
+            .boundingBox())!;
+          expect(right.y - card.y - card.height).toBeCloseTo(
+            streak.y - today.y - today.height,
+            1,
+          );
         } else {
           expect(card.y + card.height).toBeLessThanOrEqual(left.y);
         }
