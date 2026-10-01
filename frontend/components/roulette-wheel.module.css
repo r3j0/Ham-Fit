@@ -1,0 +1,163 @@
+.page {
+  --roulette-tone: #0a2a70;
+  --roulette-light: #dbe8ff;
+  --roulette-mid: #a6c3f7;
+  --roulette-ink: #0a2a70;
+}
+.group {
+  --roulette-tone: #ff7f00;
+  --roulette-light: #fff0e0;
+  --roulette-mid: #ffd0a0;
+  --roulette-ink: #733200;
+}
+.stage {
+  position: relative;
+  width: min(100%, 360px);
+  aspect-ratio: 1;
+  margin: 20px auto;
+  isolation: isolate;
+}
+.wheel {
+  position: absolute;
+  inset: 12px;
+  border-radius: 50%;
+  border: 8px solid var(--surface);
+  box-shadow:
+    0 0 0 3px var(--roulette-tone),
+    0 16px 40px color-mix(in srgb, var(--roulette-tone) 16%, transparent);
+  background: conic-gradient(
+    var(--roulette-light) 0deg 60deg,
+    var(--roulette-mid) 60deg 120deg,
+    var(--roulette-light) 120deg 180deg,
+    var(--roulette-mid) 180deg 240deg,
+    var(--roulette-light) 240deg 300deg,
+    var(--roulette-mid) 300deg 360deg
+  );
+}
+.pointer {
+  position: absolute;
+  z-index: 2;
+  top: -2px;
+  left: calc(50% - 13px);
+  width: 26px;
+  height: 32px;
+  background: var(--roulette-tone);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+}
+.hub {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 66px;
+  height: 66px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: 0 0 0 4px
+    color-mix(in srgb, var(--roulette-tone) 35%, var(--surface));
+}
+.sector {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 58px;
+  height: 58px;
+  transform: translate(-50%, -50%) rotate(var(--sector-angle))
+    translateY(calc(-1 * min(25vw, 103px)))
+    rotate(calc(-1 * var(--sector-angle)));
+  display: grid;
+  place-items: center;
+  color: var(--roulette-ink);
+}
+.prizeIcon {
+  display: inline-flex;
+  position: relative;
+  align-items: center;
+  justify-content: center;
+  width: 54px;
+  height: 54px;
+  gap: 2px;
+  color: var(--roulette-ink);
+}
+.prizeIcon > svg {
+  width: 36px;
+  height: 36px;
+  stroke-width: 1.8;
+}
+.prizeIcon > b {
+  position: absolute;
+  bottom: -2px;
+  right: -3px;
+  min-width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  padding: 0 4px;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--roulette-ink);
+  font-size: 14px;
+  box-shadow: 0 1px 5px #0001;
+}
+.stage[data-phase="spinning"] .wheel {
+  filter: blur(4px);
+}
+.reward {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  gap: 20px;
+  padding: 18px 0 0;
+  animation: reveal 260ms ease-out;
+}
+.reward > .prizeIcon {
+  width: 104px;
+  height: 104px;
+  border-radius: 50%;
+  background: var(--roulette-light);
+}
+.reward > .prizeIcon > svg {
+  width: 58px;
+  height: 58px;
+}
+.reward > .prizeIcon > :global(.seed-icon) {
+  height: 64px;
+  width: auto;
+}
+.reward > .prizeIcon > b {
+  right: 0;
+  bottom: 0;
+  min-width: 32px;
+  height: 32px;
+  font-size: 18px;
+}
+.reward h2 {
+  color: var(--roulette-ink);
+  font-size: 24px;
+}
+.reward p {
+  color: var(--muted);
+}
+.reward button {
+  width: 100%;
+}
+@keyframes reveal {
+  from {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .stage[data-phase="spinning"] .wheel {
+    filter: none;
+  }
+  .reward {
+    animation: none;
+  }
+}

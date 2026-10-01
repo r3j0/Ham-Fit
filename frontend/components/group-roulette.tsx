@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useCallback, useState, type CSSProperties } from "react";
+import { useCallback, useState } from "react";
 import { errorMessage } from "@/lib/http";
 import {
   getGroupDraws,
@@ -14,6 +14,14 @@ import { useDurableMutation } from "./use-durable-mutation";
 import { Header, Loading, Notice, Shell, SubmitLabel } from "./ui";
 import { useUnsaved } from "./use-unsaved";
 import { SeedIcon } from "./seed-icon";
+import {
+  RouletteWheel,
+  RouletteRewardPopup,
+  useRouletteMotion,
+  useRouletteReward,
+  type RoulettePrize,
+} from "./roulette-wheel";
+import styles from "./roulette-wheel.module.css";
 
 const labels = [
   "나에게 1개",
@@ -23,6 +31,11 @@ const labels = [
   "기여자마다 3개",
   "기여자마다 7개",
 ];
+const prizes: RoulettePrize[] = labels.map((label, index) => ({
+  label,
+  kind: index < 4 ? "seeds" : "contributors",
+  amount: [1, 3, 5, 7, 3, 7][index],
+}));
 export function GroupRoulette({ id }: { id: string }) {
   const resource = useApiResource(
     useCallback(
@@ -44,7 +57,7 @@ export function GroupRoulette({ id }: { id: string }) {
   const mutation = useDurableMutation(`roulette:group:${id}`);
   const [draw, setDraw] = useState<GroupDraw>(),
     [error, setError] = useState("");
-  const [turns, setTurns] = useState(0);
+  const motion = useRouletteMotion();
   const available =
     resource.data?.tickets
       .filter((t) => t.usable && t.id !== draw?.ticketId)
@@ -52,17 +65,27 @@ export function GroupRoulette({ id }: { id: string }) {
         (a, b) =>
           a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id),
       ) ?? [];
-  useUnsaved(mutation.busy, "룰렛 결과를 확인 중이에요. 이 화면을 나갈까요?");
+  const reward = useRouletteReward(
+    resource.data && !resource.loading && !resource.error
+      ? available.length
+      : undefined,
+  );
+  const busy = mutation.busy || motion.busy;
+  useUnsaved(busy, "룰렛 결과를 확인 중이에요. 이 화면을 나갈까요?");
   async function spin() {
     setError("");
     try {
-      const result = await mutation.run(
-        JSON.stringify({ ticketId: available[0]?.id }),
-        (body, key) => spinGroup(id, body, key),
+      const result = await motion.play(
+        () =>
+          mutation.run(
+            JSON.stringify({ ticketId: available[0]?.id }),
+            (body, key) => spinGroup(id, body, key),
+          ),
+        (value) => groupResults.indexOf(value.result),
       );
       if (result) {
-        setTurns((n) => n + 1);
         setDraw(result);
+        reward.show();
         resource.reload();
       }
     } catch (e) {
@@ -71,7 +94,7 @@ export function GroupRoulette({ id }: { id: string }) {
     }
   }
   return (
-    <Shell>
+    <Shell className={`${styles.page} ${styles.group}`}>
       <Header title="그룹 룰렛" back="/account/notifications" />
       <div className="content stack roulette-page">
         <div className="intro">
@@ -90,34 +113,11 @@ export function GroupRoulette({ id }: { id: string }) {
             {resource.data.inventory.currency.balance}개
           </p>
         )}
-        <div className="roulette-stage">
-          <span className="roulette-pointer" aria-hidden="true">
-            ▼
-          </span>
-          <div
-            className={`roulette-wheel${mutation.busy ? " is-spinning" : ""}`}
-            style={
-              {
-                "--wheel-angle": `${draw ? turns * 2160 - groupResults.indexOf(draw.result) * 60 - 30 : 0}deg`,
-              } as CSSProperties
-            }
-            aria-hidden="true"
-          >
-            {labels.map((label, i) => (
-              <span
-                key={label}
-                style={{
-                  transform: `translate(-50%, -50%) rotate(${i * 60 + 30}deg) translateY(-90px) rotate(${-i * 60 - 30}deg)`,
-                }}
-              >
-                {label}
-              </span>
-            ))}
-            <b>
-              <SeedIcon height={34} />
-            </b>
-          </div>
-        </div>
+        <RouletteWheel
+          prizes={prizes}
+          phase={motion.phase}
+          attachWheel={motion.attachWheel}
+        />
         {error && <Notice>{error}</Notice>}
         {resource.error ? (
           <>
@@ -134,30 +134,31 @@ export function GroupRoulette({ id }: { id: string }) {
             불러와요.
           </Notice>
         )}
-        {draw && (
-          <div className="reward-result" role="status">
-            <p>
-              {draw.result.startsWith("contributors_")
-                ? "함께 운동한 기여자에게 선물!"
-                : "행운의 선물이 도착했어요!"}
-            </p>
-            <h2>해바라기씨 {draw.amountPerRecipient}개</h2>
-            <p>
-              내가 받은 해바라기씨{" "}
-              {draw.myReward.reduce((sum, r) => sum + r.amount, 0)}개
-            </p>
-          </div>
+        {draw && reward.visible && (
+          <RouletteRewardPopup
+            prize={{
+              label: "받은 선물",
+              kind: draw.result.startsWith("contributors_")
+                ? "contributors"
+                : "seeds",
+              amount: draw.amountPerRecipient,
+            }}
+            title={`해바라기씨 ${draw.amountPerRecipient}개를 받았어요!`}
+            description={`${draw.result.startsWith("contributors_") ? "함께 운동한 기여자에게 각각 지급됐어요. " : ""}내가 받은 해바라기씨 ${draw.myReward.reduce((sum, r) => sum + r.amount, 0)}개`}
+            onClose={reward.dismiss}
+          />
         )}
         <button
           className="button primary"
           disabled={
-            mutation.busy ||
+            busy ||
+            reward.visible ||
             (!mutation.pending &&
               (!available.length || !!resource.error || resource.loading))
           }
           onClick={() => void spin()}
         >
-          <SubmitLabel busy={mutation.busy}>
+          <SubmitLabel busy={busy}>
             {mutation.pending && !mutation.busy
               ? "이전 추첨 결과 확인"
               : mutation.busy

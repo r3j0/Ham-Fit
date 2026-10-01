@@ -248,7 +248,7 @@ for (const result of ["seeds", "pose", "fallback"] as const) {
     await page.getByRole("button", { name: "이전 추첨 결과 확인" }).click();
     if (result === "pose")
       await expect(
-        page.getByRole("link", { name: "옷장에서 확인하기" }),
+        page.getByText("받은 아이템은 내 옷장에서 확인할 수 있어요."),
       ).toBeVisible();
     else
       await expect(
@@ -265,7 +265,12 @@ for (const result of ["seeds", "pose", "fallback"] as const) {
     expect(writes).toHaveLength(2);
     expect(writes[0]).toEqual(writes[1]);
     expect(JSON.parse(writes[0].body)).toEqual({ ticketId: id(31) });
-    await page.getByRole("link", { name: "알림으로", exact: true }).click();
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: "확인", exact: true })
+      .click();
+    await expect(page).toHaveURL("/");
+    await page.goto("/account/notifications");
     await expect(
       page
         .getByRole("region", { name: "개인 룰렛", exact: true })
