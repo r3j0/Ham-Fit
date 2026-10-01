@@ -262,7 +262,7 @@ export function Groups() {
   const resource = useApiResource(getGroups);
   return (
     <Shell>
-      <Header title="내 그룹" back="/" />
+      <Header title="내 그룹" showBrand={false} />
       <div className={`content ${styles.overview}`}>
         <div className={styles.mascotStage}>
           <MemberMascot pose="phone" size={225.792} />
