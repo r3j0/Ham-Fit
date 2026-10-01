@@ -55,7 +55,8 @@ export function AvatarShop({ wardrobe = false }: { wardrobe?: boolean }) {
     <Shell>
       <Header
         title={wardrobe ? "내 옷장" : "상점"}
-        back={wardrobe ? "/shop" : "/"}
+        back={wardrobe ? "/shop" : undefined}
+        showBrand={false}
       />
       <div className="content stack">
         {resource.error ? (
