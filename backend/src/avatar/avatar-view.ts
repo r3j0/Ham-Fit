@@ -1,15 +1,64 @@
 import { ServiceUnavailableException } from '@nestjs/common';
-import type { Prisma } from '../generated/prisma/client.js';
+import type {
+  AvatarOutfit,
+  AvatarProduct,
+  Prisma,
+} from '../generated/prisma/client.js';
 
-export const combinationInclude = {
-  character: true,
-  pose: true,
+const combinationItems = {
   items: { include: { product: true }, orderBy: { productId: 'asc' as const } },
 } satisfies Prisma.AvatarCombinationInclude;
-export const outfitInclude = {
-  combination: { include: combinationInclude },
-} satisfies Prisma.AvatarOutfitInclude;
-type Outfit = Prisma.AvatarOutfitGetPayload<{ include: typeof outfitInclude }>;
+type Outfit = AvatarOutfit & {
+  combination: Prisma.AvatarCombinationGetPayload<{
+    include: typeof combinationItems;
+  }> & { character: AvatarProduct; pose: AvatarProduct };
+};
+
+export async function outfitRelations(
+  tx: Prisma.TransactionClient,
+  outfits: AvatarOutfit[],
+): Promise<Map<string, Outfit>> {
+  if (!outfits.length) return new Map();
+  // One relation chain at a time keeps the transaction client sequential;
+  // shared combinations and rendering products are loaded once for the batch.
+  const combinations = await tx.avatarCombination.findMany({
+    where: {
+      id: { in: [...new Set(outfits.map((row) => row.combinationId))] },
+    },
+    include: combinationItems,
+  });
+  const products = await tx.avatarProduct.findMany({
+    where: {
+      id: {
+        in: [
+          ...new Set(
+            combinations.flatMap((row) => [row.characterId, row.poseId]),
+          ),
+        ],
+      },
+    },
+  });
+  const combinationsById = new Map(combinations.map((row) => [row.id, row]));
+  const productsById = new Map(products.map((row) => [row.id, row]));
+  // Required combination/product references are enforced by foreign keys.
+  return new Map(
+    outfits.map((outfit) => {
+      const combination = combinationsById.get(outfit.combinationId)!;
+      return [
+        outfit.userId,
+        {
+          ...outfit,
+          combination: {
+            ...combination,
+            character: productsById.get(combination.characterId)!,
+            pose: productsById.get(combination.poseId)!,
+          },
+        },
+      ];
+    }),
+  );
+}
+
 export function outfitView(row: Outfit | null) {
   if (!row)
     throw new ServiceUnavailableException(

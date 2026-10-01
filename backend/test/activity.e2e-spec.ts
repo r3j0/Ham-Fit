@@ -12,6 +12,7 @@ import { RoutineAlgorithm } from '../src/recommendations/routine-algorithm.js';
 import { WorkoutRoutinesService } from '../src/recommendations/workout-routines.service.js';
 import { configureApp } from '../src/setup-app.js';
 import { koreanDay, memberProfiles } from '../src/users/member-profile.js';
+import { observeClientQueries } from './helpers/pg-queries.js';
 
 describe('shared activity aggregation against PostgreSQL', () => {
   let app: INestApplication<App>;
@@ -256,7 +257,20 @@ describe('shared activity aggregation against PostgreSQL', () => {
     });
     users.push(other.id);
     await routine(['2026-09-29T12:00:00Z'], other.id);
-    const profiles = await profile(now, [owner.user.id, other.id]);
+    const single = await observeClientQueries(() => profile());
+    const batch = await observeClientQueries(() =>
+      profile(now, [owner.user.id, other.id]),
+    );
+    expect(single.overlaps).toBe(0);
+    expect(batch.overlaps).toBe(0);
+    const avatarQueries = (queries: string[]) =>
+      queries.filter((sql) =>
+        sql.match(/\bFROM\s+"[^"]+"\."([^"]+)"/i)?.[1]?.startsWith('avatar_'),
+      );
+    expect(avatarQueries(batch.queries)).toHaveLength(
+      avatarQueries(single.queries).length,
+    );
+    const profiles = batch.value;
     expect(profiles.get(owner.user.id)).toMatchObject({ totalWorkoutDays: 0 });
     expect(profiles.get(other.id)).toMatchObject({
       streak: 1,

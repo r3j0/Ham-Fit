@@ -14,6 +14,7 @@ import { Prisma } from '../generated/prisma/client.js';
 import type {
   GroupMissionRound,
   GroupRouletteDraw,
+  GroupRouletteTicket,
 } from '../generated/prisma/client.js';
 import {
   MISSION_POLICY_VERSION,
@@ -221,11 +222,10 @@ export class GroupMissionsService {
           participant: { userId },
           ...(page.cursor ? { id: { gt: page.cursor } } : {}),
         },
-        include: { draw: true, participant: true, round: true },
         orderBy: { id: 'asc' },
         take: page.limit + 1,
       });
-      const items = rows.slice(0, page.limit);
+      const items = await this.ticketRelations(tx, rows.slice(0, page.limit));
       return {
         items: items.map((ticket) => ({
           id: ticket.id,
@@ -248,6 +248,40 @@ export class GroupMissionsService {
         nextCursor: rows.length > page.limit ? items.at(-1)!.id : null,
       };
     }, true);
+  }
+  private async ticketRelations(tx: Tx, tickets: GroupRouletteTicket[]) {
+    if (!tickets.length) return [];
+    // Prisma dispatches sibling includes concurrently on a transaction's single
+    // pg client. Load each relation sequentially, once for the entire page.
+    const rounds = await tx.groupMissionRound.findMany({
+      where: {
+        id: { in: [...new Set(tickets.map((ticket) => ticket.roundId))] },
+      },
+      select: { id: true, policyVersion: true, roulettePolicy: true },
+    });
+    const participants = await tx.groupMissionParticipant.findMany({
+      where: {
+        id: { in: [...new Set(tickets.map((ticket) => ticket.participantId))] },
+      },
+      select: { id: true, invalidatedAt: true },
+    });
+    const draws = await tx.groupRouletteDraw.findMany({
+      where: { ticketId: { in: tickets.map((ticket) => ticket.id) } },
+      select: { ticketId: true, drawnAt: true },
+    });
+    const roundsById = new Map(rounds.map((round) => [round.id, round]));
+    const participantsById = new Map(
+      participants.map((participant) => [participant.id, participant]),
+    );
+    const drawsByTicketId = new Map(draws.map((draw) => [draw.ticketId, draw]));
+    // Required relations are protected by FKs and the caller's group lock;
+    // mapping from tickets also preserves the original order and cursor.
+    return tickets.map((ticket) => ({
+      ...ticket,
+      round: roundsById.get(ticket.roundId)!,
+      participant: participantsById.get(ticket.participantId)!,
+      draw: drawsByTicketId.get(ticket.id) ?? null,
+    }));
   }
   private async drawView(tx: Tx, draw: GroupRouletteDraw, userId: string) {
     const rewards = await tx.groupRouletteReward.findMany({
@@ -281,12 +315,12 @@ export class GroupMissionsService {
     return this.transaction(async (tx) => {
       await this.keyLock(tx, 'roulette-spin', userId, key);
       await this.authorize(tx, userId, groupId);
-      const ticket = await tx.groupRouletteTicket.findFirst({
+      const row = await tx.groupRouletteTicket.findFirst({
         where: { id: ticketId, round: { groupId }, participant: { userId } },
-        include: { round: true, participant: true, draw: true },
       });
-      if (!ticket)
+      if (!row)
         throw new NotFoundException('본인의 룰렛권을 찾을 수 없습니다.');
+      const [ticket] = await this.ticketRelations(tx, [row]);
       if (ticket.invalidatedAt || ticket.participant.invalidatedAt)
         throw new ForbiddenException('룰렛권의 참여 자격이 종료되었습니다.');
       const previous = await tx.groupRouletteDraw.findUnique({

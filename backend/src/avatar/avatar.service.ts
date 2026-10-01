@@ -4,7 +4,7 @@ import { Prisma } from '../generated/prisma/client.js';
 import type { AvatarProduct } from '../generated/prisma/client.js';
 import { avatarError, combinationId } from './avatar-input.js';
 import type { OutfitInput, PurchaseInput } from './avatar-input.js';
-import { outfitInclude, outfitView } from './avatar-view.js';
+import { outfitRelations, outfitView } from './avatar-view.js';
 
 @Injectable()
 export class AvatarService {
@@ -73,12 +73,9 @@ export class AvatarService {
           }))
         )
           throw new UnauthorizedException('계정이 삭제되었습니다.');
-        return outfitView(
-          await tx.avatarOutfit.findUnique({
-            where: { userId },
-            include: outfitInclude,
-          }),
-        );
+        const outfit = await tx.avatarOutfit.findUnique({ where: { userId } });
+        const related = await outfitRelations(tx, outfit ? [outfit] : []);
+        return outfitView(related.get(userId) ?? null);
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
     );
@@ -158,13 +155,12 @@ export class AvatarService {
         );
       // Whole outfit is a single immutable combination reference, so readers
       // cannot see a new character paired with old clothing during a save.
-      return outfitView(
-        await tx.avatarOutfit.update({
-          where: { userId },
-          data: { combinationId: id, revision: { increment: 1 } },
-          include: outfitInclude,
-        }),
-      );
+      const saved = await tx.avatarOutfit.update({
+        where: { userId },
+        data: { combinationId: id, revision: { increment: 1 } },
+      });
+      const related = await outfitRelations(tx, [saved]);
+      return outfitView(related.get(userId) ?? null);
     });
   }
 

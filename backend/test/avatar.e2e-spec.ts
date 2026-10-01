@@ -20,6 +20,7 @@ import type { OutfitInput } from '../src/avatar/avatar-input.js';
 import { combinationId } from '../src/avatar/avatar-input.js';
 import { GroupsService } from '../src/groups/groups.service.js';
 import { configureApp } from '../src/setup-app.js';
+import { observeClientQueries } from './helpers/pg-queries.js';
 
 type Account = { id: string; token: string; email: string };
 const password = 'avatar-test-password-2026';
@@ -103,7 +104,11 @@ describe('avatar and shop with real PostgreSQL', () => {
         { productId: 'pose.basic', source: 'default' },
       ],
     });
-    const outfit = await api(a, 'get', '/users/me/avatar/outfit').expect(200);
+    const observed = await observeClientQueries(async () =>
+      api(a, 'get', '/users/me/avatar/outfit').expect(200),
+    );
+    expect(observed.overlaps).toBe(0);
+    const outfit = observed.value;
     expect(outfit.body).toMatchObject({
       ...defaultOutfit,
       revision: 1,
@@ -319,10 +324,14 @@ describe('avatar and shop with real PostgreSQL', () => {
       characterId: 'character.gray',
       poseId: 'pose.run',
     };
-    const responses = await Promise.all([
-      save(a, input),
-      save(a, { ...defaultOutfit, characterId: 'character.gray' }),
-    ]);
+    const observed = await observeClientQueries(() =>
+      Promise.all([
+        save(a, input),
+        save(a, { ...defaultOutfit, characterId: 'character.gray' }),
+      ]),
+    );
+    expect(observed.overlaps).toBe(0);
+    const responses = observed.value;
     expect(responses.map((r) => r.status).sort((a, b) => a - b)).toEqual([
       200, 412,
     ]);

@@ -29,6 +29,7 @@ import { WorkoutCatalogService } from '../src/recommendations/workout-catalog.se
 import { fixtureAdjustment, fixtureCatalog } from './fixtures/workouts.js';
 import { koreanDay, memberProfiles } from '../src/users/member-profile.js';
 import { configureApp } from '../src/setup-app.js';
+import { observeClientQueries } from './helpers/pg-queries.js';
 
 type Routine = Awaited<ReturnType<ReturnType<typeof setupRoutineFactory>>>;
 function setupRoutineFactory(db: DatabaseService) {
@@ -1100,6 +1101,81 @@ describe('group missions/roulette on real PostgreSQL', () => {
     expect(
       (await missions.draws(owner, groupId, { limit: 1 })).items,
     ).toHaveLength(1);
+  });
+  it('reads ticket pages in bounded sequential queries without overlapping one pg client', async () => {
+    const { groupId, roundId, ticketId } = await finished();
+    const used = await missions.spin(owner, groupId, ticketId, randomUUID());
+    const rows = await db.groupRouletteTicket.findMany({
+      where: { roundId, participant: { userId: owner } },
+      orderBy: { id: 'asc' },
+    });
+    const round = await db.groupMissionRound.findUniqueOrThrow({
+      where: { id: roundId },
+    });
+    const expected = rows.map((ticket) => ({
+      id: ticket.id,
+      roundId,
+      createdAt: ticket.createdAt,
+      policyVersion: round.policyVersion,
+      status: ticket.id === ticketId ? 'used' : 'available',
+      usable: ticket.id !== ticketId,
+      usedAt: ticket.id === ticketId ? used.draw.drawnAt : null,
+      invalidatedAt: null,
+    }));
+    const small = await observeClientQueries(() =>
+      missions.tickets(owner, groupId, { limit: 1 }),
+    );
+    const all = await observeClientQueries(() =>
+      missions.tickets(owner, groupId, { limit: 50 }),
+    );
+    expect(small.overlaps).toBe(0);
+    expect(all.overlaps).toBe(0);
+    expect(small.value).toEqual({
+      items: expected.slice(0, 1),
+      nextCursor: rows[0].id,
+    });
+    expect(all.value).toEqual({ items: expected, nextCursor: null });
+    expect(all.queries).toHaveLength(small.queries.length);
+    for (const table of [
+      'group_mission_rounds',
+      'group_mission_participants',
+      'group_roulette_draws',
+    ]) {
+      expect(
+        all.queries.filter(
+          (sql) => sql.match(/\bFROM\s+"[^"]+"\."([^"]+)"/i)?.[1] === table,
+        ),
+      ).toHaveLength(1);
+    }
+    const next = await missions.tickets(owner, groupId, {
+      limit: 1,
+      cursor: small.value.nextCursor!,
+    });
+    expect(next).toEqual({ items: expected.slice(1), nextCursor: null });
+    const emptyGroupId = await group();
+    const empty = await observeClientQueries(() =>
+      missions.tickets(owner, emptyGroupId, { limit: 50 }),
+    );
+    expect(empty.overlaps).toBe(0);
+    expect(empty.value).toEqual({ items: [], nextCursor: null });
+  });
+  it('spins and replays with sequential queries on the transaction client', async () => {
+    const { groupId, ticketId } = await finished();
+    roll = 95;
+    const key = randomUUID();
+    const first = await observeClientQueries(() =>
+      missions.spin(owner, groupId, ticketId, key),
+    );
+    expect(first.overlaps).toBe(0);
+    expect(first.value.replayed).toBe(false);
+    const replay = await observeClientQueries(() =>
+      missions.spin(owner, groupId, ticketId, key),
+    );
+    expect(replay.overlaps).toBe(0);
+    expect(replay.value).toEqual({ draw: first.value.draw, replayed: true });
+    expect(await balance(owner)).toBe(3);
+    expect(await balance(member)).toBe(3);
+    expect(await db.groupRouletteDraw.count({ where: { ticketId } })).toBe(1);
   });
   it('excludes whole routines with a preexisting future completion, matching activity eligibility', async () => {
     const groupId = await group();

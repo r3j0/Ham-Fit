@@ -80,19 +80,31 @@ export class UserProfileService {
             updatedAt: true,
             dateOfBirth: true,
             nickname: true,
-            currency: true,
-            currentCurriculumAssignment: { include: includeAssignment },
-            measurements: { select: { id: true }, take: 1 },
           },
         });
         if (!user)
           throw new UnauthorizedException(
             '로그인이 필요하거나 계정이 삭제되었습니다.',
           );
-        if (!user.currency)
+        // Keep one Repeatable Read snapshot while avoiding Prisma's concurrent
+        // sibling relation reads on the transaction's single pg connection.
+        const currency = await tx.userCurrency.findUnique({
+          where: { userId },
+          select: { balance: true },
+        });
+        if (!currency)
           throw new ServiceUnavailableException(
             '사용자 재화 정보가 누락되었습니다. 관리자 확인이 필요합니다.',
           );
+        const currentCurriculumAssignment =
+          await tx.userCurriculumAssignment.findUnique({
+            where: { currentForUserId: userId },
+            include: includeAssignment,
+          });
+        const measurement = await tx.measurement.findFirst({
+          where: { userId },
+          select: { id: true },
+        });
         return {
           id: user.id,
           email: user.email,
@@ -100,10 +112,10 @@ export class UserProfileService {
           updated_at: user.updatedAt,
           ...birthProfile(user.dateOfBirth),
           nickname: user.nickname,
-          isOnboarded: user.measurements.length > 0,
-          currency: { balance: user.currency.balance },
-          currentCurriculum: user.currentCurriculumAssignment
-            ? serializeAssignment(user.currentCurriculumAssignment)
+          isOnboarded: measurement !== null,
+          currency: { balance: currency.balance },
+          currentCurriculum: currentCurriculumAssignment
+            ? serializeAssignment(currentCurriculumAssignment)
             : null,
         };
       },

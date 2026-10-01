@@ -1,4 +1,4 @@
-import { outfitInclude, outfitView } from '../avatar/avatar-view.js';
+import { outfitRelations, outfitView } from '../avatar/avatar-view.js';
 import type { Prisma } from '../generated/prisma/client.js';
 
 export function koreanDay(date: Date) {
@@ -53,9 +53,13 @@ export async function memberProfiles(
     select: {
       id: true,
       nickname: true,
-      avatarOutfit: { include: outfitInclude },
+      avatarOutfit: true,
     },
   });
+  const outfits = await outfitRelations(
+    tx,
+    users.flatMap((user) => (user.avatarOutfit ? [user.avatarOutfit] : [])),
+  );
   const days = await workoutDays(tx, userIds, now);
   return new Map(
     users.map((user) => [
@@ -63,7 +67,7 @@ export async function memberProfiles(
       {
         userId: user.id,
         nickname: user.nickname,
-        profileCharacter: outfitView(user.avatarOutfit),
+        profileCharacter: outfitView(outfits.get(user.id) ?? null),
         ...activityStats(days.get(user.id) ?? new Set(), koreanDay(now)),
       },
     ]),

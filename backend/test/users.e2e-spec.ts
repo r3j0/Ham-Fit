@@ -22,6 +22,7 @@ import { validateEnvironment } from '../src/config/environment.js';
 import { CurriculaService } from '../src/curricula/curricula.service.js';
 import { DatabaseService } from '../src/database/database.service.js';
 import { configureApp } from '../src/setup-app.js';
+import { observeClientQueries } from './helpers/pg-queries.js';
 
 const password = 'user integration test password';
 const version = 'nfa100-2026-09-19';
@@ -172,7 +173,9 @@ describe('User profile and permanent deletion against PostgreSQL', () => {
       .expect(204);
 
   it('initializes stored currency and exposes only real empty states without loading details in authentication', async () => {
-    const response = await me().expect(200);
+    const observed = await observeClientQueries(async () => me().expect(200));
+    expect(observed.overlaps).toBe(0);
+    const response = observed.value;
     expect(response.headers['cache-control']).toBe('no-store');
     expect(response.body).toMatchObject({
       id: owner.user.id,
