@@ -1,55 +1,82 @@
 "use client";
+import Link from "next/link";
+import { ClipboardList, Clock3 } from "lucide-react";
+import styles from "./today-workout.module.css";
 import { useEffect, useRef, useState } from "react";
 import { ApiError } from "@/lib/http";
-import { getCurrentWorkout, requestTodayWorkout } from "@/lib/workouts";
-import type { Workout } from "@/lib/workout-types";
+import { getCurrentRoutine, requestTodayRoutine } from "@/lib/workout-routines";
+import { routineWorkouts, type WorkoutRoutine } from "@/lib/workout-routine";
+import { nextRoutineHref } from "@/lib/workout-practice";
+import {
+  assignedWorkoutsForDay,
+  currentWorkoutStep,
+} from "@/lib/assigned-workouts";
 import { workoutJournal, type WorkoutWriter } from "@/lib/workout-journal";
 import { useSession } from "./session-provider";
 import { Header, Loading, Notice, Shell } from "./ui";
 import { WorkoutError } from "./workout-error";
 import { AssignedWorkoutList } from "./assigned-workout-list";
-import {
-  useWorkoutHistory,
-  WorkoutHistoryFeedback,
-} from "./workout-history-provider";
-import { assignedWorkoutsForDay } from "@/lib/assigned-workouts";
+import { useWorkoutHistory } from "./workout-history-provider";
 
-export function TodayWorkout({ embedded = false }: { embedded?: boolean }) {
+export function TodayWorkout({
+  embedded = false,
+  showAll = false,
+}: {
+  embedded?: boolean;
+  showAll?: boolean;
+}) {
   const history = useWorkoutHistory();
-  const session = useSession();
-  const userId = session.user!.id;
-  const [workout, setWorkout] = useState<Workout | null>(null);
+  const userId = useSession().user!.id;
+  const [current, setCurrent] = useState<WorkoutRoutine | null>(null);
+  const [created, setCreated] = useState<WorkoutRoutine | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<unknown>();
   const [pending, setPending] = useState(false);
   const [busy, setBusy] = useState(false);
   const [retry, setRetry] = useState(0);
+  const [remaining, setRemaining] = useState(0);
   const writer = useRef<WorkoutWriter | null>(null);
   const guard = useRef(false);
-  const readVersion = useRef(0);
+  const version = useRef(0);
   useEffect(() => {
-    const lease = workoutJournal.acquire(userId, "today");
+    // A previous v1 generation intent must be resolved with its original key.
+    const legacy = workoutJournal.acquire(userId, "routine:next");
+    let lease = legacy;
+    if (!legacy.read().length) {
+      legacy.release();
+      lease = workoutJournal.acquire(userId, "routine:today");
+    }
     writer.current = lease;
+    queueMicrotask(() => {
+      if (lease.active()) setPending(lease.read().length > 0);
+    });
     return () => {
       lease.release();
       writer.current = null;
     };
   }, [userId]);
   useEffect(() => {
+    if (!remaining) return;
+    const timer = setTimeout(
+      () => setRemaining((n) => Math.max(0, n - 1)),
+      1000,
+    );
+    return () => clearTimeout(timer);
+  }, [remaining]);
+  useEffect(() => {
     const controller = new AbortController();
     async function load() {
       if (guard.current) return;
-      const version = ++readVersion.current;
+      const read = ++version.current;
       try {
-        const value = await getCurrentWorkout(controller.signal);
-        if (controller.signal.aborted || version !== readVersion.current)
-          return;
-        setWorkout(value);
+        const value = await getCurrentRoutine(controller.signal);
+        if (controller.signal.aborted || read !== version.current) return;
+        setCurrent(value);
+        setError(undefined);
         setPending((writer.current?.read().length ?? 0) > 0);
         setLoaded(true);
-        // A background read must not hide a failed creation or its recovery link.
       } catch (e) {
-        if (!controller.signal.aborted && version === readVersion.current) {
+        if (!controller.signal.aborted && read === version.current) {
           setError(e);
           setPending((writer.current?.read().length ?? 0) > 0);
           setLoaded(true);
@@ -72,24 +99,26 @@ export function TodayWorkout({ embedded = false }: { embedded?: boolean }) {
   }, [retry]);
   async function create() {
     const lease = writer.current;
-    if (guard.current || !lease?.active()) return;
+    if (guard.current || !lease?.active() || remaining) return;
     guard.current = true;
-    ++readVersion.current;
+    ++version.current;
     const request = lease.read()[0] ?? { key: crypto.randomUUID(), body: "{}" };
     lease.save([request]);
     setPending(true);
     setBusy(true);
     setError(undefined);
     try {
-      const value = await requestTodayWorkout(request.key);
+      const value = await requestTodayRoutine(request.key);
       if (!lease.active()) return;
       lease.save([]);
       setPending(false);
-      setWorkout(value);
+      setCreated(value);
+      // Replayed requests retain their original assignment date.
+      if (value.koreanDate === value.serverKoreanDate) setCurrent(value);
       history.reload();
+      setRetry((n) => n + 1);
     } catch (e) {
       if (!lease.active()) return;
-      // Definite validation/readiness failures created no assignment. Unknown outcomes keep the key.
       if (
         e instanceof ApiError &&
         (e.status === 400 ||
@@ -97,11 +126,14 @@ export function TodayWorkout({ embedded = false }: { embedded?: boolean }) {
             "DATE_OF_BIRTH_REQUIRED",
             "MEASUREMENT_REQUIRED",
             "AGE_UNSUPPORTED",
+            "EXERCISE_GOAL_REQUIRED",
           ].includes(e.code ?? ""))
       ) {
         lease.save([]);
         setPending(false);
       }
+      if (e instanceof ApiError && e.status === 429)
+        setRemaining(e.retryAfter ?? 60);
       setError(e);
     } finally {
       if (lease.active()) {
@@ -110,47 +142,131 @@ export function TodayWorkout({ embedded = false }: { embedded?: boolean }) {
       }
     }
   }
-  const workouts = assignedWorkoutsForDay(
-    [...history.workouts, ...(workout ? [workout] : [])],
-    workout?.serverKoreanDate ?? history.today,
+  const today = [
+    history.today,
+    current?.serverKoreanDate,
+    created?.serverKoreanDate,
+  ]
+    .filter((day): day is string => !!day)
+    .sort()
+    .at(-1)!;
+  const todayRoutine =
+    current?.koreanDate === today
+      ? current
+      : history.routines.find((row) => row.koreanDate === today);
+  const todayItems = assignedWorkoutsForDay(
+    [
+      ...history.workouts.filter((row) => !row.routine),
+      ...(todayRoutine ? routineWorkouts(todayRoutine) : []),
+    ],
+    today,
   );
-  const listReady = loaded || history.ready;
+  const step = currentWorkoutStep(todayItems);
   const content = (
     <div className={embedded ? "stack" : "content stack"}>
-      {!listReady ? (
-        <Loading />
+      <div className={styles.heading}>
+        <div className={styles.title}>
+          {!showAll && <ClipboardList size={22} aria-hidden="true" />}
+          <h2 id={showAll ? "today-workout-title" : "today-title"}>
+            오늘의 운동
+          </h2>
+        </div>
+        {todayRoutine && (
+          <div
+            className={styles.badges}
+            role="group"
+            aria-label="오늘의 운동 요약"
+          >
+            <span
+              className={styles.badge}
+              aria-label={`예상 운동 시간 ${todayRoutine.estimatedMinutes}분`}
+            >
+              <Clock3 size={18} aria-hidden="true" />
+              <strong>{todayRoutine.estimatedMinutes}분</strong>
+            </span>
+            <span
+              className={styles.badge}
+              aria-label={`완료한 운동 ${todayRoutine.progress.completedItems}/${todayRoutine.progress.totalItems}`}
+            >
+              <strong>
+                {todayRoutine.progress.completedItems}/
+                {todayRoutine.progress.totalItems}
+              </strong>
+            </span>
+          </div>
+        )}
+      </div>
+      {!loaded && !history.ready ? (
+        <>
+          <Loading />
+          <button className="button primary workout-request" disabled>
+            오늘 운동 준비하기
+          </button>
+        </>
       ) : (
         <>
           {error !== undefined && <WorkoutError error={error} />}
-          {!history.ready || history.error ? (
-            <WorkoutHistoryFeedback />
-          ) : (
+          {todayItems.length ? (
             <>
-              {workouts.length > 0 ? (
-                <AssignedWorkoutList workouts={workouts} />
-              ) : (
-                <h2>아직 오늘 배정된 운동이 없어요</h2>
+              {(showAll || step.workout) && (
+                <AssignedWorkoutList
+                  workouts={showAll ? todayItems : [step.workout!]}
+                  started={step.started}
+                  activeId={showAll ? step.workout?.id : undefined}
+                  cardioRecommendation={
+                    showAll ? todayRoutine?.cardioRecommendation : null
+                  }
+                />
               )}
-              {pending && (
-                <Notice tone="info">
-                  이전 추천 요청의 결과를 확인해야 해요. 같은 요청으로 다시
-                  확인할 수 있어요.
-                </Notice>
-              )}
-              {(!workouts.length || pending) && (
-                <button
-                  className="button primary workout-request"
-                  onClick={() => void create()}
-                  disabled={busy}
-                >
-                  {busy
-                    ? "추천을 확인하고 있어요"
-                    : pending
-                      ? "이전 추천 요청 확인하기"
-                      : "운동하기"}
-                </button>
+              {!step.workout && (
+                <>
+                  <Notice tone="success">오늘의 모든 운동을 완료했어요.</Notice>
+                  {todayRoutine && (
+                    <Link
+                      className="button primary"
+                      href={nextRoutineHref(todayRoutine)}
+                    >
+                      오늘 운동 완료 확인
+                    </Link>
+                  )}
+                </>
               )}
             </>
+          ) : (
+            error === undefined && (
+              <p className="muted">
+                아직 오늘 배정된 운동이 없어요. 오늘 할 운동을 준비해 보세요.
+              </p>
+            )
+          )}
+          {created && created.koreanDate !== today && (
+            <Notice tone="info">
+              이전 요청으로 준비한 {created.koreanDate} 운동을 확인했어요.{" "}
+              <Link href="/workout#workout-history-title" className="text-link">
+                운동 달력 보기
+              </Link>
+            </Notice>
+          )}
+          {pending && (
+            <Notice tone="info">
+              이전 추천 요청의 결과를 확인해야 해요. 같은 요청으로 다시 확인할
+              수 있어요.
+            </Notice>
+          )}
+          {(!todayRoutine || pending) && (
+            <button
+              className="button primary workout-request"
+              disabled={busy || remaining > 0}
+              onClick={() => void create()}
+            >
+              {busy
+                ? "운동을 준비하고 있어요"
+                : remaining
+                  ? `${remaining}초 후 다시 시도`
+                  : pending
+                    ? "이전 추천 요청 확인하기"
+                    : "오늘 운동 준비하기"}
+            </button>
           )}
           {error !== undefined && (
             <button
@@ -158,6 +274,7 @@ export function TodayWorkout({ embedded = false }: { embedded?: boolean }) {
               disabled={busy}
               onClick={() => {
                 setError(undefined);
+                setLoaded(false);
                 setRetry((n) => n + 1);
                 history.reload();
               }}

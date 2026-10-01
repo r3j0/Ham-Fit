@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { installApi } from "./integration-fixtures";
+import { installApi, testWorkout } from "./integration-fixtures";
 import { prepareAssessment, skipToFlexibility } from "./workout-helpers";
 test("간이측정 등록은 기존 사용자 커리큘럼을 보존한다", async ({ page }) => {
   const server = await installApi(page);
@@ -12,7 +12,11 @@ test("간이측정 등록은 기존 사용자 커리큘럼을 보존한다", asy
   ).toBeVisible();
   await expect(page.getByLabel("만 나이", { exact: true })).toHaveCount(0);
   await expect(progress).toHaveCount(0);
-  await page.getByRole("link", { name: "체력 기록 시작하기" }).click();
+  await page
+    .getByRole("navigation")
+    .getByRole("link", { name: "메인", exact: true })
+    .click();
+  await page.getByRole("link", { name: "체력 기록 등록하기" }).click();
   await expect(progress).toHaveAttribute("aria-valuenow", "1");
   await page.getByRole("link", { name: "결과표가 없어요" }).click();
   await expect(progress).toHaveAttribute("aria-valuenow", "2");
@@ -67,6 +71,8 @@ test("간이측정 등록은 기존 사용자 커리큘럼을 보존한다", asy
   await expect(
     page.getByRole("heading", { name: "내 기존 운동" }),
   ).toBeVisible();
-  await expect(page.getByText("배정됨", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "운동 시작하기", exact: true }),
+  ).toHaveAttribute("href", `/workouts/${testWorkout.id}`);
   await expect(progress).toHaveCount(0);
 });

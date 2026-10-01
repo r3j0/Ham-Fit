@@ -1,6 +1,8 @@
 import { test, expect, type Page } from "@playwright/test";
 import { installApi, testRecord } from "./integration-fixtures";
 
+import { installHomeGroups } from "./home-groups-fixtures";
+
 async function renderedArt(page: Page) {
   await page
     .locator("[data-pose] svg image")
@@ -39,10 +41,10 @@ for (const width of [320, 390, 1280]) {
     const characters = group.getByRole("img");
     await expect(characters).toHaveCount(4);
     const expected = [
-      ["cream", "victory", "green-sportswear"],
-      ["gray", "run", "white-sportswear"],
-      ["gray", "drink", "blue-sportswear"],
-      ["cream", "situp", "black-sportswear"],
+      ["cream", "victory", "none"],
+      ["gray", "run", "none"],
+      ["gray", "drink", "none"],
+      ["cream", "situp", "none"],
     ];
     for (const [index, [variant, pose, wear]] of expected.entries()) {
       await expect(characters.nth(index)).toHaveAttribute(
@@ -116,11 +118,12 @@ test("그룹·체력 기록·간이측정·탈퇴 확인의 캐릭터를 읽기 
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   const api = await installApi(page, testRecord());
+  await installHomeGroups(page);
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/");
   await expect(
-    page.getByRole("group", { name: "그룹 햄스터 예시" }).getByRole("img"),
-  ).toHaveCount(4);
+    page.getByRole("region", { name: "내 그룹의 햄스터" }).getByRole("img"),
+  ).toHaveCount(3);
   await renderedArt(page);
   await page.screenshot({
     path: info.outputPath("home.png"),

@@ -28,16 +28,13 @@ export const ownedToolOptions = [
   { value: "band", label: "밴드" },
   { value: "dumbbell", label: "덤벨·아령" },
   { value: "gym_ball", label: "짐볼" },
-  { value: "foam_roller", label: "폼롤러" },
   { value: "jump_rope", label: "줄넘기" },
   { value: "step_box", label: "스텝박스·스텝퍼" },
   { value: "ball", label: "공" },
-  { value: "cone", label: "콘" },
-  { value: "agility_ladder", label: "사다리" },
-  { value: "bosu", label: "보슈" },
 ] as const;
 export type OwnedTool = (typeof ownedToolOptions)[number]["value"];
-export function normalizeOwnedTools(tools: readonly OwnedTool[]): OwnedTool[] {
+/** Draft/cache values are untrusted; only supported identifiers may enter a PATCH. */
+export function normalizeOwnedTools(tools: readonly unknown[]): OwnedTool[] {
   return ownedToolOptions
     .map(({ value }) => value)
     .filter((tool) => tools.includes(tool));

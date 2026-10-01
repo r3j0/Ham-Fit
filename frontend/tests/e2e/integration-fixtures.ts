@@ -7,6 +7,14 @@ export const testUser = {
   created_at: "2026-09-01T00:00:00Z",
   updated_at: "2026-09-01T00:00:00Z",
 };
+export const testOutfit = {
+  characterId: "character.cream",
+  poseId: "pose.basic",
+  clothingIds: [],
+  revision: 1,
+  updatedAt: "2026-10-01T00:00:00.000Z",
+  rendering: { variant: "cream", pose: "basic", clothing: [] },
+};
 export const assignment = {
   id: "00000000-0000-4000-8000-000000000002",
   status: "assigned",
@@ -167,13 +175,15 @@ export async function installApi(
   initialCatalog: Catalog = catalog,
 ) {
   let record = initialRecord;
+  let nickname: string | null = null;
+  let outfit = structuredClone(testOutfit);
   const mutations: { path: string; method: string; body: unknown }[] = [];
-  await page.route("**/api/v1/**", async (route) => {
+  await page.route(/\/api\/v[12]\//, async (route) => {
     const request = route.request(),
-      path = new URL(request.url()).pathname.replace("/api/v1", "");
+      path = new URL(request.url()).pathname.replace(/\/api\/v[12]/, "");
     const method = request.method();
     if (
-      ["POST", "PATCH", "DELETE"].includes(method) &&
+      ["POST", "PUT", "PATCH", "DELETE"].includes(method) &&
       !path.startsWith("/auth")
     )
       mutations.push({
@@ -204,9 +214,59 @@ export async function installApi(
         currency: { balance: 0 },
         currentCurriculum: assignment,
       });
-    if (path === "/users/me/profile")
-      return send({ dateOfBirth: null, currentAge: null, nickname: null });
+    if (path === "/avatar/render-catalog")
+      return send({ revision: 0, catalog: {} });
+    if (path === "/users/me/profile") {
+      if (method === "PATCH") nickname = request.postDataJSON().nickname;
+      return send({ dateOfBirth: "2001-01-01", currentAge: 25, nickname });
+    }
+    if (path === "/users/me/avatar/outfit") {
+      if (method === "PUT") {
+        const body = request.postDataJSON();
+        outfit = {
+          ...outfit,
+          ...body,
+          revision: outfit.revision + 1,
+          rendering: {
+            ...outfit.rendering,
+            variant: body.characterId.split(".")[1],
+            pose: body.poseId.split(".")[1],
+          },
+        };
+      }
+      return send(outfit);
+    }
+    if (path === "/users/me/avatar/inventory")
+      return send({
+        currency: { balance: 0 },
+        inventory: ["character.cream", "character.gray", "pose.basic"].map(
+          (productId) => ({
+            productId,
+            source: "default",
+            acquiredAt: testOutfit.updatedAt,
+          }),
+        ),
+      });
+    if (
+      path === "/users/me/streak-roulette/tickets" ||
+      /\/groups\/[^/]+\/roulette\/(tickets|draws)$/.test(path)
+    )
+      return send({ items: [], availableCount: 0, nextCursor: null });
+    if (/\/groups\/[^/]+\/missions\/current$/.test(path))
+      return send({ id: null, status: "not_started" });
     if (path === "/workouts/current") return send(testWorkout);
+    if (path === "/workout-routines/current") return send(null);
+    if (path === "/groups" && method === "GET")
+      return send({ items: [], nextCursor: null });
+    if (path === "/workout-routines/history")
+      return send({ items: [], nextCursor: null });
+    if (path === "/users/me/profile/activity")
+      return send({
+        userId: testUser.id,
+        nickname: null,
+        profileCharacter: null,
+        streak: 0,
+      });
     if (path === "/workouts/history")
       return send({ items: [testWorkout], nextCursor: null });
     if (path === `/workouts/${testWorkout.id}`) return send(testWorkout);

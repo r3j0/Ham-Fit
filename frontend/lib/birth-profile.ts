@@ -14,3 +14,20 @@ export function birthDateError(
   )
     return "미래가 아닌 실제 생년월일을 입력해 주세요.";
 }
+
+/** Age on a date-only measurement date, independent of the browser time zone. */
+export function ageOnDate(
+  dateOfBirth: string,
+  measuredOn: string,
+): number | null {
+  if (
+    birthDateError(dateOfBirth, measuredOn) ||
+    birthDateError(measuredOn, measuredOn)
+  )
+    return null;
+  return (
+    Number(measuredOn.slice(0, 4)) -
+    Number(dateOfBirth.slice(0, 4)) -
+    (measuredOn.slice(5) < dateOfBirth.slice(5) ? 1 : 0)
+  );
+}

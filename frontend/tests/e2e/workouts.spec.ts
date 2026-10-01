@@ -1,10 +1,36 @@
 import { test, expect, type Page } from "@playwright/test";
 import path from "node:path";
 import { readFile } from "node:fs/promises";
+import { respectRateLimit } from "./live-api-fixtures";
+import {
+  parseRoutine,
+  routineWorkouts,
+  workoutHref,
+} from "../../lib/workout-routine";
 import type { PlaybackEvent, Workout } from "../../lib/workout-types";
 import { installApi, testRecord, testWorkout } from "./integration-fixtures";
 const base = process.env.E2E_API_BASE_URL ?? "http://localhost:3001/api/v1";
+const routineApi = base.replace(/\/v1$/, "/v2");
 const password = "frontend-workout-test-password-2026!";
+const createdUsers: string[] = [];
+test.afterEach(async ({ page }) => {
+  for (const token of createdUsers.splice(0)) {
+    const remove = () =>
+      page.request.delete(`${base}/users/me`, {
+        headers: { Authorization: `Bearer ${token}`, "X-CSRF-Protection": "1" },
+        data: { password },
+      });
+    let result = await remove();
+    if (result.status() === 429) {
+      await waitForLimit(page, result);
+      result = await remove();
+    }
+    expect(result.status()).toBe(204);
+  }
+});
+const itemEvents = (workout: Workout) =>
+  `/workout-routines/${workout.routine!.id}/items/${workout.routine!.itemId}/events`;
+
 async function waitForLimit(
   page: Page,
   response:
@@ -12,9 +38,15 @@ async function waitForLimit(
     | import("@playwright/test").Response,
 ) {
   const body = await response.json();
-  await page.waitForTimeout(
-    Math.min(60, Number(body.retry_after) || 60) * 1000,
-  );
+  const delay =
+    Math.ceil(
+      Math.min(
+        60,
+        Number(response.headers()["retry-after"] ?? body.retry_after) || 60,
+      ) * 1000,
+    ) + 100;
+  test.setTimeout(test.info().timeout + delay);
+  await page.waitForTimeout(delay);
 }
 async function openAuthenticated(page: Page, url?: string) {
   const refreshed = page.waitForResponse((r) =>
@@ -22,15 +54,16 @@ async function openAuthenticated(page: Page, url?: string) {
   );
   if (url) await page.goto(url);
   else await page.reload();
-  const response = await refreshed;
-  if (response.status() === 429) {
+  let response = await refreshed;
+  for (let attempt = 0; attempt < 3 && response.status() === 429; attempt++) {
     await waitForLimit(page, response);
     const retry = page.waitForResponse((r) =>
       r.url().endsWith("/auth/refresh"),
     );
     await page.getByRole("button", { name: "다시 연결하기" }).click();
-    expect((await retry).status()).toBe(200);
-  } else expect(response.status()).toBe(200);
+    response = await retry;
+  }
+  expect(response.status()).toBe(200);
 }
 async function registerTestUser(page: Page, data: Record<string, string>) {
   const send = () =>
@@ -43,6 +76,7 @@ async function registerTestUser(page: Page, data: Record<string, string>) {
     await waitForLimit(page, response);
     response = await send();
   }
+  if (response.ok()) createdUsers.push((await response.json()).access_token);
   return response;
 }
 async function saveBirthProfile(page: Page) {
@@ -71,48 +105,70 @@ async function prepare(page: Page) {
   });
   expect(response.status()).toBe(201);
   const auth = await response.json();
-  const headers = { Authorization: `Bearer ${auth.access_token}` };
+  const headers = {
+    Authorization: `Bearer ${auth.access_token}`,
+    "X-CSRF-Protection": "1",
+  };
   const catalog = await (
     await page.request.get(`${base}/measurement-catalog`)
   ).json();
-  const record = await page.request.post(`${base}/measurements`, {
-    headers: { ...headers, "Idempotency-Key": crypto.randomUUID() },
-    data: {
-      measuredOn: "2026-09-17",
-      ageAtMeasurement: 26,
-      sexAtMeasurement: null,
-      reportKind: "standard",
-      centerName: null,
-      reportedOverallGrade: null,
-      catalogVersion: catalog.version,
-      items: [
-        {
-          measurementCode: "height",
-          value: "170",
-          unit: "cm",
-          reportedGrade: null,
-        },
-      ],
-    },
-  });
+  const record = await respectRateLimit(() =>
+    page.request.post(`${base}/measurements`, {
+      headers: { ...headers, "Idempotency-Key": crypto.randomUUID() },
+      data: {
+        measuredOn: "2026-09-17",
+        ageAtMeasurement: 26,
+        sexAtMeasurement: null,
+        reportKind: "standard",
+        centerName: null,
+        reportedOverallGrade: null,
+        catalogVersion: catalog.version,
+        items: [
+          {
+            measurementCode: "height",
+            value: "170",
+            unit: "cm",
+            reportedGrade: null,
+          },
+        ],
+      },
+    }),
+  );
   expect(record.status()).toBe(201);
-  const assigned = await page.request.post(`${base}/workouts/today`, {
-    headers: { ...headers, "Idempotency-Key": crypto.randomUUID() },
-    data: {},
-  });
+  expect(
+    (
+      await respectRateLimit(() =>
+        page.request.patch(`${base}/users/me/preferences`, {
+          headers,
+          data: { exerciseGoal: "general_fitness_improvement", ownedTools: [] },
+        }),
+      )
+    ).status(),
+  ).toBe(200);
+  const assigned = await respectRateLimit(() =>
+    page.request.post(`${routineApi}/workout-routines/today`, {
+      headers: { ...headers, "Idempotency-Key": crypto.randomUUID() },
+      data: {},
+    }),
+  );
   expect(assigned.status()).toBe(201);
-  const workout = (await assigned.json()) as Workout;
+  const routine = parseRoutine(await assigned.json());
+  const dueId = routine.id;
   const read = async () =>
-    (await (
-      await page.request.get(`${base}/workouts/${workout.id}`, { headers })
-    ).json()) as Workout;
+    routineWorkouts(
+      parseRoutine(
+        await (
+          await page.request.get(`${routineApi}/workout-routines/${dueId}`, {
+            headers,
+          })
+        ).json(),
+      ),
+    )[0];
+  const workout = await read();
   return { workout, read, headers, email: auth.user.email as string };
 }
 async function serveTestMedia(page: Page) {
-  const url = new URL(
-    "/test-workout.mp4",
-    process.env.E2E_BASE_URL ?? "http://localhost:3000",
-  ).href;
+  const url = "https://openapi.kspo.or.kr/web/video/frontend-test.mp4";
   const bytes = await readFile(path.resolve("tests/fixtures/workout.mp4"));
   await page.route(url, (route) => {
     const range = /^bytes=(\d+)-(\d*)$/.exec(
@@ -134,66 +190,49 @@ async function serveTestMedia(page: Page) {
   });
   return url;
 }
-// Real API tests replace only media delivery with a tiny generated MP4.
+// Real API tests replace only media delivery/verification metadata with the fixture MP4.
+// Definitions, progress, revisions, idempotency and persistence use the actual latest API.
 async function testMedia(page: Page, workout: Workout) {
   const url = await serveTestMedia(page);
-  await page.route(
-    new RegExp(`/api/v1/workouts/(?:${workout.id}|current)$`),
-    async (route) => {
-      const response = await route.fetch();
-      const data = await response.json();
-      await route.fulfill({
-        response,
-        json: {
-          ...data,
-          video: {
-            ...data.video,
-            playbackStatus: "verified",
-            playbackUrl: url,
-          },
-        },
-      });
-    },
-  );
-  // Event replies also carry video metadata; retain the same media fixture across state updates.
-  await page.route(`**/api/v1/workouts/${workout.id}/events`, async (route) => {
-    const response = await route.fetch();
-    const data = await response.json();
-    await route.fulfill({
+  await page.route("**/api/v2/workout-routines/**", async (route) => {
+    const requestPath = new URL(route.request().url()).pathname;
+    if (
+      requestPath !== `/api/v2/workout-routines/${workout.routine!.id}` &&
+      !requestPath.endsWith(itemEvents(workout))
+    )
+      return route.fallback();
+    const response = await route.fetch(),
+      data = await response.json();
+    if (!data.routine) return route.fulfill({ response });
+    return route.fulfill({
       response,
-      json: data.video
-        ? {
-            ...data,
-            video: {
-              ...data.video,
-              playbackStatus: "verified",
-              playbackUrl: url,
-            },
-          }
-        : data,
+      json: {
+        ...data,
+        routine: data.routine.map((item: { id: string }) =>
+          item.id === workout.routine!.itemId
+            ? {
+                ...item,
+                playbackStatus: "verified",
+                playbackUrl: url,
+                verifiedDurationSeconds: workout.video.durationSeconds,
+              }
+            : item,
+        ),
+      },
     });
   });
 }
-test("actual playback excludes seeks, ends below 50%, resumes after reload and completes only on confirmation", async ({
+test("실제 시청은 탐색을 제외하고 80% 미만 종료 요청을 중단으로 저장하며 재접속 후 이어간다", async ({
   page,
 }, info) => {
   const { workout, read } = await prepare(page);
   await testMedia(page, workout);
-  await openAuthenticated(page, "/");
-  await page
-    .getByRole("navigation")
-    .getByRole("link", { name: "운동", exact: true })
-    .click();
-  await expect(page).toHaveURL("/workout");
-  await expect(page.locator("video")).toHaveCount(0);
-  await page.getByRole("link", { name: "운동 시작하기", exact: true }).click();
-  await expect(page).toHaveURL(`/workouts/${workout.id}`);
+  await openAuthenticated(page, workoutHref(workout));
   const video = page.getByLabel("운동 영상");
   await expect
     .poll(() => video.evaluate((v: HTMLVideoElement) => v.readyState))
     .toBeGreaterThanOrEqual(1);
   await page.getByRole("button", { name: "운동 시작", exact: true }).click();
-  await expect(video).toHaveAttribute("controls");
   await video.evaluate((v: HTMLVideoElement) => v.play());
   await expect
     .poll(() => video.evaluate((v: HTMLVideoElement) => v.currentTime))
@@ -204,22 +243,16 @@ test("actual playback excludes seeks, ends below 50%, resumes after reload and c
   await expect
     .poll(() => video.evaluate((v: HTMLVideoElement) => v.currentTime))
     .toBeGreaterThan(7);
-  await video.evaluate((v: HTMLVideoElement) => v.pause());
-  await expect
-    .poll(async () => (await read()).progress.watchedSeconds)
-    .toBeGreaterThan(1);
-  await expect
-    .poll(async () =>
-      (await read()).progress.intervals.some((r) => r.start >= 5),
-    )
-    .toBe(true);
-  const progress = (await read()).progress;
-  expect(progress.watchedSeconds).toBeLessThan(5);
-  expect(progress.intervals.some((r) => r.start >= 5)).toBeTruthy();
-  await page.getByRole("button", { name: "여기서 종료" }).click();
+  await page.getByRole("button", { name: "여기서 종료", exact: true }).click();
+  await expect(page.getByRole("dialog")).toContainText("80%");
   await page.getByRole("button", { name: "종료 확인" }).click();
-  await expect.poll(async () => (await read()).status).toBe("not_performed");
-  await openAuthenticated(page);
+  await expect.poll(async () => (await read()).status).toBe("interrupted");
+  const saved = await read();
+  expect(saved.progress.watchedSeconds).toBeGreaterThan(1);
+  expect(saved.progress.watchedSeconds).toBeLessThan(5);
+  expect(saved.progress.intervals.some((r) => r.start >= 5)).toBeTruthy();
+  expect(saved.completedAt).toBeNull();
+  await openAuthenticated(page, workoutHref(workout));
   await expect(
     page.getByRole("button", { name: "이어서 운동하기" }),
   ).toBeEnabled();
@@ -227,99 +260,27 @@ test("actual playback excludes seeks, ends below 50%, resumes after reload and c
     .poll(() => video.evaluate((v: HTMLVideoElement) => v.currentTime))
     .toBeGreaterThan(6);
   await page.getByRole("button", { name: "이어서 운동하기" }).click();
-  await expect(video).toHaveAttribute("controls");
-  await video.evaluate((v: HTMLVideoElement) => {
-    v.currentTime = 11.8;
-    return v.play();
-  });
-  await expect
-    .poll(() => video.evaluate((v: HTMLVideoElement) => v.ended))
-    .toBe(true);
-  expect((await read()).status).toBe("in_progress");
-  await page.getByRole("button", { name: "운동 완료", exact: true }).click();
-  expect((await read()).status).toBe("in_progress");
-  await page.getByRole("button", { name: "완료 확인" }).click();
-  await expect.poll(async () => (await read()).status).toBe("completed");
-  await expect(video).toHaveAttribute("controls");
-  const completed = await read();
-  let replayEvents = 0;
-  page.on("request", (request) => {
-    if (request.url().endsWith(`/workouts/${workout.id}/events`))
-      replayEvents++;
-  });
-  await video.evaluate((v: HTMLVideoElement) => {
-    v.currentTime = 0;
-    return v.play();
-  });
+  await expect.poll(async () => (await read()).status).toBe("in_progress");
+  await video.evaluate((v: HTMLVideoElement) => v.pause());
+  await expect.poll(async () => (await read()).status).toBe("interrupted");
+  await expect(video).toHaveAttribute("controls", "");
+  const resumePosition = await video.evaluate(
+    (v: HTMLVideoElement) => v.currentTime,
+  );
+  await video.evaluate((v: HTMLVideoElement) => v.play());
+  await expect.poll(async () => (await read()).status).toBe("in_progress");
   await expect
     .poll(() => video.evaluate((v: HTMLVideoElement) => v.currentTime))
-    .toBeGreaterThan(1);
+    .toBeGreaterThan(resumePosition + 0.5);
+  await expect(
+    page.getByRole("button", { name: "이어서 운동하기" }),
+  ).toHaveCount(0);
   await video.evaluate((v: HTMLVideoElement) => v.pause());
-  expect((await read()).revision).toBe(completed.revision);
-  expect((await read()).progress).toEqual(completed.progress);
-  expect(replayEvents).toBe(0);
+  await expect.poll(async () => (await read()).status).toBe("interrupted");
   await page.screenshot({
-    path: info.outputPath("completed-workout.png"),
+    path: info.outputPath("v2-interrupted.png"),
     fullPage: true,
   });
-  await page.getByRole("link", { name: "운동 목록으로", exact: true }).click();
-  await expect(page).toHaveURL("/workout");
-  await expect(
-    page
-      .getByRole("region", { name: "운동 기록", exact: true })
-      .locator('a[aria-current="date"]'),
-  ).toHaveAttribute("data-completed", "true");
-  await expect(
-    page
-      .getByRole("list", { name: "오늘 배정된 운동" })
-      .getByText("완료", { exact: true }),
-  ).toBeVisible();
-  await page
-    .getByRole("navigation")
-    .getByRole("link", { name: "메인", exact: true })
-    .click();
-  await expect(page.getByRole("button", { name: "운동하기" })).toHaveCount(0);
-  await expect(page.getByRole("region", { name: "연속 운동" })).toContainText(
-    "1일 연속 운동 중",
-  );
-  await page
-    .getByRole("navigation")
-    .getByRole("link", { name: "내 프로필", exact: true })
-    .click();
-  await page.getByRole("link", { name: "내 운동 이력", exact: true }).click();
-  await expect(
-    page.getByRole("link", { name: "운동 다시보기" }),
-  ).toHaveAttribute("href", `/account/workouts/${workout.id}/replay`);
-  await expect(page.getByText("최근 수행일", { exact: false })).toBeVisible();
-  await page.getByRole("link", { name: "운동 다시보기" }).click();
-  await expect(
-    page.getByRole("img", { name: "운동 완료", exact: true }),
-  ).toBeVisible();
-  await expect(page).toHaveURL(`/account/workouts/${workout.id}/replay`);
-  await expect(
-    page.getByRole("heading", { name: "운동 다시보기", exact: true }),
-  ).toBeVisible();
-  await expect(video).toHaveAttribute("controls");
-  await video.evaluate((v: HTMLVideoElement) => v.play());
-  await expect
-    .poll(() => video.evaluate((v: HTMLVideoElement) => v.currentTime))
-    .toBeGreaterThan(1);
-  await video.evaluate((v: HTMLVideoElement) => v.pause());
-  expect((await read()).revision).toBe(completed.revision);
-  expect((await read()).progress).toEqual(completed.progress);
-  expect(replayEvents).toBe(0);
-  await page.getByRole("link", { name: "운동 기록으로", exact: true }).click();
-  await expect(
-    page.getByRole("heading", { name: "운동 기록 상세", exact: true }),
-  ).toBeVisible();
-  const dailyRecords = page.getByRole("list", {
-    name: "선택한 날짜의 운동 기록",
-  });
-  await expect(dailyRecords.getByRole("listitem")).toHaveCount(1);
-  await expect(dailyRecords.getByRole("link")).toHaveAttribute(
-    "href",
-    `/account/workouts/${workout.id}/replay`,
-  );
 });
 test("a lost start response survives reload with the original event key and body", async ({
   page,
@@ -328,7 +289,7 @@ test("a lost start response survives reload with the original event key and body
   await testMedia(page, workout);
   const requests: { key: string; body: string | null }[] = [];
   let lost = false;
-  await page.route(`**/api/v1/workouts/${workout.id}/events`, async (route) => {
+  await page.route(`**/api/v2${itemEvents(workout)}`, async (route) => {
     if (route.request().postDataJSON().type !== "start")
       return route.fallback();
     requests.push({
@@ -342,7 +303,7 @@ test("a lost start response survives reload with the original event key and body
       await route.abort("failed");
     } else await route.fallback();
   });
-  await openAuthenticated(page, `/workouts/${workout.id}`);
+  await openAuthenticated(page, workoutHref(workout));
   await page.getByRole("button", { name: "운동 시작", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "저장 다시 확인하기" }),
@@ -352,7 +313,7 @@ test("a lost start response survives reload with the original event key and body
   await expect.poll(() => requests.length).toBe(2);
   expect(requests[0]).toEqual(requests[1]);
   await expect(
-    page.getByRole("button", { name: "운동 완료", exact: true }),
+    page.getByRole("button", { name: "여기서 종료", exact: true }),
   ).toBeEnabled();
   expect((await read()).revision).toBeGreaterThanOrEqual(2);
 });
@@ -360,22 +321,36 @@ test("unavailable media has an explicit retry and never uses originalUrl", async
   page,
 }) => {
   const { workout } = await prepare(page);
-  await page.route(`**/api/v1/workouts/${workout.id}`, async (route) => {
-    const response = await route.fetch();
-    const data = await response.json();
-    await route.fulfill({
-      response,
-      json: {
-        ...data,
-        video: {
-          ...data.video,
-          playbackStatus: "unavailable",
-          playbackUrl: null,
+  // Media availability varies by catalog/runtime; inject the unavailable contract explicitly.
+  await page.route(
+    `**/api/v2/workout-routines/${workout.routine!.id}`,
+    async (route) => {
+      const response = await route.fetch();
+      const routine = await response.json();
+      await route.fulfill({
+        response,
+        json: {
+          ...routine,
+          routine: routine.routine.map((item: { id: string }) =>
+            item.id === workout.routine!.itemId
+              ? {
+                  ...item,
+                  playbackStatus: "unavailable",
+                  playbackUrl: null,
+                  verifiedDurationSeconds: null,
+                }
+              : item,
+          ),
         },
-      },
-    });
+      });
+    },
+  );
+  const originalRequests: string[] = [];
+  page.on("request", (request) => {
+    if (request.url() === workout.video.originalUrl)
+      originalRequests.push(request.url());
   });
-  await openAuthenticated(page, `/workouts/${workout.id}`);
+  await openAuthenticated(page, workoutHref(workout));
   await expect(
     page.getByText("현재 이 영상을 재생할 수 없어요.", { exact: false }),
   ).toBeVisible();
@@ -386,11 +361,14 @@ test("unavailable media has an explicit retry and never uses originalUrl", async
   await expect(
     page.getByRole("button", { name: "운동 시작", exact: true }),
   ).toHaveCount(0);
+  await page.getByRole("button", { name: "영상 다시 확인하기" }).click();
+  await expect(
+    page.getByText("현재 이 영상을 재생할 수 없어요.", { exact: false }),
+  ).toBeVisible();
+  expect(originalRequests).toEqual([]);
 });
 
-test("a saved 50% session ends as interrupted and can be explicitly completed after resuming", async ({
-  page,
-}) => {
+test("50% 종료는 미완료로 남고 80% 구간에서만 완료된다", async ({ page }) => {
   const { workout, headers, read } = await prepare(page);
   const deviceId = crypto.randomUUID();
   for (const [sequence, type, intervals, positionSeconds] of [
@@ -403,7 +381,7 @@ test("a saved 50% session ends as interrupted and can be explicitly completed af
     ],
   ] as const) {
     const saved = await page.request.post(
-      `${base}/workouts/${workout.id}/events`,
+      `${routineApi}${itemEvents(workout)}`,
       {
         headers: { ...headers, "Idempotency-Key": crypto.randomUUID() },
         data: { type, deviceId, sequence, intervals, positionSeconds },
@@ -412,54 +390,106 @@ test("a saved 50% session ends as interrupted and can be explicitly completed af
     expect(saved.status()).toBe(200);
   }
   await testMedia(page, workout);
-  await openAuthenticated(page, `/workouts/${workout.id}`);
+  await openAuthenticated(page, workoutHref(workout));
   await page.getByRole("button", { name: "여기서 종료" }).click();
   await page.getByRole("button", { name: "종료 확인" }).click();
   await expect.poll(async () => (await read()).status).toBe("interrupted");
+  await openAuthenticated(page, workoutHref(workout));
   await page.getByRole("button", { name: "이어서 운동하기" }).click();
-  await page.getByRole("button", { name: "운동 완료", exact: true }).click();
-  await page.getByRole("button", { name: "완료 확인" }).click();
+  await page.getByRole("button", { name: "여기서 종료", exact: true }).click();
+  await page.getByRole("button", { name: "종료 확인" }).click();
+  await expect
+    .poll(async () => (await read()).resultStatus)
+    .toBe("interrupted");
+  for (const [sequence, type, intervals, positionSeconds] of [
+    [1, "start", [], 0],
+    [
+      2,
+      "pause",
+      [{ start: 0, end: workout.video.durationSeconds * 0.8 }],
+      workout.video.durationSeconds * 0.8,
+    ],
+  ] as const) {
+    const response = await page.request.post(
+      `${routineApi}${itemEvents(workout)}`,
+      {
+        headers: { ...headers, "Idempotency-Key": crypto.randomUUID() },
+        data: {
+          type,
+          deviceId: "77777777-1111-4111-8111-111111111111",
+          sequence,
+          intervals,
+          positionSeconds,
+        },
+      },
+    );
+    expect(response.status()).toBe(200);
+  }
+  await openAuthenticated(page, workoutHref(workout));
+  const currentRoutine = parseRoutine(
+    await (
+      await page.request.get(
+        `${routineApi}/workout-routines/${workout.routine!.id}`,
+        { headers },
+      )
+    ).json(),
+  );
+  const next = currentRoutine.routine.find(
+    (item) => item.status !== "completed",
+  );
+  await expect(
+    page.getByRole("link", {
+      name: next ? "다음 운동으로" : "오늘 운동 마치기",
+      exact: true,
+    }),
+  ).toHaveAttribute(
+    "href",
+    next
+      ? `/workout-routines/${currentRoutine.id}/items/${next.id}`
+      : `/workout-routines/${currentRoutine.id}/complete`,
+  );
   await expect.poll(async () => (await read()).resultStatus).toBe("completed");
 });
 
-test("another device's completion is recovered without overwriting it", async ({
+test("다른 기기의 80% 완료 응답을 받아 저장 상태를 덮어쓰지 않는다", async ({
   page,
 }) => {
   const { workout, headers, read } = await prepare(page);
   await testMedia(page, workout);
-  await openAuthenticated(page, `/workouts/${workout.id}`);
+  await openAuthenticated(page, workoutHref(workout));
   await page.getByRole("button", { name: "운동 시작", exact: true }).click();
-  await expect(
-    page.getByRole("button", { name: "운동 완료", exact: true }),
-  ).toBeEnabled();
   const completed = await page.request.post(
-    `${base}/workouts/${workout.id}/events`,
+    `${routineApi}${itemEvents(workout)}`,
     {
       headers: { ...headers, "Idempotency-Key": crypto.randomUUID() },
       data: {
         type: "complete",
         deviceId: crypto.randomUUID(),
         sequence: 1,
-        intervals: [],
-        positionSeconds: 0,
+        intervals: [{ start: 0, end: workout.video.durationSeconds * 0.8 }],
+        positionSeconds: workout.video.durationSeconds * 0.8,
       },
     },
   );
   expect(completed.status()).toBe(200);
-  await page.getByLabel("운동 영상").evaluate((v: HTMLVideoElement) => {
-    v.currentTime = 1;
-    v.pause();
-  });
-  await expect(
-    page.getByRole("button", { name: "서버에 저장된 상태로 돌아가기" }),
-  ).toBeVisible();
   await page
-    .getByRole("button", { name: "서버에 저장된 상태로 돌아가기" })
-    .click();
-  await page.getByRole("button", { name: "저장된 상태 불러오기" }).click();
-  await expect(
-    page.getByText("운동을 완료했어요.", { exact: false }),
-  ).toBeVisible();
+    .getByLabel("운동 영상")
+    .evaluate((v: HTMLVideoElement) => v.pause());
+  const savedNotice = page.getByText("운동을 완료했어요.", { exact: false });
+  const restore = page.getByRole("button", {
+    name: "서버에 저장된 상태로 돌아가기",
+  });
+  await expect
+    .poll(
+      async () =>
+        (await savedNotice.isVisible()) || (await restore.isVisible()),
+    )
+    .toBe(true);
+  if (await restore.isVisible()) {
+    await restore.click();
+    await page.getByRole("button", { name: "저장된 상태 불러오기" }).click();
+  }
+  await expect(savedNotice).toBeVisible();
   expect((await read()).status).toBe("completed");
   await expect(
     page.getByRole("button", { name: "저장 다시 확인하기" }),
@@ -474,10 +504,22 @@ test("legacy users are guided to a birth profile, measurement, or unsupported-ag
     password,
   });
   expect(registered.status()).toBe(201);
-  await openAuthenticated(page, "/workouts");
-  await expect(page.getByText("아직 운동 이력이 없어요")).toBeVisible();
-  await page.getByRole("link", { name: "오늘 운동 받으러 가기" }).click();
-  await page.getByRole("button", { name: "운동하기" }).click();
+  const auth = await registered.json();
+  expect(
+    (
+      await page.request.patch(`${base}/users/me/preferences`, {
+        headers: {
+          Authorization: `Bearer ${auth.access_token}`,
+          "X-CSRF-Protection": "1",
+        },
+        data: { exerciseGoal: "general_fitness_improvement" },
+      })
+    ).status(),
+  ).toBe(200);
+  await openAuthenticated(page, "/workout");
+  await page
+    .getByRole("button", { name: "오늘 운동 준비하기", exact: true })
+    .click();
   await page.getByRole("link", { name: "생년월일 입력하기" }).click();
   await expect(page).toHaveURL(/\/account\/settings\?tab=birth$/);
   await page.getByLabel("생년월일 입력", { exact: true }).fill("2000-01-01");
@@ -486,7 +528,9 @@ test("legacy users are guided to a birth profile, measurement, or unsupported-ag
     .getByRole("navigation")
     .getByRole("link", { name: "메인", exact: true })
     .click();
-  await page.getByRole("button", { name: "운동하기" }).click();
+  await page
+    .getByRole("button", { name: "오늘 운동 준비하기", exact: true })
+    .click();
   await expect(
     page.getByRole("link", { name: "측정 기록 등록하기" }),
   ).toBeVisible();
@@ -502,67 +546,15 @@ test("legacy users are guided to a birth profile, measurement, or unsupported-ag
     .getByRole("navigation")
     .getByRole("link", { name: "메인", exact: true })
     .click();
-  await page.getByRole("button", { name: "운동하기" }).click();
+  await page
+    .getByRole("button", { name: "오늘 운동 준비하기", exact: true })
+    .click();
   await expect(
     page.getByRole("link", { name: "생년월일 확인하기" }),
   ).toHaveAttribute("href", "/account/settings?tab=birth");
 });
 
-test("history retains its first page on failure and retries the same cursor without duplicates", async ({
-  page,
-}) => {
-  const { workout } = await prepare(page);
-  let failed = false;
-  const cursors: string[] = [];
-  // Only pagination metadata and the extra display row are fixtures; the first row is an actual assignment.
-  await page.route("**/api/v1/workouts/history?*", async (route) => {
-    const cursor = new URL(route.request().url()).searchParams.get("cursor");
-    const response = await route.fetch();
-    const data = await response.json();
-    if (!cursor)
-      return route.fulfill({
-        response,
-        json: { ...data, nextCursor: workout.id },
-      });
-    cursors.push(cursor);
-    if (!failed) {
-      failed = true;
-      return route.fulfill({
-        response,
-        status: 503,
-        json: { message: "history test failure" },
-      });
-    }
-    return route.fulfill({
-      response,
-      json: {
-        items: [
-          workout,
-          {
-            ...workout,
-            id: "4129204b-3c7c-4f78-926b-7967b3eb8c18",
-            koreanDate: "2026-09-26",
-          },
-        ],
-        nextCursor: null,
-      },
-    });
-  });
-  await openAuthenticated(page, "/workouts");
-  await expect(page.locator(".workout-list > li")).toHaveCount(1);
-  await page.getByRole("button", { name: "이전 운동 더 보기" }).click();
-  await expect(page.getByRole("main").getByRole("alert")).toBeVisible();
-  await expect(page.locator(".workout-list > li")).toHaveCount(1);
-  await page.getByRole("button", { name: "이전 운동 더 보기" }).click();
-  await expect(page.locator(".workout-list > li")).toHaveCount(2);
-  expect(cursors).toEqual([workout.id, workout.id]);
-  await expect(
-    page.getByRole("button", { name: "이전 운동 더 보기" }),
-  ).toHaveCount(0);
-});
-
-// The backend currently assigns one workout/day. This contract fixture validates
-// the frontend's multi-assignment navigation; persistence is covered above against PR #9.
+// Legacy multi-assignment navigation stays compatible; current routine persistence is tested above.
 test("여러 운동은 각자의 영상과 기록으로 완료하고 목록에서 다음 운동을 시작한다", async ({
   page,
 }) => {
@@ -611,14 +603,16 @@ test("여러 운동은 각자의 영상과 기록으로 완료하고 목록에�
   await page.goto("/workout");
   const list = page.getByRole("list", { name: "오늘 배정된 운동" });
   await expect(list.getByRole("link", { name: "운동 시작하기" })).toHaveCount(
-    2,
+    1,
   );
   for (let index = 0; index < rows.length; index++) {
     const row = rows[index];
     await list
       .getByRole("listitem")
       .filter({ hasText: row.video.title })
-      .getByRole("link", { name: "운동 시작하기" })
+      .getByRole("link", {
+        name: index === 0 ? "운동 시작하기" : "운동 이어하기",
+      })
       .click();
     await expect(page).toHaveURL(`/workouts/${row.id}`);
     await expect(
@@ -639,12 +633,17 @@ test("여러 운동은 각자의 영상과 기록으로 완료하고 목록에�
     ).toBeVisible();
     await page.getByRole("link", { name: "운동 목록으로" }).click();
     await expect(page).toHaveURL("/workout");
-    await expect(list.getByText("완료", { exact: true })).toHaveCount(
-      index + 1,
-    );
-    await expect(list.getByRole("link", { name: "운동 시작하기" })).toHaveCount(
-      rows.length - index - 1,
-    );
+    if (index + 1 < rows.length) {
+      await expect(list.getByRole("listitem")).toHaveCount(1);
+      await expect(
+        list.getByRole("link", { name: "운동 이어하기" }),
+      ).toHaveCount(1);
+    } else {
+      await expect(list).toHaveCount(0);
+      await expect(
+        page.getByText("오늘의 모든 운동을 완료했어요."),
+      ).toBeVisible();
+    }
   }
   expect(
     events.filter((event) => event.type === "start").map((event) => event.id),
@@ -658,9 +657,8 @@ test("여러 운동은 각자의 영상과 기록으로 완료하고 목록에�
     .getByRole("navigation")
     .getByRole("link", { name: "메인", exact: true })
     .click();
-  await expect(list.getByRole("listitem")).toHaveCount(2);
-  await expect(list.getByText("완료", { exact: true })).toHaveCount(2);
-  await expect(list.getByRole("link")).toHaveCount(0);
+  await expect(list).toHaveCount(0);
+  await expect(page.getByText("오늘의 모든 운동을 완료했어요.")).toBeVisible();
 });
 
 // Hold real video progress responses across multiple ticks to catch layout/reload regressions.

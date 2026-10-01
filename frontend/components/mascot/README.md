@@ -24,3 +24,7 @@ import { MascotPose } from "@/components/mascot/MascotPose";
 - 의상 선택은 컴포넌트 props입니다. 프로필 저장·구매·보상·그룹 멤버 API나 공용 localStorage를 연결하지 않습니다.
 
 메타데이터와 원본 출처·해시는 원본 키트의 기록을 보존합니다. 코드만 프로젝트의 Prettier 형식으로 정리했습니다.
+
+## 그룹 페이지의 휴대폰 자세
+
+전달된 `hamster-wardrobe-studio-data-v2-2026-09-29.zip`의 `phone.png`와 보정 메타데이터를 추가했다. 원본 SHA-256은 `5506335fd6190275fb2eee71e278258d94925e79fd74b3de2794f84740198ebe`다. `pose="phone"`은 미착용 원본만 지원하며 기존 13자세와 의상을 그대로 유지한다. 그룹 제목 아래에서는 크림 버전을 콘텐츠 폭의 30%로 표시한다.

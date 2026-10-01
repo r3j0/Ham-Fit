@@ -5,9 +5,11 @@ import { completedDate } from "@/lib/workout-history";
 import { useEffect, useState } from "react";
 import { getWorkout } from "@/lib/workouts";
 import type { Workout } from "@/lib/workout-types";
+import { workoutHref } from "@/lib/workout-routine";
 import { Header, Loading, Notice, Shell } from "./ui";
 import { WorkoutError } from "./workout-error";
 import { WorkoutPlayer } from "./workout-player";
+import { RoutinePrescription } from "./routine-prescription";
 export function WorkoutScreen({
   id,
   replay = false,
@@ -53,11 +55,26 @@ export function WorkoutScreen({
             </button>
           </>
         )}
-        {workout ? (
-          replay && workout.status !== "completed" ? (
+        {workout && workout.koreanDate > workout.serverKoreanDate ? (
+          <>
+            <Notice tone="info">
+              {workout.koreanDate}에 시작할 운동이에요.
+            </Notice>
+            <h2>{workout.video.title}</h2>
+            {workout.routine && (
+              <RoutinePrescription
+                prescription={workout.routine.prescription}
+              />
+            )}
+            <Link className="button secondary" href="/workout">
+              오늘의 운동으로
+            </Link>
+          </>
+        ) : workout ? (
+          replay && workout.status !== "completed" && !workout.routine ? (
             <>
               <Notice tone="info">완료한 운동만 다시 볼 수 있어요.</Notice>
-              <Link className="button primary" href={`/workouts/${id}`}>
+              <Link className="button primary" href={workoutHref(workout)}>
                 운동 이어하기
               </Link>
             </>

@@ -1,0 +1,164 @@
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 14px;
+}
+.card {
+  display: grid;
+  gap: 12px;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--surface, #fff);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+}
+.actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.actions > * {
+  min-width: 0;
+}
+.actions :global(.button) {
+  min-height: 44px;
+  padding: 10px 8px;
+  font-size: 14px;
+}
+.statusFilter {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.requestGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: clamp(16px, 3vw, 32px);
+  padding: clamp(16px, 3vw, 24px);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--surface, #fff);
+}
+.requestGrid .card {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  gap: 12px;
+}
+.mascotStage {
+  display: flex;
+  justify-content: center;
+}
+.requestGrid h2 {
+  font-size: 16px;
+}
+.requestGrid :global(.stack),
+.requestGrid .fields {
+  gap: 12px;
+}
+.requestGrid input {
+  min-width: 0;
+  min-height: 44px;
+  padding: 10px;
+}
+.requestGrid :global(.button) {
+  min-height: 44px;
+  padding: 10px 8px;
+  font-size: 14px;
+}
+.code {
+  width: 100%;
+  min-width: 0;
+  font-size: 13px;
+}
+.fields {
+  display: grid;
+  gap: 16px;
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+.meta {
+  font-size: 13px;
+  color: var(--muted);
+}
+.memberRow,
+.applicationRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 8px 0;
+}
+.memberName {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+  text-decoration: none;
+  font-weight: 700;
+}
+.nickname {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.crown {
+  flex-shrink: 0;
+  color: var(--orange);
+}
+.memberActivity {
+  display: grid;
+  gap: 3px;
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.waterCount {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--navy);
+  font-size: 14px;
+  font-weight: 700;
+}
+.applicationRow > .nickname {
+  flex: 1;
+}
+.requestMeta {
+  white-space: nowrap;
+  font-size: 12px;
+}
+.requestActions {
+  display: grid;
+  grid-template-columns: repeat(2, 44px);
+  gap: 4px;
+}
+@media (max-width: 400px) {
+  .memberRow,
+  .applicationRow {
+    gap: 6px;
+  }
+  .memberName,
+  .applicationRow > .nickname {
+    font-size: 13px;
+  }
+  .memberActivity,
+  .requestMeta {
+    font-size: 11px;
+  }
+}

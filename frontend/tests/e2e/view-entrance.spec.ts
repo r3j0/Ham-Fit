@@ -59,9 +59,9 @@ test("메인 전환은 준비된 이력으로 운동을 즉시 표시하고 현�
   const currentGate = new Promise<void>((resolve) => {
     releaseCurrent = resolve;
   });
-  await page.route("**/api/v1/workouts/current", async (route) => {
+  await page.route("**/api/v2/workout-routines/current", async (route) => {
     await currentGate;
-    await route.fulfill({ json: testWorkout });
+    await route.fulfill({ json: null });
   });
 
   await page.goto("/account");
@@ -79,7 +79,7 @@ test("메인 전환은 준비된 이력으로 운동을 즉시 표시하고 현�
   const before = (await today.boundingBox())!;
 
   const currentResponse = page.waitForResponse((response) =>
-    response.url().endsWith("/workouts/current"),
+    response.url().endsWith("/workout-routines/current"),
   );
   releaseCurrent();
   await currentResponse;
@@ -98,9 +98,9 @@ test("메인의 초기 로딩 슬롯은 실제 운동 영역과 같은 높이를
   const workoutGate = new Promise<void>((resolve) => {
     releaseWorkouts = resolve;
   });
-  await page.route("**/api/v1/workouts/current", async (route) => {
+  await page.route("**/api/v2/workout-routines/current", async (route) => {
     await workoutGate;
-    await route.fulfill({ json: testWorkout });
+    await route.fulfill({ json: null });
   });
   await page.route("**/api/v1/workouts/history?**", async (route) => {
     await workoutGate;
@@ -117,7 +117,7 @@ test("메인의 초기 로딩 슬롯은 실제 운동 영역과 같은 높이를
 
   const responses = Promise.all([
     page.waitForResponse((response) =>
-      response.url().endsWith("/workouts/current"),
+      response.url().endsWith("/workout-routines/current"),
     ),
     page.waitForResponse((response) =>
       response.url().includes("/workouts/history?"),

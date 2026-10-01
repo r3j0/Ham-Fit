@@ -3,13 +3,13 @@
   isolation: isolate;
   width: 100%;
   max-width: 540px;
-  aspect-ratio: 2 / 1;
+  aspect-ratio: 1.6 / 1;
   margin-inline: auto;
 }
 .welcome > span {
   position: absolute;
   top: 0;
-  width: 31%;
+  width: 43.4%;
   max-width: none;
   z-index: 1;
 }
@@ -17,16 +17,16 @@
   left: 0;
 }
 .welcome > span:nth-child(2) {
-  left: 23%;
+  left: 18.87%;
 }
 .welcome > span:nth-child(3) {
-  left: 46%;
+  left: 37.73%;
 }
 .welcome > span:nth-child(4) {
-  left: 69%;
+  left: 56.6%;
 }
 .welcome > span:nth-child(even) {
-  top: 18%;
+  top: 30%;
   z-index: 2;
 }
 .pair {

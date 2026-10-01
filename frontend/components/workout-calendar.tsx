@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useWorkoutHistoryLinks } from "./use-workout-history-links";
 import { useState } from "react";
 import { Check, ChevronLeft, ChevronRight } from "lucide-react";
+import { Notice } from "./ui";
 import {
   calendarWeek,
   calendarWeeks,
@@ -18,7 +19,8 @@ import {
 import styles from "./workout-history.module.css";
 
 export function WorkoutCalendar({ selectedDate }: { selectedDate?: string }) {
-  const { today, ready, error, loading } = useWorkoutHistory();
+  const { today, ready, error, loading, legacyUnavailable } =
+    useWorkoutHistory();
   return (
     <section
       className={styles.calendar}
@@ -33,10 +35,17 @@ export function WorkoutCalendar({ selectedDate }: { selectedDate?: string }) {
           <WorkoutHistoryFeedback />
         </>
       ) : (
-        <CalendarBody
-          key={`${today}:${selectedDate ?? ""}`}
-          selectedDate={selectedDate}
-        />
+        <>
+          {legacyUnavailable && (
+            <Notice tone="info">
+              이전 단일 운동 기록을 불러오지 못해 새 루틴 기록만 표시해요.
+            </Notice>
+          )}
+          <CalendarBody
+            key={`${today}:${selectedDate ?? ""}`}
+            selectedDate={selectedDate}
+          />
+        </>
       )}
     </section>
   );

@@ -1,6 +1,11 @@
+import {
+  setMeasurementAge,
+  expectMeasurementAge,
+} from "./measurement-age-helpers";
 import { test, expect, type Page } from "@playwright/test";
 import {
   installApi,
+  testRecord,
   catalog as assessmentCatalog,
 } from "./integration-fixtures";
 import {
@@ -45,6 +50,7 @@ async function installDesktopApi(page: Page) {
       json: {
         exerciseVolume: "standard",
         exerciseGoal: null,
+        ownedTools: [],
         updatedAt: "2026-09-26T00:00:00.000Z",
       },
     }),
@@ -69,6 +75,74 @@ async function noOverflow(page: Page) {
     expect(reserved).toBeGreaterThanOrEqual(box.height);
   }
 }
+
+test("메인의 알림은 전체 콘텐츠 우측 상단에 두고 미등록 안내는 데스크톱 오른쪽 열에 배치한다", async ({
+  page,
+}, info) => {
+  const api = await installApi(page);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  for (const onboarded of [false, true]) {
+    api.setRecord(onboarded ? testRecord() : undefined);
+    for (const width of [320, 702, 959, 960, 1280, 1456]) {
+      await page.setViewportSize({ width, height: 786 });
+      await page.goto("/");
+      const companions = page.locator(".home-companions"),
+        activity = page.locator(".home-activity"),
+        intro = page.locator(".home-intro"),
+        bell = page.getByRole("link", { name: "알림", exact: true });
+      await expect(companions).toBeVisible();
+      await expect(activity).toBeVisible();
+      const content = await page.locator(".home-content").evaluate((el) => {
+        const box = el.getBoundingClientRect(),
+          style = getComputedStyle(el);
+        return {
+          right: box.right - parseFloat(style.paddingRight),
+          top: box.top + parseFloat(style.paddingTop),
+        };
+      });
+      const bellBox = (await bell.boundingBox())!;
+      const balanceBox = (await page
+        .getByRole("group", { name: "보유 재화" })
+        .boundingBox())!;
+      expect(balanceBox.x + balanceBox.width).toBeCloseTo(content.right, 1);
+      expect(bellBox.x + bellBox.width).toBeLessThanOrEqual(balanceBox.x);
+      const toolbarBox = (await page.locator(".home-toolbar").boundingBox())!;
+      expect(toolbarBox.y).toBeCloseTo(content.top, 1);
+      expect(bellBox.y + bellBox.height / 2).toBeCloseTo(
+        toolbarBox.y + toolbarBox.height / 2,
+        1,
+      );
+      const left = (await companions.boundingBox())!,
+        right = (await activity.boundingBox())!;
+      if (onboarded) {
+        await expect(intro).toHaveCount(0);
+        if (width >= 960) expect(left.y).toBeCloseTo(right.y, 1);
+      } else {
+        await expect(intro).toBeVisible();
+        const card = (await intro.boundingBox())!;
+        if (width >= 960) {
+          expect(card.x).toBeCloseTo(right.x, 1);
+          expect(card.width).toBeCloseTo(right.width, 1);
+          expect(card.x).toBeGreaterThanOrEqual(left.x + left.width);
+          expect(card.y).toBeCloseTo(left.y, 1);
+          expect(right.y).toBeGreaterThanOrEqual(card.y + card.height);
+        } else {
+          expect(card.y + card.height).toBeLessThanOrEqual(left.y);
+        }
+      }
+      await noOverflow(page);
+      if (width === 1456 || (!onboarded && width === 702)) {
+        await page.evaluate(() => window.scrollTo(0, 0));
+        await page.screenshot({
+          path: info.outputPath(
+            `home-${onboarded ? "ready" : "onboarding"}-${width}.png`,
+          ),
+          fullPage: true,
+        });
+      }
+    }
+  }
+});
 
 for (const width of [960, 1280, 1440]) {
   test(`${width}px 모든 기존 페이지는 넓은 레이아웃에서 메뉴와 겹치거나 가로로 넘치지 않는다`, async ({
@@ -125,7 +199,7 @@ for (const width of [960, 1280, 1440]) {
       [
         "assessment",
         "/workout?mode=assessment",
-        page.getByLabel("만 나이", { exact: true }),
+        page.getByLabel("측정 당시 나이"),
       ],
       [
         "not-found",
@@ -251,14 +325,13 @@ test("데스크톱 사진 입력은 결과표와 패널이 겹치지 않고 닫�
   const fields = (await panel.boundingBox())!;
   expect(canvas.x + canvas.width).toBeLessThanOrEqual(fields.x);
   expect(fields.y + fields.height).toBeLessThanOrEqual(900);
-  await page.getByLabel("측정 당시 만 나이", { exact: true }).fill("25");
+  await page.getByLabel("측정일", { exact: true }).fill("2026-09-01");
+  await setMeasurementAge(page, "25");
   await page.getByRole("button", { name: "입력 패널 닫기" }).click();
   expect((await photo.boundingBox())!.width).toBeGreaterThan(canvas.width);
   await page.getByRole("button", { name: "사진 확대", exact: true }).click();
   await page.getByRole("button", { name: "입력 패널 열기" }).click();
-  await expect(
-    page.getByLabel("측정 당시 만 나이", { exact: true }),
-  ).toHaveValue("25");
+  await expectMeasurementAge(page, "25");
   await noOverflow(page);
   await page.screenshot({
     path: info.outputPath("photo-workspace-desktop.png"),

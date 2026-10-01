@@ -386,6 +386,34 @@ export const MASCOT_POSES = Object.freeze(
         gray: [627, 0, 627, 1254],
       },
     },
+    {
+      id: "phone",
+      label: "휴대폰",
+      category: "daily",
+      description: "휴대폰을 확인하는 순간",
+      file: "phone.png",
+      sourceName: "phone.png",
+      width: 1254,
+      height: 1254,
+      background: "white",
+      viewports: {
+        cream: [31.186, 261.2326, 611.6279, 764.5349],
+        gray: [603.7791, 256.5988, 617.4419, 771.8023],
+      },
+      bounds: {
+        cream: [74, 316, 526, 655],
+        gray: [647, 314, 531, 657],
+      },
+      clips: {
+        cream: [0, 0, 627, 1254],
+        gray: [627, 0, 627, 1254],
+      },
+      sha256:
+        "5506335fd6190275fb2eee71e278258d94925e79fd74b3de2794f84740198ebe",
+      sourceSha256:
+        "5506335fd6190275fb2eee71e278258d94925e79fd74b3de2794f84740198ebe",
+      backgroundEdited: false,
+    },
   ].map(freezePose),
 );
 export const POSE_CATEGORIES = Object.freeze(
@@ -394,6 +422,7 @@ export const POSE_CATEGORIES = Object.freeze(
     { id: "emotion", label: "감정" },
     { id: "exercise", label: "운동" },
     { id: "rest", label: "휴식" },
+    { id: "daily", label: "일상" },
   ].map(Object.freeze),
 );
 
@@ -429,10 +458,12 @@ export function getMascotPose(
   if (!basePose) throw new RangeError(`Unknown mascot pose: ${poseId}`);
   if (!["cream", "gray"].includes(variant))
     throw new RangeError(`Unknown mascot variant: ${variant}`);
-  const current = normalizeOutfit(outfit),
-    art = current.wear
-      ? { ...basePose, ...outfitImages[current.wear][poseId] }
-      : basePose;
+  const current = normalizeOutfit(outfit);
+  if (current.wear && !outfitImages[current.wear][poseId])
+    throw new RangeError(`Unsupported outfit for mascot pose: ${poseId}`);
+  const art = current.wear
+    ? { ...basePose, ...outfitImages[current.wear][poseId] }
+    : basePose;
   const base = String(assetBasePath).replace(/\/+$/, "");
   return {
     ...art,
@@ -521,7 +552,7 @@ export function createMascotPose(container, initial = {}) {
     svg.style.width = `${Math.min(2000, options.size)}px`;
     const label =
       options.label ??
-      `${options.variant === "cream" ? "크림" : "그레이"} 햄스터 · ${art.label}${options.outfit.wear ? " · " + WARDROBE.find((item) => item.id === options.outfit.wear).label : ""}`;
+      `${options.variant === "cream" ? "햄돌이" : "햄콩이"} · ${art.label}${options.outfit.wear ? " · " + WARDROBE.find((item) => item.id === options.outfit.wear).label : ""}`;
     if (label) {
       svg.setAttribute("role", "img");
       svg.setAttribute("aria-label", label);

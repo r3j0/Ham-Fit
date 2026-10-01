@@ -1,0 +1,1195 @@
+{
+  "schemaVersion": 1,
+  "canonicalPoseCount": 16,
+  "variantCount": 32,
+  "canvas": {
+    "width": 1000,
+    "height": 1000,
+    "anchor": {
+      "x": 500,
+      "y": 895
+    },
+    "registration": "bottom-center",
+    "description": "All crops keep native source pixels. placement maps them onto a 1000 logical square; same scale is used for cream and gray within a pose."
+  },
+  "processing": {
+    "rgb": "Illustrated solid regions retain source RGB; exterior near-neutral shadow mattes are unpremultiplied against white. No redrawing or pixel resampling.",
+    "alpha": "Near-white edge-connected backgrounds become transparent; enclosed white fills stay opaque. Exterior neutral shadows retain their source shape with derived alpha; tiny fringe noise below alpha 10 is discarded.",
+    "encoding": "Lossless WebP, exact=True",
+    "backgroundCaution": "Source sheets have opaque near-white mattes. Transparency and shadow alpha are derived approximations; very faint near-white shadow fringes are omitted. Colored edges may retain a subtle source matte at extreme zoom."
+  },
+  "sources": {
+    "archive": "def.Zip",
+    "looseDuplicates": "The eight separately supplied PNGs decode to exact pixels equal to their corresponding archive entries."
+  },
+  "poses": [
+    {
+      "id": "basic",
+      "labelKo": "기본",
+      "sourceFilename": "basic.png",
+      "sourceDimensions": {
+        "width": 1600,
+        "height": 1000
+      },
+      "sourceDecodedRgbaSha256": "ed90b9badb5e33b5222313530456d6b2505ff5eb6aab04bd33cbea382fd946a3",
+      "registration": {
+        "headWidthSourceUnits": 668,
+        "sharedSourceBottom": 931
+      },
+      "variants": {
+        "cream": {
+          "file": "/hamsters/base/basic-cream.webp",
+          "width": 682,
+          "height": 876,
+          "sourceBounds": {
+            "x": 61,
+            "y": 59,
+            "width": 678,
+            "height": 872
+          },
+          "contentBounds": {
+            "x": 2,
+            "y": 2,
+            "width": 678,
+            "height": 872
+          },
+          "nativeGeometryPreserved": true,
+          "opaqueRgbPreserved": true,
+          "sha256": "c3ee8c0983ef64a0b37e9b4bdcac3b774b6d98a4cbebd276c9152f6ef57a6fa6",
+          "byteLength": 29660,
+          "placement": {
+            "x": 244.7605,
+            "y": 240.8084,
+            "width": 510.479,
+            "height": 655.6886,
+            "scale": 0.74850299
+          }
+        },
+        "gray": {
+          "file": "/hamsters/base/basic-gray.webp",
+          "width": 641,
+          "height": 876,
+          "sourceBounds": {
+            "x": 882,
+            "y": 59,
+            "width": 637,
+            "height": 872
+          },
+          "contentBounds": {
+            "x": 2,
+            "y": 2,
+            "width": 637,
+            "height": 872
+          },
+          "nativeGeometryPreserved": true,
+          "opaqueRgbPreserved": true,
+          "sha256": "b35402411f2e64282c081c50f6d0c2c6ff20a99c3456d39fb8d05482f8a22553",
+          "byteLength": 24514,
+          "placement": {
+            "x": 260.1048,
+            "y": 240.8084,
+            "width": 479.7904,
+            "height": 655.6886,
+            "scale": 0.74850299
+          }
+        }
+      },
+      "hasMatchingLooseUpload": false
+    },
+    {
+      "id": "cant-hear",
+      "labelKo": "안 들려",
+      "sourceFilename": "cant-hear.png",
+      "sourceDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "sourceDecodedRgbaSha256": "b4d0622a92ceb3de5bf355dd3e409b2bdaf08e68c14239d7697d5cb5f4bb7d08",
+      "registration": {
+        "headWidthSourceUnits": 510,
+        "sharedSourceBottom": 955
+      },
+      "variants": {
+        "cream": {
+          "file": "/hamsters/base/cant-hear-cream.webp",
+          "width": 537,
+          "height": 665,
+          "sourceBounds": {
+            "x": 67,
+            "y": 293,
+            "width": 533,
+            "height": 661
+          },
+          "contentBounds": {
+            "x": 2,
+            "y": 2,
+            "width": 533,
+            "height": 661
+          },
+          "nativeGeometryPreserved": true,
+          "opaqueRgbPreserved": true,
+          "sha256": "c0b89f11f95cae960b16227ca366face44d405e58ed50ccceb38118fcf023832",
+          "byteLength": 228096,
+          "placement": {
+            "x": 236.7647,
+            "y": 244.0196,
+            "width": 526.4706,
+            "height": 651.9608,
+            "scale": 0.98039216
+          }
+        },
+        "gray": {
+          "file": "/hamsters/base/cant-hear-gray.webp",
+          "width": 537,
+          "height": 676,
+          "sourceBounds": {
+            "x": 647,
+            "y": 283,
+            "width": 533,
+            "height": 672
+          },
+          "contentBounds": {
+            "x": 2,
+            "y": 2,
+            "width": 533,
+            "height": 672
+          },
+          "nativeGeometryPreserved": true,
+          "opaqueRgbPreserved": true,
+          "sha256": "ace24f39305908330b131c0f399aa234a6db59735db2603dec49cc89d47825cd",
+          "byteLength": 237902,
+          "placement": {
+            "x": 236.7647,
+            "y": 234.2157,
+            "width": 526.4706,
+            "height": 662.7451,
+            "scale": 0.98039216
+          }
+        }
+      },
+      "hasMatchingLooseUpload": false
+    },
+    {
+      "id": "curious",
+      "labelKo": "궁금",
+      "sourceFilename": "curious.png",
+      "sourceDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "sourceDecodedRgbaSha256": "924f9153cf6fb121c5284fd554fd3c5cfc6962c75486f13b098e385eb8ebb32b",
+      "registration": {
+        "headWidthSourceUnits": 410,
+        "sharedSourceBottom": 930
+      },
+      "variants": {
+        "cream": {
+          "file": "/hamsters/base/curious-cream.webp",
+          "width": 506,
+          "height": 614,
+          "sourceBounds": {
+            "x": 91,
+            "y": 320,
+            "width": 502,
+            "height": 610
+          },
+          "contentBounds": {
+            "x": 2,
+            "y": 2,
+            "width": 502,
+            "height": 610
+          },
+          "nativeGeometryPreserved": true,
+          "opaqueRgbPreserved": true,
+          "sha256": "2a7a8b98e43e1599b3c07c17d55301d80fcdbe5b0f8bb9a8d97ef26a0223e7b8",
+          "byteLength": 206988,
+          "placement": {
+            "x": 191.4634,
+            "y": 148.6585,
+            "width": 617.0732,
+            "height": 748.7805,
+            "scale": 1.2195122
+          }
+        },
+        "gray": {
+          "file": "/hamsters/base/curious-gray.webp",
+          "width": 520,
+          "height": 593,
+          "sourceBounds": {
+            "x": 654,
+            "y": 341,
+            "width": 516,
+            "height": 589
+          },
+          "contentBounds": {
+            "x": 2,
+            "y": 2,
+            "width": 516,
+            "height": 589
+          },
+          "nativeGeometryPreserved": true,
+          "opaqueRgbPreserved": true,
+          "sha256": "fdee5ba4a43820791b5de908fbabbcb49a5e74aa2ea1f93a3468b0f8041ad448",
+          "byteLength": 199618,
+          "placement": {
+            "x": 182.9268,
+            "y": 174.2683,
+            "width": 634.1463,
+            "height": 723.1707,
+            "scale": 1.2195122
+          }
+        }
+      },
+      "hasMatchingLooseUpload": false
+    },
+    {
+      "id": "drink",
+      "labelKo": "음료 마시기",
+      "sourceFilename": "drink.png",
+      "sourceDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "sourceDecodedRgbaSha256": "f52b37d585c88c8a39f27114ce351015dd1af80c525b1350570ff8ef32b01446",
+      "registration": {
+        "headWidthSourceUnits": 490,
+        "sharedSourceBottom": 980
+      },
+      "variants": {
+        "cream": {
+          "file": "/hamsters/base/drink-cream.webp",
+          "width": 525,
+          "height": 690,
+          "sourceBounds": {
+            "x": 75,
+            "y": 293,
+            "width": 521,
+            "height": 686
+          },
+          "contentBounds": {
+            "x": 2,
+            "y": 2,
+            "width": 521,
+            "height": 686
+          },
+          "nativeGeometryPreserved": true,
+          "opaqueRgbPreserved": true,
+          "sha256": "33555f55a8196265ca4b7d0ea2128fa434142caaae8ef7b51e8b59084bb61f07",
+          "byteLength": 230712,
+          "placement": {
+            "x": 232.1429,
+            "y": 191.9388,
+            "width": 535.7143,
+            "height": 704.0816,
+            "scale": 1.02040816
+          }
+        },
+        "gray": {
+          "file": "/hamsters/base/drink-gray.webp",
+          "width": 513,
+          "height": 690,
+          "sourceBounds": {
+            "x": 660,
+            "y": 294,
+            "width": 509,
+            "height": 686
+          },
+          "contentBounds": {
+            "x": 2,
+            "y": 2,
+            "width": 509,
+            "height": 686
+          },
+          "nativeGeometryPreserved": true,
+          "opaqueRgbPreserved": true,
+          "sha256": "b0fdb482d6ca85d7563e5a5524696e08b4c24d6f8fabe1a8beb02f5a976d8377",
+          "byteLength": 214616,
+          "placement": {
+            "x": 238.2653,
+            "y": 192.9592,
+            "width": 523.4694,
+            "height": 704.0816,
+            "scale": 1.02040816
+          }
+        }
+      },
+      "hasMatchingLooseUpload": false
+    },
+    {
+      "id": "droopy",
+      "labelKo": "축 처짐",
+      "sourceFilename": "droopy.png",
+      "sourceDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "sourceDecodedRgbaSha256": "af3ace1b03cc66f2cfa895e95d7df0978d99e8b130dacf4c7cac6739ee06dde8",
+      "registration": {
+        "headWidthSourceUnits": 460,
+        "sharedSourceBottom": 965
+      },
+      "variants": {
+        "cream": {
+          "file": "/hamsters/base/droopy-cream.webp",
+          "width": 476,
+          "height": 603,
+          "sourceBounds": {
+            "x": 94,
+            "y": 365,
+            "width": 472,
+            "height": 599
+          },
+          "contentBounds": {
+            "x": 2,
+            "y": 2,
+            "width": 472,
+            "height": 599
+          },
+          "nativeGeometryPreserved": true,
+          "opaqueRgbPreserved": true,
+          "sha256": "2df62b9c13e598f08416083af644c755ee89bdea8e81a910d3f11a23e7452e76",
+          "byteLength": 202634,
+          "placement": {
+            "x": 241.3043,
+            "y": 240.6522,
+            "width": 517.3913,
+            "height": 655.4348,
+            "scale": 1.08695652
+          }
+        },
+        "gray": {
+          "file": "/hamsters/base/droopy-gray.webp",
+          "width": 488,
+          "height": 606,
+          "sourceBounds": {
+            "x": 670,
+            "y": 363,
+            "width": 484,
+            "height": 602
+          },
+          "contentBounds": {
+            "x": 2,
+            "y": 2,
+            "width": 484,
+            "height": 602
+          },
+          "nativeGeometryPreserved": true,
+          "opaqueRgbPreserved": true,
+          "sha256": "73794900cf552b2fa7db26208bc1578ab05b09d2893a356fb5589ee74f4ada7d",
+          "byteLength": 204644,
+          "placement": {
+            "x": 234.7826,
+            "y": 238.4783,
+            "width": 530.4348,
+            "height": 658.6957,
+            "scale": 1.08695652
+          }
+        }
+      },
+      "hasMatchingLooseUpload": false
+    },
+    {
+      "id": "foam-roller",
+      "labelKo": "폼롤러",
+      "sourceFilename": "foam-roller.png",
+      "sourceDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "sourceDecodedRgbaSha256": "15e3562e41a6002e21517303cb543c2432f6e09379650ba17c3730779412e87f",
+      "registration": {
+        "headWidthSourceUnits": 420,
+        "sharedSourceBottom": 910
+      },
+      "variants": {
+        "cream": {
+          "file": "/hamsters/base/foam-roller-cream.webp",
+          "width": 558,
+          "height": 555,
+          "sourceBounds": {
+            "x": 55,
+            "y": 352,
+            "width": 554,
+            "height": 551
+          },
+          "contentBounds": {
+            "x": 2,
+            "y": 2,
+            "width": 554,
+            "height": 551
+          },
+          "nativeGeometryPreserved": true,
+          "opaqueRgbPreserved": true,
+          "sha256": "65152395fef71e5154ace79780eb36baac2a459b04c12d8eeb859c5cc2a1037a",
+          "byteLength": 222522,
+          "placement": {
+            "x": 167.8571,
+            "y": 228.3333,
+            "width": 664.2857,
+            "height": 660.7143,
+            "scale": 1.19047619
+          }
+        },
+        "gray": {
+          "file": "/hamsters/base/foam-roller-gray.webp",
+          "width": 564,
+          "height": 550,
+          "sourceBounds": {
+            "x": 642,
+            "y": 364,
+            "width": 560,
+            "height": 546
+          },
+          "contentBounds": {
+            "x": 2,
+            "y": 2,
+            "width": 560,
+            "height": 546
+          },
+          "nativeGeometryPreserved": true,
+          "opaqueRgbPreserved": true,
+          "sha256": "91cfc369367410d7a13766a0e438c1792b133ee213a55e52eb89775dd2740a01",
+          "byteLength": 212726,
+          "placement": {
+            "x": 164.2857,
+            "y": 242.619,
+            "width": 671.4286,
+            "height": 654.7619,
+            "scale": 1.19047619
+          }
+        }
+      },
+      "hasMatchingLooseUpload": false
+    },
+    {
+      "id": "lying",
+      "labelKo": "눕기",
+      "sourceFilename": "lying-white.png",
+      "sourceDimensions": {
+        "width": 1448,
+        "height": 1086
+      },
+      "sourceDecodedRgbaSha256": "f4477f16d3da2cf2ac5d0eb3642c680d831bb3370445f9445ae9253852ed9b4c",
+      "registration": {
+        "headWidthSourceUnits": 410,
+        "sharedSourceBottom": 801
+      },
+      "variants": {
+        "cream": {
+          "file": "/hamsters/base/lying-cream.webp",
+          "width": 479,
+          "height": 514,
+          "sourceBounds": {
+            "x": 201,
+            "y": 286,
+            "width": 475,
+            "height": 510
+          },
+          "contentBounds": {
+            "x": 2,
+            "y": 2,
+            "width": 475,
+            "height": 510
+          },
+          "nativeGeometryPreserved": true,
+          "opaqueRgbPreserved": true,
+          "sha256": "51e5aa67e95b2cd22cf9ba83c05883af98d900cf90cac4c6b7cf10c45de3229c",
+          "byteLength": 157952,
+          "placement": {
+            "x": 207.9268,
+            "y": 264.5122,
+            "width": 584.1463,
+            "height": 626.8293,
+            "scale": 1.2195122
+          }
+        },
+        "gray": {
+          "file": "/hamsters/base/lying-gray.webp",
+          "width": 476,
+          "height": 508,
+          "sourceBounds": {
+            "x": 750,
+            "y": 297,
+            "width": 472,
+            "height": 504
+          },
+          "contentBounds": {
+            "x": 2,
+            "y": 2,
+            "width": 472,
+            "height": 504
+          },
+          "nativeGeometryPreserved": true,
+          "opaqueRgbPreserved": true,
+          "sha256": "97444974148231373cc5869a0e8a1faf1377dba6d14a7a61a0e252ab61f6e0b7",
+          "byteLength": 143644,
+          "placement": {
+            "x": 209.7561,
+            "y": 277.9268,
+            "width": 580.4878,
+            "height": 619.5122,
+            "scale": 1.2195122
+          }
+        }
+      },
+      "hasMatchingLooseUpload": true
+    },
+    {
+      "id": "passion",
+      "labelKo": "열정",
+      "sourceFilename": "passion.png",
+      "sourceDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "sourceDecodedRgbaSha256": "e6ae3d63e0743d640833542376791a6ba0292705196ce349ae39241aa084bb53",
+      "registration": {
+        "headWidthSourceUnits": 485,
+        "sharedSourceBottom": 981
+      },
+      "variants": {
+        "cream": {
+          "file": "/hamsters/base/passion-cream.webp",
+          "width": 579,
+          "height": 778,
+          "sourceBounds": {
+            "x": 33,
+            "y": 207,
+            "width": 575,
+            "height": 774
+          },
+          "contentBounds": {
+            "x": 2,
+            "y": 2,
+            "width": 575,
+            "height": 774
+          },
+          "nativeGeometryPreserved": true,
+          "opaqueRgbPreserved": true,
+          "sha256": "807684e076d6b7e43b01bdf7f6607d2829fff96cc1d8d201e2fb457669c2cad6",
+          "byteLength": 262170,
+          "placement": {
+            "x": 201.5464,
+            "y": 95.0,
+            "width": 596.9072,
+            "height": 802.0619,
+            "scale": 1.03092784
+          }
+        },
+        "gray": {
+          "file": "/hamsters/base/passion-gray.webp",
+          "width": 589,
+          "height": 778,
+          "sourceBounds": {
+            "x": 636,
+            "y": 207,
+            "width": 585,
+            "height": 774
+          },
+          "contentBounds": {
+            "x": 2,
+            "y": 2,
+            "width": 585,
+            "height": 774
+          },
+          "nativeGeometryPreserved": true,
+          "opaqueRgbPreserved": true,
+          "sha256": "ea6a32a427bcf848ebd8e8eec566d6ec24f077e134c1b7b2ad78c99329df317f",
+          "byteLength": 248288,
+          "placement": {
+            "x": 196.3918,
+            "y": 95.0,
+            "width": 607.2165,
+            "height": 802.0619,
+            "scale": 1.03092784
+          }
+        }
+      },
+      "hasMatchingLooseUpload": true
+    },
+    {
+      "id": "phone",
+      "labelKo": "휴대폰",
+      "sourceFilename": "phone.png",
+      "sourceDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "sourceDecodedRgbaSha256": "63bbb52f2ba7b998766ac027b06720147f49bafab596ca0d911aac93e16fa770",
+      "registration": {
+        "headWidthSourceUnits": 506,
+        "sharedSourceBottom": 973
+      },
+      "variants": {
+        "cream": {
+          "file": "/hamsters/base/phone-cream.webp",
+          "width": 534,
+          "height": 661,
+          "sourceBounds": {
+            "x": 72,
+            "y": 316,
+            "width": 530,
+            "height": 657
+          },
+          "contentBounds": {
+            "x": 2,
+            "y": 2,
+            "width": 530,
+            "height": 657
+          },
+          "nativeGeometryPreserved": true,
+          "opaqueRgbPreserved": true,
+          "sha256": "637b6a835e63c8cd54e407ce11a7cc18319556c2e130eb97ea93ff2fd7aa8873",
+          "byteLength": 233804,
+          "placement": {
+            "x": 236.166,
+            "y": 243.8142,
+            "width": 527.668,
+            "height": 653.1621,
+            "scale": 0.98814229
+          }
+        },
+        "gray": {
+          "file": "/hamsters/base/phone-gray.webp",
+          "width": 537,
+          "height": 663,
+          "sourceBounds": {
+            "x": 647,
+            "y": 314,
+            "width": 533,
+            "height": 659
+          },
+          "contentBounds": {
+            "x": 2,
+            "y": 2,
+            "width": 533,
+            "height": 659
+          },
+          "nativeGeometryPreserved": true,
+          "opaqueRgbPreserved": true,
+          "sha256": "29b017cd8f1827d89fb599a19605225ea2059f1d782789ddd8a8dc3cc23f401d",
+          "byteLength": 226718,
+          "placement": {
+            "x": 234.6838,
+            "y": 241.8379,
+            "width": 530.6324,
+            "height": 655.1383,
+            "scale": 0.98814229
+          }
+        }
+      },
+      "hasMatchingLooseUpload": true
+    },
+    {
+      "id": "pushup",
+      "labelKo": "팔굽혀펴기",
+      "sourceFilename": "pushup-white.png",
+      "sourceDimensions": {
+        "width": 1448,
+        "height": 1086
+      },
+      "sourceDecodedRgbaSha256": "dbd1b69a3f5387edfa1ebb39a8ccc00929f43465ab7f6a546b172afc937306a8",
+      "registration": {
+        "headWidthSourceUnits": 455,
+        "sharedSourceBottom": 810
+      },
+      "variants": {
+        "cream": {
+          "file": "/hamsters/base/pushup-cream.webp",
+          "width": 565,
+          "height": 427,
+          "sourceBounds": {
+            "x": 146,
+            "y": 387,
+            "width": 561,
+            "height": 423
+          },
+          "contentBounds": {
+            "x": 2,
+            "y": 2,
+            "width": 561,
+            "height": 423
+          },
+          "nativeGeometryPreserved": true,
+          "opaqueRgbPreserved": true,
+          "sha256": "3d61bf6265c3cb652067581adbcb6a2d69f0a008090e7671dd36571b80dd1d64",
+          "byteLength": 158370,
+          "placement": {
+            "x": 189.5604,
+            "y": 427.967,
+            "width": 620.8791,
+            "height": 469.2308,
+            "scale": 1.0989011
+          }
+        },
+        "gray": {
+          "file": "/hamsters/base/pushup-gray.webp",
+          "width": 553,
+          "height": 437,
+          "sourceBounds": {
+            "x": 744,
+            "y": 374,
+            "width": 549,
+            "height": 433
+          },
+          "contentBounds": {
+            "x": 2,
+            "y": 2,
+            "width": 549,
+            "height": 433
+          },
+          "nativeGeometryPreserved": true,
+          "opaqueRgbPreserved": true,
+          "sha256": "85bab132e3a85df931f663a3e7bb6afd3cea571852c79b9a349f9443c1d68202",
+          "byteLength": 147792,
+          "placement": {
+            "x": 196.1538,
+            "y": 413.6813,
+            "width": 607.6923,
+            "height": 480.2198,
+            "scale": 1.0989011
+          }
+        }
+      },
+      "hasMatchingLooseUpload": true
+    },
+    {
+      "id": "run",
+      "labelKo": "달리기",
+      "sourceFilename": "run-white.png",
+      "sourceDimensions": {
+        "width": 1448,
+        "height": 1086
+      },
+      "sourceDecodedRgbaSha256": "23ea6af4fdde8b406514dfc67d5260188fc94929b9658e51ae03b32fade7c0b9",
+      "registration": {
+        "headWidthSourceUnits": 432,
+        "sharedSourceBottom": 829
+      },
+      "variants": {
+        "cream": {
+          "file": "/hamsters/base/run-cream.webp",
+          "width": 463,
+          "height": 574,
+          "sourceBounds": {
+            "x": 214,
+            "y": 258,
+            "width": 459,
+            "height": 570
+          },
+          "contentBounds": {
+            "x": 2,
+            "y": 2,
+            "width": 459,
+            "height": 570
+          },
+          "nativeGeometryPreserved": true,
+          "opaqueRgbPreserved": true,
+          "sha256": "0b1a50dccb6bff819fe1fac94b85c08c53762d4bfe6eb8c58e619268367a325c",
+          "byteLength": 169072,
+          "placement": {
+            "x": 232.0602,
+            "y": 231.8056,
+            "width": 535.8796,
+            "height": 664.3519,
+            "scale": 1.15740741
+          }
+        },
+        "gray": {
+          "file": "/hamsters/base/run-gray.webp",
+          "width": 447,
+          "height": 570,
+          "sourceBounds": {
+            "x": 742,
+            "y": 263,
+            "width": 443,
+            "height": 566
+          },
+          "contentBounds": {
+            "x": 2,
+            "y": 2,
+            "width": 443,
+            "height": 566
+          },
+          "nativeGeometryPreserved": true,
+          "opaqueRgbPreserved": true,
+          "sha256": "3203cc49e79aa53846c90ddbb7caf81e6bc9569fe641db2474718282e2962541",
+          "byteLength": 152998,
+          "placement": {
+            "x": 241.3194,
+            "y": 237.5926,
+            "width": 517.3611,
+            "height": 659.7222,
+            "scale": 1.15740741
+          }
+        }
+      },
+      "hasMatchingLooseUpload": true
+    },
+    {
+      "id": "situp",
+      "labelKo": "윗몸일으키기",
+      "sourceFilename": "situp-white.png",
+      "sourceDimensions": {
+        "width": 1448,
+        "height": 1086
+      },
+      "sourceDecodedRgbaSha256": "c831f8342103b24ed51fad87b3bfc1fd95ebe83c40d9780f7d20261405fd2126",
+      "registration": {
+        "headWidthSourceUnits": 432,
+        "sharedSourceBottom": 845
+      },
+      "variants": {
+        "cream": {
+          "file": "/hamsters/base/situp-cream.webp",
+          "width": 488,
+          "height": 560,
+          "sourceBounds": {
+            "x": 203,
+            "y": 289,
+            "width": 484,
+            "height": 556
+          },
+          "contentBounds": {
+            "x": 2,
+            "y": 2,
+            "width": 484,
+            "height": 556
+          },
+          "nativeGeometryPreserved": true,
+          "opaqueRgbPreserved": true,
+          "sha256": "bb6d1bc5254d74a0e7818d5f11bad26cceabbe04bd09e13a84312f68d9f57ead",
+          "byteLength": 181904,
+          "placement": {
+            "x": 217.5926,
+            "y": 249.1667,
+            "width": 564.8148,
+            "height": 648.1481,
+            "scale": 1.15740741
+          }
+        },
+        "gray": {
+          "file": "/hamsters/base/situp-gray.webp",
+          "width": 474,
+          "height": 557,
+          "sourceBounds": {
+            "x": 760,
+            "y": 292,
+            "width": 470,
+            "height": 553
+          },
+          "contentBounds": {
+            "x": 2,
+            "y": 2,
+            "width": 470,
+            "height": 553
+          },
+          "nativeGeometryPreserved": true,
+          "opaqueRgbPreserved": true,
+          "sha256": "7f833f089ed7ebae95e62adeb90387e4fac73b69eaab40c1f93ce26d33129aa2",
+          "byteLength": 173480,
+          "placement": {
+            "x": 225.6944,
+            "y": 252.6389,
+            "width": 548.6111,
+            "height": 644.6759,
+            "scale": 1.15740741
+          }
+        }
+      },
+      "hasMatchingLooseUpload": true
+    },
+    {
+      "id": "stretch",
+      "labelKo": "스트레칭",
+      "sourceFilename": "stretch.png",
+      "sourceDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "sourceDecodedRgbaSha256": "0f956d13ccc8cac105e79d27c5f3893765a3e4158c700bcbfdcff5ebdc2ceb46",
+      "registration": {
+        "headWidthSourceUnits": 452,
+        "sharedSourceBottom": 923
+      },
+      "variants": {
+        "cream": {
+          "file": "/hamsters/base/stretch-cream.webp",
+          "width": 531,
+          "height": 628,
+          "sourceBounds": {
+            "x": 67,
+            "y": 299,
+            "width": 527,
+            "height": 624
+          },
+          "contentBounds": {
+            "x": 2,
+            "y": 2,
+            "width": 527,
+            "height": 624
+          },
+          "nativeGeometryPreserved": true,
+          "opaqueRgbPreserved": true,
+          "sha256": "8f1e333ec2be140907eefeff4f4e0a10413ed7150d8aa2d9188fa647a0f17710",
+          "byteLength": 219846,
+          "placement": {
+            "x": 206.3053,
+            "y": 202.5221,
+            "width": 587.3894,
+            "height": 694.6903,
+            "scale": 1.10619469
+          }
+        },
+        "gray": {
+          "file": "/hamsters/base/stretch-gray.webp",
+          "width": 536,
+          "height": 624,
+          "sourceBounds": {
+            "x": 651,
+            "y": 301,
+            "width": 532,
+            "height": 620
+          },
+          "contentBounds": {
+            "x": 2,
+            "y": 2,
+            "width": 532,
+            "height": 620
+          },
+          "nativeGeometryPreserved": true,
+          "opaqueRgbPreserved": true,
+          "sha256": "cd122a73535f145b263caabfe0d4e53b5d4fcfe9b45092c4e5d038528710f0e6",
+          "byteLength": 208180,
+          "placement": {
+            "x": 203.5398,
+            "y": 204.7345,
+            "width": 592.9204,
+            "height": 690.2655,
+            "scale": 1.10619469
+          }
+        }
+      },
+      "hasMatchingLooseUpload": true
+    },
+    {
+      "id": "toilet",
+      "labelKo": "화장실",
+      "sourceFilename": "toilet.png",
+      "sourceDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "sourceDecodedRgbaSha256": "0b7e403eb78932e7645c4c28c261810d29f6947e12ad86150ccde2319b813326",
+      "registration": {
+        "headWidthSourceUnits": 465,
+        "sharedSourceBottom": 1022
+      },
+      "variants": {
+        "cream": {
+          "file": "/hamsters/base/toilet-cream.webp",
+          "width": 549,
+          "height": 765,
+          "sourceBounds": {
+            "x": 62,
+            "y": 257,
+            "width": 545,
+            "height": 761
+          },
+          "contentBounds": {
+            "x": 2,
+            "y": 2,
+            "width": 545,
+            "height": 761
+          },
+          "nativeGeometryPreserved": true,
+          "opaqueRgbPreserved": true,
+          "sha256": "b8af0cc304bf1abf24a0007be5fbbc09b60a672fd14c6d63b1e1f964365ce55f",
+          "byteLength": 291306,
+          "placement": {
+            "x": 204.8387,
+            "y": 70.2688,
+            "width": 590.3226,
+            "height": 822.5806,
+            "scale": 1.07526882
+          }
+        },
+        "gray": {
+          "file": "/hamsters/base/toilet-gray.webp",
+          "width": 539,
+          "height": 765,
+          "sourceBounds": {
+            "x": 636,
+            "y": 261,
+            "width": 535,
+            "height": 761
+          },
+          "contentBounds": {
+            "x": 2,
+            "y": 2,
+            "width": 535,
+            "height": 761
+          },
+          "nativeGeometryPreserved": true,
+          "opaqueRgbPreserved": true,
+          "sha256": "c9764b6a7b4961e4858336b71935cb2e4c13a00e7efa0d0182273877020624db",
+          "byteLength": 281326,
+          "placement": {
+            "x": 210.2151,
+            "y": 74.5699,
+            "width": 579.5699,
+            "height": 822.5806,
+            "scale": 1.07526882
+          }
+        }
+      },
+      "hasMatchingLooseUpload": true
+    },
+    {
+      "id": "victory",
+      "labelKo": "만세",
+      "sourceFilename": "victory.png",
+      "sourceDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "sourceDecodedRgbaSha256": "f2089dce140494bbf3ef1d33b910d0585c8a0ee2c0f25131bda7db004b550968",
+      "registration": {
+        "headWidthSourceUnits": 465,
+        "sharedSourceBottom": 993
+      },
+      "variants": {
+        "cream": {
+          "file": "/hamsters/base/victory-cream.webp",
+          "width": 574,
+          "height": 707,
+          "sourceBounds": {
+            "x": 37,
+            "y": 290,
+            "width": 570,
+            "height": 703
+          },
+          "contentBounds": {
+            "x": 2,
+            "y": 2,
+            "width": 570,
+            "height": 703
+          },
+          "nativeGeometryPreserved": true,
+          "opaqueRgbPreserved": true,
+          "sha256": "93312f0a856d0853c3da71babf5161c933e208b7ed7becbcf76b71edf10410c3",
+          "byteLength": 255022,
+          "placement": {
+            "x": 191.3978,
+            "y": 136.9355,
+            "width": 617.2043,
+            "height": 760.2151,
+            "scale": 1.07526882
+          }
+        },
+        "gray": {
+          "file": "/hamsters/base/victory-gray.webp",
+          "width": 586,
+          "height": 696,
+          "sourceBounds": {
+            "x": 633,
+            "y": 301,
+            "width": 582,
+            "height": 692
+          },
+          "contentBounds": {
+            "x": 2,
+            "y": 2,
+            "width": 582,
+            "height": 692
+          },
+          "nativeGeometryPreserved": true,
+          "opaqueRgbPreserved": true,
+          "sha256": "006f594fe8c7823ffbbd207ad3a06c127e2d388093a6e06bdf36ec3de6e06515",
+          "byteLength": 241188,
+          "placement": {
+            "x": 184.9462,
+            "y": 148.7634,
+            "width": 630.1075,
+            "height": 748.3871,
+            "scale": 1.07526882
+          }
+        }
+      },
+      "hasMatchingLooseUpload": false
+    },
+    {
+      "id": "weight",
+      "labelKo": "체중 재기",
+      "sourceFilename": "weight.png",
+      "sourceDimensions": {
+        "width": 1254,
+        "height": 1254
+      },
+      "sourceDecodedRgbaSha256": "7f401b8f3592f068a43372dcd209edd460a2b5279dc425ecc9966103e0e582b0",
+      "registration": {
+        "headWidthSourceUnits": 510,
+        "sharedSourceBottom": 1015
+      },
+      "variants": {
+        "cream": {
+          "file": "/hamsters/base/weight-cream.webp",
+          "width": 568,
+          "height": 730,
+          "sourceBounds": {
+            "x": 62,
+            "y": 280,
+            "width": 564,
+            "height": 726
+          },
+          "contentBounds": {
+            "x": 2,
+            "y": 2,
+            "width": 564,
+            "height": 726
+          },
+          "nativeGeometryPreserved": true,
+          "opaqueRgbPreserved": true,
+          "sha256": "a7a05f9951de4a8a18afc1558d5585f77fdd4588a4fb6bdda7230c31864a7dfe",
+          "byteLength": 296362,
+          "placement": {
+            "x": 221.5686,
+            "y": 172.451,
+            "width": 556.8627,
+            "height": 715.6863,
+            "scale": 0.98039216
+          }
+        },
+        "gray": {
+          "file": "/hamsters/base/weight-gray.webp",
+          "width": 574,
+          "height": 746,
+          "sourceBounds": {
+            "x": 665,
+            "y": 273,
+            "width": 570,
+            "height": 742
+          },
+          "contentBounds": {
+            "x": 2,
+            "y": 2,
+            "width": 570,
+            "height": 742
+          },
+          "nativeGeometryPreserved": true,
+          "opaqueRgbPreserved": true,
+          "sha256": "43d78110e3a52da91cda0ec6216ba2a47c76fa67ece2a8a28fc3f50d751b0208",
+          "byteLength": 300358,
+          "placement": {
+            "x": 218.6275,
+            "y": 165.5882,
+            "width": 562.7451,
+            "height": 731.3725,
+            "scale": 0.98039216
+          }
+        }
+      },
+      "hasMatchingLooseUpload": false
+    }
+  ]
+}

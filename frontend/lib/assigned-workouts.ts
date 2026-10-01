@@ -15,6 +15,27 @@ export function assignedWorkoutsForDay(
     .filter((workout) => workout.koreanDate === day)
     .sort(
       (a, b) =>
-        a.assignedAt.localeCompare(b.assignedAt) || a.id.localeCompare(b.id),
+        a.assignedAt.localeCompare(b.assignedAt) ||
+        (a.routine && b.routine && a.routine.id === b.routine.id
+          ? a.routine.order - b.routine.order
+          : a.id.localeCompare(b.id)),
     );
+}
+
+/** Input is the deduplicated assignment/order sequence for one day. */
+export function currentWorkoutStep(rows: readonly Workout[]) {
+  return {
+    workout:
+      rows.find((row) => row.status === "in_progress") ??
+      rows.find((row) => row.routine && row.status === "assigned") ??
+      rows.find((row) => row.status !== "completed") ??
+      null,
+    started: rows.some(
+      (row) =>
+        row.status !== "assigned" ||
+        row.performedAt != null ||
+        row.progress.watchedSeconds > 0 ||
+        row.progress.positionSeconds > 0,
+    ),
+  };
 }

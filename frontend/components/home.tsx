@@ -1,8 +1,10 @@
 "use client";
 import Link from "next/link";
-import { GroupMascots } from "./mascot/mascot-scenes";
-import { BreathingMascot } from "./mascot/BreathingMascot";
-import { ArrowRight, ClipboardList } from "lucide-react";
+import { HomeGroups } from "./home-groups";
+import { NotificationBell } from "./notification-bell";
+import { SeedBalance } from "./seed-balance";
+import { MyCharacter } from "./my-character";
+import { ArrowRight } from "lucide-react";
 import { Loading, Notice, Shell } from "./ui";
 import { TodayWorkout } from "./today-workout";
 import { WorkoutStreak } from "./workout-streak";
@@ -15,6 +17,18 @@ export function Home() {
     <Shell className="home-shell">
       <h1 className="sr-only">메인</h1>
       <div className="content stack home-content">
+        <header className="home-toolbar">
+          <NotificationBell />
+          {user && (
+            <Link
+              href="/shop"
+              className="home-balance-link"
+              aria-label={`상점, 보유 해바라기씨 ${user.currency.balance.toLocaleString("ko-KR")}개`}
+            >
+              <SeedBalance balance={user.currency.balance} />
+            </Link>
+          )}
+        </header>
         {profile.status === "loading" && (
           <Loading label="나의 기록을 확인하고 있어요" />
         )}
@@ -42,9 +56,9 @@ export function Home() {
             )}
             <div className="home-companions">
               <div className="home-mascot-stage">
-                <BreathingMascot size={256} label="편안하게 숨 쉬는 햄스터" />
+                <MyCharacter />
               </div>
-              <GroupMascots />
+              <HomeGroups />
             </div>
             <div
               className="home-activity"
@@ -56,10 +70,6 @@ export function Home() {
               }
             >
               <section className="stack" aria-labelledby="today-title">
-                <div className="section-heading">
-                  <ClipboardList size={22} />
-                  <h2 id="today-title">오늘의 운동</h2>
-                </div>
                 <TodayWorkout embedded />
               </section>
               <WorkoutStreak />

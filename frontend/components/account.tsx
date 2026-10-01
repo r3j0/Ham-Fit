@@ -1,8 +1,8 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
-import { BreathingMascot } from "./mascot/BreathingMascot";
+import { SeedBalance } from "./seed-balance";
+import { AccountCharacter } from "./account-character";
 import { LatestFitness } from "./latest-fitness";
 import { ProfileActivityReport } from "./profile-activity-report";
 import { useRouter } from "next/navigation";
@@ -35,32 +35,13 @@ export function Account() {
       <div className="content stack">
         <header className="profile-toolbar">
           <h1>내 프로필</h1>
-          {user && (
-            <div
-              className="profile-balance"
-              role="group"
-              aria-label="보유 재화"
-            >
-              <Image
-                src="/icons/sunflower-seed.svg"
-                width={24}
-                height={34}
-                alt="해바라기씨"
-              />
-              <strong>{user.currency.balance.toLocaleString("ko-KR")}</strong>
-            </div>
-          )}
+          {user && <SeedBalance balance={user.currency.balance} />}
         </header>
         {logoutError && <Notice>{logoutError}</Notice>}
         {user ? (
           <div className="profile-card">
             <div className="profile-identity">
-              <BreathingMascot
-                framing="face"
-                size={128}
-                label="편안하게 숨 쉬는 햄스터 얼굴"
-                className="profile-avatar"
-              />
+              <AccountCharacter />
               <div className="profile-copy">
                 <div className="profile-heading">
                   <h2>{user.nickname ?? "닉네임"}</h2>
@@ -89,10 +70,6 @@ export function Account() {
           <div className="menu-card">
             <Link href="/measurements" className="menu-row">
               <strong>내 측정 기록</strong>
-              <ChevronRight size={20} />
-            </Link>
-            <Link href="/account/workouts" className="menu-row">
-              <strong>내 운동 이력</strong>
               <ChevronRight size={20} />
             </Link>
             <Link href="/account/preferences" className="menu-row">

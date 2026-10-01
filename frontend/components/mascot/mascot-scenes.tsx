@@ -1,43 +1,37 @@
+"use client";
+import { useEffect, useState } from "react";
+import { POSES } from "../hamster/poses";
+import type { HamsterPose } from "../hamster/types";
 import { MascotPose, type MascotPoseProps } from "./MascotPose";
 import styles from "./mascot-scenes.module.css";
 
-const group = [
-  { variant: "cream", pose: "lying", outfit: { wear: "green-sportswear" } },
-  { variant: "gray", pose: "situp", outfit: { wear: "white-sportswear" } },
-  { variant: "gray", pose: "run", outfit: { wear: "blue-sportswear" } },
-  { variant: "cream", pose: "cant-hear", outfit: { wear: "black-sportswear" } },
-] as const satisfies readonly MascotPoseProps[];
-
 const welcome = [
-  { variant: "cream", pose: "victory", outfit: { wear: "green-sportswear" } },
-  { variant: "gray", pose: "run", outfit: { wear: "white-sportswear" } },
-  { variant: "gray", pose: "drink", outfit: { wear: "blue-sportswear" } },
-  { variant: "cream", pose: "situp", outfit: { wear: "black-sportswear" } },
+  { variant: "cream", pose: "victory" },
+  { variant: "gray", pose: "run" },
+  { variant: "gray", pose: "drink" },
+  { variant: "cream", pose: "situp" },
 ] as const satisfies readonly MascotPoseProps[];
-
-export function GroupMascots() {
-  return (
-    <div
-      className="home-group-mascots"
-      role="group"
-      aria-label="그룹 햄스터 예시"
-    >
-      {group.map((character) => (
-        <MascotPose key={character.pose} {...character} size={96} />
-      ))}
-    </div>
-  );
-}
 
 export function WelcomeMascots() {
+  const [characters, setCharacters] =
+    useState<readonly MascotPoseProps[]>(welcome);
+  useEffect(() => {
+    const poses = Object.keys(POSES) as HamsterPose[];
+    const values = crypto.getRandomValues(new Uint32Array(8));
+    const next = Array.from({ length: 4 }, (_, i) => ({
+      variant: values[i * 2] % 2 ? ("gray" as const) : ("cream" as const),
+      pose: poses[values[i * 2 + 1] % poses.length],
+    }));
+    queueMicrotask(() => setCharacters(next));
+  }, []);
   return (
     <div
       className={styles.welcome}
       role="group"
       aria-label="함께 운동하는 햄스터"
     >
-      {welcome.map((character) => (
-        <MascotPose key={character.pose} {...character} size={180} />
+      {characters.map((character, index) => (
+        <MascotPose key={index} {...character} size={252} />
       ))}
     </div>
   );

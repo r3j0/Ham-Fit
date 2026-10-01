@@ -5,6 +5,7 @@ import { CheckCircle2 } from "lucide-react";
 import { getRecord } from "@/lib/measurements";
 import { errorMessage } from "@/lib/http";
 import { Header, Loading, Notice, Shell } from "./ui";
+import { MemberMascot } from "./member-mascot";
 import { OnboardingProgress } from "./onboarding-progress";
 
 export function OnboardingComplete({ recordId }: { recordId?: string }) {
@@ -37,6 +38,7 @@ export function OnboardingComplete({ recordId }: { recordId?: string }) {
         {confirmed ? (
           <section className="feature-card stack assessment-complete">
             <CheckCircle2 size={44} aria-hidden="true" />
+            <MemberMascot pose="victory" size={160} />
             <h2>나의 체력을 기록했어요</h2>
             <p className="muted">
               측정한 항목만 저장했어요. 최근 기록에서 언제든 확인할 수 있어요.

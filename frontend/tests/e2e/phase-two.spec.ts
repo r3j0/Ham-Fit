@@ -1,3 +1,7 @@
+import {
+  setMeasurementAge,
+  expectMeasurementAge,
+} from "./measurement-age-helpers";
 import { testWorkout } from "./integration-fixtures";
 import { prepareAssessment, skipToFlexibility } from "./workout-helpers";
 import { test, expect, type Page, type Route } from "@playwright/test";
@@ -18,7 +22,7 @@ async function register(page: Page) {
   const origin = new URL(test.info().project.use.baseURL as string).origin;
   const response = await page.request.post(`${api}/auth/register`, {
     headers: { Origin: origin, "X-CSRF-Protection": "1" },
-    data: { email, password },
+    data: { email, password, dateOfBirth: "2001-01-01" },
   });
   expect(response.status()).toBe(201);
   return { email, ...(await response.json()) };
@@ -47,18 +51,23 @@ test("메인은 미배정·배정·완료를 구분하고 운동 내용을 임�
   await register(page);
   await page.goto("/");
   await expect(
-    page.getByRole("heading", { name: "아직 오늘 배정된 운동이 없어요" }),
+    page.getByText("아직 오늘 배정된 운동이 없어요.", { exact: false }),
   ).toBeVisible();
   await expect(
     page.getByRole("link", { name: "체력 기록 등록하기" }),
   ).toBeVisible();
   let completed = false;
-  await page.route(`${api}/workouts/current`, (route) =>
+  await page.route(`${api}/workouts/history?*`, (route) =>
     route.fulfill({
       json: {
-        ...testWorkout,
-        status: completed ? "completed" : "assigned",
-        completedAt: completed ? new Date().toISOString() : null,
+        items: [
+          {
+            ...testWorkout,
+            status: completed ? "completed" : "assigned",
+            completedAt: completed ? new Date().toISOString() : null,
+          },
+        ],
+        nextCursor: null,
       },
       headers: {
         "Access-Control-Allow-Origin": route.request().headers().origin,
@@ -106,7 +115,7 @@ test("구형 사용자 응답은 임의의 초기 상태로 표시하지 않고 
     page.getByRole("button", { name: "다시 불러오기" }),
   ).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: "아직 오늘 배정된 운동이 없어요" }),
+    page.getByText("아직 오늘 배정된 운동이 없어요.", { exact: false }),
   ).toHaveCount(0);
 });
 
@@ -161,12 +170,10 @@ test("온보딩 직접 입력은 기존 폼을 복원하고 실제 저장 후 �
   await expect(page).toHaveURL(/\/onboarding$/);
   await page.getByRole("link", { name: "직접 입력하기", exact: false }).click();
   await page.getByLabel("측정일", { exact: true }).fill("2026-09-17");
-  await page.getByLabel("측정 당시 만 나이", { exact: true }).fill("25");
+  await setMeasurementAge(page, "25");
   await page.getByLabel("성별", { exact: true }).selectOption("male");
   await page.reload();
-  await expect(
-    page.getByLabel("측정 당시 만 나이", { exact: true }),
-  ).toHaveValue("25");
+  await expectMeasurementAge(page, "25");
   await page.getByRole("button", { name: "측정값 입력하기" }).click();
   await page
     .getByRole("button", { name: "측정 항목 추가", exact: true })
@@ -194,7 +201,7 @@ test("온보딩 직접 입력은 기존 폼을 복원하고 실제 저장 후 �
   const other = await page.context().newPage();
   await other.goto("/");
   await expect(
-    other.getByRole("img", { name: "편안하게 숨 쉬는 햄스터" }),
+    other.getByRole("img", { name: "나의 대표 캐릭터" }),
   ).toBeVisible();
   await expect(
     other.getByRole("heading", { name: "내 체력 기록부터 시작해요" }),
@@ -309,7 +316,7 @@ test("로그아웃하면 간이측정 진행도 함께 지워진다", async ({ p
   await expect(page).toHaveURL(/\/login/);
   await login(page, email);
   await page.goto("/workout?mode=assessment");
-  await expect(page.getByLabel("만 나이", { exact: true })).toHaveValue("");
+  await expectMeasurementAge(page, "");
 });
 
 test("계정 수정은 비밀번호 오류를 재전송하지 않고 성공하면 모든 탭에서 로그아웃한다", async ({

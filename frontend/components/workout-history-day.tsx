@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useWorkoutHistoryLinks } from "./use-workout-history-links";
 import { PlayCircle } from "lucide-react";
 import { completedDate } from "@/lib/workout-history";
+import { workoutHref } from "@/lib/workout-routine";
 import { displayDate } from "@/lib/measurements";
 import { WorkoutCalendar } from "./workout-calendar";
 import { useWorkoutHistory } from "./workout-history-provider";
@@ -42,7 +43,11 @@ export function WorkoutHistoryDay({ date }: { date: string }) {
                   <li key={workout.id}>
                     <Link
                       className={styles.recordLink}
-                      href={`${basePath}/${workout.id}/replay`}
+                      href={workoutHref(
+                        workout,
+                        true,
+                        basePath.startsWith("/account"),
+                      )}
                       aria-label={`${workout.video.title} 운동 다시보기`}
                     >
                       <div>

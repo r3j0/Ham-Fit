@@ -1,3 +1,4 @@
+import { setMeasurementAge } from "./measurement-age-helpers";
 import { test, expect, type Page } from "@playwright/test";
 import {
   catalog,
@@ -46,7 +47,7 @@ async function manual(page: Page, age = "25") {
   await page.goto("/onboarding");
   await page.getByRole("link", { name: "직접 입력하기" }).click();
   await page.getByLabel("측정일", { exact: true }).fill("2026-09-01");
-  await page.getByLabel("측정 당시 만 나이", { exact: true }).fill(age);
+  await setMeasurementAge(page, age);
   await page.getByLabel("성별", { exact: true }).selectOption("male");
   await page.getByRole("button", { name: "측정값 입력하기" }).click();
 }
@@ -121,7 +122,7 @@ test("직접 입력에서 성인 윗몸말아올리기를 숨기고 청소년 �
     .getByRole("button", { name: "닫기", exact: true })
     .click();
   await page.getByRole("button", { name: "변경", exact: true }).click();
-  await page.getByLabel("측정 당시 만 나이", { exact: true }).fill("15");
+  await setMeasurementAge(page, "15");
   await page.getByRole("button", { name: "측정값 입력하기" }).click();
   await page
     .getByRole("button", { name: "측정 항목 추가", exact: true })

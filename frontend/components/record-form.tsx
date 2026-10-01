@@ -36,6 +36,7 @@ import { RecordValues } from "./record-values";
 import { OnboardingProgress } from "./onboarding-progress";
 import { PhotoInputWorkspace } from "./photo-input-workspace";
 import photoStyles from "./photo-input-workspace.module.css";
+import { ProfileAge, useProfileAge } from "./use-profile-age";
 import { useUnsaved } from "./use-unsaved";
 import { useOperationScope } from "./use-operation-scope";
 export function RecordForm({
@@ -207,6 +208,18 @@ export function RecordForm({
     return () => abort.abort();
   }, [restored, initialCatalog, catalogRetry]);
   const locked = busy || uncertain || gone;
+  // New records use the member’s birth date, including photo-assisted input.
+  const deriveAge = !initial;
+  const profileAge = useProfileAge(meta.measuredOn);
+  const age = profileAge.available ? String(profileAge.age) : "";
+  useEffect(() => {
+    if (locked || pending.current || !deriveAge) return;
+    queueMicrotask(() =>
+      setMeta((current) =>
+        current.age === age ? current : { ...current, age },
+      ),
+    );
+  }, [age, deriveAge, locked]);
   const validItems = items.filter((i) => i.value !== "");
   function update<K extends keyof FormMetadata>(
     key: K,
@@ -232,7 +245,7 @@ export function RecordForm({
   }
   async function advance(event: React.FormEvent) {
     event.preventDefault();
-    if (guard.current) return;
+    if (guard.current || (deriveAge && !profileAge.available)) return;
     const next = validateMetadata(meta, koreaDate(), { requireSex });
     if (selfAssessment && Number(meta.age) < 19)
       next.ageAtMeasurement = "성인 간이측정은 만 19~64세를 지원해요.";
@@ -690,30 +703,43 @@ export function RecordForm({
                 />
                 <FieldError id="measuredOn-error" message={errors.measuredOn} />
               </div>
-              <div className="field">
-                <label htmlFor="age">측정 당시 만 나이</label>
-                <div className="input-wrap">
-                  <input
-                    id="age"
-                    inputMode="numeric"
-                    pattern="[0-9]{1,2}"
-                    maxLength={2}
-                    required
-                    value={meta.age}
-                    onChange={(e) => update("age", e.target.value)}
-                    placeholder="예: 25"
-                    aria-invalid={!!errors.ageAtMeasurement}
-                    aria-describedby="age-hint age-error"
+              {deriveAge ? (
+                <>
+                  <ProfileAge profile={profileAge} />
+                  <FieldError
+                    id="age-error"
+                    message={errors.ageAtMeasurement}
                   />
-                  <span className="input-unit">세</span>
+                </>
+              ) : (
+                <div className="field">
+                  <label htmlFor="age">측정 당시 만 나이</label>
+                  <div className="input-wrap">
+                    <input
+                      id="age"
+                      inputMode="numeric"
+                      pattern="[0-9]{1,2}"
+                      maxLength={2}
+                      required
+                      value={meta.age}
+                      onChange={(e) => update("age", e.target.value)}
+                      placeholder="예: 25"
+                      aria-invalid={!!errors.ageAtMeasurement}
+                      aria-describedby="age-hint age-error"
+                    />
+                    <span className="input-unit">세</span>
+                  </div>
+                  <p className="caption" id="age-hint">
+                    {selfAssessment
+                      ? "성인 간이측정은 만 19~64세를 지원해요."
+                      : "만 13~64세의 기록을 등록할 수 있어요."}
+                  </p>
+                  <FieldError
+                    id="age-error"
+                    message={errors.ageAtMeasurement}
+                  />
                 </div>
-                <p className="caption" id="age-hint">
-                  {selfAssessment
-                    ? "성인 간이측정은 만 19~64세를 지원해요."
-                    : "만 13~64세의 기록을 등록할 수 있어요."}
-                </p>
-                <FieldError id="age-error" message={errors.ageAtMeasurement} />
-              </div>
+              )}
               {requireSex && sexField}
               <details className="accordion">
                 <summary>
@@ -776,7 +802,10 @@ export function RecordForm({
               <p className="caption center">
                 나이에 맞는 검사 항목을 보여드려요.
               </p>
-              <button className="button primary" disabled={locked}>
+              <button
+                className="button primary"
+                disabled={locked || (deriveAge && !profileAge.available)}
+              >
                 <SubmitLabel busy={busy}>
                   {busy ? "검사 항목 확인 중" : "측정값 입력하기"}
                 </SubmitLabel>

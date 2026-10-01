@@ -8,13 +8,15 @@ import {
 } from "../../components/mascot/mascot-poses.js";
 import { WARDROBE, normalizeOutfit } from "../../components/mascot/wardrobe.js";
 
-test("130개 캐릭터·자세·의상 조합은 원본 해시와 안전한 표시 영역을 유지한다", () => {
-  assert.equal(MASCOT_POSES.length, 13);
+test("기존 자세·의상과 휴대폰 자세 조합은 원본 해시와 안전한 표시 영역을 유지한다", () => {
+  assert.equal(MASCOT_POSES.length, 14);
   assert.equal(WARDROBE.length, 4);
   const checked = new Set<string>();
   for (const pose of MASCOT_POSES)
     for (const variant of ["cream", "gray"] as const)
-      for (const outfit of [{}, ...WARDROBE.map(({ id }) => ({ wear: id }))]) {
+      for (const outfit of pose.id === "phone"
+        ? [{}]
+        : [{}, ...WARDROBE.map(({ id }) => ({ wear: id }))]) {
         const art = getMascotPose(pose.id, variant, "/mascots/poses", outfit);
         if (!checked.has(art.src)) {
           const bytes = readFileSync(
@@ -32,10 +34,15 @@ test("130개 캐릭터·자세·의상 조합은 원본 해시와 안전한 표�
         assert.ok(bx >= x && by >= y && bx + bw <= x + w && by + bh <= y + h);
         assert.ok(art.clip.every(Number.isFinite));
       }
-  assert.equal(checked.size, 65);
+  assert.equal(checked.size, 66);
   assert.ok(
     getMascotPose("lying", "cream", undefined, { wear: "white-sportswear" })
       .clipPolygon,
+  );
+  assert.throws(
+    () =>
+      getMascotPose("phone", "cream", undefined, { wear: "white-sportswear" }),
+    RangeError,
   );
   assert.deepEqual(normalizeOutfit({ wear: "retired-item", hat: "cap" }), {});
 });

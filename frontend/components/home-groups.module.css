@@ -1,0 +1,95 @@
+.root {
+  min-width: 0;
+  min-height: 170px;
+}
+.carousel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: center;
+}
+.carousel[data-multiple="true"] {
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
+}
+.viewport {
+  min-width: 0;
+  overflow: hidden;
+  padding: 4px;
+}
+.slide {
+  display: block;
+  border-radius: 12px;
+  padding: 4px;
+}
+.members {
+  display: flex;
+  gap: 12px;
+  list-style: none;
+  margin: 0;
+  padding: 0 0 8px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+.members > :first-child {
+  margin-left: auto;
+}
+.members > :last-child {
+  margin-right: auto;
+}
+.member {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 0 0 clamp(64px, 10vw, 96px);
+  min-width: 0;
+  gap: 4px;
+}
+.member > span[role="img"] {
+  width: min(100%, calc(var(--home-mascot-size) / 3));
+}
+.nickname {
+  font-size: 12px;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.noCompanions {
+  display: grid;
+  place-items: center;
+  min-height: 120px;
+  margin: 0;
+  text-align: center;
+}
+.name {
+  margin-top: 8px;
+  text-align: center;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.state {
+  display: grid;
+  align-content: center;
+  gap: 8px;
+  min-height: 170px;
+}
+.root :global(.loading) {
+  min-height: 170px;
+}
+.entering {
+  animation: group-slide-in 320ms ease-out both;
+}
+@keyframes group-slide-in {
+  from {
+    transform: translateX(var(--slide-from));
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .entering {
+    animation: none;
+  }
+}

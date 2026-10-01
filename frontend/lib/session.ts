@@ -275,7 +275,12 @@ export async function changeAccount(
       if (error instanceof ApiError && error.status === 409)
         throw new ApiError(
           409,
-          "이미 사용 중인 이메일이에요. 다른 이메일을 입력해 주세요.",
+          method === "DELETE"
+            ? "그룹장은 탈퇴 전에 그룹장을 위임하거나 그룹을 삭제해 주세요."
+            : "이미 사용 중인 이메일이에요. 다른 이메일을 입력해 주세요.",
+          {},
+          undefined,
+          method === "DELETE" ? "GROUP_LEADERSHIP_REQUIRED" : undefined,
         );
       if (
         error instanceof ApiError &&

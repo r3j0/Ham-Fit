@@ -14,9 +14,9 @@ test("인증 후 간이측정 모드와 기존 입력 경로를 복원한다", (
     "/onboarding/photo",
     "/onboarding/manual",
     "/workout",
-    "/workouts",
+    "/workouts/history/2026-09-27",
+    "/workouts/00000000-0000-4000-8000-000000000002/replay",
     "/account/preferences",
-    "/account/workouts",
     "/account/workouts/history/2026-09-27",
     "/account/workouts/00000000-0000-4000-8000-000000000002/replay",
     "/workouts/00000000-0000-4000-8000-000000000002",
@@ -26,6 +26,8 @@ test("인증 후 간이측정 모드와 기존 입력 경로를 복원한다", (
 });
 test("외부 주소·중복 모드·임의 커리큘럼은 인증 후 실행하지 않는다", () => {
   for (const path of [
+    "/workouts",
+    "/account/workouts",
     "https://example.com",
     "//example.com",
     "/\\example.com",

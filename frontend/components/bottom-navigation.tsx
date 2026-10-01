@@ -2,16 +2,21 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { House, UserRound, Dumbbell } from "lucide-react";
+import { House, UserRound, UsersRound, Dumbbell, Store } from "lucide-react";
 
 export function BottomNavigation() {
   const pathname = usePathname();
-  if (pathname === "/onboarding" || pathname.startsWith("/onboarding/"))
+  if (
+    pathname === "/welcome" ||
+    pathname === "/onboarding" ||
+    pathname.startsWith("/onboarding/")
+  )
     return null;
   const workoutRoute =
     pathname === "/workout" ||
-    pathname === "/workouts" ||
+    pathname.startsWith("/workout-routines/") ||
     pathname.startsWith("/workouts/");
+  const groupRoute = pathname === "/groups" || pathname.startsWith("/groups/");
   const profileRoute =
     pathname === "/account" ||
     pathname.startsWith("/account/") ||
@@ -19,7 +24,7 @@ export function BottomNavigation() {
     pathname.startsWith("/measurements/");
   const theme = workoutRoute
     ? " kspo-sky-theme"
-    : profileRoute
+    : profileRoute || groupRoute
       ? " kspo-orange-theme"
       : "";
   const tabs = [
@@ -30,10 +35,22 @@ export function BottomNavigation() {
       active: workoutRoute,
     },
     {
+      href: "/shop",
+      label: "상점",
+      icon: Store,
+      active: pathname === "/shop" || pathname.startsWith("/shop/"),
+    },
+    {
       href: "/",
       label: "메인",
       icon: House,
       active: pathname === "/",
+    },
+    {
+      href: "/groups",
+      label: "내 그룹",
+      icon: UsersRound,
+      active: groupRoute,
     },
     {
       href: "/account",

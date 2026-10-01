@@ -42,11 +42,15 @@ export function WorkoutSummary({ workout }: { workout: Workout }) {
         </span>
         <h2>{video.title}</h2>
       </div>
-      <p className="muted">
-        {Math.floor(video.durationSeconds / 60)}분 {video.durationSeconds % 60}
-        초 ·{" "}
-        {video.equipment.length ? video.equipment.join(", ") : "장비 정보 없음"}
-      </p>
+      {!workout.routine && (
+        <p className="muted">
+          {Math.floor(video.durationSeconds / 60)}분{" "}
+          {video.durationSeconds % 60}초 ·{" "}
+          {video.equipment.length
+            ? video.equipment.join(", ")
+            : "장비 정보 없음"}
+        </p>
+      )}
       <div className={styles.progressPanel}>
         <span className={styles.progressLabel}>시청 기록</span>
         <progress

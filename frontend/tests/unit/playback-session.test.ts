@@ -4,6 +4,7 @@ import { ApiError } from "../../lib/http.ts";
 import {
   createPlaybackSession,
   samplePlayback,
+  hasWatchedEnough,
 } from "../../lib/playback-session.ts";
 import { createWorkoutJournal } from "../../lib/workout-journal.ts";
 import type { Workout } from "../../lib/workout-types.ts";
@@ -226,5 +227,220 @@ test("chunks played ranges within the server limit without inventing a completio
       ["progress", 1000],
       ["pause", 1],
     ],
+  );
+});
+
+const routineWorkout = (): Workout => ({
+  ...initial,
+  koreanDate: "2026-09-29",
+  serverKoreanDate: "2026-09-29",
+  routine: {
+    id: "routine",
+    itemId: "item",
+    order: 1,
+    totalItems: 1,
+    prescription: {
+      doseType: "reps",
+      value: "10",
+      unit: "회",
+      sets: 3,
+      restSec: 30,
+      text: "10회 × 3세트",
+    },
+  },
+  recording: {
+    allowed: true,
+    serverTime: "2026-09-29T14:59:59Z",
+    expiresAt: "2026-09-29T15:00:00Z",
+    deadline: 1000,
+  },
+});
+
+test("expired routines discard recovery and never enqueue any event type", async () => {
+  for (const status of [
+    "assigned",
+    "in_progress",
+    "not_performed",
+    "interrupted",
+    "completed",
+  ] as const) {
+    const journal = createWorkoutJournal(() => undefined);
+    journal.setOwner("user");
+    const old = journal.acquire("user", initial.id);
+    old.save([
+      { key: crypto.randomUUID(), body: JSON.stringify({ type: "start" }) },
+    ]);
+    old.release();
+    let sent = 0;
+    const workout = {
+      ...routineWorkout(),
+      status,
+      recording: { ...routineWorkout().recording!, allowed: false },
+    };
+    const session = createPlaybackSession({
+      initial: workout,
+      now: () => 0,
+      acquire: () => journal.acquire("user", initial.id),
+      fetch: async () => workout,
+      send: async () => {
+        sent++;
+        return workout;
+      },
+    });
+    session.connect();
+    for (const type of [
+      "start",
+      "progress",
+      "pause",
+      "end",
+      "complete",
+    ] as const)
+      await session.record(type, empty);
+    await session.retry();
+    assert.equal(sent, 0);
+    assert.equal(session.getSnapshot().pending, 0);
+    assert.equal(session.getSnapshot().recordingAllowed, false);
+    session.disconnect();
+  }
+});
+
+test("monotonic expiry stops retries of an unknown result and background reads update equal revisions", async () => {
+  const journal = createWorkoutJournal(() => undefined);
+  journal.setOwner("user");
+  let now = 0,
+    sent = 0;
+  const initial = routineWorkout();
+  let server = initial;
+  const session = createPlaybackSession({
+    initial,
+    now: () => now,
+    acquire: () => journal.acquire("user", initial.id),
+    fetch: async () => server,
+    send: async () => {
+      sent++;
+      throw new ApiError(0, "lost");
+    },
+  });
+  session.connect();
+  await session.record("start", empty);
+  assert.equal(session.getSnapshot().pending, 1);
+  now = 1000;
+  await session.retry();
+  assert.equal(sent, 1);
+  assert.equal(session.getSnapshot().pending, 0);
+  server = {
+    ...initial,
+    serverKoreanDate: "2026-09-30",
+    recording: {
+      ...initial.recording!,
+      allowed: false,
+      serverTime: "2026-09-29T15:00:00Z",
+    },
+  };
+  await session.refresh();
+  assert.equal(session.getSnapshot().workout.serverKoreanDate, "2026-09-30");
+  assert.equal(session.getSnapshot().recordingAllowed, false);
+  session.disconnect();
+});
+
+test("server expiry stops queued successors and confirms saved state with GET", async () => {
+  const journal = createWorkoutJournal(() => undefined);
+  journal.setOwner("user");
+  const workout = { ...routineWorkout(), status: "in_progress" as const };
+  let sends = 0,
+    reads = 0;
+  const session = createPlaybackSession({
+    initial: workout,
+    now: () => 0,
+    acquire: () => journal.acquire("user", initial.id),
+    send: async () => {
+      sends++;
+      throw new ApiError(409, "expired", {}, undefined, "ROUTINE_EXPIRED");
+    },
+    fetch: async () => {
+      reads++;
+      return {
+        ...workout,
+        recording: {
+          ...workout.recording!,
+          allowed: false,
+          serverTime: "2026-09-29T15:00:00Z",
+        },
+        serverKoreanDate: "2026-09-30",
+      };
+    },
+  });
+  session.connect();
+  const pending = session.record("progress", empty);
+  session.record("pause", empty);
+  await pending;
+  await session.retry();
+  assert.equal(sends, 1);
+  assert.equal(reads, 1);
+  assert.equal(session.getSnapshot().pending, 0);
+  assert.equal(session.getSnapshot().recordingAllowed, false);
+  assert.equal(session.getSnapshot().error, undefined);
+  session.disconnect();
+});
+
+test("v2 pause finalization blocks trailing events until an explicit start after interruption", async () => {
+  const journal = createWorkoutJournal(() => undefined);
+  journal.setOwner("user");
+  const stopped = deferred<Workout>();
+  const workout = { ...routineWorkout(), status: "in_progress" as const };
+  const types: string[] = [];
+  const session = createPlaybackSession({
+    initial: workout,
+    now: () => 0,
+    acquire: () => journal.acquire("user", initial.id),
+    fetch: async () => workout,
+    send: async (_key, body) => {
+      types.push(JSON.parse(body).type);
+      return types.length === 1 ? stopped.promise : { ...workout, revision: 3 };
+    },
+  });
+  session.connect();
+  const pending = session.record("pause", empty);
+  session.record("progress", empty);
+  session.record("complete", empty);
+  session.record("start", empty);
+  await Promise.resolve();
+  assert.deepEqual(types, ["pause"]);
+  stopped.resolve({ ...workout, status: "interrupted", revision: 2 });
+  await pending;
+  await session.record("start", empty);
+  assert.deepEqual(types, ["pause", "start"]);
+  session.disconnect();
+});
+
+test("the stop confirmation threshold merges saved/native ranges and excludes seeks and overlap", () => {
+  const workout = {
+    ...initial,
+    progress: {
+      ...initial.progress,
+      watchedSeconds: 50,
+      intervals: [{ start: 0, end: 50 }],
+    },
+  };
+  assert.equal(
+    hasWatchedEnough(workout, {
+      positionSeconds: 100,
+      intervals: [{ start: 40, end: 79.9 }],
+    }),
+    false,
+  );
+  assert.equal(
+    hasWatchedEnough(workout, {
+      positionSeconds: 80,
+      intervals: [{ start: 40, end: 80 }],
+    }),
+    true,
+  );
+  assert.equal(
+    hasWatchedEnough(workout, {
+      positionSeconds: 100,
+      intervals: [{ start: 90, end: 100.4 }],
+    }),
+    false,
   );
 });

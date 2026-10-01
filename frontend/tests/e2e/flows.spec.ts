@@ -1,3 +1,7 @@
+import {
+  setMeasurementAge,
+  expectMeasurementAge,
+} from "./measurement-age-helpers";
 import { test, expect, type Page, type Route } from "@playwright/test";
 // Keep actual authentication limits enabled. This large file can otherwise
 // exhaust the shared IP window halfway through a successful scenario.
@@ -84,6 +88,9 @@ async function signup(page: Page, destination: "records" | "main" = "records") {
     ).toBeEnabled({ timeout: 65000 });
     await page.getByRole("button", { name: "가입하고 시작하기" }).click();
   }
+  await expect(page).toHaveURL("/welcome");
+  await page.getByLabel("닉네임", { exact: true }).fill("운동친구");
+  await page.getByRole("button", { name: "저장하고 다음으로" }).click();
   await expect(page).toHaveURL("/onboarding");
   await expect(page.getByRole("navigation", { name: "하단 메뉴" })).toHaveCount(
     0,
@@ -114,7 +121,7 @@ async function openSavedRecord(page: Page) {
 async function startRecord(page: Page, age = "25") {
   await openManualRecord(page);
   await page.getByLabel("측정일", { exact: true }).fill("2026-09-17");
-  await page.getByLabel("측정 당시 만 나이", { exact: true }).fill(age);
+  await setMeasurementAge(page, age);
   await page.getByLabel("성별", { exact: true }).selectOption("male");
   await page.getByRole("button", { name: "측정값 입력하기" }).click();
   await expect(
@@ -308,13 +315,28 @@ test("생년월일은 계정 설정에서 수정·복원하고 조회·저장 �
     page.getByRole("button", { name: "로그아웃", exact: true }),
   ).toBeEnabled();
 });
-test("오늘 운동은 측정 입력을 안내하고 응답 유실·새로고침 후 같은 배정을 복구한다", async ({
+test("오늘 루틴은 목적·측정을 안내하고 응답 유실·새로고침 후 같은 배정을 복구한다", async ({
   page,
 }) => {
   await signup(page, "main");
-  await expect(page.getByRole("button", { name: "운동하기" })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "오늘 운동 준비하기", exact: true }),
+  ).toBeVisible();
   await expect(page.getByRole("main").getByRole("alert")).toHaveCount(0);
-  await page.getByRole("button", { name: "운동하기" }).click();
+  await page
+    .getByRole("button", { name: "오늘 운동 준비하기", exact: true })
+    .click();
+  await page.getByRole("link", { name: "운동 목적 선택하기" }).click();
+  await page.getByText("기본 체력 증진", { exact: true }).click();
+  await page.getByRole("button", { name: "저장하기", exact: true }).click();
+  await expect(page.getByText("운동 설정을 저장했어요.")).toBeVisible();
+  await page
+    .getByRole("navigation")
+    .getByRole("link", { name: "메인", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "오늘 운동 준비하기", exact: true })
+    .click();
   await expect(
     page.getByRole("link", { name: "측정 기록 등록하기" }),
   ).toBeVisible();
@@ -328,7 +350,7 @@ test("오늘 운동은 측정 입력을 안내하고 응답 유실·새로고침
     .click();
   let assignmentId = "";
   const keys: string[] = [];
-  await page.route("**/workouts/today", async (route) => {
+  await page.route("**/workout-routines/today", async (route) => {
     keys.push(route.request().headers()["idempotency-key"]);
     expect(route.request().postDataJSON()).toEqual({});
     const response = await route.fetch();
@@ -337,7 +359,9 @@ test("오늘 운동은 측정 입력을 안내하고 응답 유실·새로고침
       await route.abort("failed");
     } else await route.fulfill({ response });
   });
-  await page.getByRole("button", { name: "운동하기" }).click();
+  await page
+    .getByRole("button", { name: "오늘 운동 준비하기", exact: true })
+    .click();
   await expect(
     page.getByRole("button", { name: "이전 추천 요청 확인하기" }),
   ).toBeVisible();
@@ -348,10 +372,16 @@ test("오늘 운동은 측정 입력을 안내하고 응답 유실·새로고침
   ).toHaveCount(0);
   expect(keys).toHaveLength(2);
   expect(keys[0]).toBe(keys[1]);
+  expect(assignmentId).toMatch(/^[a-f0-9-]{36}$/);
   await expect(
-    page.getByRole("link", { name: "운동 시작하기" }),
-  ).toHaveAttribute("href", `/workouts/${assignmentId}`);
-  await expect(page.getByRole("button", { name: "운동하기" })).toHaveCount(0);
+    page.getByRole("list", { name: "오늘 배정된 운동" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "운동 시작하기", exact: true }).first(),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "오늘 운동 준비하기", exact: true }),
+  ).toHaveCount(0);
 });
 test("실제 저장 응답 유실 후 같은 키로 재시도해 중복 생성하지 않는다", async ({
   page,
@@ -469,7 +499,7 @@ test("청소년 항목과 나이 변경 검증, 입력 유지", async ({ page })
     .click();
   await page.getByLabel("반복점프", { exact: true }).fill("12");
   await page.getByRole("button", { name: "변경", exact: true }).click();
-  await page.getByLabel("측정 당시 만 나이", { exact: true }).fill("19");
+  await setMeasurementAge(page, "19");
   await page.getByRole("button", { name: "측정값 입력하기" }).click();
   await page.getByRole("button", { name: "1개 항목 저장하기" }).click();
   await expect(
@@ -543,7 +573,7 @@ test("카탈로그 장애 시 기본 정보를 유지하며 다시 불러올 수
   await signup(page);
   await openManualRecord(page);
   await page.getByLabel("측정일", { exact: true }).fill("2026-09-17");
-  await page.getByLabel("측정 당시 만 나이", { exact: true }).fill("25");
+  await setMeasurementAge(page, "25");
   await page.getByLabel("성별", { exact: true }).selectOption("male");
   await page.route("**/api/v1/measurement-catalog", (route) =>
     failApi(route, 503),
@@ -552,9 +582,7 @@ test("카탈로그 장애 시 기본 정보를 유지하며 다시 불러올 수
   await expect(
     page.getByText("서버가 잠시 응답하지 않아요.", { exact: false }),
   ).toBeVisible();
-  await expect(
-    page.getByLabel("측정 당시 만 나이", { exact: true }),
-  ).toHaveValue("25");
+  await expectMeasurementAge(page, "25");
   await expect(page.getByLabel("측정일", { exact: true })).toHaveValue(
     "2026-09-17",
   );
@@ -645,9 +673,7 @@ test("뒤로가기·앞으로가기·새로고침 후 측정 입력을 복원한
   await expect(page.getByLabel("측정일", { exact: true })).toHaveValue(
     "2026-09-17",
   );
-  await expect(
-    page.getByLabel("측정 당시 만 나이", { exact: true }),
-  ).toHaveValue("25");
+  await expectMeasurementAge(page, "25");
   await page.getByRole("button", { name: "임시 입력 지우기" }).click();
   await expect(page.getByLabel("측정일", { exact: true })).toHaveValue("");
 });
@@ -1107,8 +1133,8 @@ test("메인과 내 프로필 탭을 오가며 기록을 관리하고 입력 이
   const nav = page.getByRole("navigation", { name: "하단 메뉴" });
   const mainTab = nav.getByRole("link", { name: "메인", exact: true });
   const profileTab = nav.getByRole("link", { name: "내 프로필", exact: true });
-  await expect(nav.getByRole("link")).toHaveText(["", "", ""]);
-  for (const label of ["메인", "운동", "내 프로필"]) {
+  await expect(nav.getByRole("link")).toHaveText(["", "", "", ""]);
+  for (const label of ["메인", "운동", "내 그룹", "내 프로필"]) {
     await expect(
       nav.getByRole("link", { name: label, exact: true }),
     ).toBeVisible();
@@ -1126,7 +1152,7 @@ test("메인과 내 프로필 탭을 오가며 기록을 관리하고 입력 이
   await profileTab.click();
   await expect(
     page.getByRole("heading", { name: "내 프로필", exact: true }),
-  ).toHaveClass("sr-only");
+  ).toBeVisible();
   await expect(page.getByText(email, { exact: true })).toBeVisible();
   await expect(profileTab).toHaveAttribute("aria-current", "page");
   await page.goBack();
@@ -1141,9 +1167,7 @@ test("메인과 내 프로필 탭을 오가며 기록을 관리하고 입력 이
   page.once("dialog", (dialog) => dialog.dismiss());
   await page.getByRole("link", { name: "이전 화면", exact: true }).click();
   await expect(page).toHaveURL(/\/onboarding\/manual$/);
-  await expect(
-    page.getByLabel("측정 당시 만 나이", { exact: true }),
-  ).toHaveValue("25");
+  await expectMeasurementAge(page, "25");
   page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("link", { name: "이전 화면", exact: true }).click();
   await page.getByRole("link", { name: "이전 화면", exact: true }).click();

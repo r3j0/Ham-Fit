@@ -1,4 +1,6 @@
 "use client";
+import { assessmentVideoEmbed } from "@/lib/assessment-video";
+import videoStyles from "./assessment-video.module.css";
 import { useEffect, useRef, useState } from "react";
 import {
   Play,
@@ -208,14 +210,24 @@ export function WorkoutRunner({
                     <li key={line}>{line}</li>
                   ))}
                 </ol>
+                {assessmentVideoEmbed(step.videoUrl) && (
+                  <iframe
+                    className={videoStyles.video}
+                    src={assessmentVideoEmbed(step.videoUrl)!}
+                    title={`${step.title} 국민체력100 안내 영상`}
+                    allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowFullScreen
+                    referrerPolicy="strict-origin-when-cross-origin"
+                  />
+                )}
                 <a
-                  className="text-link workout-video"
+                  className="text-link"
                   href={step.videoUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
                   <ExternalLink size={16} />
-                  국민체력100 동영상 안내
+                  유튜브에서 보기
                 </a>
                 <button
                   className="button primary"

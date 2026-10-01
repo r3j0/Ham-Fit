@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import { installApi } from "./integration-fixtures";
 import type { StoredExercisePreferences } from "../../lib/user-preferences";
+import { ownedToolOptions } from "../../lib/user-preferences";
 
 const path = "**/api/v1/users/me/preferences";
 const initial: StoredExercisePreferences = {
@@ -159,6 +160,99 @@ test("도구 저장 실패 후 선택을 보존하고 동일한 요청으로 재
     .click();
   await expect(page.getByRole("status")).toHaveText("운동 설정을 저장했어요.");
   expect(state.patches).toEqual([{ ownedTools: ["band"] }]);
+});
+
+test("지원 6종만 선택·저장·재조회하고 없음으로 전부 해제한다", async ({
+  page,
+}) => {
+  const state = await installPreferences(page);
+  await page.goto("/account/preferences");
+  const tools = page.getByRole("group", { name: "보유 운동 도구" });
+  await expect(tools.getByRole("checkbox")).toHaveCount(7);
+  await expect(
+    tools.getByText(/폼롤러|보슈|사다리|콘/, { exact: true }),
+  ).toHaveCount(0);
+  for (const option of ownedToolOptions)
+    await tools
+      .getByRole("checkbox", { name: option.label, exact: true })
+      .check();
+  await page.getByRole("button", { name: "저장하기", exact: true }).click();
+  await expect(page.getByRole("form").getByRole("status")).toHaveText(
+    "운동 설정을 저장했어요.",
+  );
+  expect(state.patches).toEqual([
+    { ownedTools: ownedToolOptions.map(({ value }) => value) },
+  ]);
+  await page.reload();
+  for (const option of ownedToolOptions)
+    await expect(
+      tools.getByRole("checkbox", { name: option.label, exact: true }),
+    ).toBeChecked();
+  await tools.getByRole("checkbox", { name: "없음", exact: true }).check();
+  await page.getByRole("button", { name: "저장하기", exact: true }).click();
+  await expect(page.getByRole("form").getByRole("status")).toHaveText(
+    "운동 설정을 저장했어요.",
+  );
+  expect(state.patches[1]).toEqual({ ownedTools: [] });
+  await page.reload();
+  await expect(tools.locator(":checked")).toHaveCount(1);
+  await expect(
+    tools.getByRole("checkbox", { name: "없음", exact: true }),
+  ).toBeChecked();
+});
+
+test("운동량과 도구의 동시 PATCH가 400이면 모든 편집을 미저장으로 유지한다", async ({
+  page,
+}) => {
+  const state = await installPreferences(page);
+  await page.goto("/account/preferences");
+  await page.getByRole("checkbox", { name: "밴드", exact: true }).check();
+  await page.getByRole("button", { name: "저장하기", exact: true }).click();
+  await expect(page.getByRole("form").getByRole("status")).toHaveText(
+    "운동 설정을 저장했어요.",
+  );
+  await page.getByText("충분히", { exact: true }).click();
+  await page.getByRole("checkbox", { name: "덤벨·아령", exact: true }).check();
+  await page.route(
+    path,
+    async (route) => {
+      if (route.request().method() !== "PATCH") return route.fallback();
+      state.patches.push(route.request().postDataJSON());
+      await route.fulfill({
+        status: 400,
+        json: {
+          message: "설정 전체를 저장하지 못했어요.",
+          errors: [
+            {
+              field: "ownedTools.0",
+              message: "지원하는 도구를 선택해 주세요.",
+            },
+          ],
+        },
+      });
+    },
+    { times: 1 },
+  );
+  await page.getByRole("button", { name: "저장하기", exact: true }).click();
+  const form = page.getByRole("form", { name: "운동 설정" });
+  await expect(form.getByRole("alert")).toBeVisible();
+  await expect(form.getByRole("status")).toHaveCount(0);
+  await expect(
+    page.getByRole("radio", { name: "충분히", exact: true }),
+  ).toBeChecked();
+  await expect(
+    page.getByRole("checkbox", { name: "덤벨·아령", exact: true }),
+  ).toBeChecked();
+  expect(state.value).toEqual({ ...initial, ownedTools: ["band"] });
+  expect(state.patches[1]).toEqual({
+    exerciseVolume: "more",
+    ownedTools: ["band", "dumbbell"],
+  });
+  await page.getByRole("button", { name: "저장하기", exact: true }).click();
+  await expect(form.getByRole("status")).toHaveText("운동 설정을 저장했어요.");
+  expect(state.patches[2]).toEqual(state.patches[1]);
+  expect(state.value.exerciseVolume).toBe("more");
+  expect(state.value.ownedTools).toEqual(["band", "dumbbell"]);
 });
 
 test("목적 미선택을 유지하면서 운동량을 저장하고 키보드로 목적을 선택한다", async ({

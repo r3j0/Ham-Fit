@@ -2,11 +2,11 @@
 
 import { usePathname } from "next/navigation";
 
-/** Keep history browsing in the section that owns the current route. */
+/** Preserve existing detail bookmarks; the workout calendar owns the overview. */
 export function useWorkoutHistoryLinks() {
   const inProfile = usePathname().startsWith("/account/");
   return {
     basePath: inProfile ? "/account/workouts" : "/workouts",
-    overviewHref: inProfile ? "/account/workouts" : "/workout",
+    overviewHref: "/workout",
   };
 }

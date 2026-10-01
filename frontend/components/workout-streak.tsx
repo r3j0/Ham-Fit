@@ -1,36 +1,53 @@
 "use client";
 import Link from "next/link";
-import { Check, ChevronRight, Flame } from "lucide-react";
-import { dateFromKey, shiftDay, workoutStreak } from "@/lib/workout-history";
+import Image from "next/image";
+import { ChevronRight, Flame } from "lucide-react";
+import { dateFromKey, shiftDay } from "@/lib/workout-history";
 import {
   useWorkoutHistory,
   WorkoutHistoryFeedback,
 } from "./workout-history-provider";
+import { getActivityProfile } from "@/lib/activity-profile";
+import { useApiResource } from "./use-api-resource";
+import { Loading, Notice } from "./ui";
+import { errorMessage } from "@/lib/http";
 import styles from "./workout-history.module.css";
 
 export function WorkoutStreak() {
-  const { today, completed, ready, error } = useWorkoutHistory();
-  const streak = workoutStreak(completed, today);
+  const { today, completed, ready, error, legacyUnavailable } =
+    useWorkoutHistory();
+  const activity = useApiResource(getActivityProfile);
   const days = Array.from({ length: 7 }, (_, index) =>
     shiftDay(today, index - 6),
   );
   return (
     <section className="stack" aria-labelledby="workout-streak-title">
-      <div className="section-heading">
+      <div className={`section-heading ${styles.streakHeading}`}>
         <Flame size={22} aria-hidden="true" />
         <h2 id="workout-streak-title">연속 운동</h2>
       </div>
       <div className={styles.streak}>
-        {!ready || error ? (
-          <WorkoutHistoryFeedback />
-        ) : (
-          <div className={styles.streakColumns}>
-            <div className={styles.summary}>
+        <div className={styles.streakColumns}>
+          <div className={styles.summary}>
+            {activity.error !== undefined ? (
+              <div className="stack-sm">
+                <Notice>{errorMessage(activity.error)}</Notice>
+                <button className="text-button" onClick={activity.reload}>
+                  활동 정보 다시 불러오기
+                </button>
+              </div>
+            ) : activity.data ? (
               <p className={styles.streakCount}>
-                <strong>{streak}일</strong>
+                <strong>{activity.data.streak}일</strong>
                 <span> 연속 운동 중</span>
               </p>
-            </div>
+            ) : (
+              <Loading />
+            )}
+          </div>
+          {!ready || error ? (
+            <WorkoutHistoryFeedback />
+          ) : (
             <ol className={styles.week} aria-label="최근 7일 운동 기록">
               {days.map((day) => {
                 const date = dateFromKey(day);
@@ -50,7 +67,13 @@ export function WorkoutStreak() {
                       aria-hidden="true"
                     >
                       {done ? (
-                        <Check size={19} strokeWidth={2.5} />
+                        <Image
+                          src="/icons/sunflower.png"
+                          alt=""
+                          width={24}
+                          height={25}
+                          className={styles.sunflower}
+                        />
                       ) : (
                         <span className={styles.emptyDot} />
                       )}
@@ -59,13 +82,19 @@ export function WorkoutStreak() {
                 );
               })}
             </ol>
-          </div>
+          )}
+        </div>
+        {legacyUnavailable && (
+          <Notice tone="info">
+            이전 단일 운동 기록을 불러오지 못해 최근 기록에 일부 누락이 있을 수
+            있어요.
+          </Notice>
         )}
         <div className={styles.streakFooter}>
-          {ready && !error && (
+          {ready && !error && !legacyUnavailable && (
             <p className={styles.hint}>
               {completed.has(today)
-                ? "오늘의 운동을 완료했어요!"
+                ? "오늘 완료한 운동 기록이 있어요."
                 : "오늘의 운동으로 꾸준함을 이어가요."}
             </p>
           )}

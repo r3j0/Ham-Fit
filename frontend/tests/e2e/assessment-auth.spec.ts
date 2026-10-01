@@ -29,7 +29,7 @@ test("인증 만료 후 재로그인하면 간이측정 모드로 돌아간다",
     .fill("contract-test-password!");
   await page.getByRole("button", { name: "로그인", exact: true }).click();
   await expect(page).toHaveURL("/workout?mode=assessment");
-  await expect(page.getByLabel("만 나이", { exact: true })).toBeVisible();
+  await expect(page.getByLabel("측정 당시 나이")).toBeVisible();
   await expect(page.getByRole("heading", { name: "내 기존 운동" })).toHaveCount(
     0,
   );

@@ -26,9 +26,9 @@ import { getCatalog, koreaDate } from "@/lib/measurements";
 import { api, getSession } from "@/lib/session";
 import { ApiError, errorMessage } from "@/lib/http";
 import type { Catalog, Measurement } from "@/lib/types";
-import { StepAssessmentHelp } from "./step-assessment-help";
+import { ProfileAge, useProfileAge } from "./use-profile-age";
 import { WorkoutRunner } from "./workout-runner";
-import { MascotPose } from "./mascot/MascotPose";
+import { MemberMascot } from "./member-mascot";
 import { OnboardingProgress } from "./onboarding-progress";
 import inputStyles from "./onboarding-inputs.module.css";
 import { useOperationScope } from "./use-operation-scope";
@@ -77,6 +77,20 @@ export function AssessmentWorkout() {
   const beginOperation = useOperationScope();
   const definition = adultAssessment();
   const locked = busy || !!draft.pending;
+  const profileAge = useProfileAge(draft.setup.measuredOn);
+  const age = profileAge.available ? String(profileAge.age) : "";
+  useEffect(() => {
+    if (locked || draft.stage !== "setup") return;
+    queueMicrotask(() =>
+      setDraft((current) =>
+        current.pending ||
+        current.stage !== "setup" ||
+        current.setup.age === age
+          ? current
+          : { ...current, setup: { ...current.setup, age } },
+      ),
+    );
+  }, [age, locked, draft.stage]);
   const persist = useCallback(
     (next: WorkoutDraft) =>
       getSession().generation === generation &&
@@ -134,11 +148,14 @@ export function AssessmentWorkout() {
   }
   function start(event: React.FormEvent) {
     event.preventDefault();
-    const problems = setupErrors(draft.setup);
+    if (!profileAge.available) return;
+    const setup = { ...draft.setup, age };
+    const problems = setupErrors(setup);
     setErrors(problems);
     if (Object.keys(problems).length || !catalog) return;
     const next = {
       ...draft,
+      setup,
       stage: "session" as const,
       catalogVersion: catalog.version,
     };
@@ -251,44 +268,30 @@ export function AssessmentWorkout() {
   const setupForm = (
     <>
       <div className="assessment-hero">
-        <MascotPose
-          pose="situp"
-          variant="gray"
-          size={128}
-          className="assessment-mascot"
-        />
-        <span className="eyebrow">KNOW YOUR BODY</span>
+        <MemberMascot pose="situp" size={128} className="assessment-mascot" />
         <h2>
           지금의 내 몸을
           <br />
           알아가는 시간
         </h2>
-        <p>
-          만 19~64세 성인 간이측정
-          <br />
-          신체정보와 세 가지 체력 항목을 기록해요.
-        </p>
       </div>
       <form
         className={`stack assessment-setup ${inputStyles.compact}`}
         onSubmit={start}
         noValidate
       >
+        <ProfileAge profile={profileAge} />
+        <FieldError id="assessment-age-error" message={errors.age} />
+        {profileAge.available &&
+          (profileAge.age! < 19 || profileAge.age! > 64) && (
+            <Notice>성인 간이측정은 만 19~64세를 지원해요.</Notice>
+          )}
         <section className="feature-card stack">
-          <h3>측정 전 확인</h3>
-          <div className="field">
-            <label htmlFor="assessment-age">만 나이</label>
-            <input
-              id="assessment-age"
-              inputMode="numeric"
-              maxLength={2}
-              placeholder="19~64"
-              value={draft.setup.age}
-              onChange={(e) => update("age", e.target.value)}
-              aria-invalid={!!errors.age}
-              aria-describedby="assessment-age-error"
-            />
-            <FieldError id="assessment-age-error" message={errors.age} />
+          <div>
+            <h3>
+              신체정보 <span className="optional-label">(선택)</span>
+            </h3>
+            <p className="caption">측정하지 못한 항목은 비워 두세요.</p>
           </div>
           <div className="field">
             <label htmlFor="assessment-sex">
@@ -306,19 +309,6 @@ export function AssessmentWorkout() {
               <option value="female">여성</option>
             </select>
           </div>
-        </section>
-        <section className="feature-card stack">
-          <div>
-            <h3>
-              신체정보 <span className="optional-label">(선택)</span>
-            </h3>
-            <p className="caption">측정하지 못한 항목은 비워 두세요.</p>
-            <StepAssessmentHelp
-              sex={draft.setup.sex}
-              height={draft.setup.height}
-              weight={draft.setup.weight}
-            />
-          </div>
           {bodyFields.map(([key, label, unit]) => (
             <div className="field" key={key}>
               <label htmlFor={`assessment-${key}`}>
@@ -332,12 +322,17 @@ export function AssessmentWorkout() {
                 value={draft.setup[key]}
                 onChange={(e) => update(key, e.target.value)}
                 aria-invalid={!!errors[key]}
-                aria-describedby={`assessment-${key}-error`}
+                aria-describedby={`assessment-${key}-error${key === "waist" ? " assessment-waist-hint" : ""}`}
               />
               <FieldError
                 id={`assessment-${key}-error`}
                 message={errors[key]}
               />
+              {key === "waist" && (
+                <p id="assessment-waist-hint" className="caption">
+                  허리둘레는 편안히 숨을 쉰 뒤 배꼽 높이에서 재요.
+                </p>
+              )}
             </div>
           ))}
           <div className="bmi-preview">
@@ -349,9 +344,6 @@ export function AssessmentWorkout() {
               <small> kg/m²</small>
             </strong>
           </div>
-          <p className="caption">
-            허리둘레는 편안히 숨을 쉰 뒤 배꼽 높이에서 재요.
-          </p>
         </section>
         <section className="stack-sm">
           <h3>근지구력 검사 · 교차 윗몸일으키기</h3>
@@ -359,11 +351,14 @@ export function AssessmentWorkout() {
             60초 동안 올바른 자세로 마친 횟수를 기록해요.
           </p>
         </section>
-        <p className="caption">
-          매트, 30cm 스텝박스, 줄자를 준비해 주세요. 장비가 없는 항목은 건너뛸
-          수 있어요. 측정 중 통증이나 어지러움이 있으면 중단하고 쉬어 주세요.
-        </p>
-        <button className="button primary">
+        <button
+          className="button primary"
+          disabled={
+            !profileAge.available ||
+            profileAge.age! < 19 ||
+            profileAge.age! > 64
+          }
+        >
           {draft.catalogVersion ? "변경 완료" : "측정 준비 완료"}
           <ArrowRight size={18} />
         </button>
@@ -449,13 +444,6 @@ export function AssessmentWorkout() {
                   <p className="caption">
                     {draft.setup.measuredOn} · 만 {draft.setup.age}세
                   </p>
-                  {draft.state.results.cardio !== undefined && (
-                    <StepAssessmentHelp
-                      sex={draft.setup.sex}
-                      height={draft.setup.height}
-                      weight={draft.setup.weight}
-                    />
-                  )}
                   <dl className="value-list">
                     <div className="value-row">
                       <dt>성별</dt>

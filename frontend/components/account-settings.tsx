@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { MascotPose } from "./mascot/MascotPose";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -38,6 +39,7 @@ export function AccountSettings({
   const [newPassword, setNewPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
   const [error, setError] = useState("");
+  const [leadershipRequired, setLeadershipRequired] = useState(false);
   const [uncertain, setUncertain] = useState(false);
   const [canReauthenticate, setCanReauthenticate] = useState(false);
   const [fieldError, setFieldError] = useState("");
@@ -68,6 +70,7 @@ export function AccountSettings({
     url.searchParams.set("tab", next);
     window.history.replaceState(null, "", url);
     setError("");
+    setLeadershipRequired(false);
     setFieldError("");
   }
   async function perform() {
@@ -82,6 +85,7 @@ export function AccountSettings({
     guard.current = true;
     setBusy(true);
     setError("");
+    setLeadershipRequired(false);
     const isCurrent = beginOperation();
     try {
       await changeAccount(
@@ -98,6 +102,9 @@ export function AccountSettings({
     } catch (e) {
       if (!isCurrent()) return;
       setError(errorMessage(e));
+      setLeadershipRequired(
+        e instanceof ApiError && e.code === "GROUP_LEADERSHIP_REQUIRED",
+      );
       const outcomeUnknown = e instanceof AccountChangeUncertainError;
       setUncertain(outcomeUnknown);
       setCanReauthenticate(
@@ -239,7 +246,16 @@ export function AccountSettings({
                   </div>
                 </>
               )}
-              {error && <Notice>{error}</Notice>}
+              {error && (
+                <Notice>
+                  {error}
+                  {leadershipRequired && (
+                    <Link className="text-link" href="/groups">
+                      내 그룹 관리하기
+                    </Link>
+                  )}
+                </Notice>
+              )}
               {canReauthenticate && (
                 <button
                   className="button secondary"

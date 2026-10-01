@@ -1,0 +1,16 @@
+.mediaLayout {
+  display: grid;
+  align-items: start;
+  gap: 20px;
+  min-width: 0;
+}
+@media (min-width: 960px) {
+  .mediaLayout[data-with-guide] {
+    grid-template-columns: minmax(0, 2.6fr) minmax(240px, 1fr);
+  }
+}
+
+.confirmMascot {
+  display: grid;
+  place-items: center;
+}

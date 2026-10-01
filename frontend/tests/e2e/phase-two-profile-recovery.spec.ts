@@ -1,3 +1,4 @@
+import { setMeasurementAge } from "./measurement-age-helpers";
 import { test, expect, type Page } from "@playwright/test";
 
 // Keep the real API's authentication limit enabled between test groups.
@@ -64,7 +65,7 @@ test("저장 응답을 잃어도 메인은 실제 서버의 등록 상태를 반
   await page.getByRole("link", { name: "체력 기록 등록하기" }).click();
   await page.getByRole("link", { name: "직접 입력하기", exact: false }).click();
   await page.getByLabel("측정일", { exact: true }).fill("2026-09-17");
-  await page.getByLabel("측정 당시 만 나이", { exact: true }).fill("25");
+  await setMeasurementAge(page, "25");
   await page.getByLabel("성별", { exact: true }).selectOption("male");
   await page.getByRole("button", { name: "측정값 입력하기" }).click();
   await page
@@ -96,7 +97,7 @@ test("저장 응답을 잃어도 메인은 실제 서버의 등록 상태를 반
   await expect(page).toHaveURL("/onboarding");
   await page.getByRole("link", { name: "이전 화면", exact: true }).click();
   await expect(
-    page.getByRole("img", { name: "편안하게 숨 쉬는 햄스터" }),
+    page.getByRole("img", { name: "나의 대표 캐릭터" }),
   ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "내 체력 기록부터 시작해요" }),
@@ -129,7 +130,7 @@ test("focus 없이 화면이 다시 표시되어도 외부 변경을 반영한�
     document.dispatchEvent(new Event("visibilitychange"));
   });
   await expect(
-    page.getByRole("img", { name: "편안하게 숨 쉬는 햄스터" }),
+    page.getByRole("img", { name: "나의 대표 캐릭터" }),
   ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "내 체력 기록부터 시작해요" }),
@@ -143,7 +144,7 @@ test("마지막 기록의 삭제 응답을 잃어도 메인 등록 상태를 다
   const record = await createRecord(page, account.access_token);
   await page.goto("/");
   await expect(
-    page.getByRole("img", { name: "편안하게 숨 쉬는 햄스터" }),
+    page.getByRole("img", { name: "나의 대표 캐릭터" }),
   ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "내 체력 기록부터 시작해요" }),

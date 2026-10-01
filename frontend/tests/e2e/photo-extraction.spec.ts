@@ -1,3 +1,7 @@
+import {
+  setMeasurementAge,
+  expectMeasurementAge,
+} from "./measurement-age-helpers";
 import { test, expect } from "@playwright/test";
 import { installApi, catalog } from "./integration-fixtures";
 const png = {
@@ -66,7 +70,12 @@ test("사진 추출은 저장하지 않고 확인한 값만 기존 API로 저장
     expect(route.request().postDataBuffer()?.toString()).toContain(
       'name="image"',
     );
-    await route.fulfill({ json: extraction });
+    await route.fulfill({
+      json: {
+        ...extraction,
+        metadata: { ...extraction.metadata, ageAtMeasurement: 41 },
+      },
+    });
   });
   await page.goto("/onboarding/photo");
   await expect(progress).toHaveAttribute("aria-valuenow", "2");
@@ -101,6 +110,8 @@ test("사진 추출은 저장하지 않고 확인한 값만 기존 API로 저장
     "3단계 중 2단계, 기본 정보 입력",
   );
   await expect(page.getByText(/악력: 32 kg/)).toBeVisible();
+  // Profile DOB is authoritative even when the extracted report has another age.
+  await expectMeasurementAge(page, "25");
   await page.getByRole("button", { name: "측정값 입력하기" }).click();
   await expect(progress).toHaveAttribute("aria-valuenow", "3");
   await expect(
@@ -232,13 +243,13 @@ test("사진 초안을 지우고 다시 선택해도 직접 입력 초안은 유
 }) => {
   await installApi(page);
   await page.goto("/onboarding/manual");
-  await page.getByLabel("측정 당시 만 나이", { exact: true }).fill("30");
+  await setMeasurementAge(page, "30");
   page.on("dialog", (dialog) => dialog.accept());
   await page.getByRole("link", { name: "이전 화면", exact: true }).click();
   await page.getByRole("link", { name: "결과표가 있어요" }).click();
   await page.getByLabel("결과표 파일 선택").setInputFiles(png);
   await page.getByRole("button", { name: "이 사진을 보며 직접 입력" }).click();
-  await page.getByLabel("측정 당시 만 나이", { exact: true }).fill("25");
+  await setMeasurementAge(page, "25");
   await page
     .getByRole("button", { name: "입력 지우고 다른 사진 선택" })
     .click();
@@ -248,16 +259,12 @@ test("사진 초안을 지우고 다시 선택해도 직접 입력 초안은 유
   ).toHaveCount(0);
   await page.getByLabel("결과표 파일 선택").setInputFiles(png);
   await page.getByRole("button", { name: "이 사진을 보며 직접 입력" }).click();
-  await expect(
-    page.getByLabel("측정 당시 만 나이", { exact: true }),
-  ).toHaveValue("");
+  await expectMeasurementAge(page, "");
   await page.getByRole("button", { name: "이전 단계", exact: true }).click();
   await expect(page.getByLabel("결과표 파일 선택")).toBeAttached();
   await page.getByRole("link", { name: "이전 화면", exact: true }).click();
   await page.getByRole("link", { name: "직접 입력하기" }).click();
-  await expect(
-    page.getByLabel("측정 당시 만 나이", { exact: true }),
-  ).toHaveValue("30");
+  await expectMeasurementAge(page, "");
 });
 
 test("서버 처리 제한 안의 느린 사진 분석도 조기 취소하지 않는다", async ({
@@ -287,7 +294,7 @@ test("사진을 보며 직접 입력해도 성별을 선택해야 측정값으�
   await page.getByLabel("결과표 파일 선택").setInputFiles(png);
   await page.getByRole("button", { name: "이 사진을 보며 직접 입력" }).click();
   await page.getByLabel("측정일", { exact: true }).fill("2026-09-01");
-  await page.getByLabel("측정 당시 만 나이", { exact: true }).fill("25");
+  await setMeasurementAge(page, "25");
   const sex = page.getByLabel("성별", { exact: true });
   await expect(sex).toBeVisible();
   await expect(sex).toHaveAttribute("required", "");
@@ -378,8 +385,6 @@ for (const status of ["extracted", "needs_review"] as const) {
     await page
       .getByRole("button", { name: "결과표 확정", exact: true })
       .click();
-    await expect(
-      page.getByLabel("측정 당시 만 나이", { exact: true }),
-    ).toHaveValue("25");
+    await expectMeasurementAge(page, "25");
   });
 }

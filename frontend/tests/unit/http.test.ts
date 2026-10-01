@@ -109,3 +109,33 @@ test("existing validation, retry and no-content contracts remain available", asy
   );
   assert.equal((await request("/auth/logout")).data, null);
 });
+
+test("routine requests use v2 while authentication and measurements keep v1 and their headers", async (t) => {
+  const calls: string[] = [];
+  t.mock.method(
+    globalThis,
+    "fetch",
+    async (url: string, options: RequestInit) => {
+      calls.push(String(url));
+      assert.equal("apiVersion" in options, false);
+      assert.equal(options.credentials, "include");
+      assert.equal(
+        new Headers(options.headers).get("Authorization"),
+        "Bearer test",
+      );
+      return Response.json({ ok: true });
+    },
+  );
+  const headers = { Authorization: "Bearer test" };
+  await request("/auth/refresh", { headers });
+  await request("/measurements", { headers });
+  await request("/workout-routines/today", {
+    apiVersion: "v2",
+    method: "POST",
+    headers,
+    body: "{}",
+  });
+  assert.ok(calls[0].endsWith("/api/v1/auth/refresh"));
+  assert.ok(calls[1].endsWith("/api/v1/measurements"));
+  assert.ok(calls[2].endsWith("/api/v2/workout-routines/today"));
+});

@@ -10,7 +10,7 @@ import {
   storedCatalogFixture,
 } from "../fixtures/measurement-evaluation";
 
-test("프로필은 재화·가입 경과일·활동 리포트와 얼굴 모션을 표시하고 기록 상세로 이어진다", async ({
+test("프로필은 재화·가입 경과일·활동 리포트와 대표 캐릭터를 표시하고 기록 상세로 이어진다", async ({
   page,
 }, info) => {
   const errors: string[] = [];
@@ -67,34 +67,27 @@ test("프로필은 재화·가입 경과일·활동 리포트와 얼굴 모션�
   await expect(report.locator("dt")).toHaveText([
     "현재 연속 스트릭",
     "최장 연속 스트릭",
-    "현재 레벨",
     "캐릭터 보유 컬렉션",
     "총 운동 일수",
     "가입한지",
   ]);
   await expect(report.locator("dd")).toHaveText([
-    "3일",
-    "12일",
-    "4레벨",
-    "2개",
-    "28일",
+    "0일",
+    "—집계 준비 중",
+    "3개",
+    "—집계 준비 중",
     "26일",
   ]);
   await expect(report.getByText(/EXP/)).toHaveCount(0);
   const avatar = page.getByRole("img", {
-    name: "편안하게 숨 쉬는 햄스터 얼굴",
+    name: "나의 대표 캐릭터",
   });
   await expect(avatar).toBeVisible();
-  const head = avatar.locator('[data-part="head"]');
-  await expect(head).toHaveAttribute("transform", /translate/);
-  const pose = await head.getAttribute("transform");
-  await expect.poll(() => head.getAttribute("transform")).not.toBe(pose);
-  await expect(avatar.locator('[data-part="torso"]')).toBeHidden();
-  await page.emulateMedia({ reducedMotion: "reduce" });
-  await expect(head).toHaveAttribute(
-    "transform",
-    "translate(0.0000 0.0000) rotate(0.0000 400 610)",
+  await expect(avatar.locator('image[data-layer="base"]')).toHaveAttribute(
+    "href",
+    "/hamsters/base/basic-cream.webp",
   );
+  await page.emulateMedia({ reducedMotion: "reduce" });
   await expect(
     page.getByRole("heading", { name: "나의 체력 프로필" }),
   ).toHaveCount(0);
@@ -144,7 +137,7 @@ test("프로필은 재화·가입 경과일·활동 리포트와 얼굴 모션�
       0,
     );
     const avatarBox = (await avatar.boundingBox())!;
-    expect(avatarBox.width).toBe(width < 960 ? 80 : 128);
+    expect(avatarBox.width).toBeCloseTo(width < 960 ? 96 : 153.6, 1);
     await expect(avatar).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
     const chart = (await page.locator(".fitness-radar svg").boundingBox())!;
     const reportBox = (await report.boundingBox())!;
@@ -197,8 +190,11 @@ test("프로필은 재화·가입 경과일·활동 리포트와 얼굴 모션�
     page.locator(".fitness-radar:not(.fitness-radar-compact) .radar-grade"),
   ).toHaveCount(6);
   await page.getByRole("link", { name: "메인", exact: true }).click();
-  const fullBody = page.getByRole("img", { name: "편안하게 숨 쉬는 햄스터" });
-  await expect(fullBody.locator('[data-part="torso"]')).toBeVisible();
+  const fullBody = page.getByRole("img", { name: "나의 대표 캐릭터" });
+  await expect(fullBody.locator('image[data-layer="base"]')).toHaveAttribute(
+    "href",
+    "/hamsters/base/basic-cream.webp",
+  );
   await expect(
     page.getByRole("navigation", { name: "하단 메뉴" }),
   ).not.toHaveClass(/kspo-orange-theme/);
@@ -278,7 +274,7 @@ test("로그아웃 확인창을 열고 닫아도 프로필의 가로 위치와 �
   expect(closed.scrollY).toBe(before.scrollY);
 });
 
-test("미측정 계정도 가입 당일 표시와 예시 리포트를 보되 실제 등급을 만들지 않는다", async ({
+test("미측정 계정도 가입 당일 표시와 지원되는 활동 정보를 보되 실제 등급을 만들지 않는다", async ({
   page,
 }) => {
   const api = await installApi(page);
@@ -339,7 +335,7 @@ test("프로필 조회 오류에는 재화와 리포트를 숨기고 재시도�
   expect(api.mutations).toEqual([]);
 });
 
-test("프로필의 운동 이력·다시보기·날짜 이동은 Orange와 프로필 메뉴를 유지한다", async ({
+test("저장된 프로필 다시보기·날짜 주소는 유지하고 뒤로 가기는 운동 달력으로 이동한다", async ({
   page,
 }, info) => {
   const api = await installApi(page);
@@ -365,8 +361,9 @@ test("프로필의 운동 이력·다시보기·날짜 이동은 Orange와 프�
     route.fulfill({ json: completed }),
   );
   await page.goto("/account");
-  await page.getByRole("link", { name: "내 운동 이력", exact: true }).click();
-  await expect(page).toHaveURL("/account/workouts");
+  await expect(
+    page.getByRole("link", { name: "내 운동 이력", exact: true }),
+  ).toHaveCount(0);
   const nav = page.getByRole("navigation", { name: "하단 메뉴" });
   async function expectProfile() {
     await expect(page.getByRole("main")).toHaveCSS("color", "rgb(51, 37, 28)");
@@ -375,11 +372,7 @@ test("프로필의 운동 이력·다시보기·날짜 이동은 Orange와 프�
     ).toHaveAttribute("aria-current", "location");
     await expect(nav).toHaveCSS("background-color", "rgb(255, 248, 241)");
   }
-  await expectProfile();
-  await page
-    .getByRole("link", { name: "운동 다시보기", exact: true })
-    .first()
-    .click();
+  await page.goto(`/account/workouts/${completed.id}/replay`);
   await expect(page).toHaveURL(`/account/workouts/${completed.id}/replay`);
   await expect(
     page.getByRole("heading", { name: "운동 다시보기", exact: true }),
@@ -427,9 +420,6 @@ test("프로필의 운동 이력·다시보기·날짜 이동은 Orange와 프�
       .getByRole("listitem"),
   ).toHaveCount(1);
   await page.getByRole("link", { name: "이전 화면", exact: true }).click();
-  await expect(page).toHaveURL("/account/workouts");
-  await expectProfile();
-  await nav.getByRole("link", { name: "운동", exact: true }).click();
   await expect(page).toHaveURL("/workout");
   await expect(nav).toHaveClass(/kspo-sky-theme/);
   await expect(page.getByRole("main")).toHaveCSS("color", "rgb(16, 46, 58)");

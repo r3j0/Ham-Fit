@@ -8,18 +8,18 @@ import {
   useReducer,
   useState,
 } from "react";
-import {
-  collectWorkoutHistory,
-  completedDate,
-  koreanDateKey,
-} from "@/lib/workout-history";
-import { getWorkoutHistory } from "@/lib/workouts";
+import { completedDate, koreanDateKey } from "@/lib/workout-history";
+import { getActivityHistory } from "@/lib/workouts";
 import type { Workout } from "@/lib/workout-types";
+import type { WorkoutRoutine } from "@/lib/workout-routine";
 import { Loading, Notice } from "./ui";
 
 type History = {
   today: string;
   workouts: Workout[];
+  routines: WorkoutRoutine[];
+  legacyUnavailable: boolean;
+  legacyCompleted: ReadonlySet<string>;
   completed: ReadonlySet<string>;
   ready: boolean;
   loading: boolean;
@@ -42,6 +42,8 @@ export function WorkoutHistoryProvider({
     pathname.startsWith("/account/workouts/history/");
   const [data, setData] = useState<{
     workouts: Workout[];
+    routines: WorkoutRoutine[];
+    legacyUnavailable: boolean;
     today: string;
   } | null>(null);
   const [error, setError] = useState(false);
@@ -56,14 +58,12 @@ export function WorkoutHistoryProvider({
       reading = true;
       setLoading(true);
       try {
-        const workouts = await collectWorkoutHistory(
-          (cursor) => getWorkoutHistory(cursor, controller.signal),
-          controller.signal,
-        );
+        const activity = await getActivityHistory(controller.signal);
         if (controller.signal.aborted) return;
         setData({
-          workouts,
-          today: workouts[0]?.serverKoreanDate ?? koreanDateKey(new Date()),
+          ...activity,
+          today:
+            activity.workouts[0]?.serverKoreanDate ?? koreanDateKey(new Date()),
         });
         setError(false);
       } catch {
@@ -101,6 +101,14 @@ export function WorkoutHistoryProvider({
       value={{
         today: data?.today ?? koreanDateKey(new Date()),
         workouts: data?.workouts ?? [],
+        routines: data?.routines ?? [],
+        legacyUnavailable: data?.legacyUnavailable ?? false,
+        legacyCompleted: new Set(
+          (data?.workouts ?? [])
+            .filter((row) => !row.routine)
+            .map(completedDate)
+            .filter((day): day is string => day !== null),
+        ),
         completed,
         ready: data !== null,
         loading,
@@ -120,10 +128,14 @@ export function useWorkoutHistory() {
 }
 
 export function WorkoutHistoryFeedback() {
-  const { error, loading, reload } = useWorkoutHistory();
-  return error ? (
+  const { error, loading, reload, legacyUnavailable } = useWorkoutHistory();
+  return error || legacyUnavailable ? (
     <div className="stack-sm">
-      <Notice>운동 기록을 불러오지 못했어요. 다시 확인해 주세요.</Notice>
+      <Notice>
+        {legacyUnavailable && !error
+          ? "이전 단일 운동 기록은 지금 불러올 수 없어요. 잠시 후 다시 확인해 주세요."
+          : "운동 기록을 불러오지 못했어요. 다시 확인해 주세요."}
+      </Notice>
       <button className="text-button" disabled={loading} onClick={reload}>
         운동 기록 다시 불러오기
       </button>

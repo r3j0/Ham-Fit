@@ -4,14 +4,14 @@ import { installApi, testRecord, testWorkout } from "./integration-fixtures";
 async function expectBottomMenu(page: Page, current: string) {
   const nav = page.getByRole("navigation", { name: "하단 메뉴" });
   await expect(nav).toBeVisible();
-  await expect(nav.getByRole("link")).toHaveText(["", "", ""]);
+  await expect(nav.getByRole("link")).toHaveText(["", "", "", "", ""]);
   expect(
     await nav
       .getByRole("link")
       .evaluateAll((links) =>
         links.map((link) => link.getAttribute("aria-label")),
       ),
-  ).toEqual(["운동", "메인", "내 프로필"]);
+  ).toEqual(["운동", "상점", "메인", "내 그룹", "내 프로필"]);
   await expect(
     nav.getByRole("link", { name: current, exact: true }),
   ).toHaveAttribute("aria-current", /page|location/);
@@ -20,7 +20,7 @@ async function expectBottomMenu(page: Page, current: string) {
   expect(box.width).toBeCloseTo(page.viewportSize()!.width, 1);
   expect(box.y + box.height).toBeCloseTo(page.viewportSize()!.height, 1);
   await expect(nav).toHaveCSS("position", "fixed");
-  for (const label of ["메인", "운동", "내 프로필"]) {
+  for (const label of ["메인", "운동", "내 그룹", "내 프로필"]) {
     const link = nav.getByRole("link", { name: label, exact: true });
     await expect(link).toBeVisible();
     const target = (await link.boundingBox())!;
@@ -49,21 +49,23 @@ for (const [width, height] of [
   }, info) => {
     const record = testRecord();
     const api = await installApi(page, record);
+    await page.route("**/api/v1/groups?*", (route) =>
+      route.fulfill({ json: { items: [], nextCursor: null } }),
+    );
     await page.setViewportSize({ width, height });
     await page.emulateMedia({ reducedMotion: "reduce" });
     for (const [path, current] of [
       ["/", "메인"],
       ["/workout", "운동"],
-      ["/workouts", "운동"],
       [`/workouts/${testWorkout.id}`, "운동"],
       [`/workouts/${testWorkout.id}/replay`, "운동"],
       ["/workouts/history/2026-09-27", "운동"],
       ["/account", "내 프로필"],
+      ["/groups", "내 그룹"],
       ["/account/settings", "내 프로필"],
       ["/account/settings?tab=nickname", "내 프로필"],
       ["/account/settings?tab=birth", "내 프로필"],
       ["/account/preferences", "내 프로필"],
-      ["/account/workouts", "내 프로필"],
       ["/account/workouts/history/2026-09-27", "내 프로필"],
       [`/account/workouts/${testWorkout.id}/replay`, "내 프로필"],
       ["/measurements", "내 프로필"],
@@ -112,6 +114,7 @@ for (const [width, height] of [
     const home = nav.getByRole("link", { name: "메인", exact: true });
     const workout = nav.getByRole("link", { name: "운동", exact: true });
     const account = nav.getByRole("link", { name: "내 프로필", exact: true });
+    const group = nav.getByRole("link", { name: "내 그룹", exact: true });
     await home.focus();
     await home.press("Enter");
     await expect(page).toHaveURL("/");
@@ -126,7 +129,7 @@ for (const [width, height] of [
     await expect(nav).toHaveCSS("background-color", "rgb(240, 242, 246)");
     await expect(circle).toHaveCSS("background-color", "rgb(10, 42, 112)");
     await expect(home.locator("svg")).toHaveCSS("fill", "rgb(255, 255, 255)");
-    for (const inactive of [workout, account]) {
+    for (const inactive of [workout, group, account]) {
       await expect(inactive.locator(".bottom-tab-icon")).toHaveCSS(
         "color",
         "rgb(148, 163, 184)",
@@ -135,7 +138,12 @@ for (const [width, height] of [
     }
     await workout.focus();
     await page.keyboard.press("Tab");
+    await expect(
+      nav.getByRole("link", { name: "상점", exact: true }),
+    ).toBeFocused();
+    await page.keyboard.press("Tab");
     await expect(home).toBeFocused();
+    await page.keyboard.press("Shift+Tab");
     await page.keyboard.press("Shift+Tab");
     await expect(workout).toBeFocused();
     await page.keyboard.press("Enter");
@@ -165,6 +173,57 @@ for (const [width, height] of [
     await expectBottomMenu(page, "운동");
     await page.goForward();
     await expectBottomMenu(page, "내 프로필");
+    await expect(page.locator('.menu-card a[href="/groups"]')).toHaveCount(0);
+    await expect(
+      page.locator('.menu-card a[href="/account/notifications"]'),
+    ).toHaveCount(0);
+    await expect(page.getByText(/연속 운동에는 기존 운동 이력이/)).toHaveCount(
+      0,
+    );
+    await group.click();
+    await expect(page).toHaveURL("/groups");
+    await expectBottomMenu(page, "내 그룹");
+    await expect(account).not.toHaveAttribute("aria-current");
+    await expect(group.locator("svg")).toHaveCSS("fill", "rgb(255, 127, 0)");
+    await group.focus();
+    await page.keyboard.press("Tab");
+    await expect(account).toBeFocused();
+    await home.click();
+    const bell = page
+      .getByRole("main")
+      .getByRole("link", { name: "알림", exact: true });
+    await expect(bell).toBeVisible();
+    const toolbar = (await page.locator(".home-toolbar").boundingBox())!;
+    const bellBox = (await bell.boundingBox())!;
+    const balance = (await page
+      .getByRole("group", { name: "보유 재화" })
+      .boundingBox())!;
+    expect(balance.x).toBeGreaterThan(bellBox.x + bellBox.width);
+    expect(balance.x + balance.width).toBeCloseTo(toolbar.x + toolbar.width, 1);
+    await expect(
+      page.getByText("그룹 알림 확인하기", { exact: true }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByText("내 그룹과 함께 운동하기", { exact: true }),
+    ).toHaveCount(0);
+    await expect(page.getByText(/연속 운동에는 기존 운동 이력이/)).toHaveCount(
+      0,
+    );
+    const mascots = page
+      .getByRole("region", { name: "내 그룹의 햄스터" })
+      .getByRole("link", { name: "그룹 만들기·가입하기", exact: true });
+    await expect(
+      page.getByRole("region", { name: "내 그룹의 햄스터" }).getByRole("img"),
+    ).toHaveCount(0);
+    await expect(mascots).toHaveCount(0);
+    await group.focus();
+    await group.press("Enter");
+    await expect(page).toHaveURL("/groups");
+    await home.click();
+    await bell.click();
+    await expect(page).toHaveURL("/account/notifications");
+    await page.getByRole("link", { name: "이전 화면", exact: true }).click();
+    await expect(page).toHaveURL("/");
     await page.screenshot({ path: info.outputPath(`navigation-${width}.png`) });
 
     for (const path of [

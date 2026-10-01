@@ -1,0 +1,31 @@
+.layout {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+.preview,
+.items {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+  align-content: start;
+}
+@media (min-width: 960px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+    align-items: start;
+  }
+}
+
+.stage {
+  position: relative;
+}
+.dressed {
+  padding-bottom: 62px;
+}
+.reset {
+  position: absolute;
+  right: 16px;
+  bottom: 12px;
+  width: auto;
+}
