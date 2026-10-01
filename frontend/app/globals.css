@@ -2415,6 +2415,26 @@ fieldset:disabled select {
   padding: 12px 0;
   font-size: 13px;
 }
+.personal-wheel {
+  width: 240px;
+  height: 240px;
+  border-radius: 50%;
+  background: repeating-conic-gradient(#f4cb71 0deg 45deg, #fff0c6 45deg 90deg);
+  border: 10px solid #fff;
+  outline: 2px solid #e4c789;
+  margin: 22px auto;
+  display: grid;
+  place-items: center;
+}
+.personal-wheel span {
+  display: grid;
+  place-items: center;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: #fffdf4;
+  font-size: 58px;
+}
 @media (min-width: 700px) {
   .shop-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));

@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { HomeGroups } from "./home-groups";
 import { MyCharacter } from "./my-character";
+import { RewardLinks } from "./personal-roulette";
 import { ArrowRight, Bell, ClipboardList } from "lucide-react";
 import { Loading, Notice, Shell } from "./ui";
 import { TodayWorkout } from "./today-workout";
@@ -72,6 +73,7 @@ export function Home() {
                 <TodayWorkout embedded />
               </section>
               <WorkoutStreak />
+              <RewardLinks />
             </div>
           </>
         )}
