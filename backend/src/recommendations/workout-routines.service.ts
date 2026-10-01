@@ -1,3 +1,4 @@
+import { recordRoutineReward } from '../users/activity-rewards.service.js';
 import { recordActivityAchievement } from '../groups/mission-contributions.js';
 import { retryTransaction } from '../database/transaction-retry.js';
 import {
@@ -346,7 +347,7 @@ export class WorkoutRoutinesService {
         item.resultStatus === status &&
         watchedSeconds(item.intervals as PlaybackInterval[]) === watched &&
         (await this.finalizedWatchedSeconds(tx, item)) === watched;
-      if (
+      const wholeRoutineCompleted =
         !replayed &&
         status === 'completed' &&
         routine.items.every(
@@ -355,8 +356,8 @@ export class WorkoutRoutinesService {
             (entry.status === 'completed' &&
               entry.completedAt !== null &&
               entry.completedAt <= now),
-        )
-      )
+        );
+      if (wholeRoutineCompleted)
         await recordActivityAchievement(
           this.database,
           tx,
@@ -397,6 +398,8 @@ export class WorkoutRoutinesService {
           resultingRevision: updated.revision,
         },
       });
+      if (wholeRoutineCompleted)
+        await recordRoutineReward(this.database, tx, userId, routineId, now);
       return {
         routine: this.response(await this.owned(tx, userId, routineId), now),
         replayed,

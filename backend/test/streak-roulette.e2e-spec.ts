@@ -517,14 +517,19 @@ describe('personal streak roulette on real PostgreSQL', () => {
           fallback: { applied: false, reason: null },
         },
       });
-      expect(await balance()).toBe(amount);
+      expect(await balance()).toBe(amount + 5);
       expect(
-        await db.currencyTransaction.findMany({ where: { userId: owner } }),
+        await db.currencyTransaction.findMany({
+          where: {
+            userId: owner,
+            eventKey: `streak-roulette:${result.draw.id}`,
+          },
+        }),
       ).toMatchObject([
         {
           kind: 'grant',
           amount,
-          balanceAfter: amount,
+          balanceAfter: amount + 5,
           eventKey: `streak-roulette:${result.draw.id}`,
           purchaseId: null,
         },
@@ -560,7 +565,7 @@ describe('personal streak roulette on real PostgreSQL', () => {
       actualReward: { kind: 'seeds', amount: 50, productId: null },
       fallback: { applied: true, reason: 'no_eligible_product' },
     });
-    expect(await balance()).toBe(50);
+    expect(await balance()).toBe(55);
   });
 
   it('selects uniformly across unowned clothing products and excludes default/held/retired/owned', async () => {
@@ -608,11 +613,11 @@ describe('personal streak roulette on real PostgreSQL', () => {
         where: { userId_productId: { userId: owner, productId: pool[3] } },
       }),
     ).toMatchObject({ source: 'streak_roulette', acquiredAt: now });
-    expect(await balance()).toBe(0);
+    expect(await balance()).toBe(5);
     expect(await db.avatarPurchase.count({ where: { userId: owner } })).toBe(0);
     expect(
       await db.currencyTransaction.count({ where: { userId: owner } }),
-    ).toBe(0);
+    ).toBe(5);
     expect(await avatar.outfit(owner)).toEqual(outfit);
     // Shared inventory is unchanged by character switching.
     expect((await avatar.inventory(owner)).inventory).toContainEqual({
@@ -641,7 +646,7 @@ describe('personal streak roulette on real PostgreSQL', () => {
       actualReward: { kind: 'seeds', amount: 70, productId: null },
       fallback: { applied: true, reason: 'no_eligible_product' },
     });
-    expect(await balance()).toBe(70);
+    expect(await balance()).toBe(80);
     expect(await avatar.outfit(owner)).toEqual(outfit);
   });
 
@@ -699,13 +704,13 @@ describe('personal streak roulette on real PostgreSQL', () => {
     expect(contested.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
     expect(contested.filter((r) => r.status === 'rejected')).toHaveLength(1);
     await spin(earned[2].id);
-    expect(await balance()).toBe(3);
+    expect(await balance()).toBe(18);
     expect(
       await db.streakRouletteDraw.count({ where: { userId: owner } }),
     ).toBe(3);
     expect(
       await db.currencyTransaction.count({ where: { userId: owner } }),
-    ).toBe(3);
+    ).toBe(18);
   });
 
   it('serializes purchase against two item spins, never charging for an already won item', async () => {
@@ -727,7 +732,7 @@ describe('personal streak roulette on real PostgreSQL', () => {
     expect(draws).toHaveLength(2);
     if (purchase.status === 'fulfilled') {
       expect(draws.every((d) => d.fallback.applied)).toBe(true);
-      expect(await balance()).toBe(190); // 100 - 50 + 70 + 70
+      expect(await balance()).toBe(200); // daily 10 + 100 - 50 + 70 + 70
       expect(await db.avatarPurchase.count({ where: { userId: owner } })).toBe(
         1,
       );
@@ -739,7 +744,7 @@ describe('personal streak roulette on real PostgreSQL', () => {
         1,
       );
       expect(draws.filter((d) => d.fallback.applied)).toHaveLength(1);
-      expect(await balance()).toBe(170);
+      expect(await balance()).toBe(180);
       expect(await db.avatarPurchase.count({ where: { userId: owner } })).toBe(
         0,
       );
@@ -838,7 +843,7 @@ describe('personal streak roulette on real PostgreSQL', () => {
     expect(await balance()).toBe(0);
     expect(
       await db.currencyTransaction.count({ where: { userId: owner } }),
-    ).toBe(0);
+    ).toBe(5);
     expect(
       await db.streakRouletteDraw.count({ where: { userId: owner } }),
     ).toBe(0);
@@ -874,12 +879,12 @@ describe('personal streak roulette on real PostgreSQL', () => {
     );
     await expect(spin(ticket.id)).rejects.toThrow();
     expect((await tickets()).availableCount).toBe(1);
-    expect(await balance()).toBe(0);
+    expect(await balance()).toBe(5);
     // Invalid injected product index produces an actual error, never a fallback.
     itemIndex = 9999;
     await expect(spin(ticket.id)).rejects.toThrow('Invalid product index');
     expect((await tickets()).availableCount).toBe(1);
-    expect(await balance()).toBe(0);
+    expect(await balance()).toBe(5);
     itemIndex = 0;
     const policy = await db.streakRoulettePolicy.findUniqueOrThrow({
       where: { version: ticket.policyVersion },
@@ -976,7 +981,7 @@ describe('personal streak roulette on real PostgreSQL', () => {
     }
     expect(
       await db.currencyTransaction.count({ where: { userId: owner } }),
-    ).toBe(1);
+    ).toBe(11);
     await db.user.delete({ where: { id: owner } });
     expect(
       await db.streakRouletteDraw.findUnique({ where: { id: draw.id } }),

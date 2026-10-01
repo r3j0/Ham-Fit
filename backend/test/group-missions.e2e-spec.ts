@@ -59,6 +59,7 @@ function setupRoutineFactory(db: DatabaseService) {
     });
 }
 
+// Expected balances include the independently tested daily completion seed.
 describe('group missions/roulette on real PostgreSQL', () => {
   let app: INestApplication<App>;
   let db: DatabaseService;
@@ -772,7 +773,7 @@ describe('group missions/roulette on real PostgreSQL', () => {
     await expect(
       missions.spin(owner, groupId, ticketId, key),
     ).rejects.toMatchObject({ status: 403 });
-    expect(await balance(owner)).toBe(1);
+    expect(await balance(owner)).toBe(2);
   });
   it.each([
     [0, 1],
@@ -784,7 +785,7 @@ describe('group missions/roulette on real PostgreSQL', () => {
     roll = value;
     const result = await missions.spin(owner, groupId, ticketId, randomUUID());
     expect(result.draw.myReward[0].amount).toBe(amount);
-    expect(await balance(owner)).toBe(amount);
+    expect(await balance(owner)).toBe(amount + 1);
     expect(await balance(member)).toBe(0);
     expect(result.draw.recipients).toHaveLength(1);
   });
@@ -830,9 +831,9 @@ describe('group missions/roulette on real PostgreSQL', () => {
           .sort((a, b) => (a ?? '').localeCompare(b ?? '')),
       ).toEqual([owner, other].sort((a, b) => a.localeCompare(b)));
       for (const userId of [owner, other])
-        expect(await balance(userId)).toBe(amount);
+        expect(await balance(userId)).toBe(amount + (userId === owner ? 1 : 0));
       for (const userId of [member, zero, late])
-        expect(await balance(userId)).toBe(0);
+        expect(await balance(userId)).toBe(userId === late ? 1 : 0);
       expect(await missions.draws(other, groupId, { limit: 50 })).toMatchObject(
         {
           items: [
@@ -854,7 +855,7 @@ describe('group missions/roulette on real PostgreSQL', () => {
       missions.spin(owner, groupId, ticketId, key),
     ]);
     expect(results[0].draw).toEqual(results[1].draw);
-    expect(await balance(owner)).toBe(3);
+    expect(await balance(owner)).toBe(4);
     expect(await balance(member)).toBe(3);
     const otherTicket = (await tickets(groupId)).find(
       (ticket) => ticket.usable,
@@ -884,7 +885,7 @@ describe('group missions/roulette on real PostgreSQL', () => {
       missions.spin(owner, groupId, ticketId, randomUUID()),
     ]);
     expect(results.filter((row) => row.status === 'fulfilled')).toHaveLength(1);
-    expect(await balance(owner)).toBe(1);
+    expect(await balance(owner)).toBe(2);
   });
   it('rolls back ticket/draw/every currency transaction when the second group grant fails', async () => {
     const { groupId, ticketId } = await finished();
@@ -903,19 +904,19 @@ describe('group missions/roulette on real PostgreSQL', () => {
       'injected payout failure',
     );
     spy.mockRestore();
-    expect(await balance(owner)).toBe(0);
+    expect(await balance(owner)).toBe(1);
     expect(await balance(member)).toBe(0);
     expect(await db.groupRouletteDraw.count({ where: { ticketId } })).toBe(0);
     expect(
       await db.currencyTransaction.count({
         where: { userId: { in: [owner, member] } },
       }),
-    ).toBe(0);
+    ).toBe(1);
     expect(
       (await tickets(groupId)).find((ticket) => ticket.id === ticketId)?.usable,
     ).toBe(true);
     await missions.spin(owner, groupId, ticketId, key);
-    expect(await balance(owner)).toBe(3);
+    expect(await balance(owner)).toBe(4);
     expect(await balance(member)).toBe(3);
   });
   it('keeps balance caps and serializes payouts against shop purchases', async () => {
@@ -928,7 +929,7 @@ describe('group missions/roulette on real PostgreSQL', () => {
     await expect(
       missions.spin(owner, groupId, ticketId, randomUUID()),
     ).rejects.toMatchObject({ response: { code: 'BALANCE_LIMIT' } });
-    expect(await balance(owner)).toBe(0);
+    expect(await balance(owner)).toBe(1);
     expect(
       (await tickets(groupId)).find((t) => t.id === ticketId)?.usable,
     ).toBe(true);
@@ -947,7 +948,7 @@ describe('group missions/roulette on real PostgreSQL', () => {
         catalogRevision: product.catalogRevision,
       }),
     ]);
-    expect(await balance(owner)).toBe(103 - product.price!);
+    expect(await balance(owner)).toBe(104 - product.price!);
     const ledger = await db.currencyTransaction.findMany({
       where: { userId: owner },
     });
@@ -1075,7 +1076,7 @@ describe('group missions/roulette on real PostgreSQL', () => {
       where: { drawId: draw.draw.id, userId: null },
     });
     expect(anonymous).toMatchObject({ amount: 3, transactionId: null });
-    expect(await balance(owner)).toBe(6);
+    expect(await balance(owner)).toBe(7);
   });
   it('paginates mission/ticket/draw history without mutating data', async () => {
     const { groupId, ticketId } = await finished();
@@ -1173,7 +1174,7 @@ describe('group missions/roulette on real PostgreSQL', () => {
     );
     expect(replay.overlaps).toBe(0);
     expect(replay.value).toEqual({ draw: first.value.draw, replayed: true });
-    expect(await balance(owner)).toBe(3);
+    expect(await balance(owner)).toBe(4);
     expect(await balance(member)).toBe(3);
     expect(await db.groupRouletteDraw.count({ where: { ticketId } })).toBe(1);
   });
@@ -1264,7 +1265,7 @@ describe('group missions/roulette on real PostgreSQL', () => {
       await reached;
       release();
       const [result] = await Promise.all([spin, deletion]);
-      expect(await balance(owner)).toBe(3);
+      expect(await balance(owner)).toBe(4);
       expect(await db.user.findUnique({ where: { id: member } })).toBeNull();
       expect(await db.groupRouletteDraw.count({ where: { ticketId } })).toBe(1);
       expect(

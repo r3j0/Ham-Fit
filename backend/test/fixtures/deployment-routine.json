@@ -1,0 +1,9 @@
+{
+  "profile": { "age": 26 },
+  "fitness100": { "fitness": { "muscularEndurance": 1 } },
+  "logs": [],
+  "current_date": "2026-10-01",
+  "goal": "general",
+  "routine_level": "normal",
+  "owned_tools": []
+}

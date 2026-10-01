@@ -1,34 +1,40 @@
 # 사용자 캐릭터·대표 코디·해바라기씨 상점 API
 
-기준: 2026-09-30. 구현 범위는 `backend/`이며 FE 화면·에셋은 변경하지 않았다. [검증 기록](avatar-shop-verification.md)을 함께 참고한다.
+기준: 2026-10-01, FE 요청 `6e600bf`. 구현 범위는 `backend/`이며 FE 화면·에셋은 변경하지 않았다. [출력기 v2 등록·검증](avatar-outputter-v2.md)과 [초기 상점 검증 기록](avatar-shop-verification.md)을 함께 참고한다.
 
 ## 확정 정책과 현재 등록 범위
 
 - 사용자 답변으로 **구매한 자세·의상은 크림·그레이 공용 소유**로 확정했다. 공용 소유와 실제 렌더링 지원은 별개다.
-- 신규·기존 사용자에게 `character.cream`, `character.gray`, `pose.basic`만 기본 지급한다. 최초 대표 코디는 크림/basic/의상 없음이다. 재화 기본값은 기존 `UserCurrency`의 0이다. 가입·운동 완료 자체의 직접 재화 보상은 없으며, 2026-09-30 [그룹 룰렛](group-missions.md)과 2026-10-01 [개인 연속 운동 룰렛](streak-roulette.md)이 기존 개인 재화에 당첨 보상을 지급한다. 운동 성공은 개인 룰렛권을 적립하며 사용자가 추첨할 때 보상을 지급한다.
-- FE의 `components/mascot/mascot-poses.d.ts`, `mascot-poses.js`, `wardrobe.js`, `MascotPose.tsx`, `public/mascots/poses`를 읽기 전용으로 확인했다. 두 캐릭터, 13개 자세, 기존 스포츠웨어 4종의 130개 조합에서 참조 이미지 파일 존재를 확인했다. 이미지 품질·부위별 합성은 검증하지 않았다.
-- 후속 사용자 결정: 기존 합본 이미지 `blue-sportswear`, `black-sportswear`, `white-sportswear`, `green-sportswear`는 **카탈로그에서 제외**한다. 세트 상품 가격·전환·분리 소유권을 만들지 않는다. FE 파일은 보존한다.
-- 따라서 초기 카탈로그는 캐릭터 2 + 자세 13 = 15개, 의상 미착용 지원 조합은 26개다. 의상 상품은 아직 0개이며 모자·상의·하의의 가상 이미지나 상품을 판매하지 않는다.
-- 분리 의상 등록 시 초기 가격 기준은 **모자 30, 상의 25, 하의 20 해바라기씨**다. 이미지·렌더링 지원 확인 후 실제 상품 행에 가격을 등록한다.
-- 아래 유료 자세 가격은 **임시값**이다. 최종 기준은 DB 상품 행이며 코드·FE 표시값이 아니다.
+- 신규·기존 사용자에게 `character.cream`, `character.gray`, `pose.basic`만 기본 지급한다. 최초 대표 코디는 크림/basic/의상 없음이며 가입 재화 보상은 없다. 2026-10-01부터 [하루 전체 루틴 완료 보상](activity-rewards.md)이 KST 날짜별 씨앗 1개를 지급한다. 기존 [그룹 룰렛](group-missions.md)과 [개인 연속 운동 룰렛](streak-roulette.md)의 지급 규칙은 유지한다.
+- FE `BACKEND-REQUESTS.md`의 `hamster-outputter-v2` 등록 범위를 따른다. 새 자세 4개는 크림·그레이 미착용 조합을 등록하고 `mint-shirt`는 두 캐릭터의 basic 자세에만 등록한다. 상의 슬롯 하나를 점유한다.
+- 합본 스포츠웨어 `blue-sportswear`, `black-sportswear`, `white-sportswear`, `green-sportswear`는 계속 제외한다. 미검증 모자·하의·다른 의상 조합을 생성하지 않는다.
+- 현재 상품은 20개(캐릭터 2, 자세 17, 상의 1), 전체 조합은 36개다. 그중 a-plus의 2개 조합은 기존 소유·코디 호환을 위해 보존한다. 판매 상품은 자세 15개와 상의 1개다.
+- 아래 가격은 사용자 요청으로 **확정**했으며 판매 상품은 `priceProvisional=false`다. 구매는 DB의 현재 가격·revision을 사용하며 임시 가격인 상품은 `409 PRICE_NOT_CONFIRMED`로 거절한다.
 
-| 상품 ID         | FE renderKey | 초기 가격 | 상태    |
-| --------------- | ------------ | --------: | ------- |
-| character.cream | cream        |      null | default |
-| character.gray  | gray         |      null | default |
-| pose.basic      | basic        |      null | default |
-| pose.curious    | curious      |        50 | on_sale |
-| pose.a-plus     | a-plus       |        60 | on_sale |
-| pose.drink      | drink        |        50 | on_sale |
-| pose.lying      | lying        |        50 | on_sale |
-| pose.stretch    | stretch      |        60 | on_sale |
-| pose.run        | run          |        70 | on_sale |
-| pose.passion    | passion      |        60 | on_sale |
-| pose.victory    | victory      |        60 | on_sale |
-| pose.pushup     | pushup       |        70 | on_sale |
-| pose.situp      | situp        |        70 | on_sale |
-| pose.droopy     | droopy       |        50 | on_sale |
-| pose.cant-hear  | cant-hear    |        50 | on_sale |
+| 상품 ID             | FE renderKey | 확정 가격 | 상태    |
+| ------------------- | ------------ | --------: | ------- |
+| character.cream     | cream        |      null | default |
+| character.gray      | gray         |      null | default |
+| pose.basic          | basic        |      null | default |
+| pose.curious        | curious      |        50 | on_sale |
+| pose.a-plus         | a-plus       |      null | retired |
+| pose.drink          | drink        |        50 | on_sale |
+| pose.lying          | lying        |        50 | on_sale |
+| pose.stretch        | stretch      |        50 | on_sale |
+| pose.run            | run          |        70 | on_sale |
+| pose.passion        | passion      |        70 | on_sale |
+| pose.victory        | victory      |        70 | on_sale |
+| pose.pushup         | pushup       |        70 | on_sale |
+| pose.situp          | situp        |        70 | on_sale |
+| pose.droopy         | droopy       |        50 | on_sale |
+| pose.cant-hear      | cant-hear    |        50 | on_sale |
+| pose.foam-roller    | foam-roller  |        50 | on_sale |
+| pose.phone          | phone        |        50 | on_sale |
+| pose.toilet         | toilet       |        50 | on_sale |
+| pose.weight         | weight       |        70 | on_sale |
+| clothing.mint-shirt | mint-shirt   |        25 | on_sale |
+
+`a-plus`는 신규 구매와 개인 룰렛 후보에서 제외한다. 기존 SKU·소유권·구매 금액·저장 코디는 보존하고 기본 자세로의 복귀도 허용한다. 이전 성공 구매 요청은 기존 키/body로 재전송할 수 있다.
 
 ## 공통 계약
 
@@ -61,8 +67,8 @@
       "scopeCharacterId": null,
       "saleStatus": "on_sale",
       "price": 70,
-      "priceProvisional": true,
-      "catalogRevision": 1
+      "priceProvisional": false,
+      "catalogRevision": 2
     }
   ],
   "combinations": [
@@ -82,6 +88,7 @@
 - `ownershipScope=shared`, `scopeCharacterId=null`이 현재 정책이다. 스키마는 향후 별도 정책 검토를 위한 pending/character 상태를 표현하지만 현행 상품으로 사용하지 않는다. 획득된 SKU의 소유권 정책은 변경할 수 없다.
 - `saleStatus`: `default` 기본 지급/비판매, `on_sale` 판매, `held` 등록 후 검증·판매 보류, `retired` 판매 종료. 판매 종료해도 기존 소유·착용은 유지한다. 상품·호환 정보를 판매 여부로 필터링해 버리면 기존 구매자의 렌더링이 깨지므로 전체를 반환한다.
 - `price=null`은 구매 가격이 없다는 뜻이다. 무료 구매가 아니다. `basic`과 기본 캐릭터는 구매할 수 없다. 유료 가격은 양의 정수다.
+- `catalogRevision` 예시의 2는 신규 설치에서 기존 자세 가격을 확정한 버전이다. 실제 요청에는 항상 최신 상품 조회의 값을 사용한다.
 - `combinations`에 **전체 조합이 정확히 있어야** 저장 가능하다. 개별 모자와 상의가 각각 지원된다고 동시 착용까지 추정하면 안 된다. 미보유 상품 미리보기는 FE 내부 상태로만 처리하며 구매/코디 저장 API를 호출하지 않는다.
 
 ## 본인 보유·잔액 조회
@@ -122,7 +129,7 @@ X-CSRF-Protection: 1
 Content-Type: application/json
 Idempotency-Key: 93ce4e82-c34a-4f97-a59a-dc0e6e031117
 
-{"productId":"pose.run","catalogRevision":1}
+{"productId":"pose.run","catalogRevision":2}
 ```
 
 잔액이 100인 사용자의 성공 응답 예시(구매 잔액은 테스트·예시일 뿐 가입 지급량이 아니다):
@@ -134,7 +141,7 @@ Idempotency-Key: 93ce4e82-c34a-4f97-a59a-dc0e6e031117
     "id": "d8fdfec5-f8df-4fd9-a86c-502764d8022f",
     "productId": "pose.run",
     "price": 70,
-    "catalogRevision": 1,
+    "catalogRevision": 2,
     "createdAt": "2026-09-30T00:01:00.000Z"
   },
   "currency": { "balance": 30 },
@@ -221,7 +228,7 @@ BE는 아이템 종류, 전부 소유 여부, 부위 중복, 캐릭터 귀속 �
 FE 렌더링:
 
 - 현재 미착용 상태는 `MascotPose`의 `variant=rendering.variant`, `pose=rendering.pose`, `outfit={}`로 대응된다. 기존 스포츠웨어를 추측해 붙이지 않는다.
-- 향후 분리 의상은 `rendering.clothing[]`의 `{productId, slot, renderKey, occupiesSlots}`를 새 FE 레이어 렌더러에 전달한다. 현재 `outfit.wear`의 단일 이미지 교체 방식과 자동 호환되지 않는다.
+- 분리 의상은 `rendering.clothing[]`의 `{productId, slot, renderKey, occupiesSlots}`를 새 FE 레이어 렌더러에 전달한다. 현재 `outfit.wear`의 단일 이미지 교체 방식과 자동 호환되지 않는다.
 - 현재 FE에는 마이룸이 없으므로 본인 보유 조회 → 로컬 미리보기/편집 → 명시적 저장 UI는 FE 후속 작업이다. 미리보기만으로 PUT하지 않는다.
 
 ## 그룹 프로필
@@ -249,6 +256,7 @@ FE 렌더링:
 | 403               | ITEM_NOT_OWNED                                                       | 보유 목록 재조회                                            |
 | 404               | PRODUCT_NOT_FOUND                                                    | 카탈로그 갱신; 제외된 기존 세트도 해당                      |
 | 409               | NOT_FOR_SALE                                                         | 구매 버튼 비활성화·조건 재조회                              |
+| 409               | PRICE_NOT_CONFIRMED                                                  | 가격 확정 후 최신 카탈로그 재조회                           |
 | 409               | ALREADY_OWNED                                                        | 보유/잔액 갱신, 재차감 없음                                 |
 | 409               | INSUFFICIENT_FUNDS                                                   | 현재 잔액 표시                                              |
 | 409               | CATALOG_CHANGED                                                      | 변경 가격 확인 후 새 구매 요청                              |

@@ -1,0 +1,25 @@
+# Dockerfile-specific allowlist; takes precedence over a root .dockerignore.
+**
+!backend/
+!backend/**
+backend/node_modules/
+backend/.local/
+backend/dist/
+backend/coverage/
+backend/src/generated/
+backend/test/
+backend/docs/
+backend/**/*.spec.ts
+backend/**/.env
+backend/**/.env.*
+backend/**/*.log
+backend/**/*.env
+backend/**/.DS_Store
+backend/deploy/github-actions.yml
+backend/deploy/render.env.example
+!data-analysis/
+!data-analysis/src/
+!data-analysis/src/recommendation_v2.py
+!data-analysis/data/
+!data-analysis/data/processed/
+!data-analysis/data/processed/workout_videos_v2_complete.csv
