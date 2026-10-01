@@ -38,5 +38,8 @@ export function pageOf<T>(
     !(page.nextCursor === null || uuid(page.nextCursor))
   )
     invalid();
-  return { items: page.items.map(parse), nextCursor: page.nextCursor };
+  return {
+    items: page.items.map((item) => parse(item)),
+    nextCursor: page.nextCursor,
+  };
 }

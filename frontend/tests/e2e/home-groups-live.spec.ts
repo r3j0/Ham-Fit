@@ -52,6 +52,12 @@ test("실제 API: 가입한 두 그룹의 멤버·닉네임을 표시하고 탈�
       expect(response.status()).toBe(201);
       ids.push((await response.json()).id);
     }
+    await page.goto("/groups");
+    const joined = page.getByRole("list", { name: "가입한 그룹" });
+    await expect(joined.getByRole("listitem")).toHaveCount(2);
+    for (const id of ids)
+      await expect(joined.locator(`a[href="/groups/${id}"]`)).toBeVisible();
+    await expect(page.getByRole("main").getByRole("alert")).toHaveCount(0);
     const invite = await (
       await page.request.get(`${api}/groups/${ids[1]}/invite-code`, {
         headers: leader,
