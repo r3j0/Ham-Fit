@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
-import { Check, ChevronRight, Flame } from "lucide-react";
+import Image from "next/image";
+import { ChevronRight, Flame } from "lucide-react";
 import { dateFromKey, shiftDay } from "@/lib/workout-history";
 import {
   useWorkoutHistory,
@@ -21,7 +22,7 @@ export function WorkoutStreak() {
   );
   return (
     <section className="stack" aria-labelledby="workout-streak-title">
-      <div className="section-heading">
+      <div className={`section-heading ${styles.streakHeading}`}>
         <Flame size={22} aria-hidden="true" />
         <h2 id="workout-streak-title">연속 운동</h2>
       </div>
@@ -66,7 +67,13 @@ export function WorkoutStreak() {
                       aria-hidden="true"
                     >
                       {done ? (
-                        <Check size={19} strokeWidth={2.5} />
+                        <Image
+                          src="/icons/sunflower.png"
+                          alt=""
+                          width={24}
+                          height={25}
+                          className={styles.sunflower}
+                        />
                       ) : (
                         <span className={styles.emptyDot} />
                       )}

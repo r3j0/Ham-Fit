@@ -66,15 +66,11 @@
   font-weight: 700;
   overflow-wrap: anywhere;
 }
-.state,
-.empty {
+.state {
   display: grid;
   align-content: center;
   gap: 8px;
   min-height: 170px;
-}
-.empty {
-  text-align: center;
 }
 .root :global(.loading) {
   min-height: 170px;

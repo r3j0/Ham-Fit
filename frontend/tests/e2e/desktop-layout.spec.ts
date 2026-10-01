@@ -101,8 +101,17 @@ test("메인의 알림은 전체 콘텐츠 우측 상단에 두고 미등록 안
         };
       });
       const bellBox = (await bell.boundingBox())!;
-      expect(bellBox.x + bellBox.width).toBeCloseTo(content.right, 1);
-      expect(bellBox.y).toBeCloseTo(content.top, 1);
+      const balanceBox = (await page
+        .getByRole("group", { name: "보유 재화" })
+        .boundingBox())!;
+      expect(balanceBox.x + balanceBox.width).toBeCloseTo(content.right, 1);
+      expect(bellBox.x + bellBox.width).toBeLessThanOrEqual(balanceBox.x);
+      const toolbarBox = (await page.locator(".home-toolbar").boundingBox())!;
+      expect(toolbarBox.y).toBeCloseTo(content.top, 1);
+      expect(bellBox.y + bellBox.height / 2).toBeCloseTo(
+        toolbarBox.y + toolbarBox.height / 2,
+        1,
+      );
       const left = (await companions.boundingBox())!,
         right = (await activity.boundingBox())!;
       if (onboarded) {

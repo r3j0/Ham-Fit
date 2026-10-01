@@ -94,6 +94,7 @@ export function HomeGroups() {
     const next = groups[(index + direction + groups.length) % groups.length];
     setSelection({ id: next.id, direction });
   }
+  if (resource.data && resource.error === undefined && !selected) return null;
   return (
     <section className={styles.root} aria-label="내 그룹의 햄스터">
       {resource.error !== undefined ? (
@@ -105,11 +106,7 @@ export function HomeGroups() {
         </div>
       ) : !resource.data ? (
         <Loading label="내 그룹을 불러오고 있어요" />
-      ) : !selected ? (
-        <div className={styles.empty}>
-          <p className="muted">아직 가입한 그룹이 없어요.</p>
-        </div>
-      ) : (
+      ) : selected ? (
         <div className={styles.carousel} data-multiple={groups.length > 1}>
           {groups.length > 1 && (
             <button
@@ -137,7 +134,7 @@ export function HomeGroups() {
             </button>
           )}
         </div>
-      )}
+      ) : null}
     </section>
   );
 }

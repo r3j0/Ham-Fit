@@ -6,6 +6,7 @@
   min-width: 0;
 }
 .title {
+  color: var(--navy);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -15,6 +16,7 @@
   flex: none;
 }
 .title h2 {
+  color: inherit;
   font-size: clamp(16px, 2vw, 22px);
   white-space: nowrap;
 }
