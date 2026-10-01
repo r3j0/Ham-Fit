@@ -2062,15 +2062,16 @@ fieldset:disabled select {
   .home-content {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    grid-template-rows: auto 1fr;
+    grid-template-rows: auto auto;
     align-content: start;
     align-items: center;
-    gap: 32px 48px;
+    gap: 16px 48px;
     min-height: calc(100dvh - var(--bottom-navigation-height) - 64px);
   }
   .home-content > .home-toolbar {
     grid-column: 1 / -1;
     grid-row: 1;
+    margin-bottom: -8px;
   }
   .home-content > .loading,
   .home-content > div.stack {
@@ -2098,6 +2099,10 @@ fieldset:disabled select {
   }
   .home-content .curriculum-card {
     padding-bottom: 0;
+  }
+  .home-mascot-stage .my-character > [data-pose="basic"] {
+    /* Trim half the basic pose's 24% transparent top at its 112% canvas width. */
+    margin-top: -13.44%;
   }
   .profile-card {
     grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr) minmax(0, 1.2fr);
