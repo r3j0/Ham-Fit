@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { HomeGroups } from "./home-groups";
+import { SeedBalance } from "./seed-balance";
 import { MyCharacter } from "./my-character";
 import { RewardLinks } from "./personal-roulette";
 import { ArrowRight, Bell, ClipboardList } from "lucide-react";
@@ -24,6 +25,15 @@ export function Home() {
           >
             <Bell size={24} aria-hidden="true" />
           </Link>
+          {user && (
+            <Link
+              href="/shop"
+              className="home-balance-link"
+              aria-label={`상점, 보유 해바라기씨 ${user.currency.balance.toLocaleString("ko-KR")}개`}
+            >
+              <SeedBalance balance={user.currency.balance} />
+            </Link>
+          )}
         </header>
         {profile.status === "loading" && (
           <Loading label="나의 기록을 확인하고 있어요" />

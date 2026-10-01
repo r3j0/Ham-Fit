@@ -140,9 +140,15 @@
 }
 .home-toolbar {
   display: flex;
+  align-items: center;
+  gap: 12px;
   justify-content: flex-end;
   min-height: 44px;
   margin-bottom: -16px;
+}
+.home-balance-link {
+  color: inherit;
+  text-decoration: none;
 }
 .home-companions,
 .home-activity {

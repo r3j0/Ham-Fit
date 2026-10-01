@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
+import { SeedBalance } from "./seed-balance";
 import { AccountCharacter } from "./account-character";
 import { LatestFitness } from "./latest-fitness";
 import { ProfileActivityReport } from "./profile-activity-report";
@@ -35,21 +35,7 @@ export function Account() {
       <div className="content stack">
         <header className="profile-toolbar">
           <h1>내 프로필</h1>
-          {user && (
-            <div
-              className="profile-balance"
-              role="group"
-              aria-label="보유 재화"
-            >
-              <Image
-                src="/icons/sunflower-seed.svg"
-                width={24}
-                height={34}
-                alt="해바라기씨"
-              />
-              <strong>{user.currency.balance.toLocaleString("ko-KR")}</strong>
-            </div>
-          )}
+          {user && <SeedBalance balance={user.currency.balance} />}
         </header>
         {logoutError && <Notice>{logoutError}</Notice>}
         {user ? (
