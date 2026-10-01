@@ -280,8 +280,8 @@ test("그룹원과 신청을 한 행에 표시하며 오늘 상태를 검증하�
     const row = region.getByRole("listitem").last(),
       name = row.getByRole("link");
     const hamster = (await row.locator(".profile-character").boundingBox())!;
-    expect(hamster.width).toBeCloseTo(50.4 * 1.4, 1);
-    expect(hamster.height).toBeCloseTo(50.4 * 1.4, 1);
+    expect(hamster.width).toBeCloseTo(75.6 * 1.4, 1);
+    expect(hamster.height).toBeCloseTo(75.6 * 1.4, 1);
     await expect(name).toHaveCSS("text-decoration-line", "none");
     const boxes = await row.evaluate((el) =>
       [...el.children].map((child) => {

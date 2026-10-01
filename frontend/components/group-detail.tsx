@@ -379,7 +379,7 @@ function GroupView({ row, refresh }: { row: Detail; refresh: () => void }) {
             <li key={member.userId} className={styles.memberRow}>
               <ProfileCharacter
                 outfit={member.profileCharacter}
-                size={50.4}
+                size={75.6}
                 label=""
               />
               <Link
