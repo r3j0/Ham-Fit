@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Header,
   Headers,
   HttpCode,
   Inject,
@@ -53,6 +54,7 @@ export class MeasurementsController {
   ) {}
 
   @Post()
+  @Header('Cache-Control', 'no-store, no-transform')
   async create(
     @Req() request: AuthenticatedRequest,
     @Headers('idempotency-key') key: unknown,
@@ -85,6 +87,7 @@ export class MeasurementsController {
   }
 
   @Get(':id')
+  @Header('Cache-Control', 'no-store, no-transform')
   async get(
     @Req() request: AuthenticatedRequest,
     @Param('id') id: string,
@@ -96,6 +99,7 @@ export class MeasurementsController {
   }
 
   @Patch(':id')
+  @Header('Cache-Control', 'no-store, no-transform')
   async patch(
     @Req() request: AuthenticatedRequest,
     @Param('id') id: string,
