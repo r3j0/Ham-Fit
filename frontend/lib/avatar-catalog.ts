@@ -3,11 +3,10 @@ import { POSES } from "../components/hamster/poses.ts";
 import { resolveHamster } from "../components/hamster/resolve.ts";
 import type { HamsterPose, ItemCatalog } from "../components/hamster/types.ts";
 
-export function parseRenderCatalog(value: unknown, apiBase: string) {
+export function parseRenderCatalog(value: unknown) {
   const body = object(value),
     catalog = object(body.catalog);
   if (!integer(body.revision, 0)) invalid();
-  const origin = new URL(apiBase).origin;
   for (const [id, value] of Object.entries(catalog)) {
     const item = object(value),
       poses = object(item.poses);
@@ -39,10 +38,16 @@ export function parseRenderCatalog(value: unknown, apiBase: string) {
           const layer = object(value);
           if (
             typeof layer.src !== "string" ||
-            !/^\/api\/v1\/avatar\/assets\/[a-f0-9]{64}\.png$/.test(layer.src)
+            !/^\/(?:hamsters\/wardrobe\/assets|api\/v1\/avatar\/assets)\/[a-f0-9]{64}\.png$/.test(
+              layer.src,
+            )
           )
             invalid();
-          layer.src = `${origin}${layer.src}`;
+          // Preserve historical hashes while serving every PNG from this frontend.
+          layer.src = layer.src.replace(
+            "/api/v1/avatar/assets/",
+            "/hamsters/wardrobe/assets/",
+          );
         }
         const selection = {
           pose: pose as HamsterPose,

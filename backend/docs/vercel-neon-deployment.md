@@ -19,7 +19,7 @@ node scripts/prepare-vercel.mjs
 
 ## 환경변수
 
-의상 관리자와 운영 상점 이미지 등록은 [운영 상점 등록 안내](avatar-production-publishing.md)를 따른다. Private Vercel Blob 저장소 연결과 `AVATAR_ASSET_STORAGE=vercel-blob`, 관리자 토큰 설정이 필요하다. 컨테이너의 임시 파일에 운영 PNG를 보관하지 않는다.
+의상 관리자와 운영 상점 이미지 등록은 [운영 상점 등록 안내](avatar-production-publishing.md)를 따른다. 의상 이미지는 프론트엔드 정적 파일로 배포하고 API에는 관리자 토큰과 DB 설정만 필요하다. 이미지·배치는 API/Storage에 저장하지 않는다.
 
 Git 제외 파일 `backend/.env.render`에 준비된 배포 전용 값들을 동일하게 사용한다. 이름이 Render를 포함해도 값은 플랫폼 공통이다. 시험 배포에는 Preview, 운영 배포에는 Production에 다음 값을 등록한다.
 

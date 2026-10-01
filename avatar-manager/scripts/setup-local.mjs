@@ -17,6 +17,7 @@ const token = tokens[0] ?? randomBytes(32).toString('hex');
 function set(text, key, value) { const line = `${key}=${value}`; const regex = new RegExp(`^${key}=.*$`, 'm'); return regex.test(text) ? text.replace(regex, line) : `${text.trimEnd()}\n${line}\n`; }
 let managerText = set(localText, 'AVATAR_MANAGER_TOKEN', token);
 if (!/^AVATAR_BACKEND_URL=/m.test(managerText)) managerText = set(managerText, 'AVATAR_BACKEND_URL', 'http://127.0.0.1:3001/api/v1');
+if (!/^AVATAR_FRONTEND_URL=/m.test(managerText)) managerText = set(managerText, 'AVATAR_FRONTEND_URL', 'http://127.0.0.1:3000');
 await writeFile(manager, managerText.trimStart(), { mode: 0o600 });
 await writeFile(backend, set(backendText, 'AVATAR_MANAGER_TOKEN', token).trimStart(), { mode: 0o600 });
 console.log('Configured server-only manager credential. Restart NestJS and avatar-manager; no token was printed.');

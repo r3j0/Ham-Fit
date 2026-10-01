@@ -2,44 +2,52 @@ import {
   BadRequestException,
   Controller,
   Get,
+  GoneException,
   Header,
   Inject,
-  Param,
   Post,
-  Res,
   UploadedFile,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
-import type { Response } from 'express';
 import { API_V1 } from '../config/api-version.js';
 import { AccessTokenGuard, AuthRequestGuard } from '../auth/auth.guards.js';
 import { AvatarManagerGuard } from './assets.guard.js';
-import { AvatarAssetFiles, MAX_PNG_BYTES } from './assets-files.js';
 import { AvatarAssetsService } from './assets.service.js';
+
+function retiredImages(): never {
+  throw new GoneException({
+    code: 'FRONTEND_ASSETS_REQUIRED',
+    message:
+      '의상 이미지는 프론트엔드 정적 파일로 배포하세요. 최신 편집기의 v2 등록은 상품 ID·가격만 등록합니다.',
+  });
+}
 
 @Controller({ path: 'avatar-manager', version: API_V1 })
 @UseGuards(AvatarManagerGuard)
 export class AvatarManagerController {
+  @Get('catalog') catalog() {
+    return retiredImages();
+  }
+  // Reject old editors before Multer, Sharp, or any storage request runs.
+  @Post('images') upload() {
+    return retiredImages();
+  }
+  @Post('publish') publish() {
+    return retiredImages();
+  }
+}
+
+@Controller({ path: 'avatar-manager', version: '2' })
+@UseGuards(AvatarManagerGuard)
+export class AvatarManagerV2Controller {
   constructor(
     @Inject(AvatarAssetsService) private readonly assets: AvatarAssetsService,
-    @Inject(AvatarAssetFiles) private readonly files: AvatarAssetFiles,
   ) {}
   @Get('catalog') @Header('Cache-Control', 'no-store') catalog() {
     return this.assets.managerCatalog();
-  }
-  @Post('images')
-  @UseInterceptors(
-    FileInterceptor('png', {
-      storage: memoryStorage(),
-      limits: { fileSize: MAX_PNG_BYTES, files: 1, fields: 0 },
-    }),
-  )
-  upload(@UploadedFile() file?: Express.Multer.File) {
-    if (!file) throw new BadRequestException('PNG 파일이 필요합니다.');
-    return this.files.upload(file.buffer);
   }
   @Post('publish')
   @Header('Cache-Control', 'no-store')
@@ -60,23 +68,16 @@ export class AvatarManagerController {
     return this.assets.publish(data);
   }
 }
+
 @Controller({ path: 'avatar', version: API_V1 })
 export class AvatarAssetsController {
-  constructor(
-    @Inject(AvatarAssetsService) private readonly assets: AvatarAssetsService,
-    @Inject(AvatarAssetFiles) private readonly files: AvatarAssetFiles,
-  ) {}
   @Get('render-catalog')
   @Header('Cache-Control', 'no-store')
   @UseGuards(AccessTokenGuard, AuthRequestGuard)
   catalog() {
-    return this.assets.catalog();
+    return retiredImages();
   }
-  @Get('assets/:filename')
-  async image(@Param('filename') filename: string, @Res() response: Response) {
-    const png = await this.files.read(filename);
-    response.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
-    response.setHeader('X-Content-Type-Options', 'nosniff');
-    response.type('image/png').send(png);
+  @Get('assets/:filename') image() {
+    return retiredImages();
   }
 }

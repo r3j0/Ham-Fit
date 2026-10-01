@@ -16,7 +16,7 @@ export const shirtAssets: Record<string, string> = {};
 for (const variant of ["cream", "gray"] as const) {
   const layer = renderCatalog["mint-shirt"].poses.basic![variant]!.layers[0];
   const body = readFileSync(resolve(__dirname, `../../public${layer.src}`));
-  const path = `/api/v1/avatar/assets/${createHash("sha256").update(body).digest("hex")}.png`;
+  const path = `/hamsters/wardrobe/assets/${createHash("sha256").update(body).digest("hex")}.png`;
   layer.src = path;
   shirtAssets[variant] = path;
   assetBodies.set(path, body);
@@ -97,11 +97,18 @@ export async function installCommerce(page: Page, allOwned = false) {
       })),
     ),
   );
+  await page.route("**/hamsters/wardrobe/catalog.json", (route) =>
+    route.fulfill({ json: { revision: 1, catalog: renderCatalog } }),
+  );
+  await page.route("**/hamsters/wardrobe/assets/*.png", (route) =>
+    route.fulfill({
+      contentType: "image/png",
+      body: assetBodies.get(new URL(route.request().url()).pathname)!,
+    }),
+  );
   await page.route("**/api/v1/**", async (route) => {
     const req = route.request(),
       path = new URL(req.url()).pathname.replace("/api/v1", "");
-    if (path === "/avatar/render-catalog")
-      return route.fulfill({ json: { revision: 1, catalog: renderCatalog } });
     const asset = assetBodies.get(new URL(req.url()).pathname);
     if (asset) return route.fulfill({ contentType: "image/png", body: asset });
     if (path === "/shop/products")

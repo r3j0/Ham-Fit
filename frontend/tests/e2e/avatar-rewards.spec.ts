@@ -255,6 +255,13 @@ test("민트 티셔츠 합성, 햄돌이·햄콩이 전환, 412 충돌과 작은
   page,
 }, info) => {
   const state = await installCommerce(page, true);
+  const displayRequests: string[] = [];
+  page.on("request", (request) => {
+    if (
+      /hamsters\/wardrobe|avatar\/(?:assets|render-catalog)/.test(request.url())
+    )
+      displayRequests.push(request.url());
+  });
   await page.goto("/shop/wardrobe");
   await page.getByRole("button", { name: "상의", exact: true }).click();
   await page.getByRole("button", { name: /민트 티셔츠.*보유 중/ }).click();
@@ -295,6 +302,16 @@ test("민트 티셔츠 합성, 햄돌이·햄콩이 전환, 412 충돌과 작은
   ).toBeDisabled();
   await page.getByRole("button", { name: "되돌리기" }).click();
   expect(state.outfit.clothingIds).toEqual([]);
+  expect(
+    displayRequests.some((url) =>
+      url.endsWith("/hamsters/wardrobe/catalog.json"),
+    ),
+  ).toBe(true);
+  expect(
+    displayRequests.some((url) =>
+      /\/api\/v\d+\/avatar\/(?:assets|render-catalog)/.test(url),
+    ),
+  ).toBe(false);
 });
 test("그룹 미션은 성장 모습과 참여 자격을 표시하고 룰렛 응답 유실을 복구한다", async ({
   page,

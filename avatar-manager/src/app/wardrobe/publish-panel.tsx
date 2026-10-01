@@ -7,7 +7,7 @@ type Combination = { pose: HamsterPose; variant: HamsterVariant; clothing: strin
 export function PublishPanel({ catalog, dirty, placementRevision, artworkRevision, onProductChange, onBusyChange }: { catalog: ItemCatalog; dirty: boolean; placementRevision: string; artworkRevision: string; onProductChange: (dirty: boolean) => void; onBusyChange: (busy: boolean) => void }) {
   const [revision, setRevision] = useState<number>();
   const [settings, setSettings] = useState<Record<string, ProductSettings>>({});
-  const [message, setMessage] = useState('NestJS 연결을 확인하는 중…');
+  const [message, setMessage] = useState('이미지를 내보낸 뒤 서버 연결·버전을 확인하세요.');
   const [error, setError] = useState(false);
   const [busy, setBusy] = useState(false);
   const [reviewed, setReviewed] = useState(false);
@@ -23,29 +23,29 @@ export function PublishPanel({ catalog, dirty, placementRevision, artworkRevisio
       const data = await response.json();
       if (!response.ok) throw new Error(data.error);
       setRevision(data.revision);
-      setRegisteredKeys(Object.keys(data.catalog));
+      setRegisteredKeys(data.products.map((p: ProductSettings) => p.renderKey));
       setSettings(Object.fromEntries(Object.entries(catalog).map(([renderKey, item]) => {
         const product = data.products.find((p: ProductSettings) => p.renderKey === renderKey);
         return [renderKey, { renderKey, price: product?.price ?? ({ hat: 30, top: 25, bottom: 20, accessory: 30 }[item.slot]), saleStatus: product?.saleStatus ?? 'held' }];
       })));
       onProductChange(false);
-      setError(false); setMessage(`서버 의상 버전 ${data.revision} · 연결됨${data.imageStorage === 'vercel-blob' ? ' · 이미지 저장: Vercel Blob' : data.imageStorage === 'file' ? ' · 이미지 저장: 서버 파일' : ''}`);
+      setError(false); setMessage(`상품 등록 버전 ${data.revision} · 연결됨 · 이미지: 프론트엔드 정적 파일`);
     } catch (cause) { if (signal?.aborted) return; setError(true); setMessage(cause instanceof Error ? cause.message : '연결 실패'); }
   }
-  useEffect(() => { const controller = new AbortController(); void status(controller.signal); return () => controller.abort(); }, []);
   useEffect(() => { setReviewed(false); }, [dirty, placementRevision, artworkRevision]);
-  async function submit(action: 'publish' | 'pull') {
-    if (action === 'pull' && !window.confirm('서버의 등록본을 불러올까요? 현재 로컬 저장본은 .local/backups에 보관합니다.')) return;
-    setBusy(true); onBusyChange(true); setError(false); setMessage(action === 'pull' ? '서버 의상을 불러오는 중…' : 'PNG와 배치를 서버에 등록하는 중…');
+  async function submit(action: 'publish' | 'pull' | 'export') {
+    if (action === 'pull' && !window.confirm('이 PC의 프론트엔드 편집본을 불러올까요? 현재 로컬 저장본은 .local/backups에 보관합니다.')) return;
+    setBusy(true); onBusyChange(true); setError(false); setMessage(action === 'pull' ? '로컬 프론트엔드 이미지·배치를 불러오는 중…' : action === 'export' ? '프론트엔드 정적 파일을 내보내는 중…' : '프론트엔드 배포 확인 후 상품 ID·가격을 DB에 등록하는 중…');
     try {
       const response = await fetch('/api/publish', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action, revision, products: Object.values(settings), combinations, reviewed, placementRevision, artworkRevision }) });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error);
       if (action === 'pull') { window.location.reload(); return; }
+      if (action === 'export') { setMessage(`이미지 ${result.assets}개 내보내기 완료 (새 파일 ${result.added}개). ${result.frontend}의 변경을 커밋·배포한 뒤 DB에 등록하세요.`); return; }
       setRevision(result.revision); setReviewed(false);
       setRegisteredKeys(Object.keys(catalog));
       onProductChange(false);
-      setMessage(`서버 버전 ${result.revision} 등록 완료. 서비스 화면을 새로고침하거나 다시 열면 수정한 의상이 표시됩니다.`);
+      setMessage(`서버 버전 ${result.revision} 등록 완료. 상품 ID·가격 등록 완료. 이미지·배치는 배포된 프론트엔드 파일을 사용합니다.`);
     } catch (cause) { setError(true); setMessage(cause instanceof Error ? cause.message : '등록 실패'); }
     finally { setBusy(false); onBusyChange(false); }
   }
@@ -59,11 +59,11 @@ export function PublishPanel({ catalog, dirty, placementRevision, artworkRevisio
   }
   return <section className="publish-panel" aria-label="서비스 의상 등록">
     <div className="section-title"><h2>서비스 의상 등록</h2><span>PROJECT HEALTH</span></div>
-    <p>조정값과 픽셀을 먼저 로컬에 저장하세요. 아래 등록은 NestJS의 DB·이미지 저장소에 반영합니다.</p>
-    <p>운영 등록 {registeredKeys?.length ?? '확인 중'}개 · 현재 로컬 목록 {Object.keys(catalog).length}개. 운영의 최신 목록·이미지·배치를 조회하려면 <strong>서버 등록본 불러오기</strong>를 누르세요. 로컬 초안은 백업 후 서버 등록본으로 바뀝니다.</p>
+    <p>조정값과 픽셀을 로컬에 저장 → 프론트엔드 이미지·배치 내보내기 → 프론트엔드 배포 → 상품 ID·가격 DB 등록 순서로 진행하세요. 크기·위치·픽셀 수정은 프론트엔드 재배포로 반영하며 가격만 수정할 때는 DB 등록만 하면 됩니다.</p>
+    <p>운영 등록 {registeredKeys?.length ?? '확인 중'}개 · 현재 로컬 목록 {Object.keys(catalog).length}개. 이 PC의 프론트엔드 이미지·배치로 편집하려면 <strong>프론트엔드 편집본 불러오기</strong>를 누르세요. 최신 프론트엔드 파일이 필요하며 로컬 초안은 백업합니다.</p>
     <label className="product-search">상품 검색<input type="search" value={search} placeholder="상품명 또는 ID" onChange={event => setSearch(event.target.value)} /></label>
     <fieldset disabled={busy || dirty}>
-      {Object.entries(catalog).filter(([key, item]) => `${key} ${item.label}`.toLowerCase().includes(search.toLowerCase())).map(([key, item]) => <div className="publish-product" key={key}><strong>{item.label}<small>{registeredKeys === undefined ? '등록 상태 확인 필요' : registeredKeys.includes(key) ? '운영 등록' : '로컬 초안'} · {key}</small></strong>
+      {Object.entries(catalog).filter(([key, item]) => `${key} ${item.label}`.toLowerCase().includes(search.toLowerCase())).map(([key, item]) => <div className="publish-product" key={key}><strong>{item.label}<small>{registeredKeys === undefined ? '서버 연결 버튼으로 확인' : registeredKeys.includes(key) ? '운영 등록' : '로컬 초안'} · {key}</small></strong>
         <label>가격 (해바라기씨)<input type="number" aria-label={`${item.label} 등록 가격`} min={1} max={1000000} value={settings[key]?.price ?? ''} onChange={event => { onProductChange(true); setReviewed(false); setSettings(current => ({ ...current, [key]: { ...current[key], renderKey: key, price: event.target.valueAsNumber } })); }} /></label>
         <label>등록 상태<select aria-label={`${item.label} 등록 상태`} value={settings[key]?.saleStatus ?? 'held'} onChange={event => { onProductChange(true); setReviewed(false); setSettings(current => ({ ...current, [key]: { ...current[key], renderKey: key, saleStatus: event.target.value as ProductSettings['saleStatus'] } })); }}><option value="held">판매 보류</option><option value="on_sale">판매 중</option><option value="retired">판매 종료</option></select></label></div>)}
       <details><summary>여러 의상의 착용 조합 검수</summary><p>개별 의상은 검수된 프레임을 등록합니다. 모자·상의·하의를 함께 착용하려면 아래 미리보기를 확인하고 조합을 추가하세요.</p>
@@ -76,6 +76,6 @@ export function PublishPanel({ catalog, dirty, placementRevision, artworkRevisio
     </fieldset>
     <p className={`editor-message ${error ? 'error' : ''}`} role={error ? 'alert' : 'status'}>{message}</p>
     {dirty && <p className="notice">편집 중입니다. 로컬 변경을 저장하고 세부 작업 패널을 닫으면 등록할 수 있습니다.</p>}
-    <div className="publish-actions"><button className="secondary-button" disabled={busy || dirty} onClick={() => void status()}>서버 연결·버전 확인</button><button className="secondary-button" disabled={busy || dirty || revision === undefined} onClick={() => void submit('pull')}>서버 등록본 불러오기</button><button className="primary-button" disabled={busy || dirty || !reviewed || revision === undefined || !Object.keys(catalog).length} onClick={() => void submit('publish')}>{busy ? '처리 중…' : '서버에 등록'}</button></div>
+    <div className="publish-actions"><button className="secondary-button" disabled={busy || dirty || !Object.keys(catalog).length} onClick={() => void submit('export')}>프론트엔드 이미지·배치 내보내기</button><button className="secondary-button" disabled={busy || dirty} onClick={() => void status()}>서버 연결·버전 확인</button><button className="secondary-button" disabled={busy || dirty} onClick={() => void submit('pull')}>프론트엔드 편집본 불러오기</button><button className="primary-button" disabled={busy || dirty || !reviewed || revision === undefined || !Object.keys(catalog).length} onClick={() => void submit('publish')}>{busy ? '처리 중…' : '상품 ID·가격 DB 등록'}</button></div>
   </section>;
 }
