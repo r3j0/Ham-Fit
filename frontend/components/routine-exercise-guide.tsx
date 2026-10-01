@@ -5,15 +5,21 @@ import styles from "./routine-exercise-guide.module.css";
 
 export function RoutineExerciseGuide({
   prescription,
+  highlighted = false,
 }: {
   prescription: Prescription;
+  highlighted?: boolean;
 }) {
   const dose = `${prescription.value}${prescription.unit}`;
   const summary = `${dose} × ${prescription.sets}세트`;
   const hasExtraInstructions =
     prescription.text.replace(/\s/g, "") !== summary.replace(/\s/g, "");
   return (
-    <section className={styles.guide} aria-label="운동 방법">
+    <section
+      className={styles.guide}
+      aria-label="운동 방법"
+      data-highlighted={highlighted || undefined}
+    >
       <h3>운동 방법</h3>
       <div className={styles.mascot}>
         <MemberMascot pose="pushup" size={140} label="푸시업하는 내 햄스터" />

@@ -39,8 +39,15 @@ async function playable(page: Page, watched = 0) {
   return { row, state };
 }
 
+async function reviewGuideAfterPlayback(page: Page) {
+  const guide = page.getByRole("region", { name: "운동 방법" });
+  await expect(guide).toHaveAttribute("data-highlighted", "true");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await page.getByRole("button", { name: "여기서 종료", exact: true }).click();
+}
+
 for (const width of [320, 600, 1280]) {
-  test(`${width}px 운동/메인 박스는 3열이고 시간·진행 배지는 제목 오른쪽에 있다`, async ({
+  test(`${width}px 운동/메인 박스는 3열이고 진행 배지는 제목 오른쪽에 있다`, async ({
     page,
   }, info) => {
     await page.setViewportSize({ width, height: 900 });
@@ -54,14 +61,14 @@ for (const width of [320, 600, 1280]) {
         exact: true,
       });
       const summary = page.getByRole("group", { name: "오늘의 운동 요약" });
-      await expect(summary).toHaveText("6분0/3");
+      await expect(summary).toHaveText("0/3");
       const h = (await title.boundingBox())!,
         badges = (await summary.boundingBox())!;
       expect(badges.x).toBeGreaterThan(h.x + h.width);
       expect(
         Math.abs(badges.y + badges.height / 2 - h.y - h.height / 2),
       ).toBeLessThan(5);
-      await expect(summary.locator("svg")).toHaveCount(1);
+      await expect(summary.locator("svg")).toHaveCount(0);
       const item = page
         .getByRole("list", { name: "오늘 배정된 운동" })
         .getByRole("listitem")
@@ -149,6 +156,7 @@ test("미완료 영상이 있는 한 바퀴는 목록으로 돌아오며 다시 
       v.playbackRate = 8;
       return v.play();
     });
+    await reviewGuideAfterPlayback(page);
     await page
       .getByRole("dialog")
       .getByRole("button", { name: "완료 처리" })
@@ -174,6 +182,7 @@ test("미완료 영상이 있는 한 바퀴는 목록으로 돌아오며 다시 
     v.playbackRate = 8;
     return v.play();
   });
+  await reviewGuideAfterPlayback(page);
   await page
     .getByRole("dialog")
     .getByRole("button", { name: "완료 처리" })
@@ -236,6 +245,7 @@ test("끝으로 탐색해 영상이 끝나도 실제 시청량이 80% 미만이�
   await video.evaluate((v: HTMLVideoElement) => {
     v.currentTime = 11.75;
   });
+  await reviewGuideAfterPlayback(page);
   await expect(page.getByRole("dialog")).toContainText("미완료");
   await page.getByRole("button", { name: "종료 확인" }).click();
   await expect(page).toHaveURL(
@@ -378,5 +388,59 @@ for (const dismissal of ["취소", "닫기", "Escape"]) {
     expect(state.events.filter((event) => event.type === "end")).toHaveLength(
       1,
     );
+  });
+}
+
+for (const width of [320, 1218]) {
+  test(`${width}px 영상 종료는 운동 방법만 강조하고 재생 재개 시 강조를 해제한다`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    const { row, state } = await playable(page, 9.6);
+    const item = row.routine[0];
+    const current = `/workout-routines/${row.id}/items/${item.id}`;
+    await page.goto(current);
+    const video = page.getByLabel("운동 영상");
+    await expect
+      .poll(() => video.evaluate((v: HTMLVideoElement) => v.readyState))
+      .toBeGreaterThanOrEqual(1);
+    await video.evaluate((v: HTMLVideoElement) => {
+      v.playbackRate = 8;
+      return v.play();
+    });
+    const guide = page.getByRole("region", { name: "운동 방법" });
+    await expect(guide).toHaveAttribute("data-highlighted", "true");
+    await expect
+      .poll(() => guide.evaluate((el) => el.getAnimations().length))
+      .toBe(1);
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(page).toHaveURL(current);
+    expect(item.status).toBe("in_progress");
+    expect(
+      state.events.filter((event) =>
+        ["end", "complete", "pause"].includes(event.type),
+      ),
+    ).toHaveLength(0);
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await expect(guide).toHaveCSS("animation-name", "none");
+    await expect(guide).not.toHaveCSS("box-shadow", "none");
+    await video.evaluate((v: HTMLVideoElement) => {
+      v.currentTime = 0;
+      return v.play();
+    });
+    await expect(guide).not.toHaveAttribute("data-highlighted");
+    await video.evaluate((v: HTMLVideoElement) => v.pause());
+    await page
+      .getByRole("button", { name: "여기서 종료", exact: true })
+      .click();
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: "완료 처리", exact: true })
+      .click();
+    await expect(page).toHaveURL(
+      `/workout-routines/${row.id}/items/${row.routine[1].id}`,
+    );
+    expect(item.status).toBe("completed");
   });
 }

@@ -84,6 +84,7 @@ export function WorkoutPlayer({
   const lastSave = useRef(0);
   const suppressPause = useRef(false);
   const [playing, setPlaying] = useState(false);
+  const [videoEnded, setVideoEnded] = useState(false);
   const [mediaError, setMediaError] = useState("");
   const [confirm, setConfirm] = useState<"end" | "complete" | "reset" | null>(
     null,
@@ -286,6 +287,7 @@ export function WorkoutPlayer({
       return;
     }
     setPlaying(true);
+    setVideoEnded(false);
     lastSave.current = performance.now();
     if (
       !viewingOnly &&
@@ -478,8 +480,12 @@ export function WorkoutPlayer({
               }}
               onEnded={() => {
                 setPlaying(false);
-                if (workout.routine && !replay && !readOnly) requestStop();
-                else capture("pause");
+                if (workout.routine && !replay && !completed) {
+                  if (session.canRecord()) {
+                    capture("progress");
+                    setVideoEnded(true);
+                  }
+                } else capture("pause");
               }}
               onError={() => {
                 setMediaError(
@@ -491,6 +497,7 @@ export function WorkoutPlayer({
             {workout.routine && (
               <RoutineExerciseGuide
                 prescription={workout.routine.prescription}
+                highlighted={videoEnded && !completed && !readOnly && !replay}
               />
             )}
           </div>

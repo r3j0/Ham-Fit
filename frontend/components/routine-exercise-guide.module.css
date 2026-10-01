@@ -70,3 +70,22 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
+
+.guide[data-highlighted] {
+  animation: guide-brightness 2.4s ease-in-out infinite;
+}
+@keyframes guide-brightness {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.06);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .guide[data-highlighted] {
+    animation: none;
+    box-shadow: 0 0 0 2px var(--sky);
+  }
+}
