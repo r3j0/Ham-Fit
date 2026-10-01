@@ -14,7 +14,7 @@ import type { AvatarOutfit } from "@/lib/avatar-outfit";
 import { MascotPose } from "./mascot/MascotPose";
 import { useApiResource } from "./use-api-resource";
 import { useOperationScope } from "./use-operation-scope";
-import { Header, Loading, Notice, Shell, SubmitLabel } from "./ui";
+import { Loading, Notice, Shell, SubmitLabel } from "./ui";
 
 export function WelcomeProfile() {
   const resource = useApiResource(
@@ -30,10 +30,8 @@ export function WelcomeProfile() {
   );
   return (
     <Shell>
-      <Header title="나만의 프로필" />
       <div className="content stack">
         <div className="intro">
-          <p className="eyebrow">처음 만나 반가워요</p>
           <h1>어떤 모습으로 시작할까요?</h1>
           <p>함께 운동할 이름과 햄스터를 골라 주세요.</p>
         </div>
@@ -148,7 +146,12 @@ function ProfileChoice({
             disabled={busy}
             onClick={() => setVariant(v)}
           >
-            <MascotPose variant={v} pose="basic" size={140} label="" />
+            <MascotPose
+              variant={v}
+              pose={variant === v ? "victory" : "basic"}
+              size={140}
+              label=""
+            />
             <strong>{v === "cream" ? "햄돌이" : "햄콩이"}</strong>
           </button>
         ))}
