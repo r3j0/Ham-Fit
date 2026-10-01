@@ -14,7 +14,7 @@ import { parseAvatarOutfit } from "../../lib/avatar-outfit.ts";
 
 const read = (path: string) =>
   readFileSync(new URL(`../../${path}`, import.meta.url));
-test("v2 원본과 사용자 지정 기본 햄콩이의 배치·등록 범위를 검증한다", () => {
+test("v2 원본과 사용자 지정 기본 캐릭터의 배치·등록 범위를 검증한다", () => {
   const integrity = JSON.parse(
     read("components/hamster/provenance/base-integrity.json").toString(),
   );
@@ -25,6 +25,7 @@ test("v2 원본과 사용자 지정 기본 햄콩이의 배치·등록 범위를
   const placements = JSON.parse(
     read("components/hamster/provenance/placements.json").toString(),
   );
+  placements.basic.assets.cream.src = "/hamsters/base/basic-cream-hamdoli.svg";
   placements.basic.assets.gray.src = "/hamsters/base/basic-gray-hamkong.svg";
   assert.deepEqual(POSES, placements);
   assert.equal(Object.keys(POSES).length, 16);
@@ -51,8 +52,10 @@ test("모든 자세·색상에서 의상 프레임을 빌려오지 않고 선택
       const result = resolveHamster(selection, DEFAULT_ITEMS);
       assert.equal(
         result.layers[0].src,
-        pose === "basic" && variant === "gray"
-          ? "/hamsters/base/basic-gray-hamkong.svg"
+        pose === "basic"
+          ? variant === "cream"
+            ? "/hamsters/base/basic-cream-hamdoli.svg"
+            : "/hamsters/base/basic-gray-hamkong.svg"
           : `/hamsters/base/${pose}-${variant}.webp`,
       );
       assert.equal(result.layers.length, pose === "basic" ? 2 : 1);

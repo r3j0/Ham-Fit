@@ -4,7 +4,7 @@ export const POSES = {
     "label": "기본",
     "assets": {
       "cream": {
-        "src": "/hamsters/base/basic-cream.webp",
+        "src": "/hamsters/base/basic-cream-hamdoli.svg",
         "x": 244.7605,
         "y": 240.8084,
         "width": 510.479,
