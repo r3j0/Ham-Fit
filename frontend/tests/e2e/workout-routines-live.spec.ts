@@ -106,9 +106,7 @@ test("실제 추천 엔진: 준비 조건, 오늘 루틴 생성, 중복 방지�
       guidance.locator("button, input, video, progress"),
     ).toHaveCount(0);
     await expect(
-      page.getByText(`영상 운동 예상 ${routine.estimatedMinutes}분`, {
-        exact: false,
-      }),
+      page.getByLabel(`예상 운동 시간 ${routine.estimatedMinutes}분`),
     ).toBeVisible();
     await expect(
       page.getByRole("list", { name: "오늘 배정된 운동" }).getByRole("heading"),
@@ -257,12 +255,15 @@ test("실제 추천 엔진: 준비 조건, 오늘 루틴 생성, 중복 방지�
       totalWorkoutDays: 1,
     });
     await page.goto("/account");
-    const metrics = page
-      .getByRole("region", { name: "활동 리포트" })
-      .locator("dd");
-    await expect(metrics.nth(0)).toHaveText("1일");
-    await expect(metrics.nth(1)).toHaveText("1일");
-    await expect(metrics.nth(4)).toHaveText("1일");
+    const metrics = page.getByRole("region", { name: "활동 리포트" });
+    for (const label of [
+      "현재 연속 스트릭",
+      "최장 연속 스트릭",
+      "총 운동 일수",
+    ])
+      await expect(
+        metrics.getByText(label, { exact: true }).locator("..").locator("dd"),
+      ).toHaveText("1일");
     await page.goto("/workout");
     await expect(
       page.getByText("오늘의 모든 운동을 완료했어요."),

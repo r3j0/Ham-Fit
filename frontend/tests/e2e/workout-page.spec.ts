@@ -39,7 +39,7 @@ test("메인은 첫 미완료 운동, 운동 탭은 전체 목록을 보여주�
       await page
         .getByRole("navigation")
         .getByRole("link", { name: "운동", exact: true })
-        .click();
+        .press("Enter");
     const today = page.getByRole("region", {
       name: "오늘의 운동",
       exact: true,

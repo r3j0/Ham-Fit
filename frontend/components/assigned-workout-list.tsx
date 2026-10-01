@@ -26,6 +26,8 @@ export function AssignedWorkoutList({
               {workout.video.equipment.length > 0 &&
                 ` · ${workout.video.equipment.join(", ")}`}
             </p>
+          </div>
+          <div className={styles.prescription}>
             {workout.routine && (
               <RoutinePrescription
                 prescription={workout.routine.prescription}
@@ -38,14 +40,28 @@ export function AssignedWorkoutList({
               <Check size={18} aria-hidden="true" />
               완료
             </span>
-          ) : activeId && workout.id !== activeId ? null : (
+          ) : activeId &&
+            workout.id !== activeId &&
+            !(
+              workout.routine &&
+              ["interrupted", "not_performed"].includes(workout.status)
+            ) ? null : (
             <Link
               className={`button secondary ${styles.start}`}
               href={workoutHref(workout)}
             >
-              {!started && workout.status === "assigned"
-                ? "운동 시작하기"
-                : "운동 이어하기"}
+              {workout.routine &&
+              (workout.status === "interrupted" ||
+                workout.status === "not_performed") ? (
+                <>
+                  <span className={styles.incomplete}>미완료</span>
+                  <span>다시 운동하기</span>
+                </>
+              ) : !started && workout.status === "assigned" ? (
+                "운동 시작하기"
+              ) : (
+                "운동 이어하기"
+              )}
             </Link>
           )}
         </li>

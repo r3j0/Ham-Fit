@@ -25,7 +25,11 @@ export function assignedWorkoutsForDay(
 /** Input is the deduplicated assignment/order sequence for one day. */
 export function currentWorkoutStep(rows: readonly Workout[]) {
   return {
-    workout: rows.find((row) => row.status !== "completed") ?? null,
+    workout:
+      rows.find((row) => row.status === "in_progress") ??
+      rows.find((row) => row.routine && row.status === "assigned") ??
+      rows.find((row) => row.status !== "completed") ??
+      null,
     started: rows.some(
       (row) =>
         row.status !== "assigned" ||

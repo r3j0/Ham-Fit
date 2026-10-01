@@ -4,6 +4,7 @@ import { ApiError } from "../../lib/http.ts";
 import {
   createPlaybackSession,
   samplePlayback,
+  hasWatchedEnough,
 } from "../../lib/playback-session.ts";
 import { createWorkoutJournal } from "../../lib/workout-journal.ts";
 import type { Workout } from "../../lib/workout-types.ts";
@@ -410,4 +411,36 @@ test("v2 pause finalization blocks trailing events until an explicit start after
   await session.record("start", empty);
   assert.deepEqual(types, ["pause", "start"]);
   session.disconnect();
+});
+
+test("the stop confirmation threshold merges saved/native ranges and excludes seeks and overlap", () => {
+  const workout = {
+    ...initial,
+    progress: {
+      ...initial.progress,
+      watchedSeconds: 50,
+      intervals: [{ start: 0, end: 50 }],
+    },
+  };
+  assert.equal(
+    hasWatchedEnough(workout, {
+      positionSeconds: 100,
+      intervals: [{ start: 40, end: 79.9 }],
+    }),
+    false,
+  );
+  assert.equal(
+    hasWatchedEnough(workout, {
+      positionSeconds: 80,
+      intervals: [{ start: 40, end: 80 }],
+    }),
+    true,
+  );
+  assert.equal(
+    hasWatchedEnough(workout, {
+      positionSeconds: 100,
+      intervals: [{ start: 90, end: 100.4 }],
+    }),
+    false,
+  );
 });

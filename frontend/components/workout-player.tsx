@@ -1,10 +1,15 @@
 "use client";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useWorkoutHistoryLinks } from "./use-workout-history-links";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { completedDate } from "@/lib/workout-history";
-import { ApiError } from "@/lib/http";
-import { createPlaybackSession, samplePlayback } from "@/lib/playback-session";
+import { ApiError, errorMessage } from "@/lib/http";
+import {
+  createPlaybackSession,
+  samplePlayback,
+  hasWatchedEnough,
+} from "@/lib/playback-session";
 import { workoutJournal } from "@/lib/workout-journal";
 import { getWorkout, sendWorkoutEvent } from "@/lib/workouts";
 import type { Workout } from "@/lib/workout-types";
@@ -15,6 +20,8 @@ import { WorkoutError } from "./workout-error";
 import { useWorkoutHistory } from "./workout-history-provider";
 import { WorkoutSummary } from "./workout-summary";
 import { RoutineNext } from "./routine-next";
+import { getRoutine } from "@/lib/workout-routines";
+import { afterRoutineItemHref } from "@/lib/workout-practice";
 
 export function WorkoutPlayer({
   initial,
@@ -25,10 +32,33 @@ export function WorkoutPlayer({
 }) {
   const { basePath, overviewHref } = useWorkoutHistoryLinks();
   const userId = useSession().user!.id;
+  const router = useRouter();
+  const advanceAfterStop = useRef(false);
+  const [navigationRequested, setNavigationRequested] = useState(false);
+  const [advanceError, setAdvanceError] = useState("");
+  const [advanceRetry, setAdvanceRetry] = useState(0);
   const [session] = useState(() =>
     createPlaybackSession({
       initial,
-      acquire: () => workoutJournal.acquire(userId, initial.id),
+      acquire: () => {
+        const writer = workoutJournal.acquire(userId, initial.id);
+        if (
+          initial.routine &&
+          !replay &&
+          writer.read().some((request) => {
+            try {
+              return ["end", "complete"].includes(
+                JSON.parse(request.body).type,
+              );
+            } catch {
+              return false;
+            }
+          })
+        ) {
+          queueMicrotask(() => setNavigationRequested(true));
+        }
+        return writer;
+      },
       send: (key, body) => sendWorkoutEvent(initial.id, key, body),
       fetch: () => getWorkout(initial.id),
     }),
@@ -54,17 +84,63 @@ export function WorkoutPlayer({
     state.recovering ||
     state.error !== undefined ||
     state.terminalPending;
+  const advancing =
+    !!workout.routine &&
+    !replay &&
+    !readOnly &&
+    (navigationRequested ||
+      (workout.status === "completed" && initial.status !== "completed"));
   const canPlay =
     readOnly ||
-    (state.connected && !state.recovering && state.error === undefined);
+    (!advancing &&
+      state.connected &&
+      !state.recovering &&
+      state.error === undefined);
   const verified =
     workout.video.playbackStatus === "verified" && !!workout.video.playbackUrl;
   const completed = workout.status === "completed";
   const completedDay = completedDate(workout);
   const { reload: reloadHistory } = useWorkoutHistory();
   useEffect(() => {
+    if (navigationRequested) advanceAfterStop.current = true;
+  }, [navigationRequested]);
+  useEffect(() => {
     if (completed) reloadHistory();
   }, [completed, reloadHistory]);
+  useEffect(() => {
+    if (
+      !advancing ||
+      !state.connected ||
+      state.saving ||
+      state.pending ||
+      state.recovering ||
+      state.error !== undefined ||
+      !workout.routine ||
+      !["completed", "interrupted", "not_performed"].includes(workout.status)
+    )
+      return;
+    const controller = new AbortController();
+    getRoutine(workout.routine.id, controller.signal)
+      .then((row) => {
+        if (!controller.signal.aborted)
+          router.replace(afterRoutineItemHref(row, workout.routine!.itemId));
+      })
+      .catch((error) => {
+        if (!controller.signal.aborted) setAdvanceError(errorMessage(error));
+      });
+    return () => controller.abort();
+  }, [
+    advancing,
+    state.connected,
+    state.saving,
+    state.pending,
+    state.recovering,
+    state.error,
+    workout.routine,
+    workout.status,
+    router,
+    advanceRetry,
+  ]);
   useUnsaved(
     (playing && !completed && !readOnly) || state.pending > 0,
     "운동 진행을 저장하고 있어요. 이 화면을 나가면 재생을 멈추고, 미확정 저장은 돌아온 뒤 다시 확인해요. 나갈까요?",
@@ -173,6 +249,10 @@ export function WorkoutPlayer({
   async function playFromControls() {
     const media = video.current;
     if (!media) return;
+    if (advanceAfterStop.current) {
+      media.pause();
+      return;
+    }
     if (session.getSnapshot().workout.routine) session.canRecord();
     // Finish a native pause before starting again, preserving its original request.
     if (session.getSnapshot().terminalPending) await session.retry();
@@ -202,7 +282,7 @@ export function WorkoutPlayer({
         media.pause();
     }
   }
-  function finalize(type: "end" | "complete") {
+  async function finalize(type: "end" | "complete") {
     if (session.getSnapshot().workout.routine && !session.canRecord()) {
       setConfirm(null);
       return;
@@ -212,11 +292,33 @@ export function WorkoutPlayer({
       suppressPause.current = true;
       media.pause();
     }
-    const sample = media
-      ? samplePlayback(media, workout)
-      : { positionSeconds: workout.progress.positionSeconds, intervals: [] };
-    void session.record(type, sample);
+    if (workout.routine && !replay) {
+      advanceAfterStop.current = true;
+      setNavigationRequested(true);
+    }
     setConfirm(null);
+    // A native pause can already be queued when an ended video is confirmed.
+    if (session.getSnapshot().terminalPending) await session.retry();
+    if (session.getSnapshot().error !== undefined) return;
+    const saved = session.getSnapshot().workout;
+    const sample = media
+      ? samplePlayback(media, saved)
+      : { positionSeconds: saved.progress.positionSeconds, intervals: [] };
+    await session.record(type, sample);
+  }
+  function requestStop() {
+    const saved = session.getSnapshot().workout;
+    const media = video.current;
+    if (saved.routine && !session.canRecord()) return;
+    const sample = media
+      ? samplePlayback(media, saved)
+      : { positionSeconds: saved.progress.positionSeconds, intervals: [] };
+    if (media && !media.paused) {
+      suppressPause.current = true;
+      media.pause();
+    }
+    if (saved.routine && hasWatchedEnough(saved, sample)) void finalize("end");
+    else setConfirm("end");
   }
   function closeConfirmation() {
     if (workout.routine && (confirm === "end" || confirm === "complete"))
@@ -234,13 +336,32 @@ export function WorkoutPlayer({
           지난 루틴의 시청은 운동 기록에 반영되지 않습니다.
         </Notice>
       )}
-      {completed && !replay && (
+      {completed && !replay && !advancing && (
         <Notice tone="success">
           운동을 완료했어요. 영상을 다시 볼 수 있고, 완료한 운동의 기록은
           변경되지 않아요.
         </Notice>
       )}
       {state.error !== undefined && <WorkoutError error={state.error} />}
+      {advancing && !advanceError && state.error === undefined && (
+        <p className="caption" role="status">
+          운동 기록을 확인하고 다음 영상으로 이동하고 있어요.
+        </p>
+      )}
+      {advanceError && (
+        <Notice>
+          {advanceError}
+          <button
+            className="button secondary"
+            onClick={() => {
+              setAdvanceError("");
+              setAdvanceRetry((value) => value + 1);
+            }}
+          >
+            다음 운동 다시 확인하기
+          </button>
+        </Notice>
+      )}
       {state.pending > 0 && (state.recovering || state.error !== undefined) && (
         <Notice tone="info">
           {state.recovering && state.saving
@@ -325,7 +446,8 @@ export function WorkoutPlayer({
             }}
             onEnded={() => {
               setPlaying(false);
-              capture("pause");
+              if (workout.routine && !replay && !readOnly) requestStop();
+              else capture("pause");
             }}
             onError={() => {
               setMediaError(
@@ -349,54 +471,60 @@ export function WorkoutPlayer({
               </button>
             </>
           )}
-          {!readOnly && !completed && workout.status !== "in_progress" && (
-            <button
-              className="button primary"
-              disabled={
-                !state.connected ||
-                state.saving ||
-                state.pending > 0 ||
-                state.error !== undefined ||
-                !!mediaError
-              }
-              onClick={() => void start()}
-            >
-              {workout.status === "assigned" ? "운동 시작" : "이어서 운동하기"}
-            </button>
-          )}
-          {!readOnly && !completed && workout.status === "in_progress" && (
-            <div className="button-row">
-              <button
-                className="button secondary"
-                disabled={actionBlocked}
-                onClick={() => {
-                  if (video.current && !video.current.paused) {
-                    suppressPause.current = true;
-                    video.current.pause();
-                  }
-                  setConfirm("end");
-                }}
-              >
-                여기서 종료
-              </button>
+          {!readOnly &&
+            !completed &&
+            !advancing &&
+            workout.status !== "in_progress" && (
               <button
                 className="button primary"
-                disabled={actionBlocked}
-                onClick={() => {
-                  if (video.current && !video.current.paused) {
-                    suppressPause.current = true;
-                    video.current.pause();
-                  }
-                  setConfirm("complete");
-                }}
+                disabled={
+                  !state.connected ||
+                  state.saving ||
+                  state.pending > 0 ||
+                  state.error !== undefined ||
+                  !!mediaError
+                }
+                onClick={() => void start()}
               >
-                운동 완료
+                {workout.status === "assigned"
+                  ? "운동 시작"
+                  : "이어서 운동하기"}
               </button>
-            </div>
-          )}
+            )}
+          {!readOnly &&
+            !completed &&
+            !advancing &&
+            (workout.status === "in_progress" ||
+              (workout.routine &&
+                ["interrupted", "not_performed"].includes(workout.status))) && (
+              <div className="button-row">
+                <button
+                  className="button secondary"
+                  disabled={actionBlocked}
+                  onClick={requestStop}
+                >
+                  여기서 종료
+                </button>
+                {!workout.routine && (
+                  <button
+                    className="button primary"
+                    disabled={actionBlocked}
+                    onClick={() => {
+                      if (video.current && !video.current.paused) {
+                        suppressPause.current = true;
+                        video.current.pause();
+                      }
+                      setConfirm("complete");
+                    }}
+                  >
+                    운동 완료
+                  </button>
+                )}
+              </div>
+            )}
         </>
       )}
-      {completed && !replay && workout.routine && (
+      {completed && !replay && !advancing && workout.routine && (
         <RoutineNext
           routineId={workout.routine.id}
           itemId={workout.routine.itemId}
@@ -434,7 +562,7 @@ export function WorkoutPlayer({
           <div className="stack">
             <p className="muted">
               {workout.routine && confirm !== "reset"
-                ? "실제로 시청한 구간이 영상의 80% 이상이면 완료로 기록돼요. 그보다 적으면 중단 또는 미진행으로 저장되며, 오늘 안에 이어서 운동할 수 있어요."
+                ? "시청량이 80% 미만이에요. 종료하면 이 영상은 미완료로 남고 다음 영상으로 이동해요. 미완료 영상은 운동 목록에서 다시 시작할 수 있어요."
                 : confirm === "complete"
                   ? "직접 운동을 마쳤는지 확인해 주세요. 완료 후에는 진행 기록을 변경할 수 없어요."
                   : confirm === "end"
@@ -465,7 +593,7 @@ export function WorkoutPlayer({
                           session.getSnapshot().workout.progress.positionSeconds;
                     });
                     setConfirm(null);
-                  } else finalize(confirm);
+                  } else void finalize(confirm);
                 }}
               >
                 {confirm === "complete"
