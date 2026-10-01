@@ -34,7 +34,7 @@ export interface Inventory {
   currency: { balance: number };
   inventory: {
     productId: string;
-    source: "default" | "purchase" | "reward";
+    source: "default" | "purchase" | "reward" | "streak_roulette";
     acquiredAt: string;
   }[];
 }
@@ -108,7 +108,9 @@ export function parseInventory(value: unknown): Inventory {
     if (
       !text(item.productId) ||
       ids.has(item.productId) ||
-      !["default", "purchase", "reward"].includes(String(item.source)) ||
+      !["default", "purchase", "reward", "streak_roulette"].includes(
+        String(item.source),
+      ) ||
       !timestamp(item.acquiredAt)
     )
       invalid();
