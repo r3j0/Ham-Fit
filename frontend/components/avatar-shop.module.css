@@ -20,6 +20,17 @@
 .stage {
   position: relative;
 }
+.wardrobeLink {
+  width: auto;
+  min-width: 132px;
+  align-self: center;
+  background: var(--surface);
+  color: var(--navy);
+  border: 1px solid var(--border);
+}
+.wardrobeLink:hover {
+  background: var(--tint);
+}
 .dressed {
   padding-bottom: 62px;
 }
