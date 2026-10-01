@@ -181,8 +181,8 @@ test("그룹 생성과 초대 가입은 좁은 화면에서도 두 열로 배치
     await expect(mascot).toHaveAttribute("data-variant", "cream");
     const art = (await mascot.boundingBox())!,
       frame = (await mascot.locator("..").boundingBox())!;
-    expect(art.width).toBeCloseTo(115.2, 1);
-    expect(art.height).toBeCloseTo(115.2, 1);
+    expect(art.width).toBeCloseTo(161.28, 1);
+    expect(art.height).toBeCloseTo(161.28, 1);
     expect(art.x + art.width / 2).toBeCloseTo(frame.x + frame.width / 2, 1);
     expect(
       await create.evaluate((el) =>
