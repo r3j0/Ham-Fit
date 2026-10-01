@@ -658,6 +658,7 @@ model ActivityAchievement {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict)
   contributions GroupMissionContribution[]
   streakTickets StreakRouletteTicket[]
+  waterChoice GroupMissionWaterChoice?
   @@unique([userId, koreanDate])
   @@unique([id, userId, koreanDate])
   @@map("activity_achievements")
@@ -681,6 +682,20 @@ model GroupMissionRound {
   @@unique([id, groupId])
   @@index([groupId, startedAt, id])
   @@map("group_mission_rounds")
+}
+
+// One daily achievement can water only one mission. Options are frozen at
+// completion; the selected receipt survives group deletion and cannot reset.
+model GroupMissionWaterChoice {
+  achievementId String @id @map("achievement_id") @db.Uuid
+  options Json @db.JsonB
+  selection Json? @db.JsonB
+  selectedAt DateTime? @map("selected_at") @db.Timestamptz(6)
+  requestKey String? @map("request_key") @db.Uuid
+  achievement ActivityAchievement @relation(fields: [achievementId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  contribution GroupMissionContribution?
+  @@index([requestKey])
+  @@map("group_mission_water_choices")
 }
 
 // No membership FK: departure must never cascade the contribution ledger.
@@ -707,10 +722,12 @@ model GroupMissionContribution {
   roundId String @map("round_id") @db.Uuid
   participantId String @map("participant_id") @db.Uuid
   achievementId String? @map("achievement_id") @db.Uuid
+  waterChoiceId String? @unique @map("water_choice_id") @db.Uuid
   contributedAt DateTime @map("contributed_at") @db.Timestamptz(6)
   round GroupMissionRound @relation(fields: [roundId], references: [id], onDelete: Cascade, onUpdate: Restrict)
   participant GroupMissionParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade, onUpdate: Restrict)
   achievement ActivityAchievement? @relation(fields: [achievementId], references: [id], onDelete: SetNull, onUpdate: Restrict)
+  waterChoice GroupMissionWaterChoice? @relation(fields: [waterChoiceId], references: [achievementId], onDelete: SetNull, onUpdate: Restrict)
   @@unique([groupId, achievementId])
   @@map("group_mission_contributions")
 }

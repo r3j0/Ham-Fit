@@ -21,6 +21,7 @@ import { Prisma } from '../src/generated/prisma/client.js';
 import { AvatarService } from '../src/avatar/avatar.service.js';
 import { GroupsService } from '../src/groups/groups.service.js';
 import { GroupMissionsService } from '../src/groups/group-missions.service.js';
+import { GroupMissionWaterService } from '../src/groups/group-mission-water.service.js';
 import { CurriculaService } from '../src/curricula/curricula.service.js';
 import { WorkoutRoutinesService } from '../src/recommendations/workout-routines.service.js';
 import { RecommendationsService } from '../src/recommendations/recommendations.service.js';
@@ -65,6 +66,7 @@ describe('group missions/roulette on real PostgreSQL', () => {
   let db: DatabaseService;
   let groups: GroupsService;
   let missions: GroupMissionsService;
+  let missionWater: GroupMissionWaterService;
   let routines: WorkoutRoutinesService;
   let legacy: RecommendationsService;
   let avatar: AvatarService;
@@ -87,6 +89,12 @@ describe('group missions/roulette on real PostgreSQL', () => {
             () => roll,
           ),
         inject: [DatabaseService, AvatarService],
+      })
+      .overrideProvider(GroupMissionWaterService)
+      .useFactory({
+        factory: (database: DatabaseService) =>
+          new GroupMissionWaterService(database, () => now),
+        inject: [DatabaseService],
       })
       .overrideProvider(WorkoutRoutinesService)
       .useFactory({
@@ -116,6 +124,7 @@ describe('group missions/roulette on real PostgreSQL', () => {
     db = app.get(DatabaseService);
     groups = app.get(GroupsService);
     missions = app.get(GroupMissionsService);
+    missionWater = app.get(GroupMissionWaterService);
     routines = app.get(WorkoutRoutinesService);
     legacy = app.get(RecommendationsService);
     avatar = app.get(AvatarService);
@@ -453,7 +462,7 @@ describe('group missions/roulette on real PostgreSQL', () => {
       }),
     ).rejects.toThrow();
   });
-  it('accepts only whole routines, deduplicates devices/keys/daily path and waters all eligible groups', async () => {
+  it('accepts only whole routines, deduplicates devices/keys/daily path and offers eligible groups and waters only the selected group', async () => {
     const first = await group();
     const second = await group();
     const excluded = await group([other]);
@@ -475,11 +484,17 @@ describe('group missions/roulette on real PostgreSQL', () => {
     });
     const assignment = await dailyAssignment(member);
     await completeDaily(assignment.id, member);
-    for (const id of roundIds.slice(0, 2))
-      expect(await savedRound(id)).toMatchObject({
-        waterCount: 1,
-        contributions: [expect.anything()],
-      });
+    const source = { sourceKind: 'routine' as const, sourceId: row.id };
+    const offer = await missionWater.get(member, source);
+    expect(offer.status).toBe('pending');
+    expect(offer.options.map((o) => o.groupId).sort()).toEqual(
+      [first, second].sort(),
+    );
+    for (const id of roundIds)
+      expect((await savedRound(id)).waterCount).toBe(0);
+    await missionWater.select(member, source, first, randomUUID());
+    expect((await savedRound(roundIds[0])).waterCount).toBe(1);
+    expect((await savedRound(roundIds[1])).waterCount).toBe(0);
     expect((await savedRound(roundIds[2])).waterCount).toBe(0);
     expect(await current(excluded, member)).toMatchObject({
       me: { eligible: false, reason: 'not_in_snapshot' },
@@ -1050,10 +1065,8 @@ describe('group missions/roulette on real PostgreSQL', () => {
         ).rejects.toMatchObject({ status: 403 });
     },
   );
-  it('rolls back original completion and all groups when one contribution insert fails', async () => {
-    const groupIds = [await group(), await group()].sort((a, b) =>
-      a.localeCompare(b),
-    );
+  it('rolls back original completion when the single automatic contribution insert fails', async () => {
+    const groupIds = [await group()].sort((a, b) => a.localeCompare(b));
     const roundIds: string[] = [];
     for (const groupId of groupIds) roundIds.push(await start(groupId));
     const row = await routine();
@@ -1072,7 +1085,7 @@ describe('group missions/roulette on real PostgreSQL', () => {
     if (!/^test_[a-f0-9]+$/.test(schema))
       throw new Error('Isolated test schema required');
     await db.$executeRawUnsafe(
-      `CREATE FUNCTION "${schema}".test_group_water_failure() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.group_id = '${groupIds[1]}'::uuid THEN RAISE EXCEPTION 'TEST ONLY contribution failure'; END IF; RETURN NEW; END; $$`,
+      `CREATE FUNCTION "${schema}".test_group_water_failure() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.group_id = '${groupIds[0]}'::uuid THEN RAISE EXCEPTION 'TEST ONLY contribution failure'; END IF; RETURN NEW; END; $$`,
     );
     await db.$executeRawUnsafe(
       `CREATE TRIGGER test_group_water_failure BEFORE INSERT ON "${schema}".group_mission_contributions FOR EACH ROW EXECUTE FUNCTION "${schema}".test_group_water_failure()`,
@@ -1347,7 +1360,338 @@ describe('group missions/roulette on real PostgreSQL', () => {
       spy.mockRestore();
     }
   });
-  it('uses strict v1 HTTP/auth/CSRF/cache/page contracts and has no manual watering route', async () => {
+  it('automatically waters a sole eligible mission and replays without another contribution', async () => {
+    const groupId = await group();
+    const roundId = await start(groupId);
+    const row = await water();
+    const source = { sourceKind: 'routine' as const, sourceId: row.id };
+    expect(await missionWater.get(owner, source)).toMatchObject({
+      status: 'contributed',
+      options: [],
+      contribution: { groupId, roundId, amount: 1 },
+    });
+    expect(
+      (await missionWater.select(owner, source, groupId, randomUUID()))
+        .replayed,
+    ).toBe(true);
+    expect((await savedRound(roundId)).waterCount).toBe(1);
+  });
+  async function pendingWater(userId = owner) {
+    const a = await group();
+    const b = await group();
+    const roundA = await start(a);
+    const roundB = await start(b);
+    const row = await water(userId);
+    const source = { sourceKind: 'routine' as const, sourceId: row.id };
+    return { a, b, roundA, roundB, row, source };
+  }
+  it('serializes different group selections, consumes one daily water and keeps the saved replay', async () => {
+    const { a, b, source } = await pendingWater();
+    const results = await Promise.allSettled([
+      missionWater.select(owner, source, a, randomUUID()),
+      missionWater.select(owner, source, b, randomUUID()),
+    ]);
+    expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
+    expect(results.filter((r) => r.status === 'rejected')).toHaveLength(1);
+    const saved = await missionWater.get(owner, source);
+    expect(saved.status).toBe('contributed');
+    const selected = (saved.contribution as { groupId: string }).groupId;
+    expect(
+      (await missionWater.select(owner, source, selected, randomUUID()))
+        .replayed,
+    ).toBe(true);
+    await expect(
+      missionWater.select(owner, source, selected === a ? b : a, randomUUID()),
+    ).rejects.toMatchObject({ status: 409 });
+    expect(
+      await db.groupMissionContribution.count({
+        where: { achievement: { userId: owner } },
+      }),
+    ).toBe(1);
+  });
+  it('deduplicates the same key and group across simultaneous devices and protects database choices', async () => {
+    const { a, b, source, roundB } = await pendingWater();
+    const key = randomUUID();
+    const results = await Promise.all([
+      missionWater.select(owner, source, a, key),
+      missionWater.select(owner, source, a, key),
+    ]);
+    expect(
+      results.map((r) => r.replayed).sort((a, b) => Number(a) - Number(b)),
+    ).toEqual([false, true]);
+    const achievement = await db.activityAchievement.findFirstOrThrow({
+      where: { userId: owner },
+    });
+    const choice = await db.groupMissionWaterChoice.findUniqueOrThrow({
+      where: { achievementId: achievement.id },
+    });
+    await expect(
+      db.groupMissionWaterChoice.update({
+        where: { achievementId: achievement.id },
+        data: { selection: { groupId: b, amount: 1 } },
+      }),
+    ).rejects.toThrow();
+    await expect(
+      db.groupMissionWaterChoice.delete({
+        where: { achievementId: achievement.id },
+      }),
+    ).rejects.toThrow();
+    const participant = await db.groupMissionParticipant.findFirstOrThrow({
+      where: { roundId: roundB, userId: owner },
+    });
+    await expect(
+      db.groupMissionContribution.create({
+        data: {
+          groupId: b,
+          roundId: roundB,
+          participantId: participant.id,
+          achievementId: achievement.id,
+          contributedAt: choice.selectedAt!,
+        },
+      }),
+    ).rejects.toThrow();
+    expect(
+      await db.groupMissionContribution.count({
+        where: { achievementId: achievement.id },
+      }),
+    ).toBe(1);
+  });
+  it('keeps reads free of side effects and never offers newly started or newly joined missions', async () => {
+    const { a, b, source } = await pendingWater();
+    const newGroup = await group();
+    await start(newGroup);
+    for (let i = 0; i < 3; i++) {
+      const offer = await missionWater.get(owner, source);
+      expect(offer.options.map((o) => o.groupId).sort()).toEqual([a, b].sort());
+    }
+    await expect(
+      missionWater.select(owner, source, newGroup, randomUUID()),
+    ).rejects.toMatchObject({ status: 409 });
+    expect(
+      await db.groupMissionContribution.count({
+        where: { achievement: { userId: owner } },
+      }),
+    ).toBe(0);
+  });
+  it('permanently removes a departed participant from pending options even after rejoining', async () => {
+    const { a, b, source } = await pendingWater(member);
+    await groups.leave(member, a);
+    await join(a, member);
+    expect(
+      (await missionWater.get(member, source)).options.map((o) => o.groupId),
+    ).toEqual([b]);
+    await expect(
+      missionWater.select(member, source, a, randomUUID()),
+    ).rejects.toMatchObject({ status: 409 });
+    await missionWater.select(member, source, b, randomUUID());
+  });
+  it('preserves consumed water after group deletion and does not redirect it to another group', async () => {
+    const { a, b, source } = await pendingWater();
+    const result = await missionWater.select(owner, source, a, randomUUID());
+    await groups.delete(owner, a);
+    expect(await missionWater.get(owner, source)).toEqual(result.water);
+    await expect(
+      missionWater.select(owner, source, b, randomUUID()),
+    ).rejects.toMatchObject({ status: 409 });
+    expect(
+      (await missionWater.select(owner, source, a, randomUUID())).replayed,
+    ).toBe(true);
+    const again = await dailyAssignment();
+    await completeDaily(again.id);
+    expect(
+      await missionWater.get(owner, {
+        sourceKind: 'daily_assignment',
+        sourceId: again.id,
+      }),
+    ).toMatchObject({ status: 'unavailable', reason: 'not_first_completion' });
+  });
+  it('expires pending water at server KST midnight, allows a new day and rejects reused keys across days', async () => {
+    const { a, b, source } = await pendingWater();
+    now = new Date('2026-10-01T15:00:00Z');
+    expect(await missionWater.get(owner, source)).toMatchObject({
+      status: 'unavailable',
+      reason: 'expired',
+    });
+    await expect(
+      missionWater.select(owner, source, a, randomUUID()),
+    ).rejects.toMatchObject({ status: 409 });
+    const second = await water();
+    const next = { sourceKind: 'routine' as const, sourceId: second.id };
+    const key = randomUUID();
+    await missionWater.select(owner, next, b, key);
+    now = new Date('2026-10-02T15:00:00Z');
+    const third = await water();
+    await expect(
+      missionWater.select(
+        owner,
+        { sourceKind: 'routine', sourceId: third.id },
+        a,
+        key,
+      ),
+    ).rejects.toMatchObject({ status: 409 });
+    expect((await missionWater.select(owner, next, b, key)).replayed).toBe(
+      true,
+    );
+  });
+  it('finalizes only the selected round and issues its tickets exactly once on deferred last water', async () => {
+    const a = await group();
+    const b = await group();
+    const roundA = await start(a);
+    const roundB = await start(b);
+    await seedWater(
+      roundA,
+      new Map([
+        [owner, 13],
+        [member, 14],
+      ]),
+    );
+    const row = await water();
+    const source = { sourceKind: 'routine' as const, sourceId: row.id };
+    expect((await savedRound(roundA)).waterCount).toBe(27);
+    const key = randomUUID();
+    await Promise.all([
+      missionWater.select(owner, source, a, key),
+      missionWater.select(owner, source, a, key),
+    ]);
+    expect(await current(a)).toMatchObject({
+      status: 'completed',
+      waterCount: 28,
+    });
+    expect((await tickets(a)).length).toBe(2);
+    expect((await savedRound(roundB)).waterCount).toBe(0);
+    expect(await tickets(b)).toHaveLength(0);
+  });
+  it('keeps a completed workout saved when deferred water fails and retries the whole water transaction', async () => {
+    const { a, roundA, source, row } = await pendingWater();
+    const schema = new URL(process.env.DATABASE_URL!).searchParams.get(
+      'schema',
+    )!;
+    if (!/^test_[a-f0-9]+$/.test(schema))
+      throw new Error('Isolated test schema required');
+    await db.$executeRawUnsafe(
+      `CREATE FUNCTION "${schema}".test_deferred_water_failure() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'TEST ONLY deferred failure'; END; $$`,
+    );
+    await db.$executeRawUnsafe(
+      `CREATE TRIGGER test_deferred_water_failure BEFORE INSERT ON "${schema}".group_mission_contributions FOR EACH ROW EXECUTE FUNCTION "${schema}".test_deferred_water_failure()`,
+    );
+    const key = randomUUID();
+    try {
+      await expect(missionWater.select(owner, source, a, key)).rejects.toThrow(
+        'TEST ONLY',
+      );
+      expect((await savedRound(roundA)).waterCount).toBe(0);
+      expect((await missionWater.get(owner, source)).status).toBe('pending');
+      expect(
+        (
+          await db.workoutRoutineItem.findUniqueOrThrow({
+            where: { id: row.items[0].id },
+          })
+        ).status,
+      ).toBe('completed');
+      expect(await balance(owner)).toBe(1);
+    } finally {
+      await db.$executeRawUnsafe(
+        `DROP TRIGGER test_deferred_water_failure ON "${schema}".group_mission_contributions`,
+      );
+      await db.$executeRawUnsafe(
+        `DROP FUNCTION "${schema}".test_deferred_water_failure()`,
+      );
+    }
+    await missionWater.select(owner, source, a, key);
+    expect((await savedRound(roundA)).waterCount).toBe(1);
+  });
+  it('supports legacy daily completions without reopening water for a second completion source', async () => {
+    const a = await group();
+    const b = await group();
+    await start(a);
+    await start(b);
+    const assignment = await dailyAssignment();
+    await completeDaily(assignment.id);
+    const source = {
+      sourceKind: 'daily_assignment' as const,
+      sourceId: assignment.id,
+    };
+    expect((await missionWater.get(owner, source)).status).toBe('pending');
+    await missionWater.select(owner, source, b, randomUUID());
+    const row = await water();
+    await expect(
+      missionWater.select(
+        owner,
+        { sourceKind: 'routine', sourceId: row.id },
+        a,
+        randomUUID(),
+      ),
+    ).rejects.toMatchObject({ status: 409 });
+  });
+  it('uses authenticated, strict, no-store HTTP water contracts and checks actual completion ownership', async () => {
+    await db.authRateLimit.deleteMany();
+    const registration = await request(app.getHttpServer())
+      .post('/api/v1/auth/register')
+      .set('X-CSRF-Protection', '1')
+      .send({
+        email: `water-http-${randomUUID()}@example.test`,
+        password: 'water-http-test-password',
+      })
+      .expect(201);
+    const auth = registration.body as {
+      user: { id: string };
+      access_token: string;
+    };
+    ids.push(auth.user.id);
+    const a = await group([auth.user.id]);
+    const b = await group([auth.user.id]);
+    await start(a);
+    await start(b);
+    const row = await routine(auth.user.id);
+    const source = { sourceKind: 'routine' as const, sourceId: row.id };
+    const api = (method: 'get' | 'post') =>
+      request(app.getHttpServer())
+        [method]('/api/v1/users/me/group-mission-water')
+        .set('Authorization', `Bearer ${auth.access_token}`)
+        .set('X-CSRF-Protection', '1');
+    await api('get').query(source).expect(409);
+    await completeItem(row);
+    const offer = await api('get').query(source).expect(200);
+    expect(offer.headers['cache-control']).toBe('no-store');
+    await api('get')
+      .query({ ...source, extra: 1 })
+      .expect(400);
+    await api('get')
+      .query({ ...source, sourceId: (await routine(owner)).id })
+      .expect(404);
+    await api('post')
+      .send({ ...source, groupId: a })
+      .expect(400);
+    await api('post')
+      .set('Idempotency-Key', randomUUID())
+      .send({ ...source, groupId: a, amount: 99 })
+      .expect(400);
+    await request(app.getHttpServer())
+      .post('/api/v1/users/me/group-mission-water')
+      .set('Authorization', `Bearer ${auth.access_token}`)
+      .set('Idempotency-Key', randomUUID())
+      .send({ ...source, groupId: a })
+      .expect(403);
+    const key = randomUUID();
+    await api('post')
+      .set('Idempotency-Key', key)
+      .send({ ...source, groupId: a })
+      .expect(201);
+    const replay = await api('post')
+      .set('Idempotency-Key', key)
+      .send({ ...source, groupId: a })
+      .expect(201);
+    expect(replay.body.replayed).toBe(true);
+    await api('post')
+      .set('Idempotency-Key', key)
+      .send({ ...source, groupId: b })
+      .expect(409);
+    await request(app.getHttpServer())
+      .get('/api/v1/users/me/group-mission-water')
+      .query(source)
+      .expect(401);
+  });
+  it('uses strict v1 HTTP/auth/CSRF/cache/page contracts and has no arbitrary watering route', async () => {
     await db.authRateLimit.deleteMany();
     const registration = await request(app.getHttpServer())
       .post('/api/v1/auth/register')

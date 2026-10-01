@@ -2,7 +2,10 @@
 import { useCallback, useState } from "react";
 import { errorMessage } from "@/lib/http";
 import { getMission, startMission } from "@/lib/group-missions";
-import type { MissionStage } from "@/lib/group-mission-contract";
+import { Check, Droplets, Ticket } from "lucide-react";
+import { SunflowerIcon } from "./sunflower-icon";
+import styles from "./group-mission.module.css";
+import { missionStages, type MissionStage } from "@/lib/group-mission-contract";
 import { useApiResource } from "./use-api-resource";
 import { useDurableMutation } from "./use-durable-mutation";
 import { Dialog, Loading, Notice, SubmitLabel } from "./ui";
@@ -13,82 +16,6 @@ export const stageNames: Record<MissionStage, string> = {
   bud: "꽃봉오리",
   sunflower: "해바라기",
 };
-export function Sunflower({ stage }: { stage: MissionStage }) {
-  const grown = stage !== "seed",
-    flower = stage === "sunflower";
-  return (
-    <svg
-      className="mission-flower"
-      viewBox="0 0 220 200"
-      role="img"
-      aria-label={stageNames[stage]}
-    >
-      <ellipse cx="110" cy="182" rx="72" ry="9" fill="#efdfbc" />
-      {grown ? (
-        <g
-          transform={
-            stage === "sprout" ? "translate(44 72) scale(.6)" : undefined
-          }
-        >
-          <path
-            d="M110 177 Q98 122 110 67"
-            fill="none"
-            stroke="#63994b"
-            strokeWidth="9"
-            strokeLinecap="round"
-          />
-          <path
-            d="M106 147 Q60 151 62 112 Q99 111 106 147M107 123 Q145 124 153 86 Q116 85 107 123"
-            fill="#89b865"
-          />
-          {(stage === "bud" || flower) && (
-            <>
-              {flower &&
-                Array.from({ length: 10 }, (_, i) => (
-                  <ellipse
-                    key={i}
-                    cx="110"
-                    cy="32"
-                    rx="13"
-                    ry="25"
-                    fill={i % 2 ? "#ffca4c" : "#f3b42e"}
-                    transform={`rotate(${i * 36} 110 65)`}
-                  />
-                ))}
-              <circle
-                cx="110"
-                cy="65"
-                r={flower ? 25 : 19}
-                fill={flower ? "#86562e" : "#90ae55"}
-              />
-              {flower && (
-                <>
-                  <circle cx="102" cy="62" r="2.5" fill="#3c2d24" />
-                  <circle cx="118" cy="62" r="2.5" fill="#3c2d24" />
-                  <path
-                    d="M104 72 Q110 78 116 72"
-                    fill="none"
-                    stroke="#3c2d24"
-                    strokeWidth="2"
-                  />
-                </>
-              )}
-            </>
-          )}
-        </g>
-      ) : (
-        <ellipse
-          cx="110"
-          cy="159"
-          rx="15"
-          ry="23"
-          transform="rotate(24 110 159)"
-          fill="#855b35"
-        />
-      )}
-    </svg>
-  );
-}
 export function GroupMission({
   id,
   leader,
@@ -130,10 +57,16 @@ export function GroupMission({
   }
   const mission = resource.data?.mission;
   return (
-    <section className="mission-card stack-sm" aria-label="그룹 해바라기 미션">
-      <div className="mission-heading">
+    <section className={styles.card} aria-label="그룹 해바라기 미션">
+      <div className={styles.heading}>
         <h2>함께 키우는 해바라기</h2>
-        <span>그룹 미션</span>
+        <span>
+          {mission?.status === "in_progress"
+            ? "진행 중"
+            : mission?.status === "completed"
+              ? "완성"
+              : "그룹 미션"}
+        </span>
       </div>
       {error && <Notice>{error}</Notice>}
       {resource.error ? (
@@ -147,23 +80,74 @@ export function GroupMission({
       {!mission && !resource.error && <Loading />}
       {mission?.id ? (
         <>
-          <Sunflower stage={mission.stage} />
-          <h3>
-            {mission.status === "completed"
-              ? "해바라기를 다 키웠어요!"
-              : `${stageNames[mission.stage]}만큼 자랐어요`}
-          </h3>
+          <div className={styles.summary}>
+            <div className={styles.flower}>
+              <SunflowerIcon size={104} alt="그룹 해바라기" />
+            </div>
+            <div className={styles.summaryInfo}>
+              <span className={styles.stage}>
+                {stageNames[mission.stage]} 단계
+              </span>
+              <h3>
+                {mission.status === "completed"
+                  ? "해바라기를 다 키웠어요!"
+                  : `완성까지 물 ${mission.totalTarget - mission.waterCount}회`}
+              </h3>
+              <p>시작 인원 {mission.memberCount}명이 함께 키우고 있어요.</p>
+            </div>
+          </div>
+          <div className={styles.progressHeading}>
+            <span>
+              <Droplets size={16} aria-hidden="true" /> 함께 준 물
+            </span>
+            <strong>
+              {mission.waterCount} / {mission.totalTarget}회
+            </strong>
+          </div>
           <progress
-            className="mission-progress"
+            className={styles.progress}
             value={mission.waterCount}
             max={mission.totalTarget}
             aria-label="물 주기 달성도"
           />
-          <p>
-            물 {mission.waterCount} / {mission.totalTarget}번 · 시작 인원{" "}
-            {mission.memberCount}명
-          </p>
-          <p className="caption">내가 준 물 {mission.me.waterCount}번</p>
+          <ol className={styles.stages} aria-label="해바라기 성장 단계">
+            {missionStages.map((stage, index) => {
+              const reached = mission.waterCount >= mission.stageTargets[stage];
+              return (
+                <li
+                  key={stage}
+                  data-reached={reached || undefined}
+                  aria-current={stage === mission.stage ? "step" : undefined}
+                >
+                  <span>
+                    {reached ? (
+                      <Check size={13} aria-hidden="true" />
+                    ) : (
+                      index + 1
+                    )}
+                  </span>
+                  <strong>{stageNames[stage]}</strong>
+                  <small>{mission.stageTargets[stage]}회</small>
+                </li>
+              );
+            })}
+          </ol>
+          <div className={styles.personal}>
+            <span>
+              <Droplets size={18} aria-hidden="true" /> 내가 준 물
+            </span>
+            <strong>{mission.me.waterCount}회</strong>
+            <small>
+              {mission.me.eligible
+                ? `${mission.status === "completed" ? "이번 회차 룰렛" : "완성 후 룰렛"} ${Math.floor(mission.me.waterCount / 7)}회`
+                : "참여 자격 종료 · 이번 회차 보상 제외"}
+              {mission.me.eligible &&
+              mission.status === "in_progress" &&
+              mission.me.waterCount % 7
+                ? ` · 다음 룰렛까지 ${7 - (mission.me.waterCount % 7)}회`
+                : ""}
+            </small>
+          </div>
           {!mission.me.eligible && (
             <Notice tone="info">
               {mission.me.reason === "not_in_snapshot"
@@ -173,14 +157,16 @@ export function GroupMission({
           )}
           {mission.status === "in_progress" && mission.me.eligible && (
             <p className="caption">
-              오늘의 운동을 모두 마치면 하루 한 번 자동으로 물을 줘요.
+              오늘의 운동을 모두 마치고 하루 한 그룹에 물을 주세요.
             </p>
           )}
         </>
       ) : (
         mission && (
           <>
-            <Sunflower stage="seed" />
+            <div className={styles.emptyFlower}>
+              <SunflowerIcon size={96} alt="함께 키울 해바라기" />
+            </div>
             <p>함께 운동하고 해바라기를 키워 보세요.</p>
           </>
         )
@@ -204,8 +190,9 @@ export function GroupMission({
       {!leader && mission?.status === "not_started" && (
         <p className="caption">그룹장이 미션을 시작할 수 있어요.</p>
       )}
-      <p className="caption">
-        해바라기가 완성되면 내 물 주기 7번마다 룰렛 1회를 받아요.
+      <p className={styles.rewardHint}>
+        <Ticket size={16} aria-hidden="true" /> 해바라기 완성 후, 내 물 주기
+        7회마다 룰렛 1회
       </p>
       {confirm && (
         <Dialog
