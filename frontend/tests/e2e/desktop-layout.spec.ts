@@ -76,6 +76,31 @@ async function noOverflow(page: Page) {
   }
 }
 
+test("좁은 화면의 메인 로고 행은 다른 주요 페이지 제목 행과 같은 높이에 놓인다", async ({
+  page,
+}, info) => {
+  await installDesktopApi(page);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  for (const width of [320, 559, 639, 640, 719, 959]) {
+    await page.setViewportSize({ width, height: 786 });
+    await page.goto("/");
+    const toolbar = page.locator(".home-toolbar");
+    await expect(toolbar).toBeVisible();
+    const box = (await toolbar.boundingBox())!;
+    expect(box.y).toBeGreaterThanOrEqual(18);
+    const center = box.y + box.height / 2;
+    if (width === 559)
+      await page.screenshot({ path: info.outputPath("home-559.png") });
+    for (const path of ["/workout", "/shop", "/account", "/groups"]) {
+      await page.goto(path);
+      const header = page.locator(".page-header, .profile-toolbar");
+      await expect(header).toBeVisible();
+      const area = (await header.boundingBox())!;
+      expect(center).toBeCloseTo(area.y + area.height / 2, 0);
+    }
+  }
+});
+
 test("메인의 알림은 전체 콘텐츠 우측 상단에 두고 미등록 안내는 데스크톱 오른쪽 열에 배치한다", async ({
   page,
 }, info) => {
