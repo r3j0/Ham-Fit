@@ -339,6 +339,62 @@ describe('group missions/roulette on real PostgreSQL', () => {
     });
   }
 
+  it('exposes only current eligible members water counts and resets with a new round', async () => {
+    const id = await group();
+    expect(await groups.detail(owner, id)).toMatchObject({
+      members: expect.arrayContaining([
+        expect.objectContaining({ userId: owner, missionContribution: null }),
+        expect.objectContaining({ userId: member, missionContribution: null }),
+      ]),
+    });
+    const roundId = await start(id);
+    await seedWater(
+      roundId,
+      new Map([
+        [owner, 27],
+        [member, 0],
+      ]),
+    );
+    expect(await groups.detail(member, id)).toMatchObject({
+      members: expect.arrayContaining([
+        expect.objectContaining({
+          userId: owner,
+          missionContribution: { roundId, waterCount: 27 },
+        }),
+        expect.objectContaining({
+          userId: member,
+          missionContribution: { roundId, waterCount: 0 },
+        }),
+      ]),
+    });
+    expect(await groups.detail(owner, id, member)).toMatchObject({
+      missionContribution: { roundId, waterCount: 0 },
+    });
+    await expect(groups.detail(other, id)).rejects.toThrow('그룹 구성원만');
+    await join(id, other);
+    expect(await groups.detail(owner, id, other)).toMatchObject({
+      missionContribution: null,
+    });
+    await groups.leave(member, id);
+    await join(id, member);
+    expect(await groups.detail(owner, id, member)).toMatchObject({
+      missionContribution: null,
+    });
+    await water(owner);
+    expect(await current(id)).toMatchObject({ status: 'completed' });
+    expect(await groups.detail(owner, id, owner)).toMatchObject({
+      missionContribution: { roundId, waterCount: 28 },
+    });
+    now = new Date(now.getTime() + 86_400_000);
+    const nextRound = await start(id);
+    expect(nextRound).not.toBe(roundId);
+    for (const userId of [owner, member, other]) {
+      expect(await groups.detail(owner, id, userId)).toMatchObject({
+        missionContribution: { roundId: nextRound, waterCount: 0 },
+      });
+    }
+  });
+
   it('requires two members/current leader, keeps create at one, deduplicates parallel starts and key conflicts', async () => {
     const groupId = await group([]);
     expect(await current(groupId)).toEqual({ status: 'not_started', id: null });

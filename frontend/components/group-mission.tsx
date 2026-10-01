@@ -98,10 +98,12 @@ export function GroupMission({
   id,
   leader,
   memberCount,
+  onChanged,
 }: {
   id: string;
   leader: boolean;
   memberCount: number;
+  onChanged: () => void;
 }) {
   const resource = useApiResource(
     useCallback(
@@ -124,6 +126,7 @@ export function GroupMission({
       if (result) {
         setConfirm(false);
         resource.reload();
+        onChanged();
       }
     } catch (e) {
       setError(errorMessage(e));

@@ -182,10 +182,39 @@ export class GroupsService {
         tx,
         members.map((member) => member.userId),
       );
+      // Match missions/current: prefer the active round, otherwise the latest
+      // completed round. Invalidated participation never returns after rejoining.
+      const missionSelect = {
+        id: true,
+        participants: {
+          where: {
+            userId: { in: members.map((member) => member.userId) },
+            invalidatedAt: null,
+          },
+          select: { userId: true, waterCount: true },
+        },
+      } satisfies Prisma.GroupMissionRoundSelect;
+      const round =
+        (await tx.groupMissionRound.findFirst({
+          where: { groupId, completedAt: null },
+          select: missionSelect,
+        })) ??
+        (await tx.groupMissionRound.findFirst({
+          where: { groupId },
+          orderBy: [{ startedAt: 'desc' }, { id: 'desc' }],
+          select: missionSelect,
+        }));
+      const contributions = new Map(
+        round?.participants.map((participant) => [
+          participant.userId,
+          { roundId: round.id, waterCount: participant.waterCount },
+        ]),
+      );
       const views = members.map((member) => ({
         ...profiles.get(member.userId)!,
         role: role(group, member.userId),
         joinedAt: member.joinedAt,
+        missionContribution: contributions.get(member.userId) ?? null,
       }));
       return memberId ? views[0] : { ...summary(group), members: views };
     }, true);

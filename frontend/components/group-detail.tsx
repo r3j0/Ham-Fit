@@ -3,7 +3,7 @@ import { GroupMission } from "./group-mission";
 import Link from "next/link";
 import { useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Crown, MoreHorizontal, X } from "lucide-react";
+import { Check, Crown, Droplet, MoreHorizontal, X } from "lucide-react";
 import { api } from "@/lib/session";
 import { object, invalid } from "@/lib/api-contract";
 import {
@@ -303,6 +303,7 @@ function GroupView({ row, refresh }: { row: Detail; refresh: () => void }) {
         id={row.id}
         leader={leader}
         memberCount={row.currentMembers}
+        onChanged={refresh}
       />
       <section className={styles.card}>
         <h2>{row.name}</h2>
@@ -388,6 +389,16 @@ function GroupView({ row, refresh }: { row: Detail; refresh: () => void }) {
                 </span>
               </Link>
               <div className={styles.memberActivity}>
+                {member.missionContribution && (
+                  <span
+                    className={styles.waterCount}
+                    aria-label={`현재 미션 물 주기 ${member.missionContribution.waterCount}회`}
+                    title="현재 미션에 물을 준 횟수"
+                  >
+                    <Droplet size={16} aria-hidden="true" />
+                    {member.missionContribution.waterCount}회
+                  </span>
+                )}
                 <span>연속 운동 {member.streak}일</span>
                 <span>
                   {member.todayWorkoutCompleted === undefined

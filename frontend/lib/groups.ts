@@ -24,6 +24,7 @@ export interface Member extends ActivityProfile {
   role: Role;
   joinedAt: string;
   todayWorkoutCompleted?: boolean;
+  missionContribution?: { roundId: string; waterCount: number } | null;
 }
 export interface Group {
   id: string;
@@ -72,6 +73,14 @@ export function parseMember(value: unknown): Member {
       typeof row.todayWorkoutCompleted !== "boolean")
   )
     invalid();
+  if (
+    row.missionContribution !== undefined &&
+    row.missionContribution !== null
+  ) {
+    const contribution = object(row.missionContribution);
+    if (!uuid(contribution.roundId) || !integer(contribution.waterCount))
+      invalid();
+  }
   return row as unknown as Member;
 }
 export function parseGroup(value: unknown): Group {
