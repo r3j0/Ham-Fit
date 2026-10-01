@@ -66,12 +66,15 @@ type PreferenceRow = {
   exercise_goal: string | null;
   created_at: Date;
   updated_at: Date;
+  owned_tools: string[];
 };
 
 async function preferences(client: pg.Client) {
   return (
     await client.query<PreferenceRow>(
-      'SELECT * FROM user_preferences ORDER BY user_id',
+      // pg does not decode custom enum-array OIDs automatically. JSON decodes
+      // the list without registering a parser tied to this temporary schema.
+      "SELECT p.*, to_jsonb(p)->'owned_tools' AS owned_tools FROM user_preferences p ORDER BY user_id",
     )
   ).rows;
 }
@@ -150,6 +153,7 @@ it('backfills populated accounts without inferring goals and preserves saved pre
     for (const row of initialized) {
       expect(row.exercise_volume).toBe('standard');
       expect(row.exercise_goal).toBeNull();
+      expect(row.owned_tools).toEqual([]);
       for (const timestamp of [row.created_at, row.updated_at]) {
         expect(timestamp.getTime()).toBeGreaterThanOrEqual(beforeMigration);
         expect(timestamp.getTime()).toBeLessThanOrEqual(afterMigration);
@@ -158,7 +162,30 @@ it('backfills populated accounts without inferring goals and preserves saved pre
     for (const snapshot of snapshots)
       expect(
         (await client.query(`SELECT * FROM ${snapshot.table} ORDER BY 1`)).rows,
-      ).toEqual(snapshot.rows);
+      ).toEqual(
+        snapshot.rows.map((row) => ({
+          ...(row as Record<string, unknown>),
+          ...(snapshot.table === 'users'
+            ? { date_of_birth: null, nickname: null }
+            : {}),
+          ...(snapshot.table === 'workout_curricula'
+            ? { catalog_version: null, video_id: null }
+            : {}),
+          ...(snapshot.table === 'user_curriculum_assignments'
+            ? {
+                assignment_date: null,
+                superseded_at: null,
+                algorithm_version: null,
+                input_snapshot: null,
+                intervals: [],
+                position_seconds: 0,
+                revision: 1,
+                result_status: null,
+                performed_at: null,
+              }
+            : {}),
+        })),
+      );
 
     const database = new DatabaseService(
       new ConfigService({ DATABASE_URL: databaseUrl }),
@@ -175,6 +202,7 @@ it('backfills populated accounts without inferring goals and preserves saved pre
         expect(await service.get(row.user_id)).toEqual({
           exerciseVolume: 'standard',
           exerciseGoal: null,
+          ownedTools: [],
           updatedAt: row.updated_at.toISOString(),
         });
 
@@ -219,11 +247,13 @@ it('backfills populated accounts without inferring goals and preserves saved pre
       expect(await service.get(overlapUser)).toEqual({
         exerciseVolume: 'standard',
         exerciseGoal: null,
+        ownedTools: [],
         updatedAt: repairedRow.updated_at.toISOString(),
       });
       expect(await service.get(owner)).toEqual({
         exerciseVolume: 'more',
         exerciseGoal: 'body_composition_management',
+        ownedTools: [],
         updatedAt: saved
           .find((row) => row.user_id === owner)!
           .updated_at.toISOString(),
@@ -233,6 +263,79 @@ it('backfills populated accounts without inferring goals and preserves saved pre
     } finally {
       await database.onModuleDestroy();
     }
+  });
+}, 30_000);
+
+it('adds empty tools to existing saved preferences without changing data or timestamps', async () => {
+  await withIsolatedSchema(async (client) => {
+    const all = await migrations();
+    const name = '20260929000200_owned_tools';
+    for (const migration of all.filter((entry) => entry.name < name))
+      await client.query(migration.sql);
+    const user = randomUUID();
+    await client.query('INSERT INTO users(id, email) VALUES ($1, $2)', [
+      user,
+      `tools-upgrade-${user}@example.test`,
+    ]);
+    await client.query(
+      `INSERT INTO user_preferences(user_id, exercise_volume, exercise_goal, created_at, updated_at)
+      VALUES ($1, 'more', 'body_composition_management', '2026-09-26', '2026-09-27')`,
+      [user],
+    );
+    const before = await preferences(client);
+    const accountsBefore = (await client.query('SELECT * FROM users')).rows;
+    await client.query(all.find((entry) => entry.name === name)!.sql);
+    expect(await preferences(client)).toEqual(
+      before.map((row) => ({ ...row, owned_tools: [] })),
+    );
+    expect((await client.query('SELECT * FROM users')).rows).toEqual(
+      accountsBefore,
+    );
+    for (const [value, code] of [
+      ['NULL', '23502'],
+      ['ARRAY[\'barbell\']::"OwnedTool"[]', '22P02'],
+      ['ARRAY[NULL]::"OwnedTool"[]', '23514'],
+    ]) {
+      await expect(
+        client.query(`UPDATE user_preferences SET owned_tools = ${value}`),
+      ).rejects.toMatchObject({ code });
+    }
+    expect(await preferences(client)).toEqual(
+      before.map((row) => ({ ...row, owned_tools: [] })),
+    );
+  });
+}, 30_000);
+
+it('extends the tool enum while preserving existing selections and timestamps', async () => {
+  await withIsolatedSchema(async (client) => {
+    const all = await migrations();
+    const name = '20260929000300_home_training_tools';
+    for (const migration of all.filter((entry) => entry.name < name))
+      await client.query(migration.sql);
+    const user = randomUUID();
+    await client.query('INSERT INTO users(id, email) VALUES ($1, $2)', [
+      user,
+      `tools-extension-${user}@example.test`,
+    ]);
+    await client.query(
+      `INSERT INTO user_preferences(user_id, owned_tools, updated_at)
+      VALUES ($1, ARRAY['band', 'dumbbell']::"OwnedTool"[], '2026-09-27')`,
+      [user],
+    );
+    const before = await preferences(client);
+    await client.query(all.find((entry) => entry.name === name)!.sql);
+    expect(await preferences(client)).toEqual(before);
+    await client.query(
+      `UPDATE user_preferences SET owned_tools = ARRAY['band', 'ball', 'cone', 'agility_ladder', 'bosu']::"OwnedTool"[] WHERE user_id = $1`,
+      [user],
+    );
+    expect((await preferences(client))[0].owned_tools).toEqual([
+      'band',
+      'ball',
+      'cone',
+      'agility_ladder',
+      'bosu',
+    ]);
   });
 }, 30_000);
 
@@ -288,5 +391,171 @@ it('enforces preference ownership, uniqueness, enum and nullability constraints 
     });
     await client.query('DELETE FROM users WHERE id = $1', [user]);
     expect(await preferences(client)).toEqual([]);
+  });
+}, 30_000);
+
+it('removes only retired tools, preserves history, and leaves unchanged preference timestamps intact', async () => {
+  await withIsolatedSchema(async (client, databaseUrl) => {
+    const all = await migrations();
+    const target = '20260930000100_routine_cardio';
+    for (const migration of all.filter(({ name }) => name < target))
+      await client.query(migration.sql);
+    const users = [randomUUID(), randomUUID(), randomUUID(), randomUUID()];
+    const selections = [
+      [
+        'bosu',
+        'band',
+        'cone',
+        'ball',
+        'foam_roller',
+        'agility_ladder',
+        'dumbbell',
+      ],
+      ['band', 'dumbbell', 'gym_ball', 'jump_rope', 'step_box', 'ball'],
+      [],
+      ['foam_roller', 'bosu', 'agility_ladder', 'cone'],
+    ];
+    for (const [index, user] of users.entries()) {
+      await client.query('INSERT INTO users(id,email) VALUES ($1,$2)', [
+        user,
+        `retired-${user}@example.test`,
+      ]);
+      await client.query(
+        `INSERT INTO user_preferences(user_id,exercise_volume,exercise_goal,owned_tools,created_at,updated_at)
+        VALUES ($1,'more','body_composition_management',$2::"OwnedTool"[],'2026-09-26','2026-09-27')`,
+        [user, selections[index]],
+      );
+    }
+    const routine = randomUUID();
+    const item = randomUUID();
+    await client.query('BEGIN');
+    await client.query(
+      `INSERT INTO workout_routines(id,user_id,assignment_date,reference_date,algorithm_version,data_version,estimated_minutes,input_snapshot)
+      VALUES ($1,$2,'2026-09-29','2026-09-29','legacy-test','legacy-test',2,$3)`,
+      [
+        routine,
+        users[0],
+        {
+          ownedTools: selections[0],
+          owned_tools: ['보슈', '밴드', '콘', '공', '폼롤러', '사다리', '덤벨'],
+          axes: [{ status: 'below_standard', grade: null }],
+        },
+      ],
+    );
+    await client.query(
+      `INSERT INTO workout_routine_items(id,routine_id,"order",video_id,title,video_url,duration_seconds,slot,prescription,status,intervals,position_seconds,revision,result_status,performed_at)
+      VALUES ($1,$2,1,'LEGACY.mp4','[TEST ONLY]','http://openapi.kspo.or.kr/web/video/LEGACY.mp4',100,'strength_group',
+      '{"doseType":"reps","value":"10~15","unit":"회","sets":2,"restSec":20,"text":"10~15회 × 2세트"}',
+      'interrupted','[{"start":0,"end":60}]',60,2,'interrupted','2026-09-29T01:00:00Z')`,
+      [item, routine],
+    );
+    await client.query(
+      'INSERT INTO workout_routine_requests(user_id,key,routine_id) VALUES ($1,$2,$3)',
+      [users[0], randomUUID(), routine],
+    );
+    await client.query(
+      `INSERT INTO workout_routine_events(item_id,key,request_hash,device_id,sequence,type,intervals,position_seconds,received_at,resulting_revision)
+      VALUES ($1,$2,$3,$4,1,'end','[{"start":0,"end":60}]',60,'2026-09-29T01:00:00Z',2)`,
+      [item, randomUUID(), 'a'.repeat(64), randomUUID()],
+    );
+    await client.query('COMMIT');
+    const tables = [
+      'users',
+      'workout_routines',
+      'workout_routine_items',
+      'workout_routine_requests',
+      'workout_routine_events',
+    ];
+    const history: unknown[][] = [];
+    for (const table of tables)
+      history.push(
+        (await client.query(`SELECT * FROM ${table} ORDER BY 1`)).rows,
+      );
+    const before = await preferences(client);
+    const started = await databaseTime(client);
+    for (const migration of all.filter(({ name }) => name >= target))
+      await client.query(migration.sql);
+    const finished = await databaseTime(client);
+    const after = await preferences(client);
+    for (const [index, user] of users.entries()) {
+      const old = before.find((row) => row.user_id === user)!;
+      const row = after.find((row) => row.user_id === user)!;
+      if (index === 0 || index === 3) {
+        expect(row).toEqual({
+          ...old,
+          owned_tools: index === 0 ? ['band', 'ball', 'dumbbell'] : [],
+          updated_at: row.updated_at,
+        });
+        expect(row.updated_at.getTime()).toBeGreaterThanOrEqual(started);
+        expect(row.updated_at.getTime()).toBeLessThanOrEqual(finished);
+      } else expect(row).toEqual(old);
+    }
+    for (const [index, table] of tables.entries()) {
+      const expected =
+        table === 'workout_routines'
+          ? history[index].map((row) => ({
+              ...(row as object),
+              cardio_recommendation: null,
+            }))
+          : history[index];
+      expect(
+        (await client.query(`SELECT * FROM ${table} ORDER BY 1`)).rows,
+      ).toEqual(expected);
+    }
+    for (const tool of ['foam_roller', 'bosu', 'agility_ladder', 'cone'])
+      await expect(
+        client.query(
+          'UPDATE user_preferences SET owned_tools = $1::"OwnedTool"[]',
+          [[tool]],
+        ),
+      ).rejects.toMatchObject({ code: '22P02' });
+    await expect(
+      client.query('UPDATE user_preferences SET owned_tools = NULL'),
+    ).rejects.toMatchObject({ code: '23502' });
+    await expect(
+      client.query(
+        'UPDATE user_preferences SET owned_tools = ARRAY[NULL]::"OwnedTool"[]',
+      ),
+    ).rejects.toMatchObject({ code: '23514' });
+    expect(await preferences(client)).toEqual(after);
+    const newUser = randomUUID();
+    await client.query('INSERT INTO users(id,email) VALUES ($1,$2)', [
+      newUser,
+      `default-${newUser}@example.test`,
+    ]);
+    await client.query('INSERT INTO user_preferences(user_id) VALUES ($1)', [
+      newUser,
+    ]);
+    expect(
+      (await preferences(client)).find((row) => row.user_id === newUser),
+    ).toMatchObject({
+      owned_tools: [],
+      exercise_volume: 'standard',
+      exercise_goal: null,
+    });
+    const database = new DatabaseService(
+      new ConfigService({ DATABASE_URL: databaseUrl }),
+    );
+    await database.onModuleInit();
+    try {
+      expect(
+        await new UserPreferencesService(database).get(users[0]),
+      ).toMatchObject({ ownedTools: ['band', 'dumbbell', 'ball'] });
+      expect(
+        (
+          await database.workoutRoutine.findUniqueOrThrow({
+            where: { id: routine },
+          })
+        ).cardioRecommendation,
+      ).toBeNull();
+      await expect(
+        database.workoutRoutine.update({
+          where: { id: routine },
+          data: { cardioRecommendation: { activity: '걷기', minutes: 20 } },
+        }),
+      ).rejects.toThrow();
+    } finally {
+      await database.onModuleDestroy();
+    }
   });
 }, 30_000);

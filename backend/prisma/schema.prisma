@@ -63,12 +63,14 @@ enum ExerciseGoal {
   general_fitness_improvement
 }
 
-// Account updates change credentials only (2026-09-21 scope correction).
+// Credential updates remain separate from birthday and nickname profile input.
 // Onboarding is derived from measurement existence, never stored here.
 model User {
   id                          String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   email                       String                     @unique
   password                    String?
+  dateOfBirth                 DateTime?                  @map("date_of_birth") @db.Date
+  nickname                    String?                    @db.VarChar(20)
   createdAt                   DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt                   DateTime                   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   preference                  UserPreference?
@@ -78,16 +80,45 @@ model User {
   measurements                Measurement[]
   sessions                    AuthSession[]
   measurementRequests         MeasurementCreateRequest[]
+  workoutRequests             WorkoutAssignmentRequest[]
+  workoutRoutines             WorkoutRoutine[]
+  routineRequests             WorkoutRoutineRequest[]
+  ledGroups                   Group[]                    @relation("GroupLeader")
+  groupMemberships            GroupMembership[]
+  groupApplications           GroupJoinRequest[]
+  notifications               GroupNotification[]
+  groupCreations              GroupCreateRequest[]
+  avatarInventory             AvatarOwnership[]
+  avatarOutfit                AvatarOutfit?
+  avatarPurchases             AvatarPurchase[]
+  currencyTransactions        CurrencyTransaction[]
+  activityAchievements        ActivityAchievement[]
+  missionParticipants         GroupMissionParticipant[]
+  missionStarts               GroupMissionStartRequest[]
+  rouletteDraws               GroupRouletteDraw[]
+  rouletteRewards             GroupRouletteReward[]
+  streakRouletteTickets        StreakRouletteTicket[]
+  streakRouletteDraws          StreakRouletteDraw[]
 
   @@map("users")
 }
 
-// Independent single-choice workout settings (2026-09-26 scope addition).
-// No recommendations, measurements or onboarding state are derived from these yet.
+// Public tool identifiers; translated only at the Python input boundary.
+enum OwnedTool {
+  band
+  dumbbell
+  gym_ball
+  jump_rope
+  step_box
+  ball
+}
+
+// Persistent settings used when a new routine is generated (2026-09-29).
 model UserPreference {
   userId         String         @id @map("user_id") @db.Uuid
   exerciseVolume ExerciseVolume @default(standard) @map("exercise_volume")
-  exerciseGoal   ExerciseGoal?   @map("exercise_goal")
+  exerciseGoal   ExerciseGoal?  @map("exercise_goal")
+  ownedTools     OwnedTool[]    @default([]) @map("owned_tools")
   createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   user           User           @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict)
@@ -195,7 +226,7 @@ model MeasurementItem {
   unit           String
   reportedGrade  String?               @map("reported_grade")
   // Immutable snapshot for this record revision; null on pre-evaluation records.
-  evaluation     Json?                @db.JsonB
+  evaluation     Json?                 @db.JsonB
   measurement    Measurement           @relation(fields: [measurementId, catalogVersion], references: [id, catalogVersion], onDelete: Cascade, onUpdate: Restrict)
   definition     MeasurementDefinition @relation(fields: [catalogVersion, code, unit], references: [catalogVersion, code, unit], onDelete: Restrict, onUpdate: Restrict)
 
@@ -230,16 +261,23 @@ model UserCurrency {
 
 enum CurriculumAssignmentStatus {
   assigned
+  in_progress
+  not_performed
+  interrupted
   completed
 }
 
-// One workout definition. Content authoring and recommendation are future work.
+// Immutable workout definition; daily recommendation definitions reference a versioned video.
 model WorkoutCurriculum {
-  id          String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name        String
-  createdAt   DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
-  assignments UserCurriculumAssignment[]
+  id             String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name           String
+  catalogVersion String?                    @map("catalog_version")
+  videoId        String?                    @map("video_id")
+  video          WorkoutVideo?              @relation(fields: [catalogVersion, videoId], references: [catalogVersion, videoId], onDelete: Restrict, onUpdate: Restrict)
+  createdAt      DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
+  assignments    UserCurriculumAssignment[]
 
+  @@unique([catalogVersion, videoId])
   @@map("workout_curricula")
 }
 
@@ -249,17 +287,529 @@ model UserCurriculumAssignment {
   curriculumId     String                     @map("curriculum_id") @db.Uuid
   requestKey       String                     @map("request_key") @db.Uuid
   // Sole current marker; SQL CHECK enforces equality with the owner.
-  // Completed assignments remain current until an explicit next assignment.
+  // Assignments remain current until an explicit newer assignment; old daily sessions can resume.
   currentForUserId String?                    @unique @map("current_for_user_id") @db.Uuid
   status           CurriculumAssignmentStatus @default(assigned)
   assignedAt       DateTime                   @default(dbgenerated("clock_timestamp()")) @map("assigned_at") @db.Timestamptz(6)
   completedAt      DateTime?                  @map("completed_at") @db.Timestamptz(6)
+  assignmentDate   DateTime?                  @map("assignment_date") @db.Date
+  supersededAt     DateTime?                  @map("superseded_at") @db.Timestamptz(6)
+  algorithmVersion String?                    @map("algorithm_version")
+  inputSnapshot    Json?                      @map("input_snapshot") @db.JsonB
+  intervals        Json                       @default("[]") @db.JsonB
+  positionSeconds  Float                      @default(0) @map("position_seconds")
+  revision         Int                        @default(1)
+  resultStatus     String?                    @map("result_status")
+  performedAt      DateTime?                  @map("performed_at") @db.Timestamptz(6)
+  events           WorkoutProgressEvent[]
+  requests         WorkoutAssignmentRequest[]
   user             User                       @relation("AssignmentOwner", fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict)
   currentForUser   User?                      @relation("CurrentAssignment", fields: [currentForUserId], references: [id], onDelete: Cascade, onUpdate: Restrict)
   curriculum       WorkoutCurriculum          @relation(fields: [curriculumId], references: [id], onDelete: Restrict, onUpdate: Restrict)
 
   @@unique([userId, requestKey])
+  @@unique([userId, assignmentDate])
   @@index([userId, assignedAt(sort: Desc), id])
   @@index([curriculumId])
   @@map("user_curriculum_assignments")
+}
+
+// Catalogs and their video definitions are immutable. Activation is a separate pointer.
+model WorkoutCatalog {
+  version      String                    @id
+  sourceCommit String                    @map("source_commit")
+  sourceUrls   String[]                  @map("source_urls")
+  checkedOn    DateTime                  @map("checked_on") @db.Date
+  contentHash  String                    @map("content_hash") @db.Char(64)
+  createdAt    DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
+  videos       WorkoutVideo[]
+  activation   WorkoutCatalogActivation?
+
+  @@map("workout_catalogs")
+}
+
+model WorkoutCatalogActivation {
+  id             String         @id
+  catalogVersion String         @unique @map("catalog_version")
+  activatedAt    DateTime       @default(now()) @map("activated_at") @db.Timestamptz(6)
+  catalog        WorkoutCatalog @relation(fields: [catalogVersion], references: [version], onDelete: Restrict, onUpdate: Restrict)
+
+  @@map("workout_catalog_activation")
+}
+
+model WorkoutVideo {
+  catalogVersion  String              @map("catalog_version")
+  videoId         String              @map("video_id")
+  title           String
+  originalUrl     String              @map("original_url")
+  ageGroup        String              @map("age_group")
+  equipment       String[]
+  fitnessWeights  Json                @map("fitness_weights") @db.JsonB
+  durationSeconds Float               @map("duration_seconds")
+  catalog         WorkoutCatalog      @relation(fields: [catalogVersion], references: [version], onDelete: Restrict, onUpdate: Restrict)
+  curricula       WorkoutCurriculum[]
+
+  @@id([catalogVersion, videoId])
+  @@map("workout_videos")
+}
+
+model WorkoutAssignmentRequest {
+  userId       String                   @map("user_id") @db.Uuid
+  key          String                   @db.Uuid
+  assignmentId String                   @map("assignment_id") @db.Uuid
+  createdAt    DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  user         User                     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  assignment   UserCurriculumAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+
+  @@id([userId, key])
+  @@map("workout_assignment_requests")
+}
+
+// Audit events and final representative assignment outcomes have separate responsibilities.
+model WorkoutProgressEvent {
+  assignmentId      String                   @map("assignment_id") @db.Uuid
+  key               String                   @db.Uuid
+  requestHash       String                   @map("request_hash") @db.Char(64)
+  deviceId          String                   @map("device_id") @db.Uuid
+  sequence          Int
+  type              String
+  intervals         Json                     @db.JsonB
+  positionSeconds   Float                    @map("position_seconds")
+  clientOccurredAt  DateTime?                @map("client_occurred_at") @db.Timestamptz(6)
+  receivedAt        DateTime                 @map("received_at") @db.Timestamptz(6)
+  resultingRevision Int                      @map("resulting_revision")
+  assignment        UserCurriculumAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+
+  @@id([assignmentId, key])
+  @@unique([assignmentId, deviceId, sequence])
+  @@map("workout_progress_events")
+}
+
+// Multi-exercise routines coexist with immutable legacy single-video assignments.
+model WorkoutRoutine {
+  id               String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId           String                  @map("user_id") @db.Uuid
+  assignmentDate   DateTime                @map("assignment_date") @db.Date
+  referenceDate    DateTime                @map("reference_date") @db.Date
+  createdAt        DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  algorithmVersion String                  @map("algorithm_version")
+  dataVersion      String                  @map("data_version")
+  estimatedMinutes Float                   @map("estimated_minutes")
+  inputSnapshot    Json                    @map("input_snapshot") @db.JsonB
+  cardioRecommendation Json?               @map("cardio_recommendation") @db.JsonB
+  weightAdjustment Json?                   @map("weight_adjustment") @db.JsonB
+  user             User                    @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  items            WorkoutRoutineItem[]
+  requests         WorkoutRoutineRequest[]
+
+  @@unique([userId, assignmentDate])
+  @@map("workout_routines")
+}
+
+model WorkoutRoutineItem {
+  id              String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  routineId       String                     @map("routine_id") @db.Uuid
+  order           Int
+  videoId         String                     @map("video_id")
+  title           String
+  videoUrl        String                     @map("video_url")
+  durationSeconds Float                      @map("duration_seconds")
+  slot            String
+  prescription    Json                       @db.JsonB
+  status          CurriculumAssignmentStatus @default(assigned)
+  intervals       Json                       @default("[]") @db.JsonB
+  positionSeconds Float                      @default(0) @map("position_seconds")
+  revision        Int                        @default(1)
+  resultStatus    String?                    @map("result_status")
+  performedAt     DateTime?                  @map("performed_at") @db.Timestamptz(6)
+  completedAt     DateTime?                  @map("completed_at") @db.Timestamptz(6)
+  routine         WorkoutRoutine             @relation(fields: [routineId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  events          WorkoutRoutineEvent[]
+
+  @@unique([routineId, order])
+  @@unique([routineId, videoId])
+  @@map("workout_routine_items")
+}
+
+model WorkoutRoutineRequest {
+  userId    String         @map("user_id") @db.Uuid
+  key       String         @db.Uuid
+  routineId String         @map("routine_id") @db.Uuid
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  routine   WorkoutRoutine @relation(fields: [routineId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+
+  @@id([userId, key])
+  @@map("workout_routine_requests")
+}
+
+model WorkoutRoutineEvent {
+  itemId            String             @map("item_id") @db.Uuid
+  key               String             @db.Uuid
+  requestHash       String             @map("request_hash") @db.Char(64)
+  deviceId          String             @map("device_id") @db.Uuid
+  sequence          Int
+  type              String
+  intervals         Json               @db.JsonB
+  positionSeconds   Float              @map("position_seconds")
+  clientOccurredAt  DateTime?          @map("client_occurred_at") @db.Timestamptz(6)
+  receivedAt        DateTime           @map("received_at") @db.Timestamptz(6)
+  resultingRevision Int                @map("resulting_revision")
+  item              WorkoutRoutineItem @relation(fields: [itemId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+
+  @@id([itemId, key])
+  @@unique([itemId, deviceId, sequence])
+  @@map("workout_routine_events")
+}
+
+// Roles are derived from this single leader pointer, never independently stored.
+// SQL also enforces a deferred (id, leader_user_id) FK to group_memberships.
+model Group {
+  id            String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name          String               @db.VarChar(50)
+  description   String               @db.VarChar(500)
+  maxMembers    Int                  @map("max_members")
+  leaderUserId  String               @map("leader_user_id") @db.Uuid
+  inviteCode    String               @unique @map("invite_code") @db.VarChar(43)
+  createdAt     DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  leader        User                 @relation("GroupLeader", fields: [leaderUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  members       GroupMembership[]
+  applications  GroupJoinRequest[]
+  notifications GroupNotification[]
+  creations     GroupCreateRequest[]
+  missions      GroupMissionRound[]
+
+  @@index([leaderUserId])
+  @@map("groups")
+}
+
+model GroupMembership {
+  groupId  String   @map("group_id") @db.Uuid
+  userId   String   @map("user_id") @db.Uuid
+  joinedAt DateTime @default(now()) @map("joined_at") @db.Timestamptz(6)
+  group    Group    @relation(fields: [groupId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+
+  @@id([groupId, userId])
+  @@index([userId, groupId])
+  @@map("group_memberships")
+}
+
+model GroupCreateRequest {
+  userId      String @map("user_id") @db.Uuid
+  key         String @db.Uuid
+  requestHash String @map("request_hash") @db.Char(64)
+  groupId     String @map("group_id") @db.Uuid
+  user        User   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  group       Group  @relation(fields: [groupId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+
+  @@id([userId, key])
+  @@map("group_create_requests")
+}
+
+model GroupJoinRequest {
+  id            String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  groupId       String              @map("group_id") @db.Uuid
+  userId        String              @map("user_id") @db.Uuid
+  requestKey    String              @map("request_key") @db.Uuid
+  status        String              @default("pending")
+  createdAt     DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  processedAt   DateTime?           @map("processed_at") @db.Timestamptz(6)
+  group         Group               @relation(fields: [groupId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  user          User                @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  notifications GroupNotification[]
+
+  @@unique([userId, requestKey])
+  @@index([groupId, status, id])
+  @@map("group_join_requests")
+}
+
+// Minimal durable in-app inbox, committed with the corresponding application.
+model GroupNotification {
+  id        String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String           @map("user_id") @db.Uuid
+  groupId   String           @map("group_id") @db.Uuid
+  requestId String           @map("request_id") @db.Uuid
+  type      String
+  createdAt DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  readAt    DateTime?        @map("read_at") @db.Timestamptz(6)
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  group     Group            @relation(fields: [groupId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  request   GroupJoinRequest @relation(fields: [requestId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+
+  @@unique([requestId, type])
+  @@index([userId, id])
+  @@map("group_notifications")
+}
+
+// Permanent SKU identity. Structural fields are immutable; SQL increments
+// catalogRevision on commercial changes. Pending ownership cannot be sold.
+model AvatarProduct {
+  id String @id
+  kind String
+  slot String?
+  occupiesSlots String[] @map("occupies_slots")
+  renderKey String @map("render_key")
+  ownershipScope String @map("ownership_scope")
+  scopeCharacterId String? @map("scope_character_id")
+  saleStatus String @map("sale_status")
+  price Int?
+  priceProvisional Boolean @default(false) @map("price_provisional")
+  catalogRevision Int @default(1) @map("catalog_revision")
+  ownerships AvatarOwnership[]
+  purchases AvatarPurchase[]
+  streakDraws StreakRouletteDraw[]
+  characters AvatarCombination[] @relation("CombinationCharacter")
+  poses AvatarCombination[] @relation("CombinationPose")
+  combinationItems AvatarCombinationItem[]
+  @@map("avatar_products")
+}
+
+// Each immutable row certifies one complete rendered combination. Absence
+// means unsupported, including combinations of otherwise compatible pieces.
+model AvatarCombination {
+  id String @id
+  characterId String @map("character_id")
+  poseId String @map("pose_id")
+  character AvatarProduct @relation("CombinationCharacter", fields: [characterId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  pose AvatarProduct @relation("CombinationPose", fields: [poseId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  items AvatarCombinationItem[]
+  outfits AvatarOutfit[]
+  @@map("avatar_combinations")
+}
+
+model AvatarCombinationItem {
+  combinationId String @map("combination_id")
+  productId String @map("product_id")
+  combination AvatarCombination @relation(fields: [combinationId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  product AvatarProduct @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  @@id([combinationId, productId])
+  @@map("avatar_combination_items")
+}
+
+model AvatarOwnership {
+  userId String @map("user_id") @db.Uuid
+  productId String @map("product_id")
+  source String
+  acquiredAt DateTime @default(now()) @map("acquired_at") @db.Timestamptz(6)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  product AvatarProduct @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  streakDraws StreakRouletteDraw[] @relation("StreakItemOwnership")
+  @@id([userId, productId])
+  @@map("avatar_ownerships")
+}
+
+model AvatarOutfit {
+  userId String @id @map("user_id") @db.Uuid
+  combinationId String @map("combination_id")
+  revision Int @default(1)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  combination AvatarCombination @relation(fields: [combinationId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  @@map("avatar_outfits")
+}
+
+model AvatarPurchase {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  key String @db.Uuid
+  productId String @map("product_id")
+  price Int
+  catalogRevision Int @map("catalog_revision")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  product AvatarProduct @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  transaction CurrencyTransaction?
+  @@unique([userId, key])
+  @@unique([userId, productId])
+  @@map("avatar_purchases")
+}
+
+model CurrencyTransaction {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  eventKey String @map("event_key")
+  amount Int
+  balanceAfter Int @map("balance_after")
+  kind String
+  purchaseId String? @unique @map("purchase_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  rouletteReward GroupRouletteReward?
+  streakDraw StreakRouletteDraw?
+  purchase AvatarPurchase? @relation(fields: [purchaseId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  @@unique([userId, eventKey])
+  @@map("currency_transactions")
+}
+
+
+// First valid completion transition of a KST day. Never backfilled.
+model ActivityAchievement {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  koreanDate DateTime @map("korean_date") @db.Date
+  achievedAt DateTime @map("achieved_at") @db.Timestamptz(6)
+  sourceKind String @map("source_kind")
+  sourceId String @map("source_id") @db.Uuid
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  contributions GroupMissionContribution[]
+  streakTickets StreakRouletteTicket[]
+  @@unique([userId, koreanDate])
+  @@unique([id, userId, koreanDate])
+  @@map("activity_achievements")
+}
+
+model GroupMissionRound {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  groupId String @map("group_id") @db.Uuid
+  memberCount Int @map("member_count")
+  totalTarget Int @map("total_target")
+  waterCount Int @default(0) @map("water_count")
+  startedAt DateTime @map("started_at") @db.Timestamptz(6)
+  completedAt DateTime? @map("completed_at") @db.Timestamptz(6)
+  policyVersion String @map("policy_version")
+  roulettePolicy Json @map("roulette_policy") @db.JsonB
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  participants GroupMissionParticipant[]
+  contributions GroupMissionContribution[]
+  tickets GroupRouletteTicket[]
+  starts GroupMissionStartRequest[]
+  @@unique([id, groupId])
+  @@index([groupId, startedAt, id])
+  @@map("group_mission_rounds")
+}
+
+// No membership FK: departure must never cascade the contribution ledger.
+// invalidatedAt is permanent, including when the same account rejoins.
+model GroupMissionParticipant {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  roundId String @map("round_id") @db.Uuid
+  userId String? @map("user_id") @db.Uuid
+  waterCount Int @default(0) @map("water_count")
+  invalidatedAt DateTime? @map("invalidated_at") @db.Timestamptz(6)
+  round GroupMissionRound @relation(fields: [roundId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull, onUpdate: Restrict)
+  contributions GroupMissionContribution[]
+  tickets GroupRouletteTicket[]
+  @@unique([roundId, userId])
+  @@unique([id, roundId])
+  @@index([userId, roundId])
+  @@map("group_mission_participants")
+}
+
+model GroupMissionContribution {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  groupId String @map("group_id") @db.Uuid
+  roundId String @map("round_id") @db.Uuid
+  participantId String @map("participant_id") @db.Uuid
+  achievementId String? @map("achievement_id") @db.Uuid
+  contributedAt DateTime @map("contributed_at") @db.Timestamptz(6)
+  round GroupMissionRound @relation(fields: [roundId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  participant GroupMissionParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  achievement ActivityAchievement? @relation(fields: [achievementId], references: [id], onDelete: SetNull, onUpdate: Restrict)
+  @@unique([groupId, achievementId])
+  @@map("group_mission_contributions")
+}
+
+model GroupMissionStartRequest {
+  userId String @map("user_id") @db.Uuid
+  key String @db.Uuid
+  roundId String @map("round_id") @db.Uuid
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  round GroupMissionRound @relation(fields: [roundId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  @@id([userId, key])
+  @@map("group_mission_start_requests")
+}
+
+model GroupRouletteTicket {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  roundId String @map("round_id") @db.Uuid
+  participantId String @map("participant_id") @db.Uuid
+  ordinal Int
+  createdAt DateTime @map("created_at") @db.Timestamptz(6)
+  invalidatedAt DateTime? @map("invalidated_at") @db.Timestamptz(6)
+  round GroupMissionRound @relation(fields: [roundId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  participant GroupMissionParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  draw GroupRouletteDraw?
+  @@unique([roundId, participantId, ordinal])
+  @@map("group_roulette_tickets")
+}
+
+model GroupRouletteDraw {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ticketId String @unique @map("ticket_id") @db.Uuid
+  userId String? @map("user_id") @db.Uuid
+  key String @db.Uuid
+  policyVersion String @map("policy_version")
+  result String
+  amount Int
+  drawnAt DateTime @map("drawn_at") @db.Timestamptz(6)
+  ticket GroupRouletteTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull, onUpdate: Restrict)
+  rewards GroupRouletteReward[]
+  @@unique([userId, key])
+  @@map("group_roulette_draws")
+}
+
+model GroupRouletteReward {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  drawId String @map("draw_id") @db.Uuid
+  userId String? @map("user_id") @db.Uuid
+  amount Int
+  transactionId String? @unique @map("transaction_id") @db.Uuid
+  draw GroupRouletteDraw @relation(fields: [drawId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull, onUpdate: Restrict)
+  transaction CurrencyTransaction? @relation(fields: [transactionId], references: [id], onDelete: SetNull, onUpdate: Restrict)
+  @@unique([drawId, userId])
+  @@map("group_roulette_rewards")
+}
+
+// An immutable versioned policy; tickets retain this reference forever.
+model StreakRoulettePolicy {
+  version String @id
+  snapshot Json @db.JsonB
+  tickets StreakRouletteTicket[]
+  @@map("streak_roulette_policies")
+}
+
+model StreakRouletteTicket {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  achievementId String @unique @map("achievement_id") @db.Uuid
+  koreanDate DateTime @map("korean_date") @db.Date
+  segmentStartDate DateTime @map("segment_start_date") @db.Date
+  streakDays Int @map("streak_days")
+  createdAt DateTime @map("created_at") @db.Timestamptz(6)
+  policyVersion String @map("policy_version")
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  achievement ActivityAchievement @relation(fields: [achievementId, userId, koreanDate], references: [id, userId, koreanDate], onDelete: Cascade, onUpdate: Restrict, map: "streak_ticket_achievement_fkey")
+  draw StreakRouletteDraw?
+  policy StreakRoulettePolicy @relation(fields: [policyVersion], references: [version], onDelete: Restrict, onUpdate: Restrict)
+  @@unique([userId, koreanDate])
+  @@unique([userId, segmentStartDate, streakDays])
+  @@index([userId, id])
+  @@map("streak_roulette_tickets")
+}
+
+// This immutable payout receipt is also the single-use ticket consumption.
+model StreakRouletteDraw {
+  id String @id @db.Uuid
+  ticketId String @unique @map("ticket_id") @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  key String @db.Uuid
+  policyVersion String @map("policy_version")
+  result String
+  actualKind String @map("actual_kind")
+  amount Int
+  productId String? @map("product_id")
+  transactionId String? @unique @map("transaction_id") @db.Uuid
+  fallbackReason String? @map("fallback_reason")
+  drawnAt DateTime @map("drawn_at") @db.Timestamptz(6)
+  ticket StreakRouletteTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  product AvatarProduct? @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  ownership AvatarOwnership? @relation("StreakItemOwnership", fields: [userId, productId], references: [userId, productId], onDelete: NoAction, onUpdate: Restrict)
+  transaction CurrencyTransaction? @relation(fields: [transactionId], references: [id], onDelete: NoAction, onUpdate: Restrict)
+  @@unique([userId, key])
+  @@index([userId, id])
+  @@map("streak_roulette_draws")
 }

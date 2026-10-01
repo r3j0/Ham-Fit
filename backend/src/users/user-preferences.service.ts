@@ -7,11 +7,13 @@ import {
 import { DatabaseService } from '../database/database.service.js';
 import type { Prisma, UserPreference } from '../generated/prisma/client.js';
 import type { UserPreferencesInput } from './user-preferences-input.js';
+import { normalizeOwnedTools } from './owned-tools.js';
 
 function serializePreference(row: UserPreference) {
   return {
     exerciseVolume: row.exerciseVolume,
     exerciseGoal: row.exerciseGoal,
+    ownedTools: normalizeOwnedTools(row.ownedTools),
     updatedAt: row.updatedAt.toISOString(),
   };
 }
@@ -71,6 +73,14 @@ export class UserPreferencesService {
         input.exerciseGoal !== current.exerciseGoal
       )
         data.exerciseGoal = input.exerciseGoal;
+      if (input.ownedTools !== undefined) {
+        const ownedTools = normalizeOwnedTools(input.ownedTools);
+        if (
+          JSON.stringify(ownedTools) !==
+          JSON.stringify(normalizeOwnedTools(current.ownedTools))
+        )
+          data.ownedTools = ownedTools;
+      }
       if (!Object.keys(data).length) return serializePreference(current);
 
       // Sample the DB clock after the lock. Keep changes distinguishable at

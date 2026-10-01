@@ -1,3 +1,6 @@
+import { AvatarModule } from './avatar/avatar.module.js';
+import { StreakRouletteModule } from './streak-roulette/streak-roulette.module.js';
+import { GroupsModule } from './groups/groups.module.js';
 import { Module } from '@nestjs/common';
 import { UsersModule } from './users/users.module.js';
 import { CurriculaModule } from './curricula/curricula.module.js';
@@ -7,6 +10,7 @@ import { HealthModule } from './health/health.module.js';
 import { DatabaseModule } from './database/database.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { MeasurementsModule } from './measurements/measurements.module.js';
+import { RecommendationsModule } from './recommendations/recommendations.module.js';
 
 @Module({
   imports: [
@@ -21,6 +25,10 @@ import { MeasurementsModule } from './measurements/measurements.module.js';
     MeasurementsModule,
     UsersModule,
     CurriculaModule,
+    RecommendationsModule,
+    GroupsModule,
+    AvatarModule,
+    StreakRouletteModule,
   ],
 })
 export class AppModule {}

@@ -371,3 +371,11 @@ PR #7의 `9dd4b49` 위에서 승인된 리포트 미리보기를 실제 화면�
 - 최종 빌드를 `localhost:3020`에 적용하고 실제 계정에서 새 얼굴 버튼 이름·상점 전환 제거·4열·프로필/그룹 상단 크기를 확인했다. 로그인 외 변경 요청·페이지 오류는 0건이며 스트릭 테스트 계정은 **4일, 오늘 0/3개 완료** 상태다.
 
 로컬 산출물: `frontend/.local/character-ui-{types,unit,build,format,e2e,recheck,live}.log`, 브라우저 스크린샷 폴더 `character-ui-e2e/`, `character-ui-recheck/`, 실제 계정 결과 `character-ui-live-smoke.json`. 계정과 산출물은 Git에서 제외한다.
+
+
+## 2026-10-01: 최신 main 병합과 운동 도구 충돌 해결
+
+- `feat/frontend/avatar-shop`에 BE PR #9 병합 커밋 `95b3a69`를 통합했다. 충돌한 `lib/user-preferences.ts`와 관련 단위·브라우저 테스트 3개는 기존 FE 브랜치 내용을 그대로 유지했다. 최신 BE 규격은 도구 6종이며 과거 10종으로 되돌리지 않았다. 자동 병합된 `BACKEND-INTEGRATION.md`도 6종과 후속 마이그레이션에 맞춰 정정했다.
+- 병합 결과의 `backend/`와 `data-analysis/`는 최신 main과 동일하다. 미해결 Git 항목·충돌 마커가 없고 `git diff --cached --check`가 통과했다. FE 실행 코드·테스트는 병합 전 브랜치와 동일하다.
+- FE 전체 린트·타입·서식 검사, 단위 162개가 통과했다. 운동 설정 Chromium 테스트 14개(실제 API 3개 포함)가 통과했다. 브라우저는 기존 `localhost:3020` FE와 `localhost:3021` BE에서 검증했으며 최신 BE 전체 통합 검사를 다시 실행한 결과는 아니다. 이번 병합에서 서버 교체·DB 마이그레이션·재배포는 수행하지 않았다.
+- 검사 로그: `frontend/.local/merge-main-{lint,types,format,unit,e2e}.log`.

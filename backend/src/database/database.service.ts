@@ -24,6 +24,10 @@ export class DatabaseService
   table(
     name:
       | 'users'
+      | 'avatar_products'
+      | 'avatar_ownerships'
+      | 'groups'
+      | 'group_memberships'
       | 'user_curriculum_assignments'
       | 'measurements'
       | 'user_preferences',
@@ -64,12 +68,38 @@ export class DatabaseService
         this.authRefreshToken.findFirst({ select: { createdAt: true } }),
         this.authRateLimit.findFirst({ select: { attempts: true } }),
         this.measurementCreateRequest.findFirst({ select: { key: true } }),
+        this.avatarProduct.findFirst({ select: { catalogRevision: true } }),
+        this.avatarOutfit.findFirst({ select: { revision: true } }),
+        this.avatarOwnership.findFirst({ select: { source: true } }),
+        this.avatarPurchase.findFirst({ select: { price: true } }),
+        this.currencyTransaction.findFirst({ select: { amount: true } }),
         this.userCurrency.findFirst({ select: { balance: true } }),
         this.userPreference.findFirst({
-          select: { exerciseVolume: true, exerciseGoal: true, updatedAt: true },
+          select: {
+            exerciseVolume: true,
+            exerciseGoal: true,
+            ownedTools: true,
+            updatedAt: true,
+          },
         }),
         this.workoutCurriculum.findFirst({ select: { id: true } }),
         this.userCurriculumAssignment.findFirst({ select: { id: true } }),
+        this.workoutRoutine.findFirst({ select: { id: true } }),
+        this.workoutRoutineItem.findFirst({ select: { id: true } }),
+        this.workoutRoutineRequest.findFirst({ select: { key: true } }),
+        this.workoutRoutineEvent.findFirst({ select: { key: true } }),
+        this.group.findFirst({ select: { id: true } }),
+        this.groupMembership.findFirst({ select: { groupId: true } }),
+        this.groupJoinRequest.findFirst({ select: { id: true } }),
+        this.groupCreateRequest.findFirst({ select: { key: true } }),
+        this.groupNotification.findFirst({ select: { id: true } }),
+        this.groupMissionRound.findFirst({ select: { id: true } }),
+        this.activityAchievement.findFirst({ select: { id: true } }),
+        this.groupRouletteTicket.findFirst({ select: { id: true } }),
+        this.groupRouletteDraw.findFirst({ select: { id: true } }),
+        this.streakRoulettePolicy.findFirst({ select: { version: true } }),
+        this.streakRouletteTicket.findFirst({ select: { id: true } }),
+        this.streakRouletteDraw.findFirst({ select: { id: true } }),
       ]);
       return definitions > 0;
     } catch {

@@ -1,3 +1,4 @@
+import { retryTransaction } from '../database/transaction-retry.js';
 import {
   ConflictException,
   Inject,
@@ -9,6 +10,8 @@ import { Prisma } from '../generated/prisma/client.js';
 import { PasswordService } from './password.service.js';
 import { TokenService } from './token.service.js';
 import type { AccountUpdateInput } from './auth-input.js';
+import { parseDateOfBirth } from '../users/date-of-birth.js';
+import { parseNickname } from '../users/nickname.js';
 
 const publicUserSelect = {
   id: true,
@@ -35,7 +38,18 @@ export class AuthService {
     @Inject(TokenService) private readonly tokens: TokenService,
   ) {}
 
-  async register(email: string, password: string) {
+  async register(
+    email: string,
+    password: string,
+    dateOfBirth?: string,
+    nickname?: string,
+  ) {
+    const birthday =
+      dateOfBirth === undefined
+        ? undefined
+        : new Date(`${parseDateOfBirth(dateOfBirth)}T00:00:00.000Z`);
+    const displayName =
+      nickname === undefined ? undefined : parseNickname(nickname);
     const passwordHash = await this.passwords.hash(password);
     const refreshToken = this.tokens.newRefreshToken();
     const expiresAt = new Date(Date.now() + this.tokens.refreshTtl * 1000);
@@ -45,6 +59,8 @@ export class AuthService {
         data: {
           email,
           password: passwordHash,
+          dateOfBirth: birthday,
+          nickname: displayName,
           // Nested writes share one transaction: signup cannot commit without
           // its default settings, currency and initial session.
           preference: { create: {} },
@@ -239,8 +255,21 @@ export class AuthService {
       throw new UnauthorizedException('본인 확인에 실패했습니다.');
     // One DELETE is atomic with all FK cascades. The verified hash is a write
     // precondition: a changed password or concurrent deletion cannot be bypassed.
-    const deleted = await this.database.user.deleteMany({
-      where: { id: userId, password: user.password },
+    const deleted = await retryTransaction(() =>
+      this.database.user.deleteMany({
+        where: { id: userId, password: user.password },
+      }),
+    ).catch((error: unknown) => {
+      // A leader cannot disappear via account deletion and orphan a group.
+      // Group leave/delete/transfer must happen first; ordinary membership cascades.
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2003'
+      )
+        throw new ConflictException(
+          '그룹장인 그룹에서 위임 후 탈퇴하거나 그룹을 삭제한 뒤 계정을 삭제해 주세요.',
+        );
+      throw error;
     });
     if (!deleted.count)
       throw new UnauthorizedException('본인 확인에 실패했습니다.');

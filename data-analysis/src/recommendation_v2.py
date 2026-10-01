@@ -40,11 +40,15 @@ data-analysis/
                     "unit": str,           # 예: "회", "초 유지", "초"
                     "sets": int,
                     "restSec": int,
-                    "text": str            # 예: "10~15회 × 2세트"
+                    "text": str            # 예: "10~15회 × 3세트"
                 }
             }
         ],
-        "estimatedMinutes": int            # 운동 1개당 2분 기준
+        "estimatedMinutes": int,           # 운동 1개당 2분 기준 (유산소 시간 제외)
+        "cardioRecommendation": {
+            "activity": "걷기" | "뛰기",    # 운동량 기준: light·normal → 걷기 / full → 뛰기
+            "minutes": int                 # 운동 목적 기준: body 30 / general 20 / grade 15
+        }
     },
     "weightAdjustment": {
         "<fitnessFactor>": {
@@ -107,7 +111,6 @@ ROUTINE_SIZE = {
 
 GOALS = {"grade", "body", "general"}
 
-# 체형 관리 목적 가중치
 BODY_GOAL_WEIGHT = {
     "strength": 1.10,
     "muscularEndurance": 1.10,
@@ -134,11 +137,11 @@ IN_ROUTINE_DECAY = EXPOSURE_ALPHA
 # 슬롯 그룹에 해당하는 영상으로 인정하는 최소 비중
 MIN_GROUP_WEIGHT = 0.5
 
-# 화면 표시 순서: 동적 유연성 → 민첩·순발 → 근력 → 정리 스트레칭
+# 화면 표시 순서: 동적 유연성 → 근력 → 민첩·순발 → 정리 스트레칭
 SLOT_ORDER = [
     "flexibility_group",
-    "agility_power_group",
     "strength_group",
+    "agility_power_group",
     "cooldown",
 ]
 
@@ -165,12 +168,27 @@ TOOL_ALIASES = {
 
 # 처방 유형별 기본 운동량 (MVP 정책값, 방향 근거: Garber et al. 2011)
 PRESCRIPTION_RULES = {
-    "reps": {"value": "10~15", "unit": "회", "sets": 2},
-    "hold": {"value": "20~30", "unit": "초 유지", "sets": 2},
-    "timed": {"value": "30", "unit": "초", "sets": 2},
+    "reps": {"value": "10~15", "unit": "회", "sets": 3},
+    "hold": {"value": "20~30", "unit": "초 유지", "sets": 3},
+    "timed": {"value": "30", "unit": "초", "sets": 3},
 }
 REST_SEC = 20
 MINUTES_PER_EXERCISE = 2
+
+# (추가) 루틴 외 추가 유산소 권장량
+# 운동 목적별 유산소 시간(분): 체형관리 30 / 체력 늘리기 20 / 체력 등급 올리기 15
+CARDIO_MINUTES = {
+    "body": 30,
+    "general": 20,
+    "grade": 15,
+}
+
+# 오늘의 운동량별 유산소 종류: 가볍게·기본 → 걷기 / 충분히 → 뛰기
+CARDIO_ACTIVITY = {
+    "light": "걷기",
+    "normal": "걷기",
+    "full": "뛰기",
+}
 
 REQUIRED_VIDEO_COLUMNS = {
     "file_nm",
@@ -709,56 +727,96 @@ def select_best_video(
 # ---------------------------------------------------------------------
 # 9. 루틴 구성
 # ---------------------------------------------------------------------
+def _recent_titles(
+    videos: pd.DataFrame,
+    logs: Sequence[Mapping[str, Any]],
+    current_date: Any,
+) -> set[str]:
+    """최근 수행 영상의 제목 집합.
 
-def assign_routine_slots(
-    priority: Mapping[str, float],
-    main_slot_count: int,
-    candidates: pd.DataFrame,
-) -> list[str]:
-    """주운동 슬롯에 체력요인 그룹을 배정한다.
-
-    - 그룹 우선순위 = 그룹에 속한 체력요인 priority 중 최댓값
-    - 같은 그룹을 배정할 때마다 IN_ROUTINE_DECAY만큼 낮춰 한 요인 쏠림 방지
-    - 한 그룹은 주운동 슬롯의 절반(올림)을 넘지 않음
-    - 동점이면 무작위 선택
+    기간 조건은 exclude_recent_videos()와 동일하게 0 <= days_ago <= RECENT_VIDEO_DAYS.
+    run_recommendation()이 추천일(내일)을 넘기므로 실제로는 오늘 포함 7일치 기록이다.
+    동일 제목의 다른 파일도 함께 제외하기 위해 file_nm → title로 변환한다.
     """
-    group_priority = {
-        group: max(float(priority[factor]) for factor in factors)
-        for group, factors in ROUTINE_GROUPS.items()
-    }
+    current_date = _to_timestamp(current_date, "current_date")
+    recent_ids: set[str] = set()
 
-    # 후보 영상이 없는 그룹은 배정하지 않음
-    available_groups = [
-        group for group, factors in ROUTINE_GROUPS.items()
-        if (candidates[factors].sum(axis=1) >= MIN_GROUP_WEIGHT).any()
+    for log in logs:
+        days_ago = (current_date - _to_timestamp(log["date"], "log.date")).days
+        if 0 <= days_ago <= RECENT_VIDEO_DAYS:
+            recent_ids.add(log["videoId"])
+
+    return set(videos.loc[videos["file_nm"].isin(recent_ids), "title"])
+
+
+def _last_dates_by_title(
+    videos: pd.DataFrame,
+    logs: Sequence[Mapping[str, Any]],
+) -> dict[str, pd.Timestamp]:
+    """제목별 가장 최근 수행일 (같은 제목의 여러 파일을 하나로 묶음)."""
+    last_by_file: dict[str, pd.Timestamp] = {}
+    for log in logs:
+        date = _to_timestamp(log["date"], "log.date")
+        file_nm = log["videoId"]
+        if file_nm not in last_by_file or date > last_by_file[file_nm]:
+            last_by_file[file_nm] = date
+
+    last: dict[str, pd.Timestamp] = {}
+    for file_nm, title in zip(videos["file_nm"], videos["title"]):
+        date = last_by_file.get(file_nm)
+        if date is not None and (title not in last or date > last[title]):
+            last[title] = date
+    return last
+
+
+def _group_pool(
+    scored: pd.DataFrame,
+    group: str,
+    excluded_titles: set[str],
+) -> pd.DataFrame:
+    """슬롯 그룹에 해당하는 후보 (제외 제목 제거)."""
+    factors = ROUTINE_GROUPS[group]
+    pool = scored[
+        (scored[factors].sum(axis=1) >= MIN_GROUP_WEIGHT)
+        & ~scored["title"].isin(excluded_titles)
     ]
+    # 유연성 주운동 슬롯은 정적 스트레칭과 분리 (정적 스트레칭은 정리운동에서 사용)
+    if group == "flexibility_group" and (pool["dose_type"] != "hold").any():
+        pool = pool[pool["dose_type"] != "hold"]
+    return pool
 
-    group_cap = int(np.ceil(main_slot_count / 2))
-    assigned_count = {group: 0 for group in ROUTINE_GROUPS}
-    slots: list[str] = []
 
-    for _ in range(main_slot_count):
-        adjusted = {
-            group: group_priority[group] - IN_ROUTINE_DECAY * assigned_count[group]
-            for group in available_groups
-            if assigned_count[group] < group_cap
-        }
+def _cooldown_pool(scored: pd.DataFrame, excluded_titles: set[str]) -> pd.DataFrame:
+    """정리 스트레칭 후보: 유연성 유지형 영상 중 스트레칭·요가 자세 동작 우선."""
+    pool = scored[
+        (scored["flexibility"] == 1)
+        & (scored["dose_type"] == "hold")
+        & ~scored["title"].isin(excluded_titles)
+    ]
+    stretch_pool = pool[pool["title"].str.contains("|".join(COOLDOWN_KEYWORDS))]
+    return stretch_pool if not stretch_pool.empty else pool
 
-        if not adjusted:
-            break
 
-        top_score = max(adjusted.values())
-        top_groups = [
-            group for group, score in adjusted.items()
-            if np.isclose(score, top_score)
-        ]
+def _select_oldest(
+    pool: pd.DataFrame,
+    last_by_title: Mapping[str, pd.Timestamp],
+    logs: Sequence[Mapping[str, Any]],
+) -> pd.Series:
+    """최근 영상 재사용: 가장 오래전에 수행한 영상 → 추천점수 최고 → 무작위.
 
-        selected_group = str(np.random.choice(top_groups))
+    수행 이력이 있는 title만 대상으로 하며(NaT 제외),
+    이력이 있는 후보가 하나도 없으면 기존 select_best_video()로 선택한다.
+    """
+    p = pool.copy()
+    p["_last"] = p["title"].map(last_by_title)
+    p = p[p["_last"].notna()]
 
-        assigned_count[selected_group] += 1
-        slots.append(selected_group)
+    if p.empty:
+        return select_best_video(pool, logs)
 
-    return slots
+    p = p[p["_last"] == p["_last"].min()]
+    p = p[np.isclose(p["recommendation_score"], p["recommendation_score"].max())]
+    return p.sample(n=1).iloc[0]
 
 
 def compose_workout_routine(
@@ -766,13 +824,25 @@ def compose_workout_routine(
     priority: Mapping[str, float],
     logs: Sequence[Mapping[str, Any]] | None,
     routine_size: int,
+    current_date: Any,
 ) -> list[tuple[str, pd.Series]]:
     """슬롯별 영상 선택과 정리 스트레칭으로 루틴을 구성한다.
 
     - light(3개): 주운동 3개, 정리 스트레칭 없음
     - normal(5개)/full(7개): 주운동 N-1개 + 마지막 정리 스트레칭 1개
     - 같은 제목의 영상은 한 루틴에 중복되지 않음
+
+    후보 부족 처리 (슬롯마다 다시 판단):
+    1) 최근 7일에 수행하지 않은 제목이 남은 그룹 중 우선순위 최고 그룹에 배정
+       → 후보가 바닥난 그룹은 자동으로 빠지고 다른 그룹으로 재배정됨
+    2) 모든 그룹에 새 제목이 없을 때만, 그 슬롯 1개에 한해
+       최근 수행 영상 중 가장 오래전에 수행한 영상을 재사용
+       (이미 선택된 영상은 유지, 다음 슬롯은 다시 1)부터 판단)
+    3) 정리 스트레칭도 같은 규칙을 따로 적용하며, 주운동의 최근 영상 제한에는 영향 없음
+    - 그룹 상한(주운동 슬롯 절반 올림)과 IN_ROUTINE_DECAY는 기존과 동일
     """
+    logs = _validate_logs(logs)
+
     if routine_size == 3:
         main_slot_count = 3
         include_cooldown = False
@@ -780,48 +850,71 @@ def compose_workout_routine(
         main_slot_count = routine_size - 1
         include_cooldown = True
 
-    slots = assign_routine_slots(priority, main_slot_count, candidates)
-
     scored = calculate_video_scores(candidates, priority)
-    selected: list[tuple[str, pd.Series]] = []
+    recent = _recent_titles(scored, logs, current_date)
+    last_by_title = _last_dates_by_title(scored, logs)
+
     used_titles: set[str] = set()
+    selected: list[tuple[str, pd.Series]] = []
 
-    for slot in slots:
-        factors = ROUTINE_GROUPS[slot]
-
-        pool = scored[
-            (scored[factors].sum(axis=1) >= MIN_GROUP_WEIGHT)
-            & ~scored["title"].isin(used_titles)
-        ]
-
-        # 유연성 주운동 슬롯은 정적 스트레칭과 분리 (정적 스트레칭은 정리운동에서 사용)
-        if slot == "flexibility_group" and (pool["dose_type"] != "hold").any():
-            pool = pool[pool["dose_type"] != "hold"]
-
-        if pool.empty:
-            continue
-
-        video = select_best_video(pool, logs)
-        selected.append((slot, video))
-        used_titles.add(video["title"])
-
+    # 정리 스트레칭 1개 예약 (주운동이 먼저 가져가지 않도록)
+    cooldown = None
     if include_cooldown:
-        # 정리 스트레칭: 유연성 유지형 영상 중 스트레칭·요가 자세 동작 우선
-        cooldown_pool = scored[
-            (scored["flexibility"] == 1)
-            & (scored["dose_type"] == "hold")
-            & ~scored["title"].isin(used_titles)
-        ]
-        stretch_pool = cooldown_pool[
-            cooldown_pool["title"].str.contains("|".join(COOLDOWN_KEYWORDS))
-        ]
-        if not stretch_pool.empty:
-            cooldown_pool = stretch_pool
+        pool = _cooldown_pool(scored, recent)
+        if not pool.empty:
+            cooldown = select_best_video(pool, logs)
+        else:
+            # 최근 7일에 안 한 정리 스트레칭이 없을 때만, 이 1개만 가장 오래된 영상으로 재사용
+            pool = _cooldown_pool(scored, set())
+            if not pool.empty:
+                cooldown = _select_oldest(pool, last_by_title, logs)
+        if cooldown is not None:
+            used_titles.add(cooldown["title"])
 
-        if not cooldown_pool.empty:
-            selected.append(
-                ("cooldown", select_best_video(cooldown_pool, logs))
-            )
+    # 주운동 슬롯
+    group_priority = {
+        group: max(float(priority[factor]) for factor in factors)
+        for group, factors in ROUTINE_GROUPS.items()
+    }
+    group_cap = int(np.ceil(main_slot_count / 2))
+    assigned_count = {group: 0 for group in ROUTINE_GROUPS}
+
+    for _ in range(main_slot_count):
+        open_groups = [g for g in ROUTINE_GROUPS if assigned_count[g] < group_cap]
+
+        # 1) 최근 7일에 안 한 새 제목이 남은 그룹
+        pools = {g: _group_pool(scored, g, used_titles | recent) for g in open_groups}
+        pools = {g: p for g, p in pools.items() if not p.empty}
+        reuse = False
+
+        # 2) 새 제목이 어디에도 없을 때만 이 슬롯에 한해 최근 영상 재사용
+        if not pools:
+            pools = {g: _group_pool(scored, g, used_titles) for g in open_groups}
+            pools = {g: p for g, p in pools.items() if not p.empty}
+            reuse = True
+
+        if not pools:
+            break
+
+        adjusted = {
+            g: group_priority[g] - IN_ROUTINE_DECAY * assigned_count[g]
+            for g in pools
+        }
+        top_score = max(adjusted.values())
+        top_groups = [g for g, s in adjusted.items() if np.isclose(s, top_score)]
+        selected_group = str(np.random.choice(top_groups))
+
+        if reuse:
+            video = _select_oldest(pools[selected_group], last_by_title, logs)
+        else:
+            video = select_best_video(pools[selected_group], logs)
+
+        assigned_count[selected_group] += 1
+        used_titles.add(video["title"])
+        selected.append((selected_group, video))
+
+    if cooldown is not None:
+        selected.append(("cooldown", cooldown))
 
     if len(selected) != routine_size:
         raise RoutineCompositionError("조건을 만족하는 운동 영상이 부족합니다.")
@@ -830,7 +923,6 @@ def compose_workout_routine(
     selected.sort(key=lambda item: SLOT_ORDER.index(item[0]))
 
     return selected
-
 
 def make_prescription(video: Mapping[str, Any] | pd.Series) -> dict[str, Any]:
     """처방 유형(dose_type)별 운동량 문구를 생성한다."""
@@ -878,24 +970,14 @@ def recommend_workout_routine(
     if base_candidates.empty:
         raise ValueError("사용자 연령·보유 도구에 해당하는 추천 후보 운동 영상이 없습니다.")
 
-    candidates = exclude_recent_videos(base_candidates, logs, current_date)
-
-    # 3. 최근 영상 제외 상태로 전체 루틴을 먼저 구성
-    try:
-        selected = compose_workout_routine(
-            candidates,
-            priority,
-            logs,
-            routine_size,
-        )
-    except RoutineCompositionError:
-        # 실제 루틴 구성이 불가능한 경우에만 최근 영상 제외를 해제하고 재구성
-        selected = compose_workout_routine(
-            base_candidates,
-            priority,
-            logs,
-            routine_size,
-        )
+    # 3. 루틴 구성 (최근 7일 제외·그룹 재배정·오래된 영상 재사용은 compose 내부에서 처리)
+    selected = compose_workout_routine(
+        base_candidates,
+        priority,
+        logs,
+        routine_size,
+        current_date,
+    )
 
     routine = [
         {
@@ -909,9 +991,16 @@ def recommend_workout_routine(
         for order, (slot, video) in enumerate(selected, start=1)
     ]
 
+    # 유산소: 종류는 운동량, 시간은 운동 목적으로 결정
+    cardio = {
+        "activity": CARDIO_ACTIVITY[routine_level],
+        "minutes": CARDIO_MINUTES[goal],
+    }
+
     return {
         "routine": routine,
         "estimatedMinutes": len(routine) * MINUTES_PER_EXERCISE,
+        "cardioRecommendation": cardio,
     }
 
 
@@ -1022,6 +1111,8 @@ __all__ = [
     "ROUTINE_SIZE",
     "GOALS",
     "BODY_GOAL_WEIGHT",
+    "CARDIO_MINUTES",
+    "CARDIO_ACTIVITY",
     "ROUTINE_GROUPS",
     "IN_ROUTINE_DECAY",
     "BASIC_TOOLS",
@@ -1038,7 +1129,6 @@ __all__ = [
     "exclude_recent_videos",
     "calculate_video_scores",
     "select_best_video",
-    "assign_routine_slots",
     "compose_workout_routine",
     "make_prescription",
     "recommend_workout_routine",
