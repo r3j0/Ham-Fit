@@ -99,6 +99,20 @@ if (!existsSync(config)) {
   throw new Error('Commit the Vercel deployment template before packaging.');
 }
 copyFileSync(config, join(directory, 'vercel.json'));
+// Vercel uses the Dockerfile directory as its build context. Install the
+// generic backend Dockerfile at the bundle root so original sibling data is visible.
+copyFileSync(
+  join(directory, 'backend/Dockerfile'),
+  join(directory, 'Dockerfile.vercel'),
+);
+copyFileSync(
+  join(directory, 'backend/Dockerfile.dockerignore'),
+  join(directory, '.dockerignore'),
+);
+copyFileSync(
+  join(directory, 'backend/Dockerfile.dockerignore'),
+  join(directory, 'Dockerfile.vercel.dockerignore'),
+);
 writeFileSync(
   join(directory, '.vercelignore'),
   [
