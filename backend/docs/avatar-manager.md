@@ -6,7 +6,7 @@
 
 `AVATAR_MANAGER_TOKEN`은 32바이트 난수의 소문자 64자리 hex 문자열이다. 없으면 관리자 API는 503으로 비활성화한다. 일반 사용자 access token으로 관리자 API에 접근할 수 없다. 로컬 관리자 Next.js 서버만 토큰을 읽고 NestJS에 전달하며, 브라우저 Origin이 붙은 직접 관리 요청은 거절한다. `avatar-manager/npm run setup:local`이 생성한 `.env.avatar-manager`도 ConfigModule에서 읽으며 기존 `.env`·환경 변수가 우선한다.
 
-`AVATAR_ASSET_STORAGE`는 `file` 또는 `vercel-blob`이다. 로컬 기본값은 file이고 Vercel 기본값은 vercel-blob이다. Blob은 비공개 저장소의 `avatar-assets/<hash>.png`를 사용하며 `BLOB_READ_WRITE_TOKEN` 또는 Vercel의 OIDC 연결로 인증한다. 기존 공개 PNG API 계약은 유지한다. file을 사용하면 `AVATAR_ASSET_DIR`의 기본값은 `.local/avatar-assets`이며 온라인 서버는 영구 볼륨의 절대 경로를 사용한다. Vercel의 file 설정은 기동을 거절한다. 자세한 운영 연결·최초 등록은 [운영 상점 등록 안내](avatar-production-publishing.md)를 따른다.
+`AVATAR_ASSET_STORAGE`는 `file`, `vercel-blob`, `supabase`다. 로컬 기본값은 file이고 기존 Vercel 기본값은 vercel-blob이다. Supabase 운영에서는 `supabase`를 명시하고 `SUPABASE_URL`, 서버 전용 `SUPABASE_SECRET_KEY`, 비공개 `SUPABASE_AVATAR_BUCKET`(기본 `avatar-assets`)을 설정한다. 새 `sb_secret_...` 키 또는 기존 `service_role` 키만 허용하며 DB 비밀번호·publishable/anon 키를 받지 않는다. 버킷을 읽을 수 없거나 public이면 저장·조회를 거절한다. Blob은 기존 비공개 저장소와 인증 방식을 유지한다. 공개 PNG API 주소는 저장소와 무관하게 유지한다. file의 기본 경로는 `.local/avatar-assets`이며 Vercel에서는 file 설정을 거절한다. 자세한 운영 연결·최초 등록은 [운영 상점 등록 안내](avatar-production-publishing.md)를 따른다.
 
 ## HTTP 계약
 

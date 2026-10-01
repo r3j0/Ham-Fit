@@ -21,8 +21,30 @@ const blob = vi.hoisted(() => ({
   objects: new Map<string, Buffer>(),
 }));
 vi.mock('@vercel/blob', () => ({ get: blob.get, put: blob.put }));
+const supabase = vi.hoisted(() => ({ objects: new Map<string, Buffer>() }));
+vi.mock('@supabase/supabase-js', () => ({
+  createClient: () => ({
+    storage: {
+      getBucket: async () => ({ data: { public: false }, error: null }),
+      from: () => ({
+        download: async (filename: string) => {
+          const bytes = supabase.objects.get(filename);
+          return bytes
+            ? { data: new Blob([new Uint8Array(bytes)]), error: null }
+            : { data: null, error: { code: 'NoSuchKey' } };
+        },
+        upload: async (filename: string, bytes: Buffer) => {
+          if (supabase.objects.has(filename))
+            return { error: { code: 'ResourceAlreadyExists' } };
+          supabase.objects.set(filename, Buffer.from(bytes));
+          return { error: null };
+        },
+      }),
+    },
+  }),
+}));
 
-describe.each(['file', 'vercel-blob'])(
+describe.each(['file', 'vercel-blob', 'supabase'])(
   'avatar manager registration with PostgreSQL and %s storage',
   (storage) => {
     let app: INestApplication<App>, db: DatabaseService, directory: string;
@@ -45,6 +67,7 @@ describe.each(['file', 'vercel-blob'])(
         );
       directory = await mkdtemp(path.join(tmpdir(), 'avatar-assets-'));
       blob.objects.clear();
+      supabase.objects.clear();
       blob.get.mockImplementation(async (key: string) => {
         const bytes = blob.objects.get(key);
         return bytes
@@ -66,6 +89,12 @@ describe.each(['file', 'vercel-blob'])(
       module.get(ConfigService).set('AVATAR_MANAGER_TOKEN', managerToken);
       module.get(ConfigService).set('AVATAR_ASSET_DIR', directory);
       module.get(ConfigService).set('AVATAR_ASSET_STORAGE', storage);
+      module
+        .get(ConfigService)
+        .set('SUPABASE_URL', 'https://fixture.supabase.co');
+      module
+        .get(ConfigService)
+        .set('SUPABASE_SECRET_KEY', 'sb_secret_fixture-only');
       module
         .get(ConfigService)
         .set('BLOB_READ_WRITE_TOKEN', 'test-private-token');
@@ -204,6 +233,8 @@ describe.each(['file', 'vercel-blob'])(
       const image = await request(app.getHttpServer()).get(src).expect(200);
       expect(image.headers['content-type']).toContain('image/png');
       expect(image.headers['cache-control']).toContain('immutable');
+      const status = await manager('get', 'catalog').expect(200);
+      expect(status.body).toMatchObject({ imageStorage: storage });
     });
     it('publishes placement, SKU and supported combinations atomically; purchase and saved outfit keep using the asset', async () => {
       const registered = await publish(payload()).expect(201);

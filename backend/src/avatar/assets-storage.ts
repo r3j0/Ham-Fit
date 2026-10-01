@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { setTimeout as delay } from 'node:timers/promises';
 import {
   Inject,
   Injectable,
@@ -9,16 +10,142 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { get, put } from '@vercel/blob';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { supabaseStorageSettings } from '../config/supabase-storage.js';
+
+const MAX_BYTES = 8 * 1024 * 1024;
+const validFilename = /^[a-f0-9]{64}\.png$/;
+const hash = (bytes: Buffer) =>
+  createHash('sha256').update(bytes).digest('hex');
 
 @Injectable()
 export class AvatarAssetStorage {
+  private supabaseClient?: SupabaseClient;
+  private bucketCheck?: Promise<void>;
   constructor(@Inject(ConfigService) private readonly config: ConfigService) {}
 
-  kind(): 'file' | 'vercel-blob' {
+  kind(): 'file' | 'vercel-blob' | 'supabase' {
     return (
-      this.config.get<'file' | 'vercel-blob'>('AVATAR_ASSET_STORAGE') ??
-      (this.config.get<string>('VERCEL') === '1' ? 'vercel-blob' : 'file')
+      this.config.get<'file' | 'vercel-blob' | 'supabase'>(
+        'AVATAR_ASSET_STORAGE',
+      ) ?? (this.config.get<string>('VERCEL') === '1' ? 'vercel-blob' : 'file')
     );
+  }
+
+  private supabase() {
+    const settings = supabaseStorageSettings({
+      SUPABASE_URL: this.config.get('SUPABASE_URL'),
+      SUPABASE_SECRET_KEY: this.config.get('SUPABASE_SECRET_KEY'),
+      SUPABASE_AVATAR_BUCKET: this.config.get('SUPABASE_AVATAR_BUCKET'),
+    });
+    this.supabaseClient ??= createClient(settings.url, settings.key, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
+      },
+      global: {
+        fetch: async (input, init) => {
+          const timeout = AbortSignal.timeout(30000);
+          const signal = init?.signal
+            ? AbortSignal.any([init.signal, timeout])
+            : timeout;
+          // Large wardrobe imports must tolerate an occasional dropped connection.
+          // The same deadline covers all attempts, and immutable uploads never overwrite.
+          for (let attempt = 0; ; attempt++) {
+            try {
+              const response = await fetch(input, {
+                ...init,
+                cache: 'no-store',
+                signal,
+              });
+              if (
+                attempt === 2 ||
+                ![429, 500, 502, 503, 504].includes(response.status)
+              )
+                return response;
+              await response.body?.cancel();
+            } catch (error) {
+              if (
+                signal.aborted ||
+                attempt === 2 ||
+                !(error instanceof TypeError)
+              )
+                throw error;
+            }
+            await delay(250 * 2 ** attempt, undefined, { signal });
+          }
+        },
+      },
+    });
+    return { storage: this.supabaseClient.storage, bucket: settings.bucket };
+  }
+
+  private async supabaseBucket() {
+    const { storage, bucket } = this.supabase();
+    const check = (this.bucketCheck ??= (async () => {
+      const { data, error } = await storage.getBucket(bucket);
+      if (error || !data || data.public !== false)
+        throw new Error('A private avatar bucket is required');
+    })());
+    try {
+      await check;
+    } catch (error) {
+      this.bucketCheck = undefined;
+      throw error;
+    }
+    return storage.from(bucket);
+  }
+
+  private async downloadSupabase(filename: string) {
+    const bucket = await this.supabaseBucket();
+    const { data, error } = await bucket.download(filename);
+    if (error) {
+      const details = error as typeof error & { code?: string };
+      const code = details.code ?? details.statusCode;
+      // Missing buckets, denied access and provider failures are configuration/storage errors, not absent PNGs.
+      if (
+        code === 'NoSuchKey' ||
+        (details.statusCode === '404' &&
+          ['Object not found', 'The resource was not found'].includes(
+            details.message,
+          ))
+      )
+        return null;
+      throw error;
+    }
+    if (!data || data.size > MAX_BYTES) throw new Error('Invalid avatar image');
+    return Buffer.from(await data.arrayBuffer());
+  }
+
+  private async writeSupabase(filename: string, png: Buffer) {
+    const existing = await this.downloadSupabase(filename);
+    if (existing) {
+      if (!existing.equals(png)) throw new Error('Avatar image hash mismatch');
+      return;
+    }
+    const bucket = await this.supabaseBucket();
+    const { error } = await bucket.upload(filename, png, {
+      upsert: false,
+      contentType: 'image/png',
+      cacheControl: '31536000',
+    });
+    if (error) {
+      const details = error as typeof error & { code?: string };
+      if (
+        details.code !== 'ResourceAlreadyExists' &&
+        details.code !== 'KeyAlreadyExists' &&
+        details.statusCode !== '409' &&
+        !(
+          details.statusCode === '400' &&
+          details.message === 'The resource already exists'
+        )
+      )
+        throw error;
+      // A concurrent publisher may win. Only reuse the exact same immutable content.
+      const stored = await this.downloadSupabase(filename);
+      if (!stored?.equals(png)) throw new Error('Avatar image hash mismatch');
+    }
   }
 
   private directory() {
@@ -37,6 +164,16 @@ export class AvatarAssetStorage {
 
   async write(filename: string, png: Buffer) {
     try {
+      if (
+        !validFilename.test(filename) ||
+        png.length > MAX_BYTES ||
+        hash(png) !== filename.slice(0, -4)
+      )
+        throw new Error('Invalid avatar image');
+      if (this.kind() === 'supabase') {
+        await this.writeSupabase(filename, png);
+        return;
+      }
       if (this.kind() === 'vercel-blob') {
         // Content-addressed objects never change. Re-registration reuses the same PNG.
         const existing = await get(`avatar-assets/${filename}`, {
@@ -89,11 +226,15 @@ export class AvatarAssetStorage {
   }
 
   async read(filename: string, useCache = true): Promise<Buffer> {
-    if (!/^[a-f0-9]{64}\.png$/.test(filename))
+    if (!validFilename.test(filename))
       throw new NotFoundException('의상 이미지가 없습니다.');
     try {
       let bytes: Buffer;
-      if (this.kind() === 'vercel-blob') {
+      if (this.kind() === 'supabase') {
+        const result = await this.downloadSupabase(filename);
+        if (!result) throw new NotFoundException('의상 이미지가 없습니다.');
+        bytes = result;
+      } else if (this.kind() === 'vercel-blob') {
         const result = await get(`avatar-assets/${filename}`, {
           ...this.blobOptions(),
           useCache,

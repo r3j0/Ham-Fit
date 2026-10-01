@@ -1,4 +1,5 @@
 import { isIP } from 'node:net';
+import { supabaseStorageSettings } from './supabase-storage.js';
 
 export function validateEnvironment(config: Record<string, unknown>) {
   const nodeEnv = config.NODE_ENV ?? 'development';
@@ -142,13 +143,15 @@ export function validateEnvironment(config: Record<string, unknown>) {
     (config.VERCEL === '1' ? 'vercel-blob' : 'file');
   if (
     typeof storage !== 'string' ||
-    !['file', 'vercel-blob'].includes(storage)
+    !['file', 'vercel-blob', 'supabase'].includes(storage)
   ) {
-    throw new Error('AVATAR_ASSET_STORAGE must be file or vercel-blob.');
+    throw new Error(
+      'AVATAR_ASSET_STORAGE must be file, vercel-blob or supabase.',
+    );
   }
   if (config.VERCEL === '1' && storage === 'file') {
     throw new Error(
-      'Vercel avatar images require AVATAR_ASSET_STORAGE=vercel-blob.',
+      'Vercel avatar images require AVATAR_ASSET_STORAGE=vercel-blob or supabase.',
     );
   }
   if (storage === 'vercel-blob' && config.AVATAR_MANAGER_TOKEN !== undefined) {
@@ -163,6 +166,7 @@ export function validateEnvironment(config: Record<string, unknown>) {
       );
     }
   }
+  if (storage === 'supabase') supabaseStorageSettings(config);
 
   return {
     ...config,

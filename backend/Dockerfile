@@ -20,6 +20,7 @@ COPY --from=build /app/backend/node_modules ./node_modules
 COPY --from=build /app/backend/dist ./dist
 COPY backend/scripts/recommendation-runner.py backend/scripts/probe-workout-media.mjs backend/scripts/verify-deployment.mjs backend/scripts/start-render.mjs ./scripts/
 COPY backend/deploy/media-verification.json ./deploy/media-verification.json
+COPY backend/deploy/supabase-prod-ca-2021.crt ./deploy/supabase-prod-ca-2021.crt
 # Preserve the data team's directory boundary; never copy these into backend/.
 COPY data-analysis/src/recommendation_v2.py /app/data-analysis/src/recommendation_v2.py
 COPY data-analysis/data/processed/workout_videos_v2_complete.csv /app/data-analysis/data/processed/workout_videos_v2_complete.csv
