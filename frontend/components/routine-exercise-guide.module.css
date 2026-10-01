@@ -8,6 +8,11 @@
   color: var(--navy);
   font-size: 18px;
 }
+.mascot {
+  display: flex;
+  justify-content: center;
+  margin-top: 12px;
+}
 .instruction {
   margin-top: 8px;
   color: var(--navy);
