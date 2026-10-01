@@ -9,6 +9,7 @@ import { errorMessage } from "@/lib/http";
 import { useApiResource } from "./use-api-resource";
 import { Header, Loading, Notice, Shell } from "./ui";
 import { MascotPose } from "./mascot/MascotPose";
+import { SeedIcon } from "./seed-icon";
 export function WorkoutCompletion({
   id,
   step = "complete",
@@ -152,7 +153,7 @@ function Completed({
         (receipt?.seed.status === "granted" ? (
           <>
             <div className="reward-symbol" aria-hidden="true">
-              🌻
+              <SeedIcon height={100} />
             </div>
             <h1>해바라기씨 1개를 받았어요!</h1>
             <p>오늘의 루틴을 모두 마친 선물이에요.</p>

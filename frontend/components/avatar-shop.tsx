@@ -1,5 +1,6 @@
 "use client";
 import { useAvatarCatalog } from "./avatar-catalog-provider";
+import { SeedIcon } from "./seed-icon";
 import styles from "./avatar-shop.module.css";
 import Link from "next/link";
 import { useRef, useState } from "react";
@@ -392,13 +393,16 @@ function ShopView({
                   </span>
                   <strong>{productName(p, assets)}</strong>
                   <span>
-                    {owned.has(p.id)
-                      ? "보유 중"
-                      : p.saleStatus !== "on_sale"
-                        ? "판매 준비 중"
-                        : p.priceProvisional
-                          ? `🌻 ${p.price}개 · 가격 확정 전`
-                          : `🌻 ${p.price}개`}
+                    {owned.has(p.id) ? (
+                      "보유 중"
+                    ) : p.saleStatus !== "on_sale" ? (
+                      "판매 준비 중"
+                    ) : (
+                      <>
+                        <SeedIcon height={18} /> {p.price}개
+                        {p.priceProvisional ? " · 가격 확정 전" : ""}
+                      </>
+                    )}
                   </span>
                 </button>
               );

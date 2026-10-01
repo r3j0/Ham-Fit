@@ -1271,6 +1271,12 @@ fieldset:disabled select {
 .profile-balance img {
   flex: none;
 }
+.seed-icon {
+  display: inline-block;
+  flex-shrink: 0;
+  object-fit: contain;
+  vertical-align: middle;
+}
 .profile-card {
   display: grid;
   grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);

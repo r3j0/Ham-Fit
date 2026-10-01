@@ -18,6 +18,7 @@ import { useApiResource } from "./use-api-resource";
 import { useDurableMutation } from "./use-durable-mutation";
 import { Header, Loading, Notice, Shell, SubmitLabel } from "./ui";
 import { useUnsaved } from "./use-unsaved";
+import { SeedIcon } from "./seed-icon";
 
 export function PersonalRoulette() {
   return (
@@ -29,7 +30,7 @@ export function PersonalRoulette() {
         ) : (
           <>
             <div className="reward-symbol" aria-hidden="true">
-              🌻
+              <SeedIcon height={100} />
             </div>
             <h1>개인 룰렛을 준비하고 있어요</h1>
             <p>5일씩 쌓아 가는 연속 운동에 선물을 더할 예정이에요.</p>
@@ -102,7 +103,9 @@ function PersonalWheel() {
         className={`personal-wheel${mutation.busy ? " is-spinning" : ""}`}
         aria-hidden="true"
       >
-        <span>🌻</span>
+        <span>
+          <SeedIcon height={58} />
+        </span>
       </div>
       {resource.error ? (
         <>

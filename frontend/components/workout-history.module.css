@@ -87,7 +87,7 @@
   color: var(--navy);
 }
 .weekMark svg,
-.sunflower {
+.completionIcon {
   width: 75%;
   height: 75%;
   object-fit: contain;

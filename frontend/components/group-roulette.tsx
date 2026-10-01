@@ -13,6 +13,7 @@ import { useApiResource } from "./use-api-resource";
 import { useDurableMutation } from "./use-durable-mutation";
 import { Header, Loading, Notice, Shell, SubmitLabel } from "./ui";
 import { useUnsaved } from "./use-unsaved";
+import { SeedIcon } from "./seed-icon";
 
 const labels = [
   "나에게 1개",
@@ -85,7 +86,8 @@ export function GroupRoulette({ id }: { id: string }) {
         </div>
         {resource.data && (
           <p className="shop-balance">
-            🌻 내 해바라기씨 {resource.data.inventory.currency.balance}개
+            <SeedIcon /> 내 해바라기씨{" "}
+            {resource.data.inventory.currency.balance}개
           </p>
         )}
         <div className="roulette-stage">
@@ -111,7 +113,9 @@ export function GroupRoulette({ id }: { id: string }) {
                 {label}
               </span>
             ))}
-            <b>🌻</b>
+            <b>
+              <SeedIcon height={34} />
+            </b>
           </div>
         </div>
         {error && <Notice>{error}</Notice>}
