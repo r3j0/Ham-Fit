@@ -1,4 +1,7 @@
-import { setMeasurementAge } from "./measurement-age-helpers";
+import {
+  setMeasurementAge,
+  expectMeasurementAge,
+} from "./measurement-age-helpers";
 import { test, expect, type Page } from "@playwright/test";
 import {
   installApi,
@@ -313,14 +316,13 @@ test("데스크톱 사진 입력은 결과표와 패널이 겹치지 않고 닫�
   const fields = (await panel.boundingBox())!;
   expect(canvas.x + canvas.width).toBeLessThanOrEqual(fields.x);
   expect(fields.y + fields.height).toBeLessThanOrEqual(900);
+  await page.getByLabel("측정일", { exact: true }).fill("2026-09-01");
   await setMeasurementAge(page, "25");
   await page.getByRole("button", { name: "입력 패널 닫기" }).click();
   expect((await photo.boundingBox())!.width).toBeGreaterThan(canvas.width);
   await page.getByRole("button", { name: "사진 확대", exact: true }).click();
   await page.getByRole("button", { name: "입력 패널 열기" }).click();
-  await expect(
-    page.getByLabel("측정 당시 만 나이", { exact: true }),
-  ).toHaveValue("25");
+  await expectMeasurementAge(page, "25");
   await noOverflow(page);
   await page.screenshot({
     path: info.outputPath("photo-workspace-desktop.png"),

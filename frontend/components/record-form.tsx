@@ -208,8 +208,8 @@ export function RecordForm({
     return () => abort.abort();
   }, [restored, initialCatalog, catalogRetry]);
   const locked = busy || uncertain || gone;
-  // Existing records and photo results retain their recorded measurement age.
-  const deriveAge = !initial && !seed && draftKey !== "photo";
+  // New records use the member’s birth date, including photo-assisted input.
+  const deriveAge = !initial;
   const profileAge = useProfileAge(meta.measuredOn);
   const age = profileAge.available ? String(profileAge.age) : "";
   useEffect(() => {

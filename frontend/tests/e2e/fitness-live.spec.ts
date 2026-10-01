@@ -515,3 +515,45 @@ test("실제 API: 스텝검사 완료부터 환산 리포트·내 프로필·신
     "평가 불가",
   );
 });
+
+test("실제 API: 사진 입력 나이는 생년월일과 측정일로 계산해 저장한다", async ({
+  page,
+}) => {
+  await page.goto("/onboarding/photo");
+  await page.getByLabel("결과표 파일 선택").setInputFiles({
+    name: "report.png",
+    mimeType: "image/png",
+    buffer: Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=",
+      "base64",
+    ),
+  });
+  await page.getByRole("button", { name: "이 사진을 보며 직접 입력" }).click();
+  await expect(page.locator("#age")).toHaveCount(0);
+  await page.getByLabel("측정일", { exact: true }).fill("2025-12-31");
+  await expect(page.getByLabel("측정 당시 나이")).toContainText("만 24세");
+  await page.getByLabel("측정일", { exact: true }).fill("2026-01-01");
+  await expect(page.getByLabel("측정 당시 나이")).toContainText("만 25세");
+  await page.getByLabel("성별", { exact: true }).selectOption("male");
+  await page.getByRole("button", { name: "측정값 입력하기" }).click();
+  await add(page, "신장", "170");
+  const response = page.waitForResponse(
+    (r) => r.url() === `${api}/measurements` && r.request().method() === "POST",
+  );
+  await page.getByRole("button", { name: "1개 항목 저장하기" }).click();
+  const saved = await response;
+  expect(saved.status()).toBe(201);
+  const record = await saved.json();
+  expect(record).toMatchObject({
+    measuredOn: "2026-01-01",
+    ageAtMeasurement: 25,
+  });
+  const reread = await page.request.get(`${api}/measurements/${record.id}`, {
+    headers,
+  });
+  expect(reread.status()).toBe(200);
+  expect(await reread.json()).toMatchObject({
+    measuredOn: "2026-01-01",
+    ageAtMeasurement: 25,
+  });
+});

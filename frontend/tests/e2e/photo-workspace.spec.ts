@@ -1,4 +1,7 @@
-import { setMeasurementAge } from "./measurement-age-helpers";
+import {
+  setMeasurementAge,
+  expectMeasurementAge,
+} from "./measurement-age-helpers";
 import { test, expect, type Page } from "@playwright/test";
 import { installApi } from "./integration-fixtures";
 
@@ -231,9 +234,7 @@ for (const restored of [false, true]) {
       await dialog.dismiss();
     });
     await back.click();
-    await expect(
-      page.getByLabel("측정 당시 만 나이", { exact: true }),
-    ).toHaveValue("25");
+    await expectMeasurementAge(page, "25");
     await expect(page.getByLabel("성별", { exact: true })).toHaveValue(
       "female",
     );
@@ -256,9 +257,7 @@ for (const restored of [false, true]) {
     await page
       .getByRole("button", { name: "이 사진을 보며 직접 입력" })
       .click();
-    await expect(
-      page.getByLabel("측정 당시 만 나이", { exact: true }),
-    ).toHaveValue("");
+    await expectMeasurementAge(page, "");
     await expect(page.getByLabel("성별", { exact: true })).toHaveValue("");
     expect(server.mutations).toHaveLength(0);
   });

@@ -173,9 +173,7 @@ test("온보딩 직접 입력은 기존 폼을 복원하고 실제 저장 후 �
   await setMeasurementAge(page, "25");
   await page.getByLabel("성별", { exact: true }).selectOption("male");
   await page.reload();
-  await expect(
-    page.getByLabel("측정 당시 만 나이", { exact: true }),
-  ).toHaveValue("25");
+  await expectMeasurementAge(page, "25");
   await page.getByRole("button", { name: "측정값 입력하기" }).click();
   await page
     .getByRole("button", { name: "측정 항목 추가", exact: true })

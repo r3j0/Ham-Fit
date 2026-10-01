@@ -1,6 +1,6 @@
 import { expect, type Page } from "@playwright/test";
 
-/** Old recorded/photo ages remain editable; new manual/assessment ages come from DOB. */
+/** Existing records keep their recorded age; all new records calculate it from DOB. */
 export async function setMeasurementAge(page: Page, value: string) {
   const input = page.locator("input#age, input#assessment-age");
   if (await input.count()) {
@@ -50,6 +50,8 @@ export async function setMeasurementAge(page: Page, value: string) {
 export async function expectMeasurementAge(page: Page, value: string) {
   const input = page.locator("input#age, input#assessment-age");
   if (await input.count()) await expect(input).toHaveValue(value);
+  else if (!value && !(await page.locator("#measuredOn").inputValue()))
+    await expect(page.getByLabel("측정 당시 나이")).toHaveCount(0);
   else
     await expect(page.getByLabel("측정 당시 나이")).toContainText(
       `만 ${value || "25"}세`,

@@ -1,4 +1,7 @@
-import { setMeasurementAge } from "./measurement-age-helpers";
+import {
+  setMeasurementAge,
+  expectMeasurementAge,
+} from "./measurement-age-helpers";
 import { prepareAssessment } from "./workout-helpers";
 import { test, expect, type Page } from "@playwright/test";
 
@@ -77,9 +80,7 @@ test("사진 입력을 버리면 새 사진을 등록할 수 있고 초안이 �
     buffer: png,
   });
   await page.getByRole("button", { name: "이 사진을 보며 직접 입력" }).click();
-  await expect(
-    page.getByLabel("측정 당시 만 나이", { exact: true }),
-  ).toHaveValue("");
+  await expectMeasurementAge(page, "");
 });
 
 test("설정 요청 중 화면을 떠났다가 돌아와도 재시도할 수 있다", async ({

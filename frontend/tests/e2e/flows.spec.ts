@@ -1,4 +1,7 @@
-import { setMeasurementAge } from "./measurement-age-helpers";
+import {
+  setMeasurementAge,
+  expectMeasurementAge,
+} from "./measurement-age-helpers";
 import { test, expect, type Page, type Route } from "@playwright/test";
 // Keep actual authentication limits enabled. This large file can otherwise
 // exhaust the shared IP window halfway through a successful scenario.
@@ -579,9 +582,7 @@ test("카탈로그 장애 시 기본 정보를 유지하며 다시 불러올 수
   await expect(
     page.getByText("서버가 잠시 응답하지 않아요.", { exact: false }),
   ).toBeVisible();
-  await expect(
-    page.getByLabel("측정 당시 만 나이", { exact: true }),
-  ).toHaveValue("25");
+  await expectMeasurementAge(page, "25");
   await expect(page.getByLabel("측정일", { exact: true })).toHaveValue(
     "2026-09-17",
   );
@@ -672,9 +673,7 @@ test("뒤로가기·앞으로가기·새로고침 후 측정 입력을 복원한
   await expect(page.getByLabel("측정일", { exact: true })).toHaveValue(
     "2026-09-17",
   );
-  await expect(
-    page.getByLabel("측정 당시 만 나이", { exact: true }),
-  ).toHaveValue("25");
+  await expectMeasurementAge(page, "25");
   await page.getByRole("button", { name: "임시 입력 지우기" }).click();
   await expect(page.getByLabel("측정일", { exact: true })).toHaveValue("");
 });
@@ -1168,9 +1167,7 @@ test("메인과 내 프로필 탭을 오가며 기록을 관리하고 입력 이
   page.once("dialog", (dialog) => dialog.dismiss());
   await page.getByRole("link", { name: "이전 화면", exact: true }).click();
   await expect(page).toHaveURL(/\/onboarding\/manual$/);
-  await expect(
-    page.getByLabel("측정 당시 만 나이", { exact: true }),
-  ).toHaveValue("25");
+  await expectMeasurementAge(page, "25");
   page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("link", { name: "이전 화면", exact: true }).click();
   await page.getByRole("link", { name: "이전 화면", exact: true }).click();
