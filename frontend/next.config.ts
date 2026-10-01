@@ -2,6 +2,14 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   // Keep validation builds separate from an already running development server.
   distDir: process.env.NEXT_BUILD_DIR ?? ".next",
+  async rewrites() {
+    return [
+      {
+        source: "/api/:path*",
+        destination: "https://ham-fit-api.vercel.app/api/:path*",
+      },
+    ];
+  },
   async headers() {
     return [
       {

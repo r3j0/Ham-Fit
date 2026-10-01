@@ -51,9 +51,9 @@ npm run dev
 ```
 
 - 기본 프론트 `http://localhost:3000`, API `http://localhost:3001/api/v1`.
-- `NEXT_PUBLIC_API_BASE_URL`은 브라우저에서 직접 접근할 API 주소입니다. 빌드 시 포함되므로 주소 변경 후 다시 빌드합니다. 비밀 키를 넣지 않습니다.
-- 백엔드 `FRONTEND_ORIGIN`을 프론트 origin과 일치시키고 credentials·CSRF 헤더·ETag 노출을 허용합니다. `localhost`와 `127.0.0.1`을 섞지 않습니다. 프론트 API rewrite는 사용하지 않습니다.
-- 배포는 프론트와 API를 같은 사이트의 HTTPS로 구성합니다. 쿠키·CORS·프록시 설정은 백엔드 문서를 따릅니다.
+- 로컬 `NEXT_PUBLIC_API_BASE_URL`은 `http://localhost:3001/api/v1`을 유지합니다. 백엔드 `FRONTEND_ORIGIN`을 프론트 origin과 일치시키고 credentials·CSRF 헤더·ETag 노출을 허용합니다. `localhost`와 `127.0.0.1`을 섞지 않습니다.
+- Vercel Production에서는 `NEXT_PUBLIC_API_BASE_URL=/api/v1`로 설정하고 **새 빌드**를 배포합니다. 이 환경변수는 빌드 시 브라우저 코드에 포함되므로 기존 빌드에 환경변수만 바꾸면 적용되지 않습니다. 비밀 키를 넣지 않습니다.
+- `next.config.ts`의 `/api/:path*` rewrite는 `https://ham-fit-api.vercel.app/api/:path*`로 전달합니다. 인증·측정은 `/api/v1`, 운동 루틴은 `/api/v2`를 사용하며 브라우저에서는 프론트와 같은 origin으로 요청합니다. 기존 `credentials: "include"`, 인증·CSRF·ETag 처리와 `cache: "no-store"`를 유지하고 백엔드의 `Cache-Control: no-store`를 전달합니다. 쿠키 설정은 백엔드 문서를 따릅니다.
 - Node.js 24.15 이상. 이 작업의 검증 환경은 Node.js 26.7.0, Next.js 16.3.5입니다.
 
 ## 데이터와 인증
