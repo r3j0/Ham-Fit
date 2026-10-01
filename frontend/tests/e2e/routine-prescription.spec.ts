@@ -47,16 +47,16 @@ for (const sets of [2, 3])
     await installRoutine(page, row);
     await page.goto("/workout");
     const list = page.getByRole("list", { name: "오늘 배정된 운동" });
-    await expect(list.getByRole("heading")).toHaveText([row.routine[0].title]);
+    await expect(list.getByRole("heading")).toHaveText(
+      row.routine.map((item) => item.title),
+    );
     for (const [index, item] of [row.routine[0]].entries()) {
       const prescription = list
         .getByRole("listitem")
         .nth(index)
         .getByRole("group", { name: "저장된 운동 처방" });
       await expect(prescription).toContainText(item.prescription.text);
-      await expect(prescription).toContainText(
-        `12.5회 × ${sets}세트 · 휴식 45초`,
-      );
+      await expect(prescription.getByText(/휴식/)).toHaveCount(0);
     }
     await list.getByRole("link", { name: "운동 시작하기" }).first().click();
     await expect(page).toHaveURL(
@@ -65,15 +65,13 @@ for (const sets of [2, 3])
     await expect(
       page.getByRole("heading", { name: "운동 중", exact: true }),
     ).toBeVisible();
-    const prescription = page.getByRole("group", { name: "저장된 운동 처방" });
+    const prescription = page.getByRole("region", { name: "운동 방법" });
     await expect(prescription).toContainText("저장된 설명 1");
-    await expect(prescription).toContainText(
-      `12.5회 × ${sets}세트 · 휴식 45초`,
-    );
+    await expect(prescription).toContainText(`12.5회`);
+    await expect(prescription).toContainText(`${sets}세트`);
+    await expect(prescription).toContainText("45초");
     await page.reload();
-    await expect(prescription).toContainText(
-      `12.5회 × ${sets}세트 · 휴식 45초`,
-    );
+    await expect(prescription).toContainText(`12.5회`);
     expect(JSON.stringify(row)).toBe(snapshot);
     await page.setViewportSize({ width: 320, height: 740 });
     expect(
@@ -126,7 +124,7 @@ test("추천 스냅샷의 계산용 3은 측정 기준 미달과 grade:null 표�
   await page.goto("/workout");
   await expect(
     page.getByRole("list", { name: "오늘 배정된 운동" }).getByRole("listitem"),
-  ).toHaveCount(1);
+  ).toHaveCount(3);
   await page.goto(`/measurements/${record.id}`);
   await expect(page.locator(".radar-grade").nth(3)).toHaveText("기준 미달");
   const report = page.getByRole("region", { name: "측정 상세 리포트" });

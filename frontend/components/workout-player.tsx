@@ -20,6 +20,8 @@ import { WorkoutError } from "./workout-error";
 import { useWorkoutHistory } from "./workout-history-provider";
 import { WorkoutSummary } from "./workout-summary";
 import { RoutineNext } from "./routine-next";
+import { RoutineExerciseGuide } from "./routine-exercise-guide";
+import styles from "./workout-player.module.css";
 import { getRoutine } from "@/lib/workout-routines";
 import { afterRoutineItemHref } from "@/lib/workout-practice";
 
@@ -388,74 +390,93 @@ export function WorkoutPlayer({
         </button>
       )}
       {!verified ? (
-        <>
-          <Notice tone="info">
-            {workout.video.playbackStatus === "duration_mismatch"
-              ? "영상 길이를 확인하지 못해 재생할 수 없어요."
-              : "현재 이 영상을 재생할 수 없어요."}{" "}
-            잠시 후 다시 확인해 주세요.
-          </Notice>
-          <button
-            className="button secondary"
-            disabled={state.saving}
-            onClick={() => void session.refresh()}
-          >
-            영상 다시 확인하기
-          </button>
-        </>
+        <div
+          className={styles.mediaLayout}
+          data-with-guide={workout.routine ? true : undefined}
+        >
+          <div className="stack">
+            <Notice tone="info">
+              {workout.video.playbackStatus === "duration_mismatch"
+                ? "영상 길이를 확인하지 못해 재생할 수 없어요."
+                : "현재 이 영상을 재생할 수 없어요."}{" "}
+              잠시 후 다시 확인해 주세요.
+            </Notice>
+            <button
+              className="button secondary"
+              disabled={state.saving}
+              onClick={() => void session.refresh()}
+            >
+              영상 다시 확인하기
+            </button>
+          </div>
+          {workout.routine && (
+            <RoutineExerciseGuide prescription={workout.routine.prescription} />
+          )}
+        </div>
       ) : (
         <>
-          <video
-            ref={video}
-            className="workout-video"
-            src={workout.video.playbackUrl!}
-            controls={canPlay}
-            playsInline
-            preload="metadata"
-            aria-label="운동 영상"
-            onLoadedMetadata={(event) => {
-              if (restored.current || session.getSnapshot().recovering) return;
-              const media = event.currentTarget;
-              const saved = session.getSnapshot().workout;
-              const position =
-                saved.status === "completed"
-                  ? 0
-                  : saved.progress.positionSeconds;
-              if (Number.isFinite(media.duration))
-                media.currentTime = Math.min(position, media.duration);
-              restored.current = true;
-            }}
-            onPlay={() => void playFromControls()}
-            onPause={() => {
-              setPlaying(false);
-              if (!suppressPause.current) capture("pause");
-              suppressPause.current = false;
-            }}
-            onTimeUpdate={() => {
-              if (
-                video.current?.paused ||
-                performance.now() - lastSave.current < 5000
-              )
-                return;
-              lastSave.current = performance.now();
-              capture("progress");
-            }}
-            onSeeked={() => {
-              if (session.getSnapshot().workout.status === "in_progress")
+          <div
+            className={styles.mediaLayout}
+            data-with-guide={workout.routine ? true : undefined}
+          >
+            <video
+              ref={video}
+              className="workout-video"
+              src={workout.video.playbackUrl!}
+              controls={canPlay}
+              playsInline
+              preload="metadata"
+              aria-label="운동 영상"
+              onLoadedMetadata={(event) => {
+                if (restored.current || session.getSnapshot().recovering)
+                  return;
+                const media = event.currentTarget;
+                const saved = session.getSnapshot().workout;
+                const position =
+                  saved.status === "completed"
+                    ? 0
+                    : saved.progress.positionSeconds;
+                if (Number.isFinite(media.duration))
+                  media.currentTime = Math.min(position, media.duration);
+                restored.current = true;
+              }}
+              onPlay={() => void playFromControls()}
+              onPause={() => {
+                setPlaying(false);
+                if (!suppressPause.current) capture("pause");
+                suppressPause.current = false;
+              }}
+              onTimeUpdate={() => {
+                if (
+                  video.current?.paused ||
+                  performance.now() - lastSave.current < 5000
+                )
+                  return;
+                lastSave.current = performance.now();
                 capture("progress");
-            }}
-            onEnded={() => {
-              setPlaying(false);
-              if (workout.routine && !replay && !readOnly) requestStop();
-              else capture("pause");
-            }}
-            onError={() => {
-              setMediaError(
-                "영상을 불러오지 못했어요. 연결 상태를 확인하고 다시 시도해 주세요.",
-              );
-              video.current?.pause();
-            }}
-          />
+              }}
+              onSeeked={() => {
+                if (session.getSnapshot().workout.status === "in_progress")
+                  capture("progress");
+              }}
+              onEnded={() => {
+                setPlaying(false);
+                if (workout.routine && !replay && !readOnly) requestStop();
+                else capture("pause");
+              }}
+              onError={() => {
+                setMediaError(
+                  "영상을 불러오지 못했어요. 연결 상태를 확인하고 다시 시도해 주세요.",
+                );
+                video.current?.pause();
+              }}
+            />
+            {workout.routine && (
+              <RoutineExerciseGuide
+                prescription={workout.routine.prescription}
+              />
+            )}
+          </div>
           {mediaError && (
             <>
               <Notice>{mediaError}</Notice>

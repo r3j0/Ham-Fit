@@ -8,6 +8,16 @@
   gap: 24px;
   min-width: 0;
 }
+.history {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+.mascotStage {
+  display: grid;
+  place-items: center;
+  min-height: 160px;
+}
 .heading {
   display: flex;
   align-items: center;

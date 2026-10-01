@@ -213,6 +213,9 @@ export function TodayWorkout({
                   workouts={showAll ? todayItems : [step.workout!]}
                   started={step.started}
                   activeId={showAll ? step.workout?.id : undefined}
+                  cardioRecommendation={
+                    showAll ? todayRoutine?.cardioRecommendation : null
+                  }
                 />
               )}
               {!step.workout && (
@@ -227,18 +230,6 @@ export function TodayWorkout({
                     </Link>
                   )}
                 </>
-              )}
-              {showAll && todayRoutine?.cardioRecommendation && (
-                <section
-                  className="feature-card stack-sm"
-                  aria-label="유산소 운동 안내"
-                >
-                  <h3>마무리 유산소</h3>
-                  <p>
-                    {todayRoutine.cardioRecommendation.activity}{" "}
-                    {todayRoutine.cardioRecommendation.minutes}분
-                  </p>
-                </section>
               )}
             </>
           ) : (

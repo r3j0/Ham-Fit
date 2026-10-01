@@ -2,7 +2,6 @@ import { Check, Clock3, Minus } from "lucide-react";
 import type { Workout, WorkoutStatus } from "@/lib/workout-types";
 import { displayDate } from "@/lib/measurements";
 import styles from "./workout-summary.module.css";
-import { RoutinePrescription } from "./routine-prescription";
 
 export const workoutLabels: Record<WorkoutStatus, string> = {
   assigned: "시작 전",
@@ -43,21 +42,14 @@ export function WorkoutSummary({ workout }: { workout: Workout }) {
         </span>
         <h2>{video.title}</h2>
       </div>
-      <p className="muted">
-        {Math.floor(video.durationSeconds / 60)}분 {video.durationSeconds % 60}
-        초 ·{" "}
-        {video.equipment.length ? video.equipment.join(", ") : "장비 정보 없음"}
-      </p>
-      {workout.routine && (
-        <>
-          <p className="muted">
-            {workout.routine.order}/{workout.routine.totalItems}번째 운동
-          </p>
-          <RoutinePrescription
-            prescription={workout.routine.prescription}
-            className="muted"
-          />
-        </>
+      {!workout.routine && (
+        <p className="muted">
+          {Math.floor(video.durationSeconds / 60)}분{" "}
+          {video.durationSeconds % 60}초 ·{" "}
+          {video.equipment.length
+            ? video.equipment.join(", ")
+            : "장비 정보 없음"}
+        </p>
       )}
       <div className={styles.progressPanel}>
         <span className={styles.progressLabel}>시청 기록</span>

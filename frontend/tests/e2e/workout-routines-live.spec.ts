@@ -187,11 +187,9 @@ test("실제 추천 엔진: 준비 조건, 오늘 루틴 생성, 중복 방지�
     await page.goto(
       `/workout-routines/${routine.id}/items/${routine.routine[0].id}`,
     );
-    await expect(
-      page
-        .getByText(routine.routine[0].prescription.text, { exact: false })
-        .first(),
-    ).toBeVisible();
+    await expect(page.getByRole("region", { name: "운동 방법" })).toContainText(
+      `${routine.routine[0].prescription.value}${routine.routine[0].prescription.unit}`,
+    );
 
     // Explicit played-range fixtures verify server aggregation, not external media playback.
     const firstItem = routine.routine[0],
