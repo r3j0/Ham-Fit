@@ -1,0 +1,12 @@
+@media (min-width: 960px) {
+  .form {
+    display: grid;
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    align-items: start;
+    gap: 32px;
+  }
+  .form > :global(.notice),
+  .form > :global(.button) {
+    grid-column: 1 / -1;
+  }
+}

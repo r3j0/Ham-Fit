@@ -15,6 +15,7 @@ import { MascotPose } from "./mascot/MascotPose";
 import { useApiResource } from "./use-api-resource";
 import { useOperationScope } from "./use-operation-scope";
 import { Loading, Notice, Shell, SubmitLabel } from "./ui";
+import styles from "./welcome-profile.module.css";
 
 export function WelcomeProfile() {
   const resource = useApiResource(
@@ -120,7 +121,7 @@ function ProfileChoice({
     }
   }
   return (
-    <form className="stack" onSubmit={save}>
+    <form className={`stack ${styles.form}`} onSubmit={save}>
       <div className="field">
         <label htmlFor="welcome-nickname">닉네임</label>
         <input
@@ -156,10 +157,6 @@ function ProfileChoice({
           </button>
         ))}
       </div>
-      <p className="caption">
-        두 햄스터와 기본 자세는 모두 제공돼요. 코디는 나중에 옷장에서 바꿀 수
-        있어요.
-      </p>
       {error && <Notice>{error}</Notice>}
       <button className="button primary" disabled={busy}>
         <SubmitLabel busy={busy}>저장하고 다음으로</SubmitLabel>
