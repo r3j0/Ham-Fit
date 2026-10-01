@@ -1,4 +1,5 @@
 "use client";
+import { useAvatarCatalog } from "./avatar-catalog-provider";
 import styles from "./avatar-shop.module.css";
 import Link from "next/link";
 import { useRef, useState } from "react";
@@ -109,7 +110,9 @@ function ShopView({
   const guard = useRef(false),
     begin = useOperationScope();
   const owned = new Set(inventory.inventory.map((i) => i.productId));
-  const preview = previewOutfit(catalog, draft, outfit);
+  const assetResource = useAvatarCatalog();
+  const assets = assetResource.catalog ?? {};
+  const preview = previewOutfit(catalog, draft, outfit, assets);
   const valid = supportedSelection(catalog, draft) && !!preview;
   const ownSelection = [
     draft.characterId,
@@ -220,8 +223,8 @@ function ShopView({
                     <button
                       type="button"
                       key={p.id}
-                      aria-label={productName(p)}
-                      title={productName(p)}
+                      aria-label={productName(p, assets)}
+                      title={productName(p, assets)}
                       aria-pressed={draft.characterId === p.id}
                       disabled={busy}
                       onClick={() => {
@@ -261,7 +264,7 @@ function ShopView({
                 ? "가격 확정 후 구매할 수 있어요"
                 : (selected.price ?? Infinity) > inventory.currency.balance
                   ? "해바라기씨가 부족해요"
-                  : `${productName(selected)} 구매하기 · ${selected.price}개`}
+                  : `${productName(selected, assets)} 구매하기 · ${selected.price}개`}
             </button>
           )}
           {error && <Notice>{error}</Notice>}
@@ -365,6 +368,7 @@ function ShopView({
                 catalog,
                 active ? draft : candidate,
                 outfit,
+                assets,
               );
               return (
                 <button
@@ -386,7 +390,7 @@ function ShopView({
                       <span>이미지 준비 중</span>
                     )}
                   </span>
-                  <strong>{productName(p)}</strong>
+                  <strong>{productName(p, assets)}</strong>
                   <span>
                     {owned.has(p.id)
                       ? "보유 중"
@@ -409,7 +413,7 @@ function ShopView({
           busy={busy}
         >
           <p>
-            {productName(selected)} · 해바라기씨 {selected.price}개
+            {productName(selected, assets)} · 해바라기씨 {selected.price}개
           </p>
           <p>구매 후 옷장에서 착용할 수 있어요.</p>
           <button

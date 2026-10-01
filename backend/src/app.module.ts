@@ -15,6 +15,7 @@ import { RecommendationsModule } from './recommendations/recommendations.module.
 @Module({
   imports: [
     ConfigModule.forRoot({
+      envFilePath: ['.env', '.env.avatar-manager'],
       isGlobal: true,
       cache: true,
       validate: validateEnvironment,

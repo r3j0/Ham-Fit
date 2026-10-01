@@ -118,6 +118,25 @@ export function validateEnvironment(config: Record<string, unknown>) {
     }
   }
 
+  if (
+    config.AVATAR_MANAGER_TOKEN !== undefined &&
+    (typeof config.AVATAR_MANAGER_TOKEN !== 'string' ||
+      !/^[a-f0-9]{64}$/.test(config.AVATAR_MANAGER_TOKEN))
+  ) {
+    throw new Error(
+      'AVATAR_MANAGER_TOKEN must be 32 random bytes encoded as 64 lowercase hexadecimal characters.',
+    );
+  }
+  if (
+    config.AVATAR_ASSET_DIR !== undefined &&
+    (typeof config.AVATAR_ASSET_DIR !== 'string' ||
+      !config.AVATAR_ASSET_DIR.trim())
+  ) {
+    throw new Error(
+      'AVATAR_ASSET_DIR must be a nonempty persistent directory path.',
+    );
+  }
+
   return {
     ...config,
     NODE_ENV: nodeEnv,

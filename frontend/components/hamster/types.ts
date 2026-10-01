@@ -14,6 +14,7 @@ export interface LayerAsset {
   height?: number;
   rotation?: number;
   opacity?: number;
+  fit?: "contain" | "stretch";
   zIndex: number;
 }
 export interface PoseLayers {

@@ -790,6 +790,17 @@ model StreakRouletteTicket {
   @@map("streak_roulette_tickets")
 }
 
+// Published rendering metadata is independent from ownership and commercial SKU revisions.
+model AvatarRenderCatalog {
+  id            String   @id
+  revision      Int      @default(0)
+  catalog       Json
+  sourceCatalog Json     @map("source_catalog")
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("avatar_render_catalogs")
+}
+
 // This immutable payout receipt is also the single-use ticket consumption.
 model StreakRouletteDraw {
   id String @id @db.Uuid
