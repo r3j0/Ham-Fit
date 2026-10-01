@@ -68,6 +68,7 @@ export async function memberProfiles(
         userId: user.id,
         nickname: user.nickname,
         profileCharacter: outfitView(outfits.get(user.id) ?? null),
+        todayWorkoutCompleted: days.get(user.id)?.has(koreanDay(now)) ?? false,
         ...activityStats(days.get(user.id) ?? new Set(), koreanDay(now)),
       },
     ]),

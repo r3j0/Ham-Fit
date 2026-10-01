@@ -5,6 +5,7 @@ import {
   calendarWeeks,
   isWorkoutDate,
   completedDate,
+  completedRoutineDate,
   collectWorkoutHistory,
   koreanDateKey,
   localDateKey,
@@ -12,6 +13,27 @@ import {
   shiftMonth,
   workoutStreak,
 } from "../../lib/workout-history.ts";
+import { routineFixture } from "../fixtures/routine.ts";
+
+test("a full routine becomes a sunflower on the last KST completion day, while partial or empty routines do not", () => {
+  const routine = routineFixture();
+  routine.routine[0].status = "completed";
+  routine.routine[0].completedAt = "2026-09-29T14:59:59Z";
+  assert.equal(completedRoutineDate(routine), null);
+  routine.status = "completed";
+  assert.equal(completedRoutineDate(routine), null);
+  routine.routine.forEach((item) => {
+    item.status = "completed";
+    item.completedAt = "2026-09-29T14:59:59Z";
+  });
+  assert.equal(completedRoutineDate(routine), "2026-09-29");
+  routine.routine[1].completedAt = "2026-09-29T15:00:00Z";
+  assert.equal(completedRoutineDate(routine), "2026-09-30");
+  routine.routine[1].completedAt = null;
+  assert.equal(completedRoutineDate(routine), null);
+  routine.routine = [];
+  assert.equal(completedRoutineDate(routine), null);
+});
 
 test("calendar keys use local dates and cross month, year, and leap-day boundaries", () => {
   assert.equal(localDateKey(new Date(2026, 8, 27, 0, 5)), "2026-09-27");

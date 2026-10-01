@@ -6,6 +6,7 @@ import {
   testUser,
 } from "./integration-fixtures";
 import type { Workout } from "../../lib/workout-types";
+import { routineFixture } from "../fixtures/routine";
 
 // The calendar must remain Korean even when the viewer's local date is the previous day.
 test.use({ timezoneId: "America/Los_Angeles" });
@@ -50,6 +51,73 @@ async function setup(page: Page) {
   });
   return { ...api, rows };
 }
+
+test("영상 일부 완료는 씨앗, 전체 루틴 완료는 해바라기로 표시하고 새로고침 후 유지한다", async ({
+  page,
+}, info) => {
+  await setup(page);
+  const routine = routineFixture();
+  routine.koreanDate = "2026-09-27";
+  routine.serverKoreanDate = "2026-09-27";
+  routine.serverTime = "2026-09-27T03:00:00.000Z";
+  routine.recordingExpiresAt = "2026-09-27T15:00:00.000Z";
+  routine.status = "in_progress";
+  routine.progress.completedItems = 1;
+  Object.assign(routine.routine[0], {
+    status: "completed",
+    resultStatus: "completed",
+    completedAt: "2026-09-27T02:00:00Z",
+    performedAt: "2026-09-27T02:00:00Z",
+  });
+  await page.route("**/api/v2/workout-routines/history?*", (route) =>
+    route.fulfill({ json: { items: [routine], nextCursor: null } }),
+  );
+  await page.goto("/");
+  const streak = page.getByRole("region", { name: "연속 운동" });
+  const today = streak.getByRole("listitem", { name: /^9월 27일 오늘,/ });
+  await expect(today).toHaveAccessibleName("9월 27일 오늘, 운동 영상 완료");
+  await expect(
+    today.locator('[data-workout-status="video_completed"]'),
+  ).toBeVisible();
+  await expect(today.locator("img")).toHaveAttribute("src", /sunflower-seed/);
+  const assignedDay = streak.getByRole("listitem", { name: /^9월 24일,/ });
+  await expect(assignedDay).toHaveAccessibleName("9월 24일, 완료 기록 없음");
+  await expect(streak).toContainText("3일 연속 운동 중");
+  routine.status = "completed";
+  routine.progress.completedItems = routine.routine.length;
+  routine.routine.forEach((item, index) =>
+    Object.assign(item, {
+      status: "completed",
+      resultStatus: "completed",
+      completedAt: `2026-09-27T02:0${index}:00Z`,
+      performedAt: `2026-09-27T02:0${index}:00Z`,
+    }),
+  );
+  // Use an assignment date different from actual completion to detect date confusion.
+  routine.koreanDate = "2026-09-24";
+  routine.recordingAllowed = false;
+  routine.recordingExpiresAt = "2026-09-24T15:00:00.000Z";
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await expect(today).toHaveAccessibleName("9월 27일 오늘, 운동 루틴 완료");
+  await expect(
+    today.locator('[data-workout-status="routine_completed"]'),
+  ).toBeVisible();
+  await expect(today.locator("img")).toHaveAttribute("src", /sunflower\.png/);
+  await expect(assignedDay).toHaveAccessibleName("9월 24일, 완료 기록 없음");
+  await page.reload();
+  await expect(today).toHaveAccessibleName("9월 27일 오늘, 운동 루틴 완료");
+  await expect(
+    streak.getByRole("listitem", {
+      name: "9월 26일, 운동 영상 완료",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await streak.scrollIntoViewIfNeeded();
+  await page.screenshot({
+    path: info.outputPath("seed-and-sunflower.png"),
+    fullPage: true,
+  });
+});
 
 test("서버 완료일만 달력과 스트릭에 표시하고 같은 날 중복 완료는 하루로 집계한다", async ({
   page,

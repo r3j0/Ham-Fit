@@ -9,17 +9,6 @@ test("실제 그룹 응답의 닉네임·인원과 가로 스크롤을 표시하
   const rows = [homeGroup(1, 2), homeGroup(2, 12), homeGroup(3, 1)];
   rows[1].members[1].nickname = "함께운동하는친구의긴닉네임테스트";
   await installHomeGroups(page, rows);
-  await page.route("**/api/v1/groups?*", (route) => {
-    const ids = new URL(route.request().url()).searchParams.has("cursor")
-      ? [2, 3]
-      : [1, 2];
-    return route.fulfill({
-      json: {
-        items: ids.map((i) => ({ ...rows[i - 1], role: "leader" })),
-        nextCursor: ids.includes(3) ? null : rows[1].id,
-      },
-    });
-  });
   await page.goto("/");
   const region = page.getByRole("region", { name: "내 그룹의 햄스터" });
   const next = region.getByRole("button", { name: "다음 그룹" }),
@@ -154,19 +143,19 @@ test("빈 그룹·한 그룹·삭제·조회 실패를 구분하고 실패를 �
   await expect(region.getByRole("button", { name: "다음 그룹" })).toHaveCount(
     0,
   );
-  await page.route(`**/api/v1/groups/${row.id}`, (route) =>
+  await page.route("**/api/v1/groups/overview", (route) =>
     route.fulfill({ status: 503, json: {} }),
   );
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
   await expect(region.getByRole("alert")).toBeVisible();
   await expect(region.getByRole("img")).toHaveCount(0);
-  await page.route(`**/api/v1/groups/${row.id}`, (route) =>
-    route.fulfill({ json: row }),
+  await page.route("**/api/v1/groups/overview", (route) =>
+    route.fulfill({ json: { items: [{ ...row, role: "leader" }] } }),
   );
-  await region.getByRole("button", { name: "그룹원 다시 불러오기" }).click();
+  await region.getByRole("button", { name: "내 그룹 다시 불러오기" }).click();
   await expect(region.getByRole("listitem")).toHaveCount(1);
-  await page.route("**/api/v1/groups?*", (route) =>
-    route.fulfill({ json: { items: [{ id: row.id }], nextCursor: null } }),
+  await page.route("**/api/v1/groups/overview", (route) =>
+    route.fulfill({ json: { items: [{ id: row.id }] } }),
   );
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
   await expect(region.getByRole("alert")).toContainText(
@@ -178,19 +167,16 @@ test("빈 그룹·한 그룹·삭제·조회 실패를 구분하고 실패를 �
   await expect(region).toHaveCount(0);
 });
 
-test("빠른 그룹 전환에서 늦게 도착한 이전 응답을 현재 그룹에 표시하지 않는다", async ({
+test("전체 그룹을 한 번 받아 빠른 그룹 전환에도 추가 조회 없이 바로 표시한다", async ({
   page,
 }) => {
   await installApi(page);
   const rows = [homeGroup(1, 1), homeGroup(2, 2), homeGroup(3, 3)];
   await installHomeGroups(page, rows);
-  let release!: () => void;
-  const gate = new Promise<void>((resolve) => {
-    release = resolve;
-  });
-  await page.route(`**/api/v1/groups/${rows[1].id}`, async (route) => {
-    await gate;
-    await route.fulfill({ json: rows[1] }).catch(() => {});
+  const calls: string[] = [];
+  page.on("request", (request) => {
+    const path = new URL(request.url()).pathname;
+    if (path.startsWith("/api/v1/groups")) calls.push(path);
   });
   await page.goto("/");
   const region = page.getByRole("region", { name: "내 그룹의 햄스터" });
@@ -198,17 +184,27 @@ test("빠른 그룹 전환에서 늦게 도착한 이전 응답을 현재 그룹
     "href",
     `/groups/${rows[0].id}`,
   );
-  await expect(region.getByRole("img")).toHaveCount(0);
+  // Development StrictMode can abort and repeat the initial effect.
+  // Switching groups must issue no further overview or detail requests.
+  const initialCalls = calls.length;
+  expect(initialCalls).toBeGreaterThan(0);
   await region.getByRole("button", { name: "다음 그룹" }).click();
-  await expect(region.getByText("그룹원을 불러오고 있어요")).toBeVisible();
+  await expect(region.getByRole("listitem")).toHaveCount(1);
+  await expect(region.getByRole("link")).toHaveAttribute(
+    "href",
+    `/groups/${rows[1].id}`,
+  );
   await region.getByRole("button", { name: "다음 그룹" }).click();
   await expect(region.getByRole("listitem")).toHaveCount(2);
-  release();
   await expect(region.getByRole("link")).toHaveAttribute(
     "href",
     `/groups/${rows[2].id}`,
   );
-  await expect(region.getByText(rows[1].name, { exact: true })).toHaveCount(0);
+  await region.getByRole("button", { name: "이전 그룹" }).click();
+  await expect(region.getByRole("listitem")).toHaveCount(1);
+  await expect(region.getByText("그룹원을 불러오고 있어요")).toHaveCount(0);
+  expect(calls).toHaveLength(initialCalls);
+  expect(calls.every((path) => path === "/api/v1/groups/overview")).toBe(true);
 });
 
 test("홈 그룹원의 미완료 햄스터만 40% 불투명도로 표시하고 완료 상태를 갱신한다", async ({
@@ -218,7 +214,7 @@ test("홈 그룹원의 미완료 햄스터만 40% 불투명도로 표시하고 �
   const row = homeGroup(1, 4);
   row.members[1].todayWorkoutCompleted = false;
   row.members[2].todayWorkoutCompleted = true;
-  // Missing status stays unknown; it is not evidence of an unfinished workout.
+  row.members[3].todayWorkoutCompleted = true;
   await installHomeGroups(page, [row]);
   await page.goto("/");
   const region = page.getByRole("region", { name: "내 그룹의 햄스터" });

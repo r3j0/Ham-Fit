@@ -13,7 +13,7 @@ test("가입 신청 관리는 대기 요청만 조회·표시하고 승인과 �
         id,
         name: "함께 운동",
         description: "",
-        maxMembers: 10,
+        maxMembers: 5,
         currentMembers: 1,
         createdAt: "2026-09-29T00:00:00Z",
         members: [
@@ -55,6 +55,16 @@ test("가입 신청 관리는 대기 요청만 조회·표시하고 승인과 �
     return route.fulfill({ status: 204 });
   });
   await page.goto(`/groups/${id}`);
+  await expect(
+    page.getByRole("region", { name: "가입 신청 관리" }),
+  ).toHaveCount(0);
+  expect(statuses).toHaveLength(0);
+  await page
+    .getByRole("button", { name: "가입 신청 관리", exact: true })
+    .click();
+  await expect(
+    page.getByRole("dialog", { name: "가입 신청 관리" }),
+  ).toBeVisible();
   const applications = page.getByRole("region", { name: "가입 신청 관리" });
   await expect(applications.getByRole("listitem")).toHaveCount(2);
   await expect(
@@ -75,4 +85,9 @@ test("가입 신청 관리는 대기 요청만 조회·표시하고 승인과 �
   await expect(applications.getByRole("listitem")).toHaveCount(0);
   expect(statuses.length).toBeGreaterThanOrEqual(3);
   expect(new Set(statuses)).toEqual(new Set(["pending"]));
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "가입 신청 관리" }),
+  ).toBeFocused();
 });

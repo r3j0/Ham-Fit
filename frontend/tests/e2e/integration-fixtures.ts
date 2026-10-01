@@ -256,6 +256,8 @@ export async function installApi(
       return send({ id: null, status: "not_started" });
     if (path === "/workouts/current") return send(testWorkout);
     if (path === "/workout-routines/current") return send(null);
+    if (path === "/groups/overview" && method === "GET")
+      return route.fulfill({ json: { items: [] } });
     if (path === "/groups" && method === "GET")
       return send({ items: [], nextCursor: null });
     if (path === "/workout-routines/history")

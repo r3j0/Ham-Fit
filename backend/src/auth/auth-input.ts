@@ -8,7 +8,7 @@ const loginSchema = z.strictObject({
   email,
   password: z.string().min(1).max(128),
 });
-const newPassword = z.string().min(15).max(128);
+const newPassword = z.string().min(8).max(128);
 const registerSchema = loginSchema.extend({
   password: newPassword,
   dateOfBirth: z.string().optional(),
@@ -32,7 +32,7 @@ export function parseAccountUpdate(input: unknown): AccountUpdateInput {
     throw new BadRequestException({
       statusCode: 400,
       message:
-        '현재 비밀번호와 변경할 이메일 또는 15~128자 새 비밀번호를 입력해 주세요.',
+        '현재 비밀번호와 변경할 이메일 또는 8~128자 새 비밀번호를 입력해 주세요.',
     });
   return result.data;
 }
@@ -44,7 +44,7 @@ export function parseCredentials(input: unknown, registration = false) {
     throw new BadRequestException({
       statusCode: 400,
       message: registration
-        ? '유효한 이메일과 15~128자 비밀번호를 입력해 주세요.'
+        ? '유효한 이메일과 8~128자 비밀번호를 입력해 주세요.'
         : '유효한 이메일과 비밀번호를 입력해 주세요.',
     });
   }

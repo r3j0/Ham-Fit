@@ -8,7 +8,7 @@ export function homeGroup(index = 1, count = 4): GroupDetail {
     id: `77777777-1111-4111-8111-${String(index).padStart(12, "0")}`,
     name: index === 1 ? "매일 함께 운동" : `건강한 그룹 ${index}`,
     description: "그룹 API 계약 검사 전용 데이터",
-    maxMembers: 100,
+    maxMembers: 5,
     currentMembers: count,
     createdAt,
     members: Array.from({ length: count }, (_, i) => ({
@@ -21,11 +21,24 @@ export function homeGroup(index = 1, count = 4): GroupDetail {
       role: i === 0 ? "leader" : "member",
       streak: i,
       joinedAt: createdAt,
+      todayWorkoutCompleted: false,
     })),
   };
 }
 
 export async function installHomeGroups(page: Page, rows = [homeGroup()]) {
+  await page.route("**/api/v1/groups/overview", (route) =>
+    route.fulfill({
+      json: {
+        items: rows.map((group) => ({
+          ...group,
+          role:
+            group.members.find((member) => member.userId === testUser.id)
+              ?.role ?? "leader",
+        })),
+      },
+    }),
+  );
   await page.route("**/api/v1/groups?*", (route) =>
     route.fulfill({
       json: {

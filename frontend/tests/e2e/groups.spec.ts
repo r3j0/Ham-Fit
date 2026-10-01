@@ -5,11 +5,94 @@ const group = {
   id,
   name: "복원 그룹",
   description: "저장된 소개",
-  maxMembers: 10,
+  maxMembers: 5,
   currentMembers: 1,
   createdAt: "2026-09-29T00:00:00Z",
   role: "leader",
 };
+
+test("설정에서 정원을 현재 인원 이상·최대 5명으로 수정하고 만원일 때 신청 승인을 막는다", async ({
+  page,
+}, info) => {
+  await installApi(page);
+  let maxMembers = 5;
+  const patches: unknown[] = [];
+  const members = [testUser.id, "88888888-1111-4111-8111-111111111111"].map(
+    (userId, index) => ({
+      userId,
+      nickname: index ? "그룹원" : "그룹장",
+      profileCharacter: null,
+      streak: 0,
+      role: index ? "member" : "leader",
+      joinedAt: group.createdAt,
+    }),
+  );
+  await page.route(`**/api/v1/groups/${id}`, (route) => {
+    if (route.request().method() === "PATCH") {
+      const body = route.request().postDataJSON();
+      patches.push(body);
+      maxMembers = body.maxMembers;
+    }
+    return route.fulfill({
+      json: { ...group, maxMembers, currentMembers: 2, members },
+    });
+  });
+  await page.route(`**/api/v1/groups/${id}/join-requests?*`, (route) =>
+    route.fulfill({
+      json: {
+        items: [
+          {
+            id: "99999999-1111-4111-8111-111111111111",
+            groupId: id,
+            userId: "99999999-2222-4222-8222-111111111111",
+            nickname: "대기 신청자",
+            createdAt: group.createdAt,
+            processedAt: null,
+            status: "pending",
+          },
+        ],
+        nextCursor: null,
+      },
+    }),
+  );
+  await page.goto(`/groups/${id}`);
+  await expect(
+    page.getByRole("button", { name: "초대 코드 보기" }),
+  ).toHaveCount(0);
+  await page.getByRole("button", { name: "그룹 설정" }).click();
+  const settings = page.getByRole("dialog", { name: "그룹 설정" });
+  const capacity = settings.getByLabel("정원", { exact: true });
+  await expect(capacity).toHaveValue("5");
+  await capacity.fill("6");
+  await settings.getByRole("button", { name: "그룹 정보 저장" }).click();
+  expect(patches).toEqual([]);
+  await capacity.fill("1");
+  await settings.getByRole("button", { name: "그룹 정보 저장" }).click();
+  await expect(settings.getByRole("alert")).toContainText(
+    "현재 그룹원 2명보다 정원을 줄일 수 없어요.",
+  );
+  expect(patches).toEqual([]);
+  await capacity.fill("2");
+  await settings.getByRole("button", { name: "그룹 정보 저장" }).click();
+  await expect(settings).toHaveCount(0);
+  expect(patches).toEqual([{ maxMembers: 2 }]);
+  await expect(page.getByText("2/2명 · 그룹장", { exact: true })).toBeVisible();
+  await page
+    .getByRole("button", { name: "가입 신청 관리", exact: true })
+    .click();
+  const applications = page.getByRole("dialog", { name: "가입 신청 관리" });
+  await expect(
+    applications.getByRole("button", { name: "가입 승인" }),
+  ).toBeDisabled();
+  await expect(
+    applications.getByRole("button", { name: "가입 거절" }),
+  ).toBeEnabled();
+  await expect(applications).toContainText("정원이 가득 찼어요.");
+  await page.screenshot({
+    path: info.outputPath("full-group-applications.png"),
+    fullPage: true,
+  });
+});
 test("생성 응답 유실 후 입력과 요청 키를 유지해 새로고침에서도 같은 그룹을 복원한다", async ({
   page,
 }) => {
@@ -48,14 +131,14 @@ test("생성 응답 유실 후 입력과 요청 키를 유지해 새로고침에
   await page.goto("/groups");
   await page.getByLabel("그룹 이름", { exact: true }).fill(group.name);
   await page.getByLabel("그룹 소개", { exact: true }).fill(group.description);
-  for (const invalid of ["", "0", "101"]) {
+  for (const invalid of ["", "0", "6"]) {
     await page.getByLabel("정원", { exact: true }).fill(invalid);
     await page
       .getByRole("button", { name: "그룹 만들기", exact: true })
       .click();
     expect(requests).toHaveLength(0);
   }
-  await page.getByLabel("정원", { exact: true }).fill("10");
+  await page.getByLabel("정원", { exact: true }).fill("5");
   await page.getByRole("button", { name: "그룹 만들기", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "이전 요청 확인하기" }),
@@ -69,7 +152,7 @@ test("생성 응답 유실 후 입력과 요청 키를 유지해 새로고침에
   expect(JSON.parse(requests[1].body)).toEqual({
     name: group.name,
     description: group.description,
-    maxMembers: 10,
+    maxMembers: 5,
   });
 });
 test("권한 변경은 화면 복귀 시 반영되며 실패·잘못된 응답은 빈 그룹으로 오인시키지 않는다", async ({
@@ -126,8 +209,27 @@ test("권한 변경은 화면 복귀 시 반영되며 실패·잘못된 응답�
     0,
   );
   await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "가입 신청 관리", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "초대 코드 보기", exact: true }),
+  ).toHaveCount(0);
+  await page.route(`**/api/v1/groups/${id}/invite-code`, (route) =>
+    route.fulfill({ json: { inviteCode: "a".repeat(43) } }),
+  );
   await page.getByRole("button", { name: "그룹 설정" }).click();
   await expect(page.getByRole("dialog").getByLabel("그룹 이름")).toHaveCount(0);
+  await expect(
+    page.getByRole("dialog").getByLabel("정원", { exact: true }),
+  ).toHaveCount(0);
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "초대 코드 보기" })
+    .click();
+  await expect(
+    page.getByRole("dialog").getByLabel("그룹 초대 코드"),
+  ).toHaveValue("a".repeat(43));
   await expect(page.getByRole("button", { name: "그룹 탈퇴" })).toBeEnabled();
   await expect(page.getByRole("button", { name: "그룹 삭제" })).toHaveCount(0);
   await page.getByRole("button", { name: "닫기", exact: true }).click();
@@ -165,10 +267,10 @@ test("그룹 생성과 초대 가입은 좁은 화면에서도 두 열로 배치
   );
   await expect(create.getByLabel("정원", { exact: true })).toHaveAttribute(
     "placeholder",
-    "정원 (최소 1, 최대 100)",
+    "정원 (최소 1, 최대 5)",
   );
   await expect(create.getByLabel("정원", { exact: true })).toHaveValue("");
-  await expect(page.getByText(/그룹장을 포함해 최대 100명/)).toHaveCount(0);
+  await expect(page.getByText(/그룹장을 포함해 최대 5명/)).toHaveCount(0);
   await create.getByLabel("그룹 이름").fill("함께 움직이기");
   await create.getByLabel("그룹 소개").fill("매일 조금씩 운동해요");
   await join.getByLabel("초대 코드", { exact: true }).fill("a".repeat(43));
@@ -307,6 +409,9 @@ test("그룹원과 신청을 한 행에 표시하며 오늘 상태를 검증하�
       expect(boxes[i].x).toBeGreaterThanOrEqual(boxes[i - 1].right);
     }
     await expect(row).toHaveCSS("border-top-width", "0px");
+    await page
+      .getByRole("button", { name: "가입 신청 관리", exact: true })
+      .click();
     const application = page
       .getByRole("region", { name: "가입 신청 관리" })
       .getByRole("listitem");
@@ -329,6 +434,10 @@ test("그룹원과 신청을 한 행에 표시하며 오늘 상태를 검증하�
       path: info.outputPath(`group-rows-${width}.png`),
       fullPage: true,
     });
+    await page
+      .getByRole("dialog", { name: "가입 신청 관리" })
+      .getByRole("button", { name: "닫기" })
+      .click();
   }
   const memberRow = region.getByRole("listitem").last();
   for (const target of ["mascot", "activity", "padding", "keyboard"]) {

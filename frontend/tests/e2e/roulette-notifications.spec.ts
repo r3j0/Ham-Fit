@@ -10,7 +10,7 @@ const group = (n: number) => ({
   id: id(n),
   name: `함께 운동 ${n}`,
   description: "",
-  maxMembers: 10,
+  maxMembers: 5,
   currentMembers: 3,
   role: "leader",
   createdAt: date,

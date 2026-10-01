@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { useCallback, useState, type CSSProperties } from "react";
-import { getGroup, getGroups, groupError, type MyGroup } from "@/lib/groups";
+import { useState, type CSSProperties } from "react";
+import { getGroupOverview, groupError, type GroupOverview } from "@/lib/groups";
 import { ProfileCharacter } from "./profile-character";
 import { useApiResource } from "./use-api-resource";
 import { useSession } from "./session-provider";
@@ -14,26 +14,11 @@ function GroupSlide({
   group,
   direction,
 }: {
-  group: MyGroup;
+  group: GroupOverview;
   direction: number;
 }) {
   const { user } = useSession();
-  const load = useCallback(
-    (signal: AbortSignal) => getGroup(group.id, signal),
-    [group.id],
-  );
-  const resource = useApiResource(load);
-  if (resource.error !== undefined)
-    return (
-      <div className={styles.state}>
-        <Notice>{groupError(resource.error)}</Notice>
-        <button className="text-button" onClick={resource.reload}>
-          그룹원 다시 불러오기
-        </button>
-      </div>
-    );
-  if (!resource.data) return <Loading label="그룹원을 불러오고 있어요" />;
-  const row = resource.data;
+  const row = group;
   const members = row.members.filter((member) => member.userId !== user?.id);
   return (
     <Link
@@ -82,7 +67,7 @@ function GroupSlide({
 }
 
 export function HomeGroups() {
-  const resource = useApiResource(getGroups);
+  const resource = useApiResource(getGroupOverview);
   const [selection, setSelection] = useState<{
     id?: string;
     direction: number;
