@@ -34,10 +34,11 @@ test("홈·프로필은 서버 스트릭을 사용하고 지원하지 않는 통
   const report = page.getByRole("region", { name: "활동 리포트" });
   await expect(report.locator("dd").first()).toHaveText("7일");
   await expect(report.getByText("집계 준비 중", { exact: true })).toHaveCount(
-    2,
+    1,
   );
+  await expect(report.getByText(/현재 레벨|EXP|경험치/)).toHaveCount(0);
   await expect(report.locator("dd").nth(1)).toHaveText("12일");
-  await expect(report.locator("dd").nth(4)).toHaveText("30일");
+  await expect(report.locator("dd").nth(3)).toHaveText("30일");
   streak = 8;
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
   await expect(report.locator("dd").first()).toHaveText("8일");

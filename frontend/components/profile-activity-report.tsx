@@ -8,7 +8,6 @@ import {
   CalendarDays,
   Flame,
   Images,
-  Star,
   Trophy,
 } from "lucide-react";
 import { daysSinceJoined } from "@/lib/user-profile";
@@ -29,7 +28,6 @@ export function ProfileActivityReport({ createdAt }: { createdAt: string }) {
       unit: "일",
       Icon: Trophy,
     },
-    { label: "현재 레벨", value: undefined, unit: "레벨", Icon: Star },
     { label: "캐릭터 보유 컬렉션", value: undefined, unit: "개", Icon: Images },
     {
       label: "총 운동 일수",

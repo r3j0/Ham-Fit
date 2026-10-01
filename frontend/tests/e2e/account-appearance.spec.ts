@@ -67,14 +67,12 @@ test("프로필은 재화·가입 경과일·활동 리포트와 얼굴 모션�
   await expect(report.locator("dt")).toHaveText([
     "현재 연속 스트릭",
     "최장 연속 스트릭",
-    "현재 레벨",
     "캐릭터 보유 컬렉션",
     "총 운동 일수",
     "가입한지",
   ]);
   await expect(report.locator("dd")).toHaveText([
     "0일",
-    "—집계 준비 중",
     "—집계 준비 중",
     "—집계 준비 중",
     "—집계 준비 중",
