@@ -277,7 +277,6 @@ PR #7의 `40d8001` 위에서 로그인 캐릭터와 회원가입 진입 흐름�
 
 검증 로그: `/tmp/project-health-required-sex-check.log`, `/tmp/project-health-required-sex-e2e.log`. 모바일 캡처: `/tmp/project-health-required-sex-mobile/`.
 
-
 ## 상세 리포트 등급 단계와 출처 통합 (2026-09-24)
 
 PR #7의 `9dd4b49` 위에서 승인된 리포트 미리보기를 실제 화면에 적용했다. 기준 미달·3등급·2등급·1등급의 색상과 이전·현재·다음 기준을 보여주며, 여러 종목의 공통 등급 기준 보기는 제거했다. 같은 축의 대표 종목을 먼저 표시하고 나머지는 개별적으로 펼친다. 단일 종목에서만 전체 등급 기준표를 제공하며, 환산 과정과 하단 출처는 기본적으로 접는다.
@@ -291,7 +290,6 @@ PR #7의 `9dd4b49` 위에서 승인된 리포트 미리보기를 실제 화면�
 
 로그: `/tmp/project-health-report-check.log`, `/tmp/project-health-report-e2e.log`, `/tmp/project-health-report-live.log`, `/tmp/project-health-report-visual.log`. 화면 캡처: `/Users/rejo/.codex/visualizations/2026/09/21/01a0c2c0-45f7-79d2-95a6-66104ef5a47b/report-ui-implemented-20260924/`.
 
-
 ## 운동량·목적 설정 UI 기틀 (2026-09-25)
 
 내 프로필에 운동 설정 진입점을 추가하고 `/account/preferences`를 KSPO Orange 톤으로 구성했다. 운동량은 `less / standard / more`, 운동 목적은 합의한 세 enum을 사용하며 각 그룹에서 하나만 선택한다. 화면 초기값은 운동량 기본·목적 미선택이다. 선택 필드는 외부 value/onChange를 받는 컴포넌트로 분리했다.
@@ -302,7 +300,6 @@ PR #7의 `9dd4b49` 위에서 승인된 리포트 미리보기를 실제 화면�
 - 최초 브라우저 확인은 이전 빌드로 실행 중이던 프론트 서버 때문에 새 경로에 접근하지 못했다. 최신 빌드로 프론트를 재시작한 뒤 위 검증을 완료했다. 백엔드 파일·테스트 계정의 저장 데이터는 변경하지 않았다.
 
 검증 로그: `/tmp/project-health-preferences-check.log`, `/tmp/project-health-preferences-ui/visual.log`, `/tmp/project-health-preferences-ui/account-e2e.log`. 화면 캡처: `/Users/rejo/.codex/visualizations/2026/09/21/01a0c2c0-45f7-79d2-95a6-66104ef5a47b/preferences-ui-20260925/`.
-
 
 ## 운동 설정 PR #8 API 연결 (2026-09-26)
 
@@ -360,7 +357,6 @@ PR #7의 `9dd4b49` 위에서 승인된 리포트 미리보기를 실제 화면�
 
 로그·스크린샷은 `frontend/.local/sequential-*`에 보관한다. `sequential-e2e.log`의 개발 서버 27개, `sequential-production-e2e.log`의 배포 서버 12개, `sequential-live-e2e.log`의 6개와 `sequential-live-recheck.log`의 2개를 중복 제거한 결과다. 실제 기존 계정 조회 결과는 `sequential-live-smoke.json`이다. 코드·테스트·문서만 커밋하며 로컬 계정과 실행 산출물은 제외한다.
 
-
 ## 2026-10-01: 캐릭터 이름·4열 상품·캐릭터 크기 피드백
 
 - 표시 이름은 `cream` → **햄돌이**, `gray` → **햄콩이**로 변경했다. 가입 선택, 옷장 얼굴 버튼의 접근성 이름·툴팁, 캐릭터 설명에 적용했으며 상품 ID·에셋 경로·저장 값은 유지한다.
@@ -372,10 +368,19 @@ PR #7의 `9dd4b49` 위에서 승인된 리포트 미리보기를 실제 화면�
 
 로컬 산출물: `frontend/.local/character-ui-{types,unit,build,format,e2e,recheck,live}.log`, 브라우저 스크린샷 폴더 `character-ui-e2e/`, `character-ui-recheck/`, 실제 계정 결과 `character-ui-live-smoke.json`. 계정과 산출물은 Git에서 제외한다.
 
-
 ## 2026-10-01: 최신 main 병합과 운동 도구 충돌 해결
 
 - `feat/frontend/avatar-shop`에 BE PR #9 병합 커밋 `95b3a69`를 통합했다. 충돌한 `lib/user-preferences.ts`와 관련 단위·브라우저 테스트 3개는 기존 FE 브랜치 내용을 그대로 유지했다. 최신 BE 규격은 도구 6종이며 과거 10종으로 되돌리지 않았다. 자동 병합된 `BACKEND-INTEGRATION.md`도 6종과 후속 마이그레이션에 맞춰 정정했다.
 - 병합 결과의 `backend/`와 `data-analysis/`는 최신 main과 동일하다. 미해결 Git 항목·충돌 마커가 없고 `git diff --cached --check`가 통과했다. FE 실행 코드·테스트는 병합 전 브랜치와 동일하다.
 - FE 전체 린트·타입·서식 검사, 단위 162개가 통과했다. 운동 설정 Chromium 테스트 14개(실제 API 3개 포함)가 통과했다. 브라우저는 기존 `localhost:3020` FE와 `localhost:3021` BE에서 검증했으며 최신 BE 전체 통합 검사를 다시 실행한 결과는 아니다. 이번 병합에서 서버 교체·DB 마이그레이션·재배포는 수행하지 않았다.
 - 검사 로그: `frontend/.local/merge-main-{lint,types,format,unit,e2e}.log`.
+
+## 2026-10-01 브라우저 피드백
+
+- 린트·타입 검사·전체 서식 검사·프로덕션 빌드 통과. 단위 테스트 164개 통과.
+- 관련 Chromium 계약·UI 테스트 59개 통과, 미연결 보상 기능 2개는 기존대로 제외. 실제 로컬 API의 간이측정 저장·수정·중단·재로그인·응답 유실 복구 10개 통과.
+- 320·600·1280px 상점 좌우/세로 배치, 4열 목록, 그룹 공용 외곽선, 로그인 40% 확대와 방문별 무작위 배치를 확인했다. 메인 단일 운동과 운동 탭 전체 목록은 미시작·중단·다음 운동·전체 완료 상태를 검증했다.
+- 가입 선택 빅토리 효과와 기본 자세 저장, 회원 캐릭터의 간이측정·완료 자세, 성별 배치·허리 도움말·생년월일 누락/조회 실패/지원 나이 밖의 처리, 측정일 변경에 따른 저장 나이를 확인했다. 저장 결과가 불확실한 요청의 키·본문 보존도 재검증했다.
+- 세 YouTube iframe의 소스는 기존 공식 안내 URL을 사용한다. 외부 네트워크에서도 세 플레이어 표시와 교차 윗몸일으키기·YMCA·앉아 윗몸 앞으로 굽히기 안내 재생을 확인했다. 자동화 테스트의 iframe 계약 검증은 영상 콘텐츠 응답 대역을 사용하므로 외부 재생 확인과 구분한다.
+- 수동 입력의 저장 전 실시간 등급 아이콘은 사용자 결정으로 보류했다. 평가 규칙을 프런트엔드에 추가하거나 평가 미리보기 API를 새로 요청하지 않았다.
+- 사용자가 열어 둔 `http://localhost:3020`은 `.next-browser-feedback-final` 빌드로 갱신했다. 백엔드 런타임·DB·준비된 테스트 계정은 교체하지 않았다. 전체 저장소의 모든 E2E를 다시 실행한 결과는 아니다.
