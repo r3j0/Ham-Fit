@@ -9,9 +9,18 @@
   font-size: 18px;
 }
 .mascot {
-  display: flex;
-  justify-content: center;
-  margin-top: 12px;
+  display: none;
+}
+@media (min-width: 960px) {
+  .mascot {
+    display: flex;
+    justify-content: center;
+    margin-top: 6px;
+  }
+  .mascot > [data-pose="pushup"] {
+    /* Include the transparent upper canvas when halving the visible gap. */
+    margin-top: calc(var(--pose-size) * -0.21);
+  }
 }
 .instruction {
   margin-top: 8px;

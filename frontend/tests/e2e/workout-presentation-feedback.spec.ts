@@ -48,20 +48,27 @@ for (const width of [320, 600, 1218]) {
       };
       await page.goto(`/workout-routines/${row.id}/items/${item.id}`);
       const guide = page.getByRole("region", { name: "운동 방법" });
-      const mascot = guide.getByRole("img", { name: "푸시업하는 내 햄스터" });
-      await expect(mascot).toHaveAttribute("data-pose", "pushup");
-      await expect(mascot).toHaveAttribute("data-variant", variant);
-      const headingBox = (await guide.getByRole("heading").boundingBox())!,
-        mascotBox = (await mascot.boundingBox())!,
-        instructionBox = (await guide
-          .getByText("아래와 같은 방식으로 운동하세요!")
-          .boundingBox())!;
-      expect(mascotBox.y).toBeGreaterThanOrEqual(
-        headingBox.y + headingBox.height,
-      );
-      expect(instructionBox.y).toBeGreaterThanOrEqual(
-        mascotBox.y + mascotBox.height,
-      );
+      const mascot = guide.getByRole("img", {
+        name: "푸시업하는 내 햄스터",
+        includeHidden: true,
+      });
+      if (width >= 960) {
+        await expect(mascot).toHaveAttribute("data-pose", "pushup");
+        await expect(mascot).toHaveAttribute("data-variant", variant);
+        const headingBox = (await guide.getByRole("heading").boundingBox())!,
+          mascotBox = (await mascot.boundingBox())!,
+          artBox = (await mascot.locator('[data-layer="base"]').boundingBox())!,
+          instructionBox = (await guide
+            .getByText("아래와 같은 방식으로 운동하세요!")
+            .boundingBox())!;
+        const visibleGap = artBox.y - (headingBox.y + headingBox.height);
+        expect(
+          Math.abs(visibleGap - (variant === "cream" ? 48 : 46)),
+        ).toBeLessThan(2);
+        expect(instructionBox.y).toBeGreaterThanOrEqual(
+          mascotBox.y + mascotBox.height,
+        );
+      } else await expect(mascot).toBeHidden();
       await expect(guide).toContainText("아래와 같은 방식으로 운동하세요!");
       await expect(
         guide.getByText("아래와 같은 방식으로 운동하세요!"),
@@ -186,7 +193,7 @@ test("운동 기록 위 내 햄스터는 추천 전·배정·진행·미완료·
   expect(state.row?.status).toBe("completed");
 });
 
-test("홈은 빈 그룹 영역을 숨기고 두 제목은 KSPO Blue이며 완료일에는 해바라기씨를 표시한다", async ({
+test("홈은 빈 그룹 영역을 숨기고 두 제목은 KSPO Blue이며 완료일에는 해바라기를 표시한다", async ({
   page,
 }, info) => {
   const row = routineFixture();
@@ -209,12 +216,12 @@ test("홈은 빈 그룹 영역을 숨기고 두 제목은 KSPO Blue이며 완료
       "rgb(10, 42, 112)",
     );
   const week = page.getByRole("list", { name: "최근 7일 운동 기록" });
-  const seed = week.locator('img[src="/icons/sunflower-seed.svg"]');
+  const seed = week.locator('[data-workout-status="routine_completed"] img');
   await expect(seed).toHaveCount(1);
   await expect
     .poll(() => seed.evaluate((img: HTMLImageElement) => img.naturalWidth))
     .toBeGreaterThan(0);
-  await expect(week.locator('li[aria-label$="운동함"]')).toHaveCount(1);
+  await expect(week.locator('li[aria-label$="운동 루틴 완료"]')).toHaveCount(1);
   await page.screenshot({
     path: info.outputPath("home-seed-completed.png"),
     fullPage: true,
