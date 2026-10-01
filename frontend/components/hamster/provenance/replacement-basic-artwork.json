@@ -1,0 +1,12 @@
+{
+  "source": "ChatGPT 이미지 2026년 10월 2일 오전 04_11_02.png",
+  "sourceSha256": "14f24340f819576c6634bfb48e086c8d8f001974f37b2967f4257abb34326b0b",
+  "sourceCanvas": [1254, 1254],
+  "tool": "Built-in image_gen",
+  "useCase": "background-extraction",
+  "prompt": "Use case: background-extraction. The attached image is the exact edit target. Perform ONLY removal of the outer white background to true transparent alpha. Keep BOTH hamsters completely unchanged and keep the square image's original canvas framing, positions, scale, spacing and relative proportions exactly. The cream hamster remains on the left; the gray hamster remains on the right. Do not zoom in or enlarge them, do not recenter the pair, do not crop the surrounding transparent canvas. Preserve ALL drawing details exactly: outline width, head/body size ratios, eyes, eyelashes, eyebrow arcs, small mouth shapes, ear shape, tuft shape, pale fur areas, belly and cheek patches, soft texture and gradients, arms and feet. White and cream regions INSIDE their outlined bodies must remain opaque. No redesign, no new artwork, no shadows, no modifications of the characters. Output should match the input pixel composition as closely as possible, with only the background now transparent.",
+  "processedSha256": "601053fbaf3bd67d1eae5da7909e317f57e237a0f22ef5c20d2f99e32af301f1",
+  "processedCanvas": [1254, 1254],
+  "format": "Transparent PNG from built-in image_gen, cropped per character and encoded as lossless WebP",
+  "validation": "Every visible RGBA pixel and every alpha value in each selected crop matches the processed PNG after WebP decoding."
+}

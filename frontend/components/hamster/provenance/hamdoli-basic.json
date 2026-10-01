@@ -1,14 +1,11 @@
 {
-  "source": "01.svg (user supplied on 2026-10-02)",
-  "sourceSha256": "e7296654f93c99771abb01085f535ac4de84aa63cec1015e91926dcf07a9c121",
-  "selection": "Top-left cream Hamdoli",
-  "sourceCanvas": [2048, 2048],
-  "viewBox": [392, 219, 533, 685],
-  "sourcePathIndices": [
-    0, 7, 10, 16, 27, 28, 32, 35, 36, 47, 57, 59, 60, 63, 65, 66, 91, 93, 99,
-    108, 111, 117, 118, 125, 128, 129, 130, 134
-  ],
-  "asset": "/hamsters/base/basic-cream-hamdoli.svg",
-  "assetSha256": "6d4dcd59efc499895db68147b9766ee844e22456614dd6a86614535df0392709",
-  "placement": "Existing basic cream placement retained for clothing alignment; original basic-cream.webp retained."
+  "source": "ChatGPT 이미지 2026년 10월 2일 오전 04_11_02.png",
+  "sourceSha256": "14f24340f819576c6634bfb48e086c8d8f001974f37b2967f4257abb34326b0b",
+  "selection": "Left cream Hamdoli from user supplied PNG",
+  "sourceCanvas": [1254, 1254],
+  "processing": "replacement-basic-artwork.json",
+  "asset": "/hamsters/base/basic-cream-hamdoli.webp",
+  "assetSha256": "726b7c17c74b00ca30b43515922bdee3ddc52f2e7b8d54f5aee0943fa64f9fd2",
+  "placement": "Existing basic cream placement retained for clothing alignment; original basic-cream.webp retained.",
+  "crop": [75, 289, 521, 669]
 }

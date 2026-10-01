@@ -25,8 +25,8 @@ test("v2 원본과 사용자 지정 기본 캐릭터의 배치·등록 범위를
   const placements = JSON.parse(
     read("components/hamster/provenance/placements.json").toString(),
   );
-  placements.basic.assets.cream.src = "/hamsters/base/basic-cream-hamdoli.svg";
-  placements.basic.assets.gray.src = "/hamsters/base/basic-gray-hamkong.svg";
+  placements.basic.assets.cream.src = "/hamsters/base/basic-cream-hamdoli.webp";
+  placements.basic.assets.gray.src = "/hamsters/base/basic-gray-hamkong.webp";
   assert.deepEqual(POSES, placements);
   assert.equal(Object.keys(POSES).length, 16);
   assert.deepEqual(Object.keys(DEFAULT_ITEMS), ["mint-shirt"]);
@@ -54,8 +54,8 @@ test("모든 자세·색상에서 의상 프레임을 빌려오지 않고 선택
         result.layers[0].src,
         pose === "basic"
           ? variant === "cream"
-            ? "/hamsters/base/basic-cream-hamdoli.svg"
-            : "/hamsters/base/basic-gray-hamkong.svg"
+            ? "/hamsters/base/basic-cream-hamdoli.webp"
+            : "/hamsters/base/basic-gray-hamkong.webp"
           : `/hamsters/base/${pose}-${variant}.webp`,
       );
       assert.equal(result.layers.length, pose === "basic" ? 2 : 1);
