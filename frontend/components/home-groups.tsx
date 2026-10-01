@@ -50,7 +50,11 @@ function GroupSlide({
       {members.length ? (
         <ul className={styles.members} aria-label={`${row.name} 그룹원`}>
           {members.map((member) => (
-            <li className={styles.member} key={member.userId}>
+            <li
+              className={styles.member}
+              key={member.userId}
+              data-workout-completed={member.todayWorkoutCompleted}
+            >
               <ProfileCharacter
                 outfit={member.profileCharacter}
                 size={96}

@@ -210,3 +210,25 @@ test("빠른 그룹 전환에서 늦게 도착한 이전 응답을 현재 그룹
   );
   await expect(region.getByText(rows[1].name, { exact: true })).toHaveCount(0);
 });
+
+test("홈 그룹원의 미완료 햄스터만 40% 불투명도로 표시하고 완료 상태를 갱신한다", async ({
+  page,
+}) => {
+  await installApi(page);
+  const row = homeGroup(1, 4);
+  row.members[1].todayWorkoutCompleted = false;
+  row.members[2].todayWorkoutCompleted = true;
+  // Missing status stays unknown; it is not evidence of an unfinished workout.
+  await installHomeGroups(page, [row]);
+  await page.goto("/");
+  const region = page.getByRole("region", { name: "내 그룹의 햄스터" });
+  const images = region.locator(".profile-character");
+  await expect(images).toHaveCount(3);
+  await expect(images.nth(0)).toHaveCSS("opacity", "0.4");
+  await expect(images.nth(1)).toHaveCSS("opacity", "1");
+  await expect(images.nth(2)).toHaveCSS("opacity", "1");
+  await expect(region.locator("span[title]").first()).toHaveCSS("opacity", "1");
+  row.members[1].todayWorkoutCompleted = true;
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await expect(images.first()).toHaveCSS("opacity", "1");
+});
