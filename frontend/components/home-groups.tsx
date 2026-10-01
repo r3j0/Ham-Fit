@@ -108,9 +108,6 @@ export function HomeGroups() {
       ) : !selected ? (
         <div className={styles.empty}>
           <p className="muted">아직 가입한 그룹이 없어요.</p>
-          <Link className="text-link" href="/groups">
-            그룹 만들기·가입하기
-          </Link>
         </div>
       ) : (
         <div className={styles.carousel} data-multiple={groups.length > 1}>

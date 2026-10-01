@@ -135,6 +135,12 @@ test("빈 그룹·한 그룹·삭제·조회 실패를 구분하고 실패를 �
   await page.goto("/");
   const region = page.getByRole("region", { name: "내 그룹의 햄스터" });
   await expect(region.getByText("아직 가입한 그룹이 없어요.")).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "그룹 만들기·가입하기" }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("navigation").getByRole("link", { name: "내 그룹" }),
+  ).toHaveAttribute("href", "/groups");
   await expect(region.getByRole("img")).toHaveCount(0);
   await expect(region.getByRole("button", { name: /그룹$/ })).toHaveCount(0);
   const row = homeGroup(1, 2);
