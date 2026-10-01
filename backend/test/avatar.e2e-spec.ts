@@ -35,6 +35,7 @@ describe('avatar and shop with real PostgreSQL', () => {
   let db: DatabaseService;
   let service: AvatarService;
   const ids: string[] = [];
+  let revisions: Map<string, number>;
   beforeAll(async () => {
     const module = await Test.createTestingModule({
       imports: [AppModule],
@@ -47,6 +48,9 @@ describe('avatar and shop with real PostgreSQL', () => {
   });
   beforeEach(async () => {
     await db.authRateLimit.deleteMany();
+    revisions = new Map(
+      (await db.avatarProduct.findMany()).map((p) => [p.id, p.catalogRevision]),
+    );
   });
   afterAll(async () => {
     await db?.group.deleteMany({ where: { leaderUserId: { in: ids } } });
@@ -76,7 +80,7 @@ describe('avatar and shop with real PostgreSQL', () => {
     a: Account,
     productId = 'pose.run',
     key = randomUUID(),
-    catalogRevision = 1,
+    catalogRevision = revisions.get(productId) ?? 1,
   ) =>
     api(a, 'post', '/shop/purchases')
       .set('Idempotency-Key', key)
@@ -125,18 +129,18 @@ describe('avatar and shop with real PostgreSQL', () => {
       }>;
       combinations: unknown[];
     };
-    expect(body.products).toHaveLength(15);
-    expect(body.combinations).toHaveLength(26);
+    expect(body.products).toHaveLength(20);
+    expect(body.combinations).toHaveLength(36);
     const paid = body.products.filter((p) => p.saleStatus === 'on_sale');
-    expect(paid).toHaveLength(12);
+    expect(paid).toHaveLength(16);
     for (const p of paid) {
-      expect(p.price).toBeGreaterThanOrEqual(50);
+      expect(p.price).toBeGreaterThanOrEqual(25);
       expect(p.price).toBeLessThanOrEqual(70);
-      expect(p.priceProvisional).toBe(true);
+      expect(p.priceProvisional).toBe(false);
     }
     expect(
       body.products.filter((p) => p.id.startsWith('clothing.')),
-    ).toHaveLength(0);
+    ).toHaveLength(1);
     await buy(a, 'pose.basic').expect(409);
     await buy(a, 'clothing.blue-sportswear').expect(404);
     expect(
@@ -152,7 +156,11 @@ describe('avatar and shop with real PostgreSQL', () => {
     const first = await buy(a, 'pose.run', key).expect(201);
     expect(first.body).toMatchObject({
       replayed: false,
-      purchase: { productId: 'pose.run', price: 70, catalogRevision: 1 },
+      purchase: {
+        productId: 'pose.run',
+        price: 70,
+        catalogRevision: revisions.get('pose.run'),
+      },
       currency: { balance: 130 },
       inventory: expect.arrayContaining([
         {
@@ -177,7 +185,7 @@ describe('avatar and shop with real PostgreSQL', () => {
     });
     expect(replay.headers['idempotency-replayed']).toBe('true');
     await buy(a, 'pose.drink', key).expect(409);
-    await buy(a, 'pose.run', key, 2).expect(409);
+    await buy(a, 'pose.run', key, revisions.get('pose.run')! + 1).expect(409);
     expect(await db.avatarPurchase.count({ where: { userId: a.id } })).toBe(1);
     expect(
       await db.currencyTransaction.findMany({
@@ -243,7 +251,7 @@ describe('avatar and shop with real PostgreSQL', () => {
       await expect(
         service.purchase(a.id, key, {
           productId: 'pose.run',
-          catalogRevision: 1,
+          catalogRevision: revisions.get('pose.run')!,
         }),
       ).rejects.toThrow();
       expect(await balance(a)).toBe(200);
@@ -303,7 +311,7 @@ describe('avatar and shop with real PostgreSQL', () => {
         .expect(200)
         .expect(({ body }) =>
           expect(body).toMatchObject({
-            purchase: { price: 50, catalogRevision: 1 },
+            purchase: { price: 50, catalogRevision: original.catalogRevision },
           }),
         );
     } finally {

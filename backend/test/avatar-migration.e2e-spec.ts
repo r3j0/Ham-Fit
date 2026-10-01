@@ -97,9 +97,14 @@ it('backfills existing users and repairs defaults without resetting purchases, f
         revision: 1,
       });
     }
+    // Explicitly confirm the legacy fixture price before exercising purchases.
+    const run = await db.avatarProduct.update({
+      where: { id: 'pose.run' },
+      data: { priceProvisional: false },
+    });
     await service.purchase(owner, randomUUID(), {
       productId: 'pose.run',
-      catalogRevision: 1,
+      catalogRevision: run.catalogRevision,
     });
     await service.saveOutfit(owner, 1, {
       characterId: 'character.gray',
