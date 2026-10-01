@@ -10,6 +10,7 @@ import { useDurableMutation } from "./use-durable-mutation";
 import { useUnsaved } from "./use-unsaved";
 import { Loading, Notice, SubmitLabel } from "./ui";
 import { SunflowerIcon } from "./sunflower-icon";
+import { MissionGrowthImage } from "./mission-growth-image";
 import styles from "./group-mission.module.css";
 
 const reasons = {
@@ -125,7 +126,7 @@ export function WorkoutWater({
                   checked={selected === option.groupId}
                   onChange={() => setSelected(option.groupId)}
                 />
-                <SunflowerIcon size={42} />
+                <MissionGrowthImage stage={option.stage} size={42} decorative />
                 <span className={styles.choiceInfo}>
                   <strong>{option.groupName}</strong>
                   <span>

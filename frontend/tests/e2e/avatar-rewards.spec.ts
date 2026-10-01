@@ -296,7 +296,7 @@ test("민트 티셔츠 합성, 햄돌이·햄콩이 전환, 412 충돌과 작은
   await page.getByRole("button", { name: "되돌리기" }).click();
   expect(state.outfit.clothingIds).toEqual([]);
 });
-test("그룹 미션은 시작 인원과 참여 자격을 표시하고 룰렛 응답 유실을 복구한다", async ({
+test("그룹 미션은 성장 모습과 참여 자격을 표시하고 룰렛 응답 유실을 복구한다", async ({
   page,
 }) => {
   await installApi(page, testRecord());
@@ -407,7 +407,9 @@ test("그룹 미션은 시작 인원과 참여 자격을 표시하고 룰렛 응
   await page.goto(`/groups/${groupId}`);
   await page.getByRole("button", { name: "새 미션 시작", exact: true }).click();
   await page.getByRole("button", { name: "미션 시작", exact: true }).click();
-  await expect(page.getByText("3 / 28회", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("progressbar", { name: "물 주기 달성도" }),
+  ).toHaveAttribute("value", "3");
   eligible = false;
   await page.reload();
   await expect(

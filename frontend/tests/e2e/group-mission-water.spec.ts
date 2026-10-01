@@ -252,12 +252,19 @@ test("기존 일별 운동 완료 화면도 원래 배정의 물을 선택해 �
     },
   ]);
 });
-test("그룹 미션은 해바라기 아이콘·남은 물·5단계 진행·개인 기여를 직관적으로 보여준다", async ({
+test("그룹 미션은 성장 단계별 이미지와 물·내 기여만 간결하게 보여준다", async ({
   page,
 }, info) => {
   await installApi(page, testRecord());
   const groupId = id(1);
-  let completed = false;
+  const phases = [
+    { stage: "seed", name: "씨앗", water: 0 },
+    { stage: "sprout", name: "새싹", water: 2 },
+    { stage: "stem", name: "줄기", water: 6 },
+    { stage: "bud", name: "꽃봉오리", water: 14 },
+    { stage: "sunflower", name: "해바라기", water: 28 },
+  ];
+  let phase = phases[2];
   await page.route(`**/api/v1/groups/${groupId}**`, (route) => {
     const path = new URL(route.request().url()).pathname;
     if (path.endsWith("/missions/current"))
@@ -265,19 +272,19 @@ test("그룹 미션은 해바라기 아이콘·남은 물·5단계 진행·개�
         json: {
           id: id(10),
           groupId,
-          status: completed ? "completed" : "in_progress",
+          status: phase.water === 28 ? "completed" : "in_progress",
           startedAt: date,
-          completedAt: completed ? date : null,
+          completedAt: phase.water === 28 ? date : null,
           memberCount: 2,
-          waterCount: completed ? 28 : 6,
+          waterCount: phase.water,
           totalTarget: 28,
-          stage: completed ? "sunflower" : "stem",
+          stage: phase.stage,
           stageTargets: { seed: 0, sprout: 2, stem: 6, bud: 14, sunflower: 28 },
           policyVersion: "sunflower-2026-09-30-v1",
           me: {
             eligible: true,
             reason: "eligible",
-            waterCount: completed ? 14 : 3,
+            waterCount: phase.water === 28 ? 14 : Math.min(phase.water, 3),
           },
         },
       });
@@ -302,13 +309,24 @@ test("그룹 미션은 해바라기 아이콘·남은 물·5단계 진행·개�
   });
   await page.goto(`/groups/${groupId}`);
   const card = page.getByRole("region", { name: "그룹 해바라기 미션" });
-  await expect(card.getByRole("img", { name: "그룹 해바라기" })).toBeVisible();
-  await expect(card.getByText("완성까지 물 22회")).toBeVisible();
+  await expect(card.getByRole("img", { name: "줄기 단계" })).toBeVisible();
+  await expect(card.getByRole("progressbar")).toHaveAttribute("value", "6");
+  await expect(card.getByText("내가 준 물", { exact: false })).toHaveText(
+    "내가 준 물 3회",
+  );
+  await expect(card.getByRole("list")).toHaveCount(0);
   await expect(
-    card
+    card.getByText(/시작 인원|다음 룰렛까지|7회마다|완성까지/),
+  ).toHaveCount(0);
+  await card.getByRole("button", { name: "해바라기 미션 안내" }).click();
+  const guide = page.getByRole("dialog", { name: "해바라기 미션 안내" });
+  await expect(
+    guide
       .getByRole("list", { name: "해바라기 성장 단계" })
       .getByRole("listitem"),
   ).toHaveCount(5);
+  await expect(guide.getByText(/내가 준 물 7회마다 룰렛 1회/)).toBeVisible();
+  await guide.getByRole("button", { name: "닫기" }).click();
   for (const width of [320, 390, 1218]) {
     await page.setViewportSize({ width, height: 844 });
     expect(
@@ -318,9 +336,27 @@ test("그룹 미션은 해바라기 아이콘·남은 물·5단계 진행·개�
       path: info.outputPath(`mission-card-${width}.png`),
     });
   }
-  completed = true;
-  await page.reload();
-  await expect(card.getByText("해바라기를 다 키웠어요!")).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  for (const next of phases) {
+    phase = next;
+    await page.reload();
+    const image = card.getByRole("img", { name: `${phase.name} 단계` });
+    await expect(image).toBeVisible();
+    await expect(image).toHaveAttribute("src", new RegExp(`${phase.stage}\\.`));
+    if (phase.stage === "seed")
+      await expect(image).toHaveAttribute("src", "/icons/sunflower-seed.svg");
+    await expect
+      .poll(() => image.evaluate((img: HTMLImageElement) => img.naturalWidth))
+      .toBeGreaterThan(0);
+    await expect(card.getByRole("progressbar")).toHaveAttribute(
+      "value",
+      String(phase.water),
+    );
+    await card.screenshot({
+      path: info.outputPath(`mission-${phase.stage}-390.png`),
+    });
+  }
+  await expect(card.getByText("해바라기 완성!")).toBeVisible();
   await expect(
     card.getByRole("button", { name: "새 미션 시작" }),
   ).toBeVisible();
