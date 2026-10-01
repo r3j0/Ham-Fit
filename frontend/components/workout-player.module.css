@@ -9,3 +9,8 @@
     grid-template-columns: minmax(0, 2.6fr) minmax(240px, 1fr);
   }
 }
+
+.confirmMascot {
+  display: grid;
+  place-items: center;
+}

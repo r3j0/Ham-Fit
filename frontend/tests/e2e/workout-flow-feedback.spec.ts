@@ -103,7 +103,21 @@ for (const watched of [9.59, 9.6]) {
     if (watched < 9.6) {
       await expect(page.getByRole("dialog")).toContainText("미완료");
       await page.getByRole("button", { name: "종료 확인" }).click();
-    } else await expect(page.getByRole("dialog")).toHaveCount(0);
+    } else {
+      const dialog = page.getByRole("dialog", {
+        name: "운동 방법대로 운동했나요?",
+      });
+      await expect(dialog).toContainText("운동 방법대로 운동하고 완료하세요.");
+      await expect(
+        dialog.getByRole("img", { name: "운동 완료를 응원하는 내 햄스터" }),
+      ).toHaveAttribute("data-pose", "passion");
+      expect(state.events.filter((event) => event.type === "end")).toHaveLength(
+        0,
+      );
+      await dialog
+        .getByRole("button", { name: "완료 처리", exact: true })
+        .click();
+    }
     await expect(page).toHaveURL(
       `/workout-routines/${row.id}/items/${row.routine[1].id}`,
     );
@@ -135,6 +149,10 @@ test("미완료 영상이 있는 한 바퀴는 목록으로 돌아오며 다시 
       v.playbackRate = 8;
       return v.play();
     });
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: "완료 처리" })
+      .click();
   }
   await expect(page).toHaveURL("/workout");
   expect(row.status).not.toBe("completed");
@@ -156,6 +174,10 @@ test("미완료 영상이 있는 한 바퀴는 목록으로 돌아오며 다시 
     v.playbackRate = 8;
     return v.play();
   });
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "완료 처리" })
+    .click();
   await expect(page).toHaveURL(`/workout-routines/${row.id}/complete`);
   expect(row.status).toBe("completed");
 });
@@ -181,6 +203,10 @@ test("종료 저장 응답 유실은 같은 요청을 확인한 뒤에만 다음
   const current = `/workout-routines/${row.id}/items/${row.routine[0].id}`;
   await page.goto(current);
   await page.getByRole("button", { name: "여기서 종료" }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "완료 처리" })
+    .click();
   await expect(
     page.getByRole("button", { name: "저장 다시 확인하기" }),
   ).toBeVisible();
@@ -239,6 +265,10 @@ test("종료 저장을 확인하기 전 새로고침해도 원래 요청을 복�
   });
   await page.goto(`/workout-routines/${row.id}/items/${row.routine[0].id}`);
   await page.getByRole("button", { name: "여기서 종료" }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "완료 처리" })
+    .click();
   await expect(
     page.getByRole("button", { name: "저장 다시 확인하기" }),
   ).toBeVisible();
@@ -266,6 +296,10 @@ test("종료 후 루틴 조회 실패는 종료를 중복 저장하지 않고 �
   const current = `/workout-routines/${row.id}/items/${row.routine[0].id}`;
   await page.goto(current);
   await page.getByRole("button", { name: "여기서 종료" }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "완료 처리" })
+    .click();
   await expect(
     page.getByRole("button", { name: "다음 운동 다시 확인하기" }),
   ).toBeVisible();
@@ -277,3 +311,72 @@ test("종료 후 루틴 조회 실패는 종료를 중복 저장하지 않고 �
   );
   expect(state.events.filter((event) => event.type === "end")).toHaveLength(1);
 });
+
+for (const dismissal of ["취소", "닫기", "Escape"]) {
+  test(`80% 이상 완료 확인의 ${dismissal}는 완료·이동 없이 시청량을 보존한다`, async ({
+    page,
+  }, info) => {
+    const { row, state } = await playable(page, 10);
+    await page.setViewportSize({ width: 320, height: 786 });
+    const current = `/workout-routines/${row.id}/items/${row.routine[0].id}`;
+    await page.goto(current);
+    const video = page.getByLabel("운동 영상");
+    await expect
+      .poll(() => video.evaluate((v: HTMLVideoElement) => v.readyState))
+      .toBeGreaterThanOrEqual(1);
+    // Native pause after 80% must not allow the server's pause event to finalize it.
+    await video.evaluate((v: HTMLVideoElement) => {
+      v.dispatchEvent(new Event("pause"));
+    });
+    await page.getByRole("button", { name: "여기서 종료" }).click();
+    const dialog = page.getByRole("dialog", {
+      name: "운동 방법대로 운동했나요?",
+    });
+    await expect(dialog).toBeVisible();
+    await expect(
+      dialog.getByRole("button", { name: "완료 처리" }),
+    ).toBeEnabled();
+    const mascot = dialog.getByRole("img", {
+      name: "운동 완료를 응원하는 내 햄스터",
+    });
+    await expect(mascot).toHaveAttribute("data-pose", "passion");
+    await expect(mascot).toHaveAttribute("data-variant", "cream");
+    const box = (await dialog.boundingBox())!;
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.y).toBeGreaterThanOrEqual(0);
+    expect(box.y + box.height).toBeLessThanOrEqual(786);
+    await page.screenshot({
+      path: info.outputPath(`completion-confirm-${dismissal}.png`),
+    });
+    if (dismissal === "Escape") await page.keyboard.press("Escape");
+    else
+      await dialog
+        .getByRole("button", { name: dismissal, exact: true })
+        .click();
+    await expect(dialog).toHaveCount(0);
+    await expect(page).toHaveURL(current);
+    await page.reload();
+    await expect(
+      page.getByRole("button", { name: "여기서 종료" }),
+    ).toBeEnabled();
+    expect(row.routine[0].status).not.toBe("completed");
+    expect(row.routine[0].progress.watchedSeconds).toBe(10);
+    expect(
+      state.events.filter((event) =>
+        ["end", "complete", "pause"].includes(event.type),
+      ),
+    ).toHaveLength(0);
+    await page.getByRole("button", { name: "여기서 종료" }).click();
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: "완료 처리" })
+      .click();
+    await expect(page).toHaveURL(
+      `/workout-routines/${row.id}/items/${row.routine[1].id}`,
+    );
+    expect(row.routine[0].status).toBe("completed");
+    expect(state.events.filter((event) => event.type === "end")).toHaveLength(
+      1,
+    );
+  });
+}

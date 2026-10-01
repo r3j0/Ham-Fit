@@ -14,6 +14,7 @@ export function RoutineExerciseGuide({
   return (
     <section className={styles.guide} aria-label="운동 방법">
       <h3>운동 방법</h3>
+      <p className={styles.instruction}>아래와 같은 방식으로 운동하세요!</p>
       <ol className={styles.steps}>
         <li>
           <Dumbbell size={22} aria-hidden="true" />

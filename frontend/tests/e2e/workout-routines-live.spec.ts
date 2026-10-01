@@ -233,8 +233,41 @@ test("실제 추천 엔진: 준비 조건, 오늘 루틴 생성, 중복 방지�
       longestStreak: 0,
       totalWorkoutDays: 0,
     });
-    let final = unchanged;
-    for (const item of routine.routine) {
+    // The real server finalizes pause at 80%. FE must keep confirmation/cancel nonterminal.
+    await send(firstItem.id, "start");
+    const awaitingConfirmation = await send(
+      firstItem.id,
+      "progress",
+      firstItem.progress.durationSeconds * 0.8,
+    );
+    expect(awaitingConfirmation.routine[0].status).toBe("in_progress");
+    const current = `/workout-routines/${routine.id}/items/${firstItem.id}`;
+    await page.goto(current);
+    await page
+      .getByRole("button", { name: "여기서 종료", exact: true })
+      .click();
+    const confirmation = page.getByRole("dialog", {
+      name: "운동 방법대로 운동했나요?",
+    });
+    await expect(confirmation).toContainText(
+      "운동 방법대로 운동하고 완료하세요.",
+    );
+    await confirmation
+      .getByRole("button", { name: "취소", exact: true })
+      .click();
+    await page.reload();
+    await expect(page).toHaveURL(current);
+    await page
+      .getByRole("button", { name: "여기서 종료", exact: true })
+      .click();
+    await confirmation
+      .getByRole("button", { name: "완료 처리", exact: true })
+      .click();
+    await expect(page).toHaveURL(
+      `/workout-routines/${routine.id}/items/${routine.routine[1].id}`,
+    );
+    let final = awaitingConfirmation;
+    for (const item of routine.routine.slice(1)) {
       await send(item.id, "start");
       final = await send(
         item.id,

@@ -2,7 +2,13 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useWorkoutHistoryLinks } from "./use-workout-history-links";
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { completedDate } from "@/lib/workout-history";
 import { ApiError, errorMessage } from "@/lib/http";
 import {
@@ -20,6 +26,7 @@ import { WorkoutError } from "./workout-error";
 import { useWorkoutHistory } from "./workout-history-provider";
 import { WorkoutSummary } from "./workout-summary";
 import { RoutineNext } from "./routine-next";
+import { MemberMascot } from "./member-mascot";
 import { RoutineExerciseGuide } from "./routine-exercise-guide";
 import styles from "./workout-player.module.css";
 import { getRoutine } from "@/lib/workout-routines";
@@ -103,6 +110,20 @@ export function WorkoutPlayer({
   const completed = workout.status === "completed";
   const completedDay = completedDate(workout);
   const { reload: reloadHistory } = useWorkoutHistory();
+  const savePlayback = useCallback(
+    (type: "progress" | "pause", media: HTMLVideoElement) => {
+      const saved = session.getSnapshot().workout;
+      const sample = samplePlayback(media, saved);
+      // Routine pause also finalizes on the server. Keep >=80% cancellable until confirmation.
+      return session.record(
+        type === "pause" && saved.routine && hasWatchedEnough(saved, sample)
+          ? "progress"
+          : type,
+        sample,
+      );
+    },
+    [session],
+  );
   useEffect(() => {
     if (navigationRequested) advanceAfterStop.current = true;
   }, [navigationRequested]);
@@ -161,10 +182,7 @@ export function WorkoutPlayer({
         restored.current &&
         session.getSnapshot().workout.status === "in_progress"
       )
-        void session.record(
-          "pause",
-          samplePlayback(media, session.getSnapshot().workout),
-        );
+        void savePlayback("pause", media);
       suppressPause.current = false;
     };
     const visibility = () => {
@@ -179,7 +197,7 @@ export function WorkoutPlayer({
       window.removeEventListener("pagehide", capturePause);
       document.removeEventListener("visibilitychange", visibility);
     };
-  }, [session]);
+  }, [session, savePlayback]);
   // Preserve newer server revisions without recreating an active playback session.
   useEffect(() => {
     if (initial.revision > session.getSnapshot().workout.revision)
@@ -219,11 +237,7 @@ export function WorkoutPlayer({
   function capture(type: "progress" | "pause") {
     const media = video.current;
     // The journal also queues a pause behind an unacknowledged native start.
-    if (media)
-      void session.record(
-        type,
-        samplePlayback(media, session.getSnapshot().workout),
-      );
+    if (media) void savePlayback(type, media);
   }
   async function start() {
     if (readOnly) return;
@@ -319,8 +333,11 @@ export function WorkoutPlayer({
       suppressPause.current = true;
       media.pause();
     }
-    if (saved.routine && hasWatchedEnough(saved, sample)) void finalize("end");
-    else setConfirm("end");
+    if (saved.routine && hasWatchedEnough(saved, sample)) {
+      // Preserve the final played range without confirming exercise completion yet.
+      if (media) void savePlayback("progress", media);
+      setConfirm("complete");
+    } else setConfirm("end");
   }
   function closeConfirmation() {
     if (workout.routine && (confirm === "end" || confirm === "complete"))
@@ -572,7 +589,9 @@ export function WorkoutPlayer({
         <Dialog
           title={
             confirm === "complete"
-              ? "운동을 완료했나요?"
+              ? workout.routine
+                ? "운동 방법대로 운동했나요?"
+                : "운동을 완료했나요?"
               : confirm === "end"
                 ? "운동을 여기서 종료할까요?"
                 : "서버에 저장된 상태로 돌아갈까요?"
@@ -581,14 +600,25 @@ export function WorkoutPlayer({
           busy={state.saving}
         >
           <div className="stack">
+            {workout.routine && confirm === "complete" && (
+              <div className={styles.confirmMascot}>
+                <MemberMascot
+                  pose="passion"
+                  size={140}
+                  label="운동 완료를 응원하는 내 햄스터"
+                />
+              </div>
+            )}
             <p className="muted">
-              {workout.routine && confirm !== "reset"
-                ? "시청량이 80% 미만이에요. 종료하면 이 영상은 미완료로 남고 다음 영상으로 이동해요. 미완료 영상은 운동 목록에서 다시 시작할 수 있어요."
-                : confirm === "complete"
-                  ? "직접 운동을 마쳤는지 확인해 주세요. 완료 후에는 진행 기록을 변경할 수 없어요."
-                  : confirm === "end"
-                    ? "시청량이 절반 미만이면 미진행, 절반 이상이면 중단으로 기록돼요. 나중에 이어갈 수 있어요."
-                    : "서버가 거절한 미저장 진행은 버리고, 서버에 저장된 위치와 상태를 불러와요."}
+              {workout.routine && confirm === "complete"
+                ? "운동 방법대로 운동하고 완료하세요."
+                : workout.routine && confirm === "end"
+                  ? "시청량이 80% 미만이에요. 종료하면 이 영상은 미완료로 남고 다음 영상으로 이동해요. 미완료 영상은 운동 목록에서 다시 시작할 수 있어요."
+                  : confirm === "complete"
+                    ? "직접 운동을 마쳤는지 확인해 주세요. 완료 후에는 진행 기록을 변경할 수 없어요."
+                    : confirm === "end"
+                      ? "시청량이 절반 미만이면 미진행, 절반 이상이면 중단으로 기록돼요. 나중에 이어갈 수 있어요."
+                      : "서버가 거절한 미저장 진행은 버리고, 서버에 저장된 위치와 상태를 불러와요."}
             </p>
             <div className="button-row">
               <button
@@ -614,11 +644,18 @@ export function WorkoutPlayer({
                           session.getSnapshot().workout.progress.positionSeconds;
                     });
                     setConfirm(null);
-                  } else void finalize(confirm);
+                  } else
+                    void finalize(
+                      workout.routine && confirm === "complete"
+                        ? "end"
+                        : confirm,
+                    );
                 }}
               >
                 {confirm === "complete"
-                  ? "완료 확인"
+                  ? workout.routine
+                    ? "완료 처리"
+                    : "완료 확인"
                   : confirm === "end"
                     ? "종료 확인"
                     : "저장된 상태 불러오기"}

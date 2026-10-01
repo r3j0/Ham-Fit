@@ -350,7 +350,13 @@ test("item playback reuses recovery, saves only the selected item and replays co
     )
     .toBeGreaterThan(9.6);
   await page.getByRole("button", { name: "여기서 종료", exact: true }).click();
-  await expect(page.getByRole("dialog")).toHaveCount(0);
+  const confirmation = page.getByRole("dialog", {
+    name: "운동 방법대로 운동했나요?",
+  });
+  await expect(confirmation).toBeVisible();
+  await confirmation
+    .getByRole("button", { name: "완료 처리", exact: true })
+    .click();
   await expect(page).toHaveURL(
     `/workout-routines/${row.id}/items/${row.routine[1].id}`,
   );

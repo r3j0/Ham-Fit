@@ -8,6 +8,13 @@
   color: var(--navy);
   font-size: 18px;
 }
+.instruction {
+  margin-top: 8px;
+  color: var(--navy);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.6;
+}
 .steps {
   display: grid;
   gap: 16px;
