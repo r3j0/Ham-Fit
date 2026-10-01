@@ -16,7 +16,13 @@ import { WorkoutError } from "./workout-error";
 import { AssignedWorkoutList } from "./assigned-workout-list";
 import { useWorkoutHistory } from "./workout-history-provider";
 
-export function TodayWorkout({ embedded = false }: { embedded?: boolean }) {
+export function TodayWorkout({
+  embedded = false,
+  showAll = false,
+}: {
+  embedded?: boolean;
+  showAll?: boolean;
+}) {
   const history = useWorkoutHistory();
   const userId = useSession().user!.id;
   const [current, setCurrent] = useState<WorkoutRoutine | null>(null);
@@ -154,8 +160,17 @@ export function TodayWorkout({ embedded = false }: { embedded?: boolean }) {
     today,
   );
   const step = currentWorkoutStep(todayItems);
+  const summary = todayRoutine
+    ? `영상 운동 예상 ${todayRoutine.estimatedMinutes}분 · ${todayRoutine.progress.completedItems}/${todayRoutine.progress.totalItems}개 완료`
+    : null;
   const content = (
     <div className={embedded ? "stack" : "content stack"}>
+      {showAll && (
+        <div className="between">
+          <h2 id="today-workout-title">오늘의 운동</h2>
+          {summary && <span className="caption">{summary}</span>}
+        </div>
+      )}
       {!loaded && !history.ready ? (
         <>
           <Loading />
@@ -168,19 +183,15 @@ export function TodayWorkout({ embedded = false }: { embedded?: boolean }) {
           {error !== undefined && <WorkoutError error={error} />}
           {todayItems.length ? (
             <>
-              {todayRoutine && (
-                <p className="caption">
-                  영상 운동 예상 {todayRoutine.estimatedMinutes}분 (유산소 제외)
-                  · {todayRoutine.progress.completedItems}/
-                  {todayRoutine.progress.totalItems}개 완료
-                </p>
-              )}
-              {step.workout ? (
+              {!showAll && summary && <p className="caption">{summary}</p>}
+              {(showAll || step.workout) && (
                 <AssignedWorkoutList
-                  workouts={[step.workout]}
+                  workouts={showAll ? todayItems : [step.workout!]}
                   started={step.started}
+                  activeId={showAll ? step.workout?.id : undefined}
                 />
-              ) : (
+              )}
+              {!step.workout && (
                 <>
                   <Notice tone="success">오늘의 모든 운동을 완료했어요.</Notice>
                   {todayRoutine && (

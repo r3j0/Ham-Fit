@@ -4,7 +4,7 @@ import { routineFixture } from "../fixtures/routine";
 import { prepareAssessment } from "./workout-helpers";
 import type { Workout } from "../../lib/workout-types";
 
-test("메인과 운동 탭은 오늘의 첫 미완료 배정 하나만 보여주고 진행 이력을 이어간다", async ({
+test("메인은 첫 미완료 운동, 운동 탭은 전체 목록을 보여주고 진행 이력을 이어간다", async ({
   page,
 }) => {
   const api = await installApi(page, testRecord());
@@ -45,13 +45,15 @@ test("메인과 운동 탭은 오늘의 첫 미완료 배정 하나만 보여주
       exact: true,
     });
     const list = today.getByRole("list", { name: "오늘 배정된 운동" });
-    await expect(list.getByRole("listitem")).toHaveCount(1);
+    await expect(list.getByRole("listitem")).toHaveCount(path === "/" ? 1 : 3);
     await expect(
       today.getByRole("link", { name: "운동 이어하기", exact: true }),
     ).toHaveAttribute("href", `/workouts/${testWorkout.id}`);
-    await expect(list.getByRole("heading")).toHaveText([
-      testWorkout.video.title,
-    ]);
+    await expect(list.getByRole("heading")).toHaveText(
+      path === "/"
+        ? [testWorkout.video.title]
+        : [testWorkout.video.title, resumed.video.title, done.video.title],
+    );
     await expect(today.getByRole("link")).toHaveCount(1);
     await expect(
       today.getByText(
@@ -109,7 +111,7 @@ test("오늘 배정이 없으면 이전 운동을 오늘로 표시하지 않고 
   ).toBeVisible();
   await expect(
     page.getByRole("list", { name: "오늘 배정된 운동" }).getByRole("listitem"),
-  ).toHaveCount(1);
+  ).toHaveCount(3);
   await expect(page.locator("video")).toHaveCount(0);
   expect(requests).toBe(1);
 });
@@ -157,7 +159,9 @@ test("다른 기기에서 완료한 운동은 화면 복귀 시 완료로 바뀌
   };
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
   await expect(page.getByText("오늘의 모든 운동을 완료했어요.")).toBeVisible();
-  await expect(list).toHaveCount(0);
+  await expect(list.getByRole("listitem")).toHaveCount(1);
+  await expect(list.getByRole("link")).toHaveCount(0);
+  await expect(list).toContainText("완료");
   await expect(
     page.getByRole("button", { name: "운동 상태 새로고침" }),
   ).toHaveCount(0);

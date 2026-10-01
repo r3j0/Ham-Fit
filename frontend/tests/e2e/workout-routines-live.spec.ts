@@ -106,10 +106,9 @@ test("실제 추천 엔진: 준비 조건, 오늘 루틴 생성, 중복 방지�
       guidance.locator("button, input, video, progress"),
     ).toHaveCount(0);
     await expect(
-      page.getByText(
-        `영상 운동 예상 ${routine.estimatedMinutes}분 (유산소 제외)`,
-        { exact: false },
-      ),
+      page.getByText(`영상 운동 예상 ${routine.estimatedMinutes}분`, {
+        exact: false,
+      }),
     ).toBeVisible();
     await expect(
       page.getByRole("list", { name: "오늘 배정된 운동" }).getByRole("heading"),
