@@ -25,20 +25,23 @@ export async function publishDraft(input: { revision: number; products: unknown[
   const urls = new Set<string>();
   for (const value of [originals, published]) catalogLayers(value, layer => urls.add(layer.src));
   const root = await realpath(path.join(process.cwd(), 'public/hamsters'));
-  for (const src of urls) {
-    if (!src.startsWith('/hamsters/')) throw new Error('로컬 의상 PNG만 등록할 수 있습니다.');
-    const file = await realpath(path.join(process.cwd(), 'public', src));
-    if (!file.startsWith(`${root}${path.sep}`)) throw new Error('이미지 경로가 저장 폴더를 벗어납니다.');
-    const bytes = await readFile(file);
-    if (bytes.length > 8 * 1024 * 1024) throw new Error('PNG는 8 MiB 이하여야 합니다.');
-    const form = new FormData(); form.append('png', new Blob([new Uint8Array(bytes)], { type: 'image/png' }), 'wardrobe.png');
-    const uploaded = await backendRequest('/avatar-manager/images', { method: 'POST', body: form });
-    uploads.set(src, uploaded.src);
+  const pending = [...urls];
+  for (let index = 0; index < pending.length; index += 6) {
+    await Promise.all(pending.slice(index, index + 6).map(async src => {
+      if (!src.startsWith('/hamsters/')) throw new Error('로컬 의상 PNG만 등록할 수 있습니다.');
+      const file = await realpath(path.join(process.cwd(), 'public', src));
+      if (!file.startsWith(`${root}${path.sep}`)) throw new Error('이미지 경로가 저장 폴더를 벗어납니다.');
+      const bytes = await readFile(file);
+      if (bytes.length > 8 * 1024 * 1024) throw new Error('PNG는 8 MiB 이하여야 합니다.');
+      const form = new FormData(); form.append('png', new Blob([new Uint8Array(bytes)], { type: 'image/png' }), 'wardrobe.png');
+      const uploaded = await backendRequest('/avatar-manager/images', { method: 'POST', body: form });
+      uploads.set(src, uploaded.src);
+    }));
   }
   for (const value of [originals, published]) catalogLayers(value, layer => { layer.src = uploads.get(layer.src)!; });
   const metadata = { revision: input.revision, products: input.products, combinations: input.combinations, reviewed: input.reviewed, sourceCatalog: originals, catalog: published };
   const form = new FormData(); form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }), 'catalog.json');
-  return backendRequest('/avatar-manager/publish', { method: 'POST', body: form });
+  return backendRequest('/avatar-manager/publish', { method: 'POST', body: form }, 300000);
 }
 export async function pullCatalog() {
   const server = await backendRequest('/avatar-manager/catalog');

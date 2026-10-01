@@ -45,6 +45,10 @@ npm run dev
 
 ## 새 의상 import
 
+화면에서 **상품 추가 → 의상 폴더 가져오기**를 누르면 `manifest.json`과 PNG가 들어 있는 새 세트 폴더를 선택할 수 있습니다. 여러 새 세트를 담은 상위 폴더도 가능합니다. 기존 상품·배치·픽셀 수정본을 유지하면서 검수된 새 상품만 추가합니다. 동일한 상품 ID는 거절하며 QA가 passed·검수자·ISO 검수 시각을 가진 프레임만 가져옵니다. 가져오기는 로컬 초안 추가이며, 가격·판매 상태·배치를 확인한 다음 **서버에 등록**해야 서비스에 표시됩니다. 상품 검색과 **운영 등록 / 로컬 초안** 표시는 서비스 의상 등록 영역에 있습니다.
+
+다음 터미널 명령은 **전체 제작 스냅샷 교체** 방식입니다. 화면의 폴더 가져오기와 달리 기존 세트도 모두 함께 입력해야 합니다.
+
 기존 제작 파일의 `sets` 폴더를 사용합니다. 각 set에 `manifest.json`과 1000×1000 투명 PNG가 필요하며 `qa.status=passed`, 검수자·검수 시각을 기록해야 합니다. 개발 서버를 종료한 뒤 실행합니다.
 
 ```bash
@@ -84,11 +88,11 @@ NestJS `backend/src/avatar/assets.*`는 PNG 검증·파일 보관·카탈로그�
 
 - 로컬 초안: `.local/catalog.json`, `.local/placements.json`, `.local/artwork.json`.
 - 서버 배치·이미지 연결: PostgreSQL `avatar_render_catalogs`. 상품·구매·보유·대표 코디 테이블과 별개입니다.
-- 서버 PNG: `AVATAR_ASSET_DIR`의 SHA-256 파일. 기본값은 backend 실행 경로의 `.local/avatar-assets`입니다.
+- 서버 PNG: Vercel 운영은 Private Blob 저장소의 `avatar-assets/<SHA-256>.png`, 로컬은 `AVATAR_ASSET_DIR`의 파일입니다. 로컬 기본값은 backend 실행 경로의 `.local/avatar-assets`입니다.
 - 서비스 조회: 인증된 `GET /api/v1/avatar/render-catalog`와 PNG `GET /api/v1/avatar/assets/<hash>.png`.
 - 등록 API: 관리자 토큰으로 보호된 `/api/v1/avatar-manager/catalog`, `/images`, `/publish`.
 
-온라인 NestJS에서는 `AVATAR_ASSET_DIR`을 **영구 볼륨의 절대 경로**로 지정하고 DB와 함께 백업하세요. 여러 NestJS 인스턴스라면 같은 이미지 저장 볼륨을 사용해야 합니다. 이 편집 앱을 종료해도 서비스는 서버에 등록된 파일을 표시합니다. 외부 NestJS에 연결할 때 관리자 토큰은 서버의 비밀 설정과 이 앱의 `.env.local`에만 설정하고 HTTPS를 사용합니다.
+Vercel 운영에서는 `AVATAR_ASSET_STORAGE=vercel-blob`과 Private Blob 저장소를 사용합니다. Blob 인증 정보는 NestJS에만 설정합니다. 다른 온라인 서버에서 file 방식을 사용한다면 `AVATAR_ASSET_DIR`을 **영구 볼륨의 절대 경로**로 지정하고 DB와 함께 백업하세요. 여러 NestJS 인스턴스라면 같은 이미지 저장 볼륨을 사용해야 합니다. 이 편집 앱을 종료해도 서비스는 서버에 등록된 파일을 표시합니다. 외부 NestJS에 연결할 때 관리자 토큰은 서버의 비밀 설정과 이 앱의 `.env.local`에만 설정하고 HTTPS를 사용합니다. 최초 운영 설정은 [운영 상점 등록 안내](../backend/docs/avatar-production-publishing.md)를 따릅니다.
 
 등록은 기존 상품 ID·소유권·코디 선택을 유지합니다. 새로운 자세 이미지가 있으면 해당 자세 상품은 판매 보류로 등록하며 기존 유료 자세 가격은 변경하지 않습니다. 원본·과거 수정 PNG는 보존하고 파일을 자동 삭제하지 않습니다.
 

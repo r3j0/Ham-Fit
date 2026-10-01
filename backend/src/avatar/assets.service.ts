@@ -45,6 +45,7 @@ export class AvatarAssetsService {
       catalog: row?.catalog ?? {},
       sourceCatalog: row?.sourceCatalog ?? {},
       products,
+      imageStorage: this.files.storageKind(),
     };
   }
   async publish(value: unknown) {
@@ -60,8 +61,16 @@ export class AvatarAssetsService {
     eachLayer(input.sourceCatalog, (layer) =>
       sources.set(imagePath.exec(layer.src)![1], true),
     );
-    for (const [hash, original] of sources)
-      await this.files.verify(`${hash}.png`, original);
+    const checks = [...sources];
+    for (let index = 0; index < checks.length; index += 8) {
+      await Promise.all(
+        checks
+          .slice(index, index + 8)
+          .map(([hash, original]) =>
+            this.files.verify(`${hash}.png`, original),
+          ),
+      );
+    }
     return this.db.$transaction(
       async (tx) => {
         await tx.avatarRenderCatalog.upsert({

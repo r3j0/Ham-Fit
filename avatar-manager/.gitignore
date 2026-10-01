@@ -7,5 +7,6 @@ next-env.d.ts
 .local/
 public/hamsters/edits/
 public/hamsters/wardrobe/server/
+public/hamsters/wardrobe/imported/
 *.lock
 *.tmp
