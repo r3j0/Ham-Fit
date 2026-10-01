@@ -186,7 +186,7 @@ test("그룹 생성과 초대 가입은 좁은 화면에서도 두 열로 배치
     expect(art.x + art.width / 2).toBeCloseTo(frame.x + frame.width / 2, 1);
     expect(
       await create.evaluate((el) =>
-        parseFloat(getComputedStyle(el).paddingLeft),
+        parseFloat(getComputedStyle(el.parentElement!).paddingLeft),
       ),
     ).toBeGreaterThanOrEqual(16);
     expect(left.y).toBeCloseTo(right.y, 1);

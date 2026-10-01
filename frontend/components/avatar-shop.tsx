@@ -1,4 +1,5 @@
 "use client";
+import styles from "./avatar-shop.module.css";
 import Link from "next/link";
 import { useRef, useState } from "react";
 import type { AvatarOutfit } from "@/lib/avatar-outfit";
@@ -187,215 +188,226 @@ function ShopView({
       <div className="shop-balance-row">
         <SeedBalance balance={inventory.currency.balance} />
       </div>
-      <section className="shop-stage" aria-label="코디 미리보기">
-        {preview ? (
-          <ProfileCharacter
-            outfit={preview}
-            size={200}
-            label="내 캐릭터 미리보기"
-          />
-        ) : (
-          <p>이 코디의 이미지는 준비 중이에요.</p>
-        )}
-        {wardrobe && (
-          <div
-            className="shop-character-choices"
-            role="group"
-            aria-label="캐릭터 선택"
-          >
-            {catalog.products
-              .filter(
-                (p) =>
-                  p.kind === "character" &&
-                  owned.has(p.id) &&
-                  ["cream", "gray"].includes(p.renderKey),
-              )
-              .map((p) => (
+      <div className={styles.layout}>
+        <div className={styles.preview}>
+          <section className="shop-stage" aria-label="코디 미리보기">
+            {preview ? (
+              <ProfileCharacter
+                outfit={preview}
+                size={200}
+                label="내 캐릭터 미리보기"
+              />
+            ) : (
+              <p>이 코디의 이미지는 준비 중이에요.</p>
+            )}
+            {wardrobe && (
+              <div
+                className="shop-character-choices"
+                role="group"
+                aria-label="캐릭터 선택"
+              >
+                {catalog.products
+                  .filter(
+                    (p) =>
+                      p.kind === "character" &&
+                      owned.has(p.id) &&
+                      ["cream", "gray"].includes(p.renderKey),
+                  )
+                  .map((p) => (
+                    <button
+                      type="button"
+                      key={p.id}
+                      aria-label={productName(p)}
+                      title={productName(p)}
+                      aria-pressed={draft.characterId === p.id}
+                      disabled={busy}
+                      onClick={() => {
+                        setDraft(selectProduct(draft, p, catalog));
+                        setMessage("");
+                      }}
+                    >
+                      <HamsterFace variant={p.renderKey as "cream" | "gray"} />
+                    </button>
+                  ))}
+              </div>
+            )}
+          </section>
+          {!wardrobe && !!draft.clothingIds.length && (
+            <button
+              className="text-button"
+              disabled={busy}
+              onClick={() => setDraft({ ...draft, clothingIds: [] })}
+            >
+              의상 없이 미리 보기
+            </button>
+          )}
+          {error && <Notice>{error}</Notice>}
+          {message && <Notice tone="success">{message}</Notice>}
+          {purchaseMutation.pending && (
+            <Notice tone="info">
+              확인이 끝나지 않은 구매가 있어요. 같은 요청으로 결과를 확인해
+              주세요.
+              <button
+                className="button secondary"
+                disabled={busy}
+                onClick={() => void buy()}
+              >
+                이전 구매 결과 확인
+              </button>
+            </Notice>
+          )}
+          {wardrobe && (
+            <div className="stack-sm">
+              {outfit.revision !== revision && (
+                <Notice>
+                  저장된 코디가 변경되었어요. 최신 코디를 불러와 주세요.
+                </Notice>
+              )}
+              {!valid && (
+                <Notice tone="info">
+                  함께 착용할 수 없는 조합이에요. 자세나 의상을 바꿔 주세요.
+                </Notice>
+              )}
+              <div className="button-row">
                 <button
-                  type="button"
-                  key={p.id}
-                  aria-label={productName(p)}
-                  title={productName(p)}
-                  aria-pressed={draft.characterId === p.id}
+                  className="button secondary"
                   disabled={busy}
                   onClick={() => {
-                    setDraft(selectProduct(draft, p, catalog));
+                    setDraft(outfit);
+                    setRevision(outfit.revision);
+                    setError("");
                     setMessage("");
                   }}
                 >
-                  <HamsterFace variant={p.renderKey as "cream" | "gray"} />
+                  저장된 코디로 되돌리기
                 </button>
-              ))}
-          </div>
-        )}
-      </section>
-      {!wardrobe && !!draft.clothingIds.length && (
-        <button
-          className="text-button"
-          disabled={busy}
-          onClick={() => setDraft({ ...draft, clothingIds: [] })}
-        >
-          의상 없이 미리 보기
-        </button>
-      )}
-      {error && <Notice>{error}</Notice>}
-      {message && <Notice tone="success">{message}</Notice>}
-      {purchaseMutation.pending && (
-        <Notice tone="info">
-          확인이 끝나지 않은 구매가 있어요. 같은 요청으로 결과를 확인해 주세요.
-          <button
-            className="button secondary"
-            disabled={busy}
-            onClick={() => void buy()}
+                <button
+                  className="button primary"
+                  disabled={
+                    busy ||
+                    !dirty ||
+                    !valid ||
+                    !ownSelection ||
+                    outfit.revision !== revision
+                  }
+                  onClick={() => void save()}
+                >
+                  <SubmitLabel busy={saving}>코디 저장</SubmitLabel>
+                </button>
+              </div>
+              {!!draft.clothingIds.length && (
+                <button
+                  className="text-link"
+                  disabled={busy}
+                  onClick={() => setDraft({ ...draft, clothingIds: [] })}
+                >
+                  의상 모두 벗기
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+        <div className={styles.items}>
+          <div
+            className="shop-categories"
+            role="group"
+            aria-label="아이템 종류"
           >
-            이전 구매 결과 확인
-          </button>
-        </Notice>
-      )}
-      {wardrobe && (
-        <div className="stack-sm">
-          {outfit.revision !== revision && (
-            <Notice>
-              저장된 코디가 변경되었어요. 최신 코디를 불러와 주세요.
-            </Notice>
+            {categories.map((c) => (
+              <button
+                key={c.id}
+                aria-pressed={category === c.id}
+                onClick={() => {
+                  setCategory(c.id);
+                  setSelected(undefined);
+                }}
+              >
+                {c.label}
+              </button>
+            ))}
+          </div>
+          {!products.length && (
+            <div className="empty-state">
+              <h2>
+                {wardrobe
+                  ? "아직 보유한 아이템이 없어요"
+                  : "상품을 준비하고 있어요"}
+              </h2>
+              <p>
+                {wardrobe
+                  ? "상점에서 마음에 드는 아이템을 만나 보세요."
+                  : "등록되면 여기에서 확인할 수 있어요."}
+              </p>
+            </div>
           )}
-          {!valid && (
-            <Notice tone="info">
-              함께 착용할 수 없는 조합이에요. 자세나 의상을 바꿔 주세요.
-            </Notice>
-          )}
-          <div className="button-row">
-            <button
-              className="button secondary"
-              disabled={busy}
-              onClick={() => {
-                setDraft(outfit);
-                setRevision(outfit.revision);
-                setError("");
-                setMessage("");
-              }}
-            >
-              저장된 코디로 되돌리기
-            </button>
+          <div className="shop-grid">
+            {products.map((p) => {
+              const candidate = selectProduct(draft, p, catalog);
+              const active =
+                p.kind === "pose"
+                  ? draft.poseId === p.id
+                  : draft.clothingIds.includes(p.id);
+              const art = previewOutfit(
+                catalog,
+                active ? draft : candidate,
+                outfit,
+              );
+              return (
+                <button
+                  className="shop-item"
+                  key={p.id}
+                  aria-pressed={active}
+                  disabled={busy || !!purchaseMutation.pending}
+                  onClick={() => {
+                    setSelected(p);
+                    setDraft(candidate);
+                    setMessage("");
+                    setError("");
+                  }}
+                >
+                  <span className="shop-item-art">
+                    {art ? (
+                      <ProfileCharacter outfit={art} size={94} label="" />
+                    ) : (
+                      <span>이미지 준비 중</span>
+                    )}
+                  </span>
+                  <strong>{productName(p)}</strong>
+                  <span>
+                    {owned.has(p.id)
+                      ? "보유 중"
+                      : p.saleStatus !== "on_sale"
+                        ? "판매 준비 중"
+                        : p.priceProvisional
+                          ? `🌻 ${p.price}개 · 가격 확정 전`
+                          : `🌻 ${p.price}개`}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          {!wardrobe && selected && !owned.has(selected.id) && (
             <button
               className="button primary"
               disabled={
                 busy ||
-                !dirty ||
-                !valid ||
-                !ownSelection ||
-                outfit.revision !== revision
+                !!purchaseMutation.pending ||
+                selected.saleStatus !== "on_sale" ||
+                selected.priceProvisional ||
+                !preview ||
+                (selected.price ?? Infinity) > inventory.currency.balance
               }
-              onClick={() => void save()}
+              onClick={() => setConfirm(true)}
             >
-              <SubmitLabel busy={saving}>코디 저장</SubmitLabel>
-            </button>
-          </div>
-          {!!draft.clothingIds.length && (
-            <button
-              className="text-link"
-              disabled={busy}
-              onClick={() => setDraft({ ...draft, clothingIds: [] })}
-            >
-              의상 모두 벗기
+              {selected.priceProvisional
+                ? "가격 확정 후 구매할 수 있어요"
+                : (selected.price ?? Infinity) > inventory.currency.balance
+                  ? "해바라기씨가 부족해요"
+                  : `${productName(selected)} 구매하기 · ${selected.price}개`}
             </button>
           )}
         </div>
-      )}
-      <div className="shop-categories" role="group" aria-label="아이템 종류">
-        {categories.map((c) => (
-          <button
-            key={c.id}
-            aria-pressed={category === c.id}
-            onClick={() => {
-              setCategory(c.id);
-              setSelected(undefined);
-            }}
-          >
-            {c.label}
-          </button>
-        ))}
       </div>
-      {!products.length && (
-        <div className="empty-state">
-          <h2>
-            {wardrobe
-              ? "아직 보유한 아이템이 없어요"
-              : "상품을 준비하고 있어요"}
-          </h2>
-          <p>
-            {wardrobe
-              ? "상점에서 마음에 드는 아이템을 만나 보세요."
-              : "등록되면 여기에서 확인할 수 있어요."}
-          </p>
-        </div>
-      )}
-      <div className="shop-grid">
-        {products.map((p) => {
-          const candidate = selectProduct(draft, p, catalog);
-          const active =
-            p.kind === "pose"
-              ? draft.poseId === p.id
-              : draft.clothingIds.includes(p.id);
-          const art = previewOutfit(
-            catalog,
-            active ? draft : candidate,
-            outfit,
-          );
-          return (
-            <button
-              className="shop-item"
-              key={p.id}
-              aria-pressed={active}
-              disabled={busy || !!purchaseMutation.pending}
-              onClick={() => {
-                setSelected(p);
-                setDraft(candidate);
-                setMessage("");
-                setError("");
-              }}
-            >
-              <span className="shop-item-art">
-                {art ? (
-                  <ProfileCharacter outfit={art} size={94} label="" />
-                ) : (
-                  <span>이미지 준비 중</span>
-                )}
-              </span>
-              <strong>{productName(p)}</strong>
-              <span>
-                {owned.has(p.id)
-                  ? "보유 중"
-                  : p.saleStatus !== "on_sale"
-                    ? "판매 준비 중"
-                    : p.priceProvisional
-                      ? `🌻 ${p.price}개 · 가격 확정 전`
-                      : `🌻 ${p.price}개`}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-      {!wardrobe && selected && !owned.has(selected.id) && (
-        <button
-          className="button primary"
-          disabled={
-            busy ||
-            !!purchaseMutation.pending ||
-            selected.saleStatus !== "on_sale" ||
-            selected.priceProvisional ||
-            !preview ||
-            (selected.price ?? Infinity) > inventory.currency.balance
-          }
-          onClick={() => setConfirm(true)}
-        >
-          {selected.priceProvisional
-            ? "가격 확정 후 구매할 수 있어요"
-            : (selected.price ?? Infinity) > inventory.currency.balance
-              ? "해바라기씨가 부족해요"
-              : `${productName(selected)} 구매하기 · ${selected.price}개`}
-        </button>
-      )}
       {confirm && selected && (
         <Dialog
           title="이 아이템을 구매할까요?"
