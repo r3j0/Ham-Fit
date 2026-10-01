@@ -1,3 +1,5 @@
+import { ActivityRewardsController } from './activity-rewards.controller.js';
+import { ActivityRewardsService } from './activity-rewards.service.js';
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module.js';
 import { DatabaseModule } from '../database/database.module.js';
@@ -11,9 +13,10 @@ import { UserProfileModule } from './user-profile.module.js';
   imports: [AuthModule, DatabaseModule, UserProfileModule],
   controllers: [
     UsersController,
+    ActivityRewardsController,
     UserPreferencesController,
     UserProfileController,
   ],
-  providers: [UserPreferencesService],
+  providers: [UserPreferencesService, ActivityRewardsService],
 })
 export class UsersModule {}
