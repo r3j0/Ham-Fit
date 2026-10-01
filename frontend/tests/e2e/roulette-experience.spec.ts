@@ -130,10 +130,12 @@ for (const kind of ["personal", "group"] as const) {
     const wheel = page.getByRole("img", { name: /^룰렛:/ });
     await expect(wheel).toBeVisible();
     const rotor = wheel.locator("div").first();
-    expect(await rotor.locator(":scope > span").allTextContents()).toEqual(
+    expect(
+      (await rotor.locator(":scope > span").allTextContents()).sort(),
+    ).toEqual(
       kind === "personal"
-        ? ["1", "3", "5", "10", "", ""]
-        : ["1", "3", "5", "7", "3", "7"],
+        ? ["1", "3", "5", "10", "", ""].sort()
+        : ["1", "3", "5", "7", "3", "7"].sort(),
     );
     expect(
       await page
@@ -142,7 +144,7 @@ for (const kind of ["personal", "group"] as const) {
           getComputedStyle(el).getPropertyValue("--roulette-tone").trim(),
         ),
     ).toBe(kind === "personal" ? "#0a2a70" : "#ff7f00");
-    for (const width of [320, 390, 1218]) {
+    for (const width of [320, 390, 800, 1218]) {
       await page.setViewportSize({ width, height: 900 });
       expect(
         await page.evaluate(() => document.documentElement.scrollWidth),
@@ -152,6 +154,37 @@ for (const kind of ["personal", "group"] as const) {
         fullPage: true,
       });
     }
+    const labels = await rotor
+      .locator(":scope > span")
+      .evaluateAll((sectors) =>
+        sectors.map((sector) => sector.getAttribute("data-prize")),
+      );
+    const winningIndex = labels.indexOf(
+      kind === "personal" ? "해바라기씨 3개" : "기여자마다 3개",
+    );
+    if (kind === "group") {
+      const legend = page.getByRole("region", { name: "그룹 룰렛 보상 확률" });
+      await expect(legend).toBeVisible();
+      expect(await legend.locator("li").allTextContents()).toEqual([
+        "1나에게 1개50%",
+        "3나에게 3개25%",
+        "5나에게 5개13%",
+        "7나에게 7개7%",
+        "3기여자마다 3개4%",
+        "7기여자마다 7개1%",
+      ]);
+      const bounds = await legend.boundingBox(),
+        wheelBounds = await wheel.boundingBox();
+      expect(bounds!.x).toBeGreaterThan(wheelBounds!.x + wheelBounds!.width);
+      expect(bounds!.y + bounds!.height).toBeCloseTo(
+        wheelBounds!.y + wheelBounds!.height,
+        0,
+      );
+      await expect(page.locator("details")).toHaveCount(0);
+    }
+    await page.evaluate(() => {
+      Math.random = () => 0.02;
+    });
     const spin = page.getByRole("button", { name: "룰렛 돌리기", exact: true });
     await spin.click();
     await expect(wheel).toHaveAttribute("data-phase", "spinning");
@@ -174,13 +207,17 @@ for (const kind of ["personal", "group"] as const) {
     await expect(
       page.getByRole("heading", { name: "해바라기씨 3개를 받았어요!" }),
     ).toBeVisible();
-    const landed = await rotor.evaluate(
-      (el) => new DOMMatrixReadOnly(getComputedStyle(el).transform).b,
-    );
-    expect(landed).toBeCloseTo(
-      Math.sin(((kind === "personal" ? 270 : 90) * Math.PI) / 180),
-      2,
-    );
+    const landing = () =>
+      rotor.evaluate((el) => {
+        const matrix = new DOMMatrixReadOnly(getComputedStyle(el).transform);
+        return (
+          ((((-Math.atan2(matrix.b, matrix.a) * 180) / Math.PI) % 360) + 360) %
+          360
+        );
+      });
+    const firstLanding = await landing();
+    expect(Math.floor(firstLanding / 60)).toBe(winningIndex);
+    expect(firstLanding % 60).toBeCloseTo(6.96, 2);
     await page.screenshot({
       path: info.outputPath(`${kind}-reward.png`),
       fullPage: true,
@@ -192,10 +229,17 @@ for (const kind of ["personal", "group"] as const) {
     ).toBeEnabled();
     expect(state.writes).toHaveLength(1);
     await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.evaluate(() => {
+      Math.random = () => 0.98;
+    });
     await page
       .getByRole("button", { name: "룰렛 돌리기", exact: true })
       .click();
     await expect(page.getByRole("dialog")).toBeVisible();
+    const secondLanding = await landing();
+    expect(Math.floor(secondLanding / 60)).toBe(winningIndex);
+    expect(secondLanding % 60).toBeCloseTo(53.04, 2);
+    expect(secondLanding).not.toBeCloseTo(firstLanding, 0);
     await page
       .getByRole("dialog")
       .getByRole("button", { name: "확인", exact: true })
@@ -203,6 +247,43 @@ for (const kind of ["personal", "group"] as const) {
     await expect(page).toHaveURL("/");
     expect(state.writes).toHaveLength(2);
     expect(state.writes[0].key).not.toBe(state.writes[1].key);
+  });
+  test(`${kind}: 다시 열면 항목이 섞이고 API 재조회 중에는 배치를 유지한다`, async ({
+    page,
+  }) => {
+    const { url } = await setup(page, kind);
+    const order = () =>
+      page
+        .getByRole("img", { name: /^룰렛:/ })
+        .locator("div > span")
+        .evaluateAll((sectors) =>
+          sectors.map((sector) => sector.getAttribute("data-prize")),
+        );
+    const ready = () =>
+      expect(
+        page.getByRole("button", { name: "룰렛 돌리기", exact: true }),
+      ).toBeEnabled();
+    await page.goto(url);
+    await ready();
+    const first = await order();
+    await page.reload();
+    await ready();
+    const second = await order();
+    expect(second).not.toEqual(first);
+    expect([...second].sort()).toEqual([...first].sort());
+    await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+    await ready();
+    expect(await order()).toEqual(second);
+    // Even identical random draws on re-entry must not repeat the previous order.
+    await page.addInitScript(() => {
+      Math.random = () => 0.5;
+    });
+    await page.reload();
+    await ready();
+    const third = await order();
+    await page.reload();
+    await ready();
+    expect(await order()).not.toEqual(third);
   });
   test(`${kind}: 마지막 권의 팝업이 자동으로 닫히면 메인으로 이동한다`, async ({
     page,

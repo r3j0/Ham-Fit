@@ -17,6 +17,55 @@ export type RoulettePrize = {
   kind: "seeds" | "clothing" | "pose" | "contributors";
   amount?: number;
 };
+
+const lastLayouts = new Map<string, string[]>();
+
+/** Shuffle presentation once per visit, independently from server reward odds. */
+export function useRouletteLayout(prizes: RoulettePrize[], scope: string) {
+  const [layout, setLayout] = useState({ prizes, ready: false });
+  useEffect(() => {
+    let active = true;
+    queueMicrotask(() => {
+      if (!active) return;
+      const key = `roulette-layout:${scope}`;
+      let previous = lastLayouts.get(key);
+      try {
+        const saved: unknown = JSON.parse(
+          sessionStorage.getItem(key) ?? "null",
+        );
+        if (
+          Array.isArray(saved) &&
+          saved.every((label) => typeof label === "string")
+        )
+          previous = saved;
+      } catch {
+        // A blocked storage API still permits shuffling within this browser tab.
+      }
+      const shuffled = [...prizes];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      if (
+        shuffled.length > 1 &&
+        shuffled.every((prize, i) => prize.label === previous?.[i])
+      )
+        [shuffled[0], shuffled[1]] = [shuffled[1], shuffled[0]];
+      const labels = shuffled.map((prize) => prize.label);
+      lastLayouts.set(key, labels);
+      try {
+        sessionStorage.setItem(key, JSON.stringify(labels));
+      } catch {
+        // The in-memory copy remains available when storage is blocked.
+      }
+      setLayout({ prizes: shuffled, ready: true });
+    });
+    return () => {
+      active = false;
+    };
+  }, [prizes, scope]);
+  return layout;
+}
 export function RoulettePrizeIcon({ kind, amount }: RoulettePrize) {
   return (
     <span className={styles.prizeIcon} aria-hidden="true">
@@ -97,7 +146,8 @@ export function useRouletteMotion() {
           ? new DOMMatrixReadOnly()
           : new DOMMatrixReadOnly(transform);
       const angle = (Math.atan2(matrix.b, matrix.a) * 180) / Math.PI;
-      const destination = -(resultIndex(result) * 60 + 30);
+      // Keep a small margin so the pointer clearly belongs to the winning sector.
+      const destination = -(resultIndex(result) * 60 + 6 + Math.random() * 48);
       const delta = (((destination - angle) % 360) + 360) % 360;
       const end = angle + 2160 + delta;
       animation.current?.cancel();
@@ -157,6 +207,7 @@ export function RouletteWheel({
         {prizes.map((prize, index) => (
           <span
             key={prize.label}
+            data-prize={prize.label}
             className={styles.sector}
             style={
               { "--sector-angle": `${index * 60 + 30}deg` } as CSSProperties

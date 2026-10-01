@@ -17,7 +17,9 @@ import { SeedIcon } from "./seed-icon";
 import {
   RouletteWheel,
   RouletteRewardPopup,
+  RoulettePrizeIcon,
   useRouletteMotion,
+  useRouletteLayout,
   useRouletteReward,
   type RoulettePrize,
 } from "./roulette-wheel";
@@ -36,6 +38,7 @@ const prizes: RoulettePrize[] = labels.map((label, index) => ({
   kind: index < 4 ? "seeds" : "contributors",
   amount: [1, 3, 5, 7, 3, 7][index],
 }));
+const probabilities = [50, 25, 13, 7, 4, 1];
 export function GroupRoulette({ id }: { id: string }) {
   const resource = useApiResource(
     useCallback(
@@ -58,6 +61,7 @@ export function GroupRoulette({ id }: { id: string }) {
   const [draw, setDraw] = useState<GroupDraw>(),
     [error, setError] = useState("");
   const motion = useRouletteMotion();
+  const layout = useRouletteLayout(prizes, `group:${id}`);
   const available =
     resource.data?.tickets
       .filter((t) => t.usable && t.id !== draw?.ticketId)
@@ -81,7 +85,8 @@ export function GroupRoulette({ id }: { id: string }) {
             JSON.stringify({ ticketId: available[0]?.id }),
             (body, key) => spinGroup(id, body, key),
           ),
-        (value) => groupResults.indexOf(value.result),
+        (value) =>
+          layout.prizes.indexOf(prizes[groupResults.indexOf(value.result)]),
       );
       if (result) {
         setDraw(result);
@@ -113,11 +118,35 @@ export function GroupRoulette({ id }: { id: string }) {
             {resource.data.inventory.currency.balance}개
           </p>
         )}
-        <RouletteWheel
-          prizes={prizes}
-          phase={motion.phase}
-          attachWheel={motion.attachWheel}
-        />
+        <div className={styles.groupLayout}>
+          <RouletteWheel
+            prizes={layout.prizes}
+            phase={motion.phase}
+            attachWheel={motion.attachWheel}
+          />
+          <section
+            className={styles.probabilities}
+            aria-label="그룹 룰렛 보상 확률"
+          >
+            <h2>보상 확률</h2>
+            <ul>
+              {prizes.map((prize, i) => (
+                <li key={prize.label}>
+                  <RoulettePrizeIcon {...prize} />
+                  <span>
+                    {prize.kind === "contributors" ? "기여자마다" : "나에게"}{" "}
+                    {prize.amount}개
+                  </span>
+                  <strong>{probabilities[i]}%</strong>
+                </li>
+              ))}
+            </ul>
+            <p>
+              공동 보상은 해당 회차에 물을 준 참여 자격을 유지한 구성원에게 각각
+              지급돼요.
+            </p>
+          </section>
+        </div>
         {error && <Notice>{error}</Notice>}
         {resource.error ? (
           <>
@@ -152,6 +181,7 @@ export function GroupRoulette({ id }: { id: string }) {
           className="button primary"
           disabled={
             busy ||
+            !layout.ready ||
             reward.visible ||
             (!mutation.pending &&
               (!available.length || !!resource.error || resource.loading))
@@ -161,7 +191,7 @@ export function GroupRoulette({ id }: { id: string }) {
           <SubmitLabel busy={busy}>
             {mutation.pending && !mutation.busy
               ? "이전 추첨 결과 확인"
-              : mutation.busy
+              : busy
                 ? "선물을 확인하고 있어요"
                 : "룰렛 돌리기"}
           </SubmitLabel>
@@ -172,20 +202,6 @@ export function GroupRoulette({ id }: { id: string }) {
             있어요.
           </p>
         )}
-        <details>
-          <summary>그룹 룰렛 보상 확률</summary>
-          <ul>
-            {labels.map((label, i) => (
-              <li key={label}>
-                {label} · {[50, 25, 13, 7, 4, 1][i]}%
-              </li>
-            ))}
-          </ul>
-          <p className="caption">
-            공동 보상은 원래 회차에 물을 주고 참여 자격을 유지한 구성원에게 각각
-            지급돼요.
-          </p>
-        </details>
         {!!resource.data?.draws.length && (
           <section className="stack-sm">
             <h2>최근 받은 선물</h2>

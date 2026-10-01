@@ -23,6 +23,7 @@ import {
   RouletteWheel,
   RouletteRewardPopup,
   useRouletteMotion,
+  useRouletteLayout,
   useRouletteReward,
   type RoulettePrize,
 } from "./roulette-wheel";
@@ -94,6 +95,7 @@ function PersonalWheel() {
   const tickets =
     resource.data?.tickets.filter((t) => t.id !== draw?.ticketId) ?? [];
   const motion = useRouletteMotion();
+  const layout = useRouletteLayout(prizes, "personal");
   const reward = useRouletteReward(
     resource.data && !resource.loading && !resource.error
       ? tickets.length
@@ -110,7 +112,8 @@ function PersonalWheel() {
             JSON.stringify({ ticketId: tickets[0]?.id }),
             spinPersonal,
           ),
-        (value) => results.indexOf(value.originalResult),
+        (value) =>
+          layout.prizes.indexOf(prizes[results.indexOf(value.originalResult)]),
       );
       if (result) {
         setDraw(result);
@@ -136,7 +139,7 @@ function PersonalWheel() {
         </p>
       </div>
       <RouletteWheel
-        prizes={prizes}
+        prizes={layout.prizes}
         phase={motion.phase}
         attachWheel={motion.attachWheel}
       />
@@ -187,6 +190,7 @@ function PersonalWheel() {
         className="button primary"
         disabled={
           busy ||
+          !layout.ready ||
           reward.visible ||
           (!mutation.pending &&
             (!tickets.length || !!resource.error || resource.loading))
