@@ -26,7 +26,7 @@ async function renderedArt(page: Page) {
 }
 
 for (const width of [320, 390, 1280]) {
-  test(`${width}px 로그인 전 첫 화면의 교차 배치와 회원가입의 궁금 캐릭터를 표시한다`, async ({
+  test(`${width}px 로그인은 서로 다른 자세 네 마리, 회원가입은 확대된 궁금 캐릭터를 표시한다`, async ({
     page,
   }, info) => {
     const errors: string[] = [];
@@ -40,37 +40,30 @@ for (const width of [320, 390, 1280]) {
     const group = page.getByRole("group", { name: "함께 운동하는 햄스터" });
     const characters = group.getByRole("img");
     await expect(characters).toHaveCount(4);
-    const expected = [
-      ["cream", "victory", "none"],
-      ["gray", "run", "none"],
-      ["gray", "drink", "none"],
-      ["cream", "situp", "none"],
-    ];
-    for (const [index, [variant, pose, wear]] of expected.entries()) {
-      await expect(characters.nth(index)).toHaveAttribute(
-        "data-variant",
-        variant,
-      );
-      await expect(characters.nth(index)).toHaveAttribute("data-pose", pose);
-      await expect(characters.nth(index)).toHaveAttribute("data-wear", wear);
-      await expect(characters.nth(index)).toHaveCSS(
-        "z-index",
-        index % 2 ? "2" : "1",
-      );
-    }
+    await expect(page.locator("body")).toHaveCSS(
+      "background-color",
+      "rgb(255, 255, 255)",
+    );
+    await expect(group.locator('[data-variant="cream"]')).toHaveCount(2);
+    await expect(group.locator('[data-variant="gray"]')).toHaveCount(2);
+    const poses = await characters.evaluateAll((nodes) =>
+      nodes.map((n) => n.getAttribute("data-pose")),
+    );
+    expect(new Set(poses).size).toBe(4);
+    expect(poses).not.toContain("basic");
     await renderedArt(page);
     const boxes = await Promise.all(
       (await characters.all()).map((character) => character.boundingBox()),
     );
-    const frame = (await group.boundingBox())!;
-    for (const [i, box] of boxes.entries()) {
-      expect(box!.x).toBeGreaterThanOrEqual(frame.x);
-      expect(box!.x + box!.width).toBeLessThanOrEqual(
-        frame.x + frame.width + 1,
-      );
-      if (i > 0) expect(box!.x).toBeGreaterThan(boxes[i - 1]!.x);
-      if (i % 2) expect(box!.y).toBeGreaterThan(boxes[i - 1]!.y);
+    for (const box of boxes) {
+      expect(box!.x).toBeGreaterThanOrEqual(0);
+      expect(box!.x + box!.width).toBeLessThanOrEqual(width);
     }
+    expect(boxes[1]!.x).toBeGreaterThan(boxes[0]!.x);
+    expect(boxes[1]!.y).toBeCloseTo(boxes[0]!.y, 0);
+    expect(boxes[2]!.y).toBeGreaterThanOrEqual(
+      boxes[0]!.y + boxes[0]!.height - 1,
+    );
     await page
       .getByLabel("이메일", { exact: true })
       .fill("mascot@example.test");

@@ -2595,3 +2595,6 @@ fieldset:disabled select {
     padding-top: 20px;
   }
 }
+body:has(.auth-shell) {
+  background: var(--surface);
+}

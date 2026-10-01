@@ -4,6 +4,7 @@ import { POSES } from "../hamster/poses";
 import type { HamsterPose } from "../hamster/types";
 import { MascotPose, type MascotPoseProps } from "./MascotPose";
 import styles from "./mascot-scenes.module.css";
+import { selectWelcomeMascots } from "@/lib/welcome-mascots";
 
 const welcome = [
   { variant: "cream", pose: "victory" },
@@ -17,11 +18,10 @@ export function WelcomeMascots() {
     useState<readonly MascotPoseProps[]>(welcome);
   useEffect(() => {
     const poses = Object.keys(POSES) as HamsterPose[];
-    const values = crypto.getRandomValues(new Uint32Array(8));
-    const next = Array.from({ length: 4 }, (_, i) => ({
-      variant: values[i * 2] % 2 ? ("gray" as const) : ("cream" as const),
-      pose: poses[values[i * 2 + 1] % poses.length],
-    }));
+    const next = selectWelcomeMascots(
+      poses,
+      () => crypto.getRandomValues(new Uint32Array(1))[0] / 0x100000000,
+    );
     queueMicrotask(() => setCharacters(next));
   }, []);
   return (
