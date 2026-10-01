@@ -3,7 +3,18 @@ import { GroupMission } from "./group-mission";
 import Link from "next/link";
 import { useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Crown, Droplet, MoreHorizontal, X } from "lucide-react";
+import {
+  CalendarCheck,
+  CalendarDays,
+  Check,
+  Crown,
+  Droplet,
+  Flame,
+  MoreHorizontal,
+  Trophy,
+  UserRound,
+  X,
+} from "lucide-react";
 import { api } from "@/lib/session";
 import { object, invalid } from "@/lib/api-contract";
 import {
@@ -25,6 +36,7 @@ import { Dialog, Header, Loading, Notice, Shell } from "./ui";
 import { GroupFields } from "./groups";
 import { ProfileCharacter } from "./profile-character";
 import styles from "./groups.module.css";
+import memberStyles from "./group-member-profile.module.css";
 
 const statusLabels = { pending: "대기", approved: "승인", rejected: "거절" };
 function Applications({
@@ -591,27 +603,78 @@ export function GroupMember({ id, userId }: { id: string; userId: string }) {
             </button>
           </>
         ) : resource.data ? (
-          <section className={styles.card}>
-            <ProfileCharacter
-              outfit={resource.data.profileCharacter}
-              size={96}
-              label={`${resource.data.nickname ?? "닉네임 미설정"}의 햄스터`}
-            />
-            <h2>{resource.data.nickname ?? "닉네임 미설정"}</h2>
-            <p>{resource.data.role === "leader" ? "그룹장" : "그룹원"}</p>
-            <p>연속 운동 {resource.data.streak}일</p>
-            {resource.data.longestStreak !== undefined && (
-              <p>최장 연속 운동 {resource.data.longestStreak}일</p>
-            )}
-            {resource.data.totalWorkoutDays !== undefined && (
-              <p>총 운동 {resource.data.totalWorkoutDays}일</p>
-            )}
-            <p>
-              가입일{" "}
-              {new Date(resource.data.joinedAt).toLocaleDateString("ko-KR", {
-                timeZone: "Asia/Seoul",
-              })}
-            </p>
+          <section
+            className={memberStyles.profile}
+            aria-labelledby="group-member-name"
+          >
+            <div className={memberStyles.identity}>
+              <span className={memberStyles.role}>
+                {resource.data.role === "leader" ? (
+                  <Crown size={16} aria-hidden="true" />
+                ) : (
+                  <UserRound size={16} aria-hidden="true" />
+                )}
+                {resource.data.role === "leader" ? "그룹장" : "그룹원"}
+              </span>
+              <ProfileCharacter
+                outfit={resource.data.profileCharacter}
+                size={168}
+                label={`${resource.data.nickname ?? "닉네임 미설정"}의 햄스터`}
+              />
+              <h2 id="group-member-name">
+                {resource.data.nickname ?? "닉네임 미설정"}
+              </h2>
+            </div>
+            <div className={memberStyles.activity}>
+              <h3>함께 운동한 기록</h3>
+              <dl className={memberStyles.stats}>
+                <div className={memberStyles.stat}>
+                  <dt>
+                    <Flame size={20} aria-hidden="true" />
+                    연속 운동
+                  </dt>
+                  <dd>
+                    <strong>{resource.data.streak}</strong>
+                    <span>일</span>
+                  </dd>
+                </div>
+                {resource.data.longestStreak !== undefined && (
+                  <div className={memberStyles.stat}>
+                    <dt>
+                      <Trophy size={20} aria-hidden="true" />
+                      최장 연속 운동
+                    </dt>
+                    <dd>
+                      <strong>{resource.data.longestStreak}</strong>
+                      <span>일</span>
+                    </dd>
+                  </div>
+                )}
+                {resource.data.totalWorkoutDays !== undefined && (
+                  <div className={memberStyles.stat}>
+                    <dt>
+                      <CalendarCheck size={20} aria-hidden="true" />총 운동
+                    </dt>
+                    <dd>
+                      <strong>{resource.data.totalWorkoutDays}</strong>
+                      <span>일</span>
+                    </dd>
+                  </div>
+                )}
+              </dl>
+              <p className={memberStyles.joined}>
+                <CalendarDays size={18} aria-hidden="true" />
+                <span>그룹 가입일</span>
+                <time dateTime={resource.data.joinedAt}>
+                  {new Date(resource.data.joinedAt).toLocaleDateString(
+                    "ko-KR",
+                    {
+                      timeZone: "Asia/Seoul",
+                    },
+                  )}
+                </time>
+              </p>
+            </div>
           </section>
         ) : (
           <Loading />
