@@ -813,3 +813,14 @@ model StreakRouletteDraw {
   @@index([userId, id])
   @@map("streak_roulette_draws")
 }
+
+// Published rendering metadata is independent from ownership and commercial SKU revisions.
+model AvatarRenderCatalog {
+  id            String   @id
+  revision      Int      @default(0)
+  catalog       Json
+  sourceCatalog Json     @map("source_catalog")
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("avatar_render_catalogs")
+}

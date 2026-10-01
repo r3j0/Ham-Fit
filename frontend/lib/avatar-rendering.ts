@@ -14,18 +14,22 @@ export function avatarRenderSelection(rendering: AvatarOutfit["rendering"]) {
   };
 }
 
-export function canRenderAvatar(rendering: AvatarOutfit["rendering"]) {
+export function canRenderAvatar(
+  rendering: AvatarOutfit["rendering"],
+  catalog: ItemCatalog = DEFAULT_ITEMS,
+) {
   return (
     Object.hasOwn(POSES, rendering.pose) &&
-    resolveHamster(avatarRenderSelection(rendering), DEFAULT_ITEMS).warnings
+    resolveHamster(avatarRenderSelection(rendering), catalog).warnings
       .length === 0
   );
 }
 
-export function clothingAsset(renderKey: string) {
-  return Object.hasOwn(DEFAULT_ITEMS, renderKey)
-    ? (DEFAULT_ITEMS as ItemCatalog)[renderKey]
-    : undefined;
+export function clothingAsset(
+  renderKey: string,
+  catalog: ItemCatalog = DEFAULT_ITEMS,
+) {
+  return Object.hasOwn(catalog, renderKey) ? catalog[renderKey] : undefined;
 }
 
 const retiredSportswear = new Set([

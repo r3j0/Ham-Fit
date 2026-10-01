@@ -1,7 +1,8 @@
+"use client";
 import type { AvatarOutfit } from "@/lib/avatar-outfit";
 import { avatarRenderSelection, canRenderAvatar } from "@/lib/avatar-rendering";
 import { Hamster } from "./hamster/Hamster";
-import { DEFAULT_ITEMS } from "./hamster/items";
+import { useAvatarCatalog } from "./avatar-catalog-provider";
 
 export function ProfileCharacter({
   outfit,
@@ -12,7 +13,18 @@ export function ProfileCharacter({
   size: number;
   label: string;
 }) {
-  if (outfit && !canRenderAvatar(outfit.rendering))
+  const assets = useAvatarCatalog();
+  if (outfit?.rendering.clothing.length && !assets.catalog)
+    return (
+      <span className="character-unavailable" role="status">
+        {assets.error ? (
+          <button onClick={assets.reload}>의상 다시 불러오기</button>
+        ) : (
+          "의상 불러오는 중"
+        )}
+      </span>
+    );
+  if (outfit && !canRenderAvatar(outfit.rendering, assets.catalog ?? {}))
     return (
       <span
         className="character-unavailable"
@@ -36,7 +48,7 @@ export function ProfileCharacter({
     >
       <Hamster
         {...(outfit ? avatarRenderSelection(outfit.rendering) : {})}
-        catalog={DEFAULT_ITEMS}
+        catalog={assets.catalog ?? {}}
         decorative
       />
     </span>
