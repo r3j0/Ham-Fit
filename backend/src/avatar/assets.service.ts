@@ -5,36 +5,17 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service.js';
-import type { Prisma } from '../generated/prisma/client.js';
 import { combinationId } from './avatar-input.js';
-import { AvatarAssetFiles } from './assets-files.js';
-import {
-  eachLayer,
-  imagePath,
-  parsePublish,
-  supportedFrames,
-} from './assets-input.js';
-import type { PublishInput, RenderCatalog } from './assets-input.js';
+import { parsePublish } from './assets-input.js';
+import type { PublishInput } from './assets-input.js';
 
 @Injectable()
 export class AvatarAssetsService {
-  constructor(
-    @Inject(DatabaseService) private readonly db: DatabaseService,
-    @Inject(AvatarAssetFiles) private readonly files: AvatarAssetFiles,
-  ) {}
-  async catalog() {
-    const row = await this.db.avatarRenderCatalog.findUnique({
-      where: { id: 'wardrobe' },
-    });
-    return {
-      revision: row?.revision ?? 0,
-      catalog: row?.catalog ?? {},
-      updatedAt: row?.updatedAt.toISOString() ?? null,
-    };
-  }
+  constructor(@Inject(DatabaseService) private readonly db: DatabaseService) {}
   async managerCatalog() {
     const row = await this.db.avatarRenderCatalog.findUnique({
       where: { id: 'wardrobe' },
+      select: { revision: true },
     });
     const products = await this.db.avatarProduct.findMany({
       where: { kind: 'clothing' },
@@ -42,35 +23,13 @@ export class AvatarAssetsService {
     });
     return {
       revision: row?.revision ?? 0,
-      catalog: row?.catalog ?? {},
-      sourceCatalog: row?.sourceCatalog ?? {},
       products,
-      imageStorage: this.files.storageKind(),
+      imageStorage: 'frontend',
     };
   }
   async publish(value: unknown) {
     const input = parsePublish(value);
     this.validateTopology(input);
-    const sources = new Map<string, boolean>();
-    eachLayer(input.catalog, (layer) =>
-      sources.set(
-        imagePath.exec(layer.src)![1],
-        sources.get(imagePath.exec(layer.src)![1]) ?? false,
-      ),
-    );
-    eachLayer(input.sourceCatalog, (layer) =>
-      sources.set(imagePath.exec(layer.src)![1], true),
-    );
-    const checks = [...sources];
-    for (let index = 0; index < checks.length; index += 8) {
-      await Promise.all(
-        checks
-          .slice(index, index + 8)
-          .map(([hash, original]) =>
-            this.files.verify(`${hash}.png`, original),
-          ),
-      );
-    }
     return this.db.$transaction(
       async (tx) => {
         await tx.avatarRenderCatalog.upsert({
@@ -83,7 +42,7 @@ export class AvatarAssetsService {
           },
           update: {},
         });
-        // A conditional UPDATE holds the row lock until the products, combinations and assets commit together.
+        // A conditional UPDATE holds the row lock until the prices and supported combinations commit together.
         const changed = await tx.avatarRenderCatalog.updateMany({
           where: { id: 'wardrobe', revision: input.revision },
           data: { revision: { increment: 1 } },
@@ -94,43 +53,38 @@ export class AvatarAssetsService {
             message:
               '다른 관리자가 등록했습니다. 서버 버전을 확인한 후 다시 등록하세요.',
           });
-        const previous = await tx.avatarRenderCatalog.findUniqueOrThrow({
-          where: { id: 'wardrobe' },
+        const existingProducts = await tx.avatarProduct.findMany({
+          where: {
+            id: { in: input.products.map((p) => `clothing.${p.renderKey}`) },
+          },
         });
-        const previousCatalog = previous.catalog as RenderCatalog;
-        const supported = new Set(
-          supportedFrames(input.catalog).map(
-            (f) => `${f.renderKey}/${f.pose}/${f.variant}`,
-          ),
-        );
-        if (
-          supportedFrames(previousCatalog).some(
-            (f) => !supported.has(`${f.renderKey}/${f.pose}/${f.variant}`),
-          )
-        )
-          throw new BadRequestException(
-            '기존에 등록한 의상·자세·색상은 제거할 수 없습니다. 기존 소유자의 표시를 유지해야 합니다.',
-          );
+        const existingById = new Map(existingProducts.map((p) => [p.id, p]));
         for (const product of input.products) {
-          const item = input.catalog[product.renderKey];
           const id = `clothing.${product.renderKey}`;
-          const existing = await tx.avatarProduct.findUnique({ where: { id } });
+          const existing = existingById.get(id);
           if (
             existing &&
             (existing.kind !== 'clothing' ||
-              existing.slot !== item.slot ||
+              existing.slot !== product.slot ||
               existing.renderKey !== product.renderKey)
           )
             throw new BadRequestException(
               '기존 상품의 슬롯과 식별자를 변경할 수 없습니다.',
             );
+          if (
+            existing &&
+            existing.price === product.price &&
+            existing.saleStatus === product.saleStatus &&
+            !existing.priceProvisional
+          )
+            continue;
           await tx.avatarProduct.upsert({
             where: { id },
             create: {
               id,
               kind: 'clothing',
-              slot: item.slot,
-              occupiesSlots: [item.slot],
+              slot: product.slot,
+              occupiesSlots: [product.slot],
               renderKey: product.renderKey,
               ownershipScope: 'shared',
               saleStatus: product.saleStatus,
@@ -145,58 +99,87 @@ export class AvatarAssetsService {
           });
         }
         const combinations = [
-          ...supportedFrames(input.catalog).map((f) => ({
-            pose: f.pose,
-            variant: f.variant,
-            clothing: [f.renderKey],
-          })),
+          ...input.products.flatMap((product) =>
+            product.frames.map((frame) => ({
+              ...frame,
+              clothing: [product.renderKey],
+            })),
+          ),
           ...input.combinations,
         ];
+        const poseIds = [...new Set(combinations.map((c) => c.pose))];
+        await tx.avatarProduct.createMany({
+          data: poseIds.map((pose) => ({
+            id: `pose.${pose}`,
+            kind: 'pose',
+            slot: null,
+            occupiesSlots: [],
+            renderKey: pose,
+            ownershipScope: 'shared',
+            saleStatus: pose === 'basic' ? 'default' : 'held',
+            price: null,
+            priceProvisional: false,
+          })),
+          skipDuplicates: true,
+        });
+        const rows = new Map<
+          string,
+          {
+            id: string;
+            characterId: string;
+            poseId: string;
+            clothingIds: string[];
+          }
+        >();
         for (const combination of combinations) {
           const characterId = `character.${combination.variant}`,
             poseId = `pose.${combination.pose}`;
-          await tx.avatarProduct.upsert({
-            where: { id: poseId },
-            create: {
-              id: poseId,
-              kind: 'pose',
-              slot: null,
-              occupiesSlots: [],
-              renderKey: combination.pose,
-              ownershipScope: 'shared',
-              saleStatus: 'held',
-              price: null,
-              priceProvisional: false,
-            },
-            update: {},
-          });
           const clothingIds = combination.clothing
             .map((key) => `clothing.${key}`)
             .sort((a, b) => a.localeCompare(b));
           const id = combinationId({ characterId, poseId, clothingIds });
-          await tx.avatarCombination.upsert({
-            where: { id },
-            create: {
+          rows.set(id, { id, characterId, poseId, clothingIds });
+        }
+        const existingCombinations = await tx.avatarCombination.findMany({
+          where: { id: { in: [...rows.keys()] } },
+          select: { id: true },
+        });
+        const registered = new Set(existingCombinations.map((row) => row.id));
+        const supported = [...rows.values()].filter(
+          (row) => !registered.has(row.id),
+        );
+        // Only new parents and items are inserted in this transaction; existing
+        // immutable items reject even a duplicate INSERT from a later transaction.
+        // Three bulk inserts replace a separate upsert for every supported frame.
+        if (supported.length) {
+          await tx.avatarCombination.createMany({
+            data: supported.map(({ id, characterId, poseId }) => ({
               id,
               characterId,
               poseId,
-              items: {
-                create: clothingIds.map((productId) => ({ productId })),
-              },
-            },
-            update: {},
+            })),
+            skipDuplicates: true,
+          });
+          await tx.avatarCombinationItem.createMany({
+            data: supported.flatMap((row) =>
+              row.clothingIds.map((productId) => ({
+                combinationId: row.id,
+                productId,
+              })),
+            ),
+            skipDuplicates: true,
           });
         }
         const row = await tx.avatarRenderCatalog.update({
           where: { id: 'wardrobe' },
           data: {
-            catalog: input.catalog as Prisma.InputJsonValue,
-            sourceCatalog: input.sourceCatalog as Prisma.InputJsonValue,
+            // Retire legacy display JSON only after a successful frontend-backed registration.
+            catalog: {},
+            sourceCatalog: {},
           },
         });
         return {
           revision: row.revision,
-          catalog: row.catalog,
           updatedAt: row.updatedAt.toISOString(),
         };
       },
@@ -204,60 +187,27 @@ export class AvatarAssetsService {
     );
   }
   private validateTopology(input: PublishInput) {
-    const ids = Object.keys(input.catalog).sort((a, b) => a.localeCompare(b));
-    if (
-      !ids.length ||
-      JSON.stringify(ids) !==
-        JSON.stringify(
-          Object.keys(input.sourceCatalog).sort((a, b) => a.localeCompare(b)),
-        ) ||
-      input.products.length !== ids.length ||
-      new Set(input.products.map((p) => p.renderKey)).size !== ids.length ||
-      input.products.some((p) => !ids.includes(p.renderKey))
-    )
-      throw new BadRequestException(
-        '모든 의상의 원본과 가격을 함께 등록해야 합니다.',
-      );
-    for (const id of ids) {
-      const item = input.catalog[id],
-        source = input.sourceCatalog[id];
-      const topology = (value: typeof item) =>
-        JSON.stringify(
-          Object.entries(value.poses)
-            .sort(([a], [b]) => a.localeCompare(b))
-            .map(([pose, variants]) => [
-              pose,
-              Object.entries(variants ?? {})
-                .sort(([a], [b]) => a.localeCompare(b))
-                .map(([variant, frame]) => [
-                  variant,
-                  frame?.layers.length,
-                  frame?.foreground?.length ?? 0,
-                ]),
-            ]),
-        );
-      if (
-        item.slot !== source.slot ||
-        topology(item) !== topology(source) ||
-        !supportedFrames({ [id]: item }).length
-      )
-        throw new BadRequestException(
-          '원본과 수정본의 자세·레이어 구성이 일치해야 합니다.',
-        );
-    }
+    const products = new Map(
+      input.products.map((product) => [product.renderKey, product]),
+    );
+    if (products.size !== input.products.length)
+      throw new BadRequestException('상품 ID가 중복되었습니다.');
     for (const c of input.combinations) {
-      const slots = c.clothing.map((key) => input.catalog[key]?.slot);
+      const slots = c.clothing.map((key) => products.get(key)?.slot);
       if (
-        slots.some((s) => !s) ||
+        slots.some((slot) => !slot) ||
         new Set(slots).size !== slots.length ||
         c.clothing.some(
           (key) =>
-            !input.catalog[key]?.poses[c.pose]?.[c.variant] &&
-            !input.catalog[key]?.poses[c.pose]?.shared,
+            !products
+              .get(key)
+              ?.frames.some(
+                (f) => f.pose === c.pose && f.variant === c.variant,
+              ),
         )
       )
         throw new BadRequestException(
-          '검수한 착용 조합의 의상·슬롯·자세가 올바르지 않습니다.',
+          '검수한 착용 조합의 상품·슬롯·자세가 올바르지 않습니다.',
         );
     }
   }

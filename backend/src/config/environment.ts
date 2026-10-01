@@ -1,5 +1,4 @@
 import { isIP } from 'node:net';
-import { supabaseStorageSettings } from './supabase-storage.js';
 
 export function validateEnvironment(config: Record<string, unknown>) {
   const nodeEnv = config.NODE_ENV ?? 'development';
@@ -128,45 +127,6 @@ export function validateEnvironment(config: Record<string, unknown>) {
       'AVATAR_MANAGER_TOKEN must be 32 random bytes encoded as 64 lowercase hexadecimal characters.',
     );
   }
-  if (
-    config.AVATAR_ASSET_DIR !== undefined &&
-    (typeof config.AVATAR_ASSET_DIR !== 'string' ||
-      !config.AVATAR_ASSET_DIR.trim())
-  ) {
-    throw new Error(
-      'AVATAR_ASSET_DIR must be a nonempty persistent directory path.',
-    );
-  }
-
-  const storage =
-    config.AVATAR_ASSET_STORAGE ??
-    (config.VERCEL === '1' ? 'vercel-blob' : 'file');
-  if (
-    typeof storage !== 'string' ||
-    !['file', 'vercel-blob', 'supabase'].includes(storage)
-  ) {
-    throw new Error(
-      'AVATAR_ASSET_STORAGE must be file, vercel-blob or supabase.',
-    );
-  }
-  if (config.VERCEL === '1' && storage === 'file') {
-    throw new Error(
-      'Vercel avatar images require AVATAR_ASSET_STORAGE=vercel-blob or supabase.',
-    );
-  }
-  if (storage === 'vercel-blob' && config.AVATAR_MANAGER_TOKEN !== undefined) {
-    const nonempty = (value: unknown) =>
-      typeof value === 'string' && value.trim().length > 0;
-    if (
-      !nonempty(config.BLOB_READ_WRITE_TOKEN) &&
-      !(nonempty(config.BLOB_STORE_ID) && nonempty(config.VERCEL_OIDC_TOKEN))
-    ) {
-      throw new Error(
-        'Avatar publishing requires a private Vercel Blob store with BLOB_READ_WRITE_TOKEN or BLOB_STORE_ID and VERCEL_OIDC_TOKEN.',
-      );
-    }
-  }
-  if (storage === 'supabase') supabaseStorageSettings(config);
 
   return {
     ...config,

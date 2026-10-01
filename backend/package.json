@@ -9,7 +9,6 @@
     "node": "^24.15.0 || >=26.0.0"
   },
   "scripts": {
-    "avatar:storage:setup": "node scripts/setup-supabase-avatar-storage.mjs",
     "build": "nest build",
     "start": "nest start",
     "start:dev": "nest start --watch",
@@ -47,8 +46,6 @@
     "@nestjs/platform-express": "^12.0.3",
     "@prisma/adapter-pg": "7.10.0",
     "@prisma/client": "7.10.0",
-    "@supabase/supabase-js": "2.117.2",
-    "@vercel/blob": "2.8.0",
     "argon2": "^0.45.1",
     "cookie": "^2.0.1",
     "dotenv": "^18.0.0",

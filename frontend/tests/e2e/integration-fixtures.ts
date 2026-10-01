@@ -178,6 +178,9 @@ export async function installApi(
   let nickname: string | null = null;
   let outfit = structuredClone(testOutfit);
   const mutations: { path: string; method: string; body: unknown }[] = [];
+  await page.route("**/hamsters/wardrobe/catalog.json", (route) =>
+    route.fulfill({ json: { revision: 0, catalog: {} } }),
+  );
   await page.route(/\/api\/v[12]\//, async (route) => {
     const request = route.request(),
       path = new URL(request.url()).pathname.replace(/\/api\/v[12]/, "");
@@ -214,8 +217,6 @@ export async function installApi(
         currency: { balance: 0 },
         currentCurriculum: assignment,
       });
-    if (path === "/avatar/render-catalog")
-      return send({ revision: 0, catalog: {} });
     if (path === "/users/me/profile") {
       if (method === "PATCH") nickname = request.postDataJSON().nickname;
       return send({ dateOfBirth: "2001-01-01", currentAge: 25, nickname });

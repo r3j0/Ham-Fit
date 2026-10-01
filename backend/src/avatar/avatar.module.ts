@@ -4,11 +4,10 @@ import { AuthModule } from '../auth/auth.module.js';
 import { AvatarController, ShopController } from './avatar.controller.js';
 import {
   AvatarManagerController,
+  AvatarManagerV2Controller,
   AvatarAssetsController,
 } from './assets.controller.js';
 import { AvatarManagerGuard } from './assets.guard.js';
-import { AvatarAssetFiles } from './assets-files.js';
-import { AvatarAssetStorage } from './assets-storage.js';
 import { AvatarAssetsService } from './assets.service.js';
 import { AvatarService } from './avatar.service.js';
 
@@ -18,15 +17,10 @@ import { AvatarService } from './avatar.service.js';
     AvatarController,
     ShopController,
     AvatarManagerController,
+    AvatarManagerV2Controller,
     AvatarAssetsController,
   ],
-  providers: [
-    AvatarService,
-    AvatarManagerGuard,
-    AvatarAssetFiles,
-    AvatarAssetStorage,
-    AvatarAssetsService,
-  ],
+  providers: [AvatarService, AvatarManagerGuard, AvatarAssetsService],
   exports: [AvatarService],
 })
 export class AvatarModule {}

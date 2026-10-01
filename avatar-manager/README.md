@@ -1,107 +1,66 @@
-# Project Health Avatar Manager
+# Avatar Manager
 
-운영자가 로컬에서 의상 PNG·배치를 편집하고 NestJS에 등록하는 별도 Next.js 앱입니다. 서비스 프론트엔드와 독립적으로 실행합니다. 편집 중의 변경은 로컬 초안이며, **서버에 등록**을 누르면 PostgreSQL·서버 이미지 저장소·상품·착용 조합에 반영됩니다.
+의상 이미지·크기·위치·회전을 서비스 프론트엔드의 정적 파일로 관리하는 로컬 Next.js 편집기입니다. **백엔드에는 이미지나 배치를 저장하지 않습니다.** 상품 ID·가격·판매 상태와 기존 구매·착용에 필요한 관계만 DB에 저장합니다.
 
-## 로컬 실행
+## 실행 (Mac / Windows)
 
-전체 프로젝트는 backend의 요구 사항에 맞춰 Node.js 24.15 이상(24.x) 또는 26 이상을 사용하세요. 편집 앱 단독 요구 사항은 Node.js 20.9 이상입니다. 기존 backend `.env`의 DB·JWT 설정을 먼저 준비합니다.
+Node.js 24.15 이상(24.x) 또는 26 이상을 설치하고 저장소 전체를 준비합니다.
 
-```bash
+```sh
+cd avatar-manager
 npm ci
 npm run setup:local
-```
-
-`setup:local`은 관리자 전용 토큰을 생성해 이 앱의 `.env.local`과 `../backend/.env.avatar-manager`에 저장합니다. 기존 backend `.env`의 DB·로그인 설정은 그대로 사용합니다. 값이 서로 다르면 덮어쓰지 않습니다. 토큰은 브라우저에 전달하지 않습니다.
-
-백엔드 터미널:
-
-```bash
-cd ../backend
-npm ci
-npm run db:migrate:deploy
-npm run start:dev
-```
-
-다른 터미널에서 이 폴더로 돌아와 실행합니다.
-
-```bash
 npm run dev
 ```
 
-편집기는 `http://127.0.0.1:3002/wardrobe`, 기본 NestJS 주소는 `http://127.0.0.1:3001/api/v1`입니다. 서비스 프론트엔드는 기존대로 3000번 포트를 사용합니다. 별도 서버가 이미 실행 중이면 포트를 변경하세요. 백엔드를 다른 주소에 두면 `.env.local`의 `AVATAR_BACKEND_URL`을 변경합니다.
+편집기 주소: `http://127.0.0.1:3002/wardrobe`. `setup:local`은 관리자 토큰을 `.env.local`과 `../backend/.env.avatar-manager`에 저장합니다. 운영 API를 사용할 때는 기존 운영 토큰을 사용하고 아래 설정을 `.env.local`에 넣습니다. 비밀키를 Git이나 `NEXT_PUBLIC_`에 넣지 마세요.
 
-## 편집·등록
-
-기본 자세는 사용자가 2026-10-02 제공한 PNG의 왼쪽 햄돌이와 오른쪽 햄콩이 그림을 사용합니다. 흰 배경을 투명하게 처리한 그림을 각각 `basic-cream-hamdoli.webp`와 `basic-gray-hamkong.webp`에 포함하며, 서비스 프론트엔드와 편집기가 같은 이미지와 기존 배치 좌표를 사용합니다. 다른 자세는 기존 그림을 사용합니다.
-
-1. 의상·자세·색상·레이어를 선택하고 크기·위치·회전을 조정합니다. **조정값 저장**은 `.local/placements.json`에 저장합니다.
-2. **의상 세부 작업**에서 크기 1–160px 펜·지우개와 스포이드로 수정합니다. **픽셀 수정 저장**은 원본 PNG를 유지하고 수정본을 저장합니다. 25–1600% 확대, 400%부터 픽셀 격자, 실행 취소·다시 실행을 제공합니다.
-3. 서비스 등록 패널에서 가격과 판매 상태를 정합니다. 새 의상은 기본 판매 보류입니다. 초기 가격은 모자 30·상의 25·하의 20 해바라기씨이며 등록 전에 변경할 수 있습니다.
-4. 자세별 미리보기를 확인합니다. 여러 의상을 함께 착용하려면 **여러 의상의 착용 조합 검수**에서 조합을 미리보고 추가합니다. 개별 의상 프레임만으로 여러 의상의 조합을 자동 추정하지 않습니다.
-5. 검수 확인란을 선택하고 **서버에 등록**을 누릅니다. 저장하지 않은 배치 변경이나 열린 픽셀 패널이 있으면 등록할 수 없습니다.
-6. 서비스 프론트엔드를 다시 열거나 새로고침하면 DB에 등록된 이미지와 배치를 표시합니다. 열려 있는 화면은 포커스 복귀와 60초 주기로 의상 목록을 갱신합니다. 프론트엔드 재빌드는 필요하지 않습니다.
-
-**서버 등록본 불러오기**는 원본·수정 PNG와 배치 정보를 내려받아 계속 편집할 수 있습니다. 이전 로컬 메타데이터는 `.local/backups`에 보관합니다. 다른 관리자가 먼저 등록했다면 버전 충돌로 거절됩니다. 서버 버전과 변경 내용을 확인한 후 다시 등록하세요.
-
-로컬 저장·등록·불러오기는 공유 파일 잠금으로 동시 실행을 거절합니다. 서버를 강제 종료한 후 잠금이 남았다면 모든 편집 서버가 종료됐는지 확인하고 `.local/workspace.lock`을 제거합니다.
-
-## 새 의상 import
-
-화면에서 **상품 추가 → 의상 폴더 가져오기**를 누르면 `manifest.json`과 PNG가 들어 있는 새 세트 폴더를 선택할 수 있습니다. 여러 새 세트를 담은 상위 폴더도 가능합니다. 기존 상품·배치·픽셀 수정본을 유지하면서 검수된 새 상품만 추가합니다. 동일한 상품 ID는 거절하며 QA가 passed·검수자·ISO 검수 시각을 가진 프레임만 가져옵니다. 가져오기는 로컬 초안 추가이며, 가격·판매 상태·배치를 확인한 다음 **서버에 등록**해야 서비스에 표시됩니다. 상품 검색과 **운영 등록 / 로컬 초안** 표시는 서비스 의상 등록 영역에 있습니다.
-
-다음 터미널 명령은 **전체 제작 스냅샷 교체** 방식입니다. 화면의 폴더 가져오기와 달리 기존 세트도 모두 함께 입력해야 합니다.
-
-기존 제작 파일의 `sets` 폴더를 사용합니다. 각 set에 `manifest.json`과 1000×1000 투명 PNG가 필요하며 `qa.status=passed`, 검수자·검수 시각을 기록해야 합니다. 개발 서버를 종료한 뒤 실행합니다.
-
-```bash
-npm run import:assets -- "/absolute/path/to/art-production/sets"
-npm run check
-npm run dev
+```dotenv
+AVATAR_BACKEND_URL=https://ham-fit-api.vercel.app/api/v1
+AVATAR_MANAGER_TOKEN=<운영 백엔드와 같은 64자리 hex 토큰>
+AVATAR_FRONTEND_URL=https://서비스-프론트엔드-주소
+# 기본값은 ../frontend. 다른 위치라면 실제 절대 경로를 지정합니다.
+# AVATAR_FRONTEND_DIR=C:\work\project-health\frontend
 ```
 
-입력은 모든 세트를 담은 **sets 폴더**입니다. 유지할 의상 세트를 모두 포함하세요. 서버 등록은 기존 등록 의상·자세·색상의 제거를 거절합니다. 기본 햄스터 그림은 이 앱의 `public/hamsters/base`에 있으며 의상 조정으로 변경하지 않습니다.
+로컬 백엔드·프론트엔드를 사용할 때는 각각 `http://127.0.0.1:3001/api/v1`, `http://127.0.0.1:3000`을 지정하고 두 앱을 별도 터미널에서 실행하세요. Windows에서도 Node의 파일 경로 처리와 같은 명령을 사용합니다. 편집기는 외부 공개 서버로 배포하지 않습니다.
 
-macOS Finder에서 `sets` 폴더를 선택하고 Option 키를 누른 상태로 우클릭 → **경로 이름 복사**를 선택하면 절대 경로를 얻습니다. 터미널 명령의 경로를 큰따옴표로 감싸면 공백이 있는 폴더도 사용할 수 있습니다.
+## 작업 순서
 
-현재 포함된 의상도 유지하려면 이 폴더에서 다음 명령으로 제작용 sets를 먼저 복원하고, 그 안에 새 세트를 추가하세요.
+1. **상품 추가 → 의상 폴더 가져오기**에서 `manifest.json`과 PNG가 있는 세트 폴더 또는 여러 세트의 상위 폴더를 선택합니다. 기존 로컬 초안을 유지하고 새 상품만 추가합니다. 가져오기는 운영 등록을 실행하지 않습니다.
+2. 의상·자세·색상을 선택해 크기·위치·회전을 조정하고 **조정값 저장**을 누릅니다. **의상 세부 작업**에서 펜·지우개·스포이드로 수정한 뒤 **픽셀 수정 저장**을 누릅니다. 로컬 변경을 저장하고 세부 작업 패널을 닫습니다.
+3. **프론트엔드 이미지·배치 내보내기**를 누릅니다. 인터넷 요청 없이 `frontend/public/hamsters/wardrobe/`에 이미지, 표시용 카탈로그, 편집 원본과 배포 확인 파일을 생성합니다. 이전 PNG는 삭제하거나 덮어쓰지 않습니다.
+4. 해당 프론트엔드 파일을 Git에 커밋하고 서비스 프론트엔드를 배포합니다. **이미지·좌표 수정은 프론트엔드 배포로 반영**됩니다. 이미지가 같아도 좌표를 바꾸면 다시 내보내고 배포해야 합니다.
+5. **서버 연결·버전 확인**을 눌러 상품 ID·가격·판매 상태를 조회합니다. 가격을 입력하고 새 상품을 판매하려면 **판매 중**을 선택합니다. 확인 버튼을 다시 누르면 입력 중인 가격은 DB 값으로 돌아갑니다.
+6. 자세·색상과 착용 조합을 미리보고 검수 확인란을 선택한 뒤 **상품 ID·가격 DB 등록**을 누릅니다. 프론트엔드의 작은 `deployment.json` 하나로 배포 버전을 확인한 뒤 상품 정보만 한 번 전송합니다. 아직 배포하지 않았다면 DB 등록을 거절합니다.
 
-```bash
-mkdir -p "$HOME/avatar-art/sets"
-for avatar_manifest in docs/imports/*.json; do
-  avatar_set=$(basename "$avatar_manifest" .json)
-  mkdir -p "$HOME/avatar-art/sets/$avatar_set"
-  cp -R "public/hamsters/wardrobe/$avatar_set/." "$HOME/avatar-art/sets/$avatar_set/"
-  cp "$avatar_manifest" "$HOME/avatar-art/sets/$avatar_set/manifest.json"
-done
-npm run import:assets -- "$HOME/avatar-art/sets"
-```
+**가격만 수정**할 때는 프론트엔드 내보내기·재배포 없이 5–6번만 진행합니다. **크기·위치·픽셀만 수정**할 때는 2–4번만 진행하면 되며 DB 등록은 필요 없습니다. 새 상품·지원 자세·검수한 조합을 추가한 경우에는 6번까지 진행하세요.
 
-폴더 형식은 `sets/set-new/manifest.json`, `sets/set-new/top/basic-cream.png`처럼 구성합니다. [manifest 예시](docs/import-manifest.example.json)의 `setId`는 폴더 이름과 같아야 합니다. `items[].id`는 등록 후 바꾸지 않는 상품 식별자이며 `slot`은 `hat`, `top`, `bottom` 중 하나입니다. `frames.<pose>.<cream|gray>.src`는 세트 폴더 안의 PNG 상대 경로입니다. 예시의 pending QA는 가져오지 않으므로 실제 이미지 검수 후 passed·검수자·ISO 시각을 입력하세요. 누락한 자세·색상은 지원하지 않으며 다른 이미지를 대신 표시하지 않습니다.
+**프론트엔드 편집본 불러오기**는 이 PC에 있는 최신 frontend 파일에서 이미지와 배치를 읽어 편집 초안으로 복원합니다. 이 작업은 인터넷과 백엔드 연결 없이 실행됩니다. 가격 조회는 **서버 연결·버전 확인** 버튼에서 별도로 합니다. 다른 PC에서는 먼저 프론트엔드의 최신 Git 변경을 받고 이 버튼을 눌러 초기 편집본을 준비하세요. 기존 초안 JSON은 `.local/backups`에 보관합니다. 서버의 오래된 revision으로 가격을 등록하면 409 충돌을 반환하므로 버전을 다시 확인합니다.
 
-import는 검수된 원본 카탈로그와 PNG 목록을 교체합니다. 서버에서 불러온 이미지까지 유지해야 한다면 먼저 해당 원본 세트를 제작 폴더에 함께 준비하세요. import 뒤에는 미리보기를 확인하고 **서버에 등록**해야 서비스가 바뀝니다.
-
-## 연결 구조
-
-`src/app/wardrobe`는 배치·픽셀 편집 화면, `src/app/api/wardrobe`는 로컬 초안 저장, `src/lib/publish.ts`는 저장본의 PNG 업로드와 카탈로그 등록을 담당합니다. 관리자 토큰은 Next.js 서버에서만 읽습니다.
-
-NestJS `backend/src/avatar/assets.*`는 PNG 검증·파일 보관·카탈로그와 상품·착용 조합의 DB 갱신을 담당합니다. 프론트엔드 `AvatarCatalogProvider`는 이 서버의 카탈로그를 받아 상점·옷장·프로필·그룹의 공통 햄스터 렌더러에 전달합니다. PNG 바이트는 영구 파일 저장소, 배치와 PNG URL·연결 정보는 DB의 JSONB에 저장합니다.
-
-## 저장과 배포
+## 파일과 API
 
 - 로컬 초안: `.local/catalog.json`, `.local/placements.json`, `.local/artwork.json`.
-- 서버 배치·이미지 연결: PostgreSQL `avatar_render_catalogs`. 상품·구매·보유·대표 코디 테이블과 별개입니다.
-- 서버 PNG: Vercel 운영은 Private Blob 저장소의 `avatar-assets/<SHA-256>.png`, 로컬은 `AVATAR_ASSET_DIR`의 파일입니다. 로컬 기본값은 backend 실행 경로의 `.local/avatar-assets`입니다.
-- 서비스 조회: 인증된 `GET /api/v1/avatar/render-catalog`와 PNG `GET /api/v1/avatar/assets/<hash>.png`.
-- 등록 API: 관리자 토큰으로 보호된 `/api/v1/avatar-manager/catalog`, `/images`, `/publish`.
+- 프론트엔드 이미지: `frontend/public/hamsters/wardrobe/assets/<sha256>.png`. 1000×1000 RGBA PNG를 로컬에서 검증·정규화합니다. 원본은 투명 배경과 보이는 픽셀이 필요하고 완전히 지운 수정본은 허용합니다.
+- 프론트엔드 표시·편집 카탈로그: `catalog.json`, `source-catalog.json`. 좌표·회전·픽셀 수정 결과·검수 정보를 포함합니다.
+- 배포 확인: `deployment.json`과 `bundles/<sha256>.json`. 이미지와 좌표가 바뀌면 배포 버전도 달라집니다.
+- 상품 조회: 관리자 전용 `GET /api/v2/avatar-manager/catalog`.
+- 상품 등록: 관리자 전용 `POST /api/v2/avatar-manager/publish`. 상품 ID·가격·판매 상태와 착용 지원 정보만 전송합니다. 사진·이미지 URL·좌표 필드는 허용하지 않습니다.
+- 구형 `/api/v1/avatar-manager/catalog`, `/images`, `/publish`, `/api/v1/avatar/assets/*`, `/api/v1/avatar/render-catalog`는 410을 반환합니다. 저장소나 이미지 처리기를 호출하지 않습니다.
 
-Vercel 운영에서는 `AVATAR_ASSET_STORAGE=vercel-blob`과 Private Blob 저장소를 사용합니다. Blob 인증 정보는 NestJS에만 설정합니다. 다른 온라인 서버에서 file 방식을 사용한다면 `AVATAR_ASSET_DIR`을 **영구 볼륨의 절대 경로**로 지정하고 DB와 함께 백업하세요. 여러 NestJS 인스턴스라면 같은 이미지 저장 볼륨을 사용해야 합니다. 이 편집 앱을 종료해도 서비스는 서버에 등록된 파일을 표시합니다. 외부 NestJS에 연결할 때 관리자 토큰은 서버의 비밀 설정과 이 앱의 `.env.local`에만 설정하고 HTTPS를 사용합니다. 최초 운영 설정은 [운영 상점 등록 안내](../backend/docs/avatar-production-publishing.md)를 따릅니다.
+상품 ID·소유권·구매 내역·대표 코디는 유지합니다. 기존 구매·착용 검증에 필요한 슬롯·지원 조합은 기존 DB 관계를 사용하며 표시용 좌표와 분리합니다. 구형 DB의 표시용 JSON은 새 방식으로 상품 등록이 성공하면 비웁니다. Supabase **DB 연결은 그대로 사용**하고 Blob·Supabase Storage 설정은 의상 기능에서 사용하지 않습니다. 과거 저장소 파일은 자동 삭제하지 않습니다.
 
-등록은 기존 상품 ID·소유권·코디 선택을 유지합니다. 새로운 자세 이미지가 있으면 해당 자세 상품은 판매 보류로 등록하며 기존 유료 자세 가격은 변경하지 않습니다. 원본·과거 수정 PNG는 보존하고 파일을 자동 삭제하지 않습니다.
+정적 파일도 호스팅/CDN의 요청·전송량을 사용합니다. 이 구조는 PNG마다 API 함수를 실행하거나 서버에서 Storage를 다시 읽는 비용을 제거합니다. 새로운 이미지나 배치를 운영에 반영하려면 프론트엔드 배포가 필요합니다.
 
-## 검증
+## import 형식과 검증
 
-```bash
+각 세트에 `manifest.json`과 1000×1000 투명 PNG를 준비합니다. `items[].id`는 등록 후 바꾸지 않는 상품 식별자이고 `slot`은 `hat/top/bottom`입니다. 프레임의 QA는 `passed`, 검수자와 ISO 시각이 필요합니다. [manifest 예시](docs/import-manifest.example.json)를 참고하세요. 지원하지 않는 자세는 다른 그림으로 대체하지 않습니다.
+
+터미널에서 전체 제작 스냅샷을 교체할 때만 아래 명령을 사용합니다. 유지할 세트를 모두 포함하세요. Mac Finder의 **Option + 우클릭 → 경로 이름 복사**, Windows 탐색기의 **경로로 복사**로 얻은 절대 경로를 큰따옴표로 감쌉니다.
+
+```sh
+npm run import:assets -- "/absolute/path/to/sets"
 npm run check
 ```
 
-NestJS의 DB·등록·구매·착용 검사는 `../backend`에서 `npm run test:e2e -- test/avatar-assets.e2e-spec.ts`로 실행합니다. 전용 `TEST_DATABASE_URL`의 임시 스키마를 사용하며 운영 DB에는 적용하지 않습니다.
+일반 검증은 `npm run check`, backend의 로컬 DB 등록·구매·착용 검증은 `npm run test:e2e -- test/avatar-assets.e2e-spec.ts`입니다. 테스트는 운영 API·Storage에 접근하지 않습니다.
