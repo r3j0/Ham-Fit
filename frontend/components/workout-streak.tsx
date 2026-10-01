@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import Image from "next/image";
+import { SeedIcon } from "./seed-icon";
 import { ChevronRight, Flame } from "lucide-react";
 import { dateFromKey, shiftDay } from "@/lib/workout-history";
 import {
@@ -67,12 +67,9 @@ export function WorkoutStreak() {
                       aria-hidden="true"
                     >
                       {done ? (
-                        <Image
-                          src="/icons/sunflower.png"
-                          alt=""
-                          width={24}
-                          height={25}
-                          className={styles.sunflower}
+                        <SeedIcon
+                          height={34}
+                          className={styles.completionIcon}
                         />
                       ) : (
                         <span className={styles.emptyDot} />

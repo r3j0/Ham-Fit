@@ -161,7 +161,7 @@ test("운동 기록 위 내 햄스터는 추천 전·배정·진행·미완료·
   expect(state.row?.status).toBe("completed");
 });
 
-test("홈은 빈 그룹 영역을 숨기고 두 제목은 KSPO Blue이며 완료일에는 첨부 해바라기를 표시한다", async ({
+test("홈은 빈 그룹 영역을 숨기고 두 제목은 KSPO Blue이며 완료일에는 해바라기씨를 표시한다", async ({
   page,
 }, info) => {
   const row = routineFixture();
@@ -184,14 +184,14 @@ test("홈은 빈 그룹 영역을 숨기고 두 제목은 KSPO Blue이며 완료
       "rgb(10, 42, 112)",
     );
   const week = page.getByRole("list", { name: "최근 7일 운동 기록" });
-  const flower = week.locator('img[src*="sunflower.png"]');
-  await expect(flower).toHaveCount(1);
+  const seed = week.locator('img[src="/icons/sunflower-seed.svg"]');
+  await expect(seed).toHaveCount(1);
   await expect
-    .poll(() => flower.evaluate((img: HTMLImageElement) => img.naturalWidth))
+    .poll(() => seed.evaluate((img: HTMLImageElement) => img.naturalWidth))
     .toBeGreaterThan(0);
   await expect(week.locator('li[aria-label$="운동함"]')).toHaveCount(1);
   await page.screenshot({
-    path: info.outputPath("home-sunflower-completed.png"),
+    path: info.outputPath("home-seed-completed.png"),
     fullPage: true,
   });
 });
