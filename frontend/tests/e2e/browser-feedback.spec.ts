@@ -100,7 +100,7 @@ test("로그인 햄스터는 확대된 크기로 방문마다 무작위 색상·
     for (const node of await mascots.all()) {
       await expect(node).toHaveAttribute("data-wear", "none");
       const box = (await node.boundingBox())!;
-      expect(box.width / bounds!.width).toBeCloseTo(0.6076, 3);
+      expect(box.width / bounds!.width).toBeCloseTo(0.6076 / 1.1519, 3);
       expect(box.x + box.width).toBeLessThanOrEqual(page.viewportSize()!.width);
     }
     await page.screenshot({

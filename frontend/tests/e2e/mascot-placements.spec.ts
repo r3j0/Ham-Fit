@@ -65,6 +65,19 @@ for (const width of [320, 390, 1280]) {
       else expect(boxes[i]!.y).toBeLessThan(boxes[i - 1]!.y);
       await expect(characters.nth(i)).toHaveCSS("z-index", i % 2 ? "2" : "1");
     }
+    // Preserve each pair's diagonal offset and add one quarter of a canvas between pairs.
+    for (const [left, right] of [
+      [0, 2],
+      [1, 3],
+    ]) {
+      expect(
+        (boxes[right]!.x - boxes[left]!.x) / boxes[left]!.width,
+      ).toBeCloseTo(0.2616 / 0.6076 + 0.25, 3);
+    }
+    if (width >= 960) {
+      const illustration = (await group.locator("..").boundingBox())!;
+      expect(boxes[0]!.width).toBeCloseTo(illustration.width * 0.6076, 1);
+    }
     await page
       .getByLabel("이메일", { exact: true })
       .fill("mascot@example.test");
