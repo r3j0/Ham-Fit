@@ -170,4 +170,84 @@ describe('Environment configuration', () => {
       }),
     ).toThrow('AVATAR_ASSET_STORAGE');
   });
+  it('accepts explicit Supabase Storage on Vercel independently of database credentials', () => {
+    const settings = {
+      DATABASE_URL,
+      AUTH_JWT_SECRET,
+      VERCEL: '1',
+      AVATAR_ASSET_STORAGE: 'supabase',
+    };
+    expect(() => validateEnvironment(settings)).toThrow('SUPABASE_URL');
+    expect(() =>
+      validateEnvironment({
+        ...settings,
+        SUPABASE_URL: 'https://fixture.supabase.co',
+      }),
+    ).toThrow('SUPABASE_SECRET_KEY');
+    expect(() =>
+      validateEnvironment({
+        ...settings,
+        SUPABASE_URL: 'https://fixture.supabase.co',
+        SUPABASE_SECRET_KEY: 'sb_secret_fixture-only',
+      }),
+    ).not.toThrow();
+  });
+  it.each([
+    'http://fixture.supabase.co',
+    'https://fixture.supabase.co/',
+    'https://user:pass@fixture.supabase.co',
+    'https://fixture.supabase.co/storage/v1',
+    'https://fixture.supabase.co?key=secret',
+  ])('rejects an unsafe Supabase origin: %s', (SUPABASE_URL) => {
+    expect(() =>
+      validateEnvironment({
+        DATABASE_URL,
+        AUTH_JWT_SECRET,
+        AVATAR_ASSET_STORAGE: 'supabase',
+        SUPABASE_URL,
+        SUPABASE_SECRET_KEY: 'sb_secret_fixture',
+      }),
+    ).toThrow('SUPABASE_URL');
+  });
+  it('accepts a legacy service_role key, rejects public keys and validates bucket IDs', () => {
+    const settings = {
+      DATABASE_URL,
+      AUTH_JWT_SECRET,
+      AVATAR_ASSET_STORAGE: 'supabase',
+      SUPABASE_URL: 'https://fixture.supabase.co',
+    };
+    const jwt = (role: string) =>
+      `eyJhbGciOiJIUzI1NiJ9.${Buffer.from(JSON.stringify({ role })).toString('base64url')}.fixture`;
+    expect(() =>
+      validateEnvironment({
+        ...settings,
+        SUPABASE_SECRET_KEY: jwt('service_role'),
+      }),
+    ).not.toThrow();
+    for (const SUPABASE_SECRET_KEY of [
+      jwt('anon'),
+      'sb_publishable_fixture',
+      'database-password',
+      '',
+      'a.b.c',
+    ]) {
+      expect(() =>
+        validateEnvironment({ ...settings, SUPABASE_SECRET_KEY }),
+      ).toThrow('SUPABASE_SECRET_KEY');
+    }
+    for (const SUPABASE_AVATAR_BUCKET of [
+      '',
+      '../private',
+      'avatar/assets',
+      'Avatar Assets',
+    ]) {
+      expect(() =>
+        validateEnvironment({
+          ...settings,
+          SUPABASE_SECRET_KEY: 'sb_secret_fixture',
+          SUPABASE_AVATAR_BUCKET,
+        }),
+      ).toThrow('SUPABASE_AVATAR_BUCKET');
+    }
+  });
 });
