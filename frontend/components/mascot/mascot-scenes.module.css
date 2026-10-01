@@ -2,14 +2,14 @@
   position: relative;
   isolation: isolate;
   width: 100%;
-  max-width: 540px;
-  aspect-ratio: 1.6 / 1;
+  max-width: 756px;
+  aspect-ratio: 1.25 / 1;
   margin-inline: auto;
 }
 .welcome > span {
   position: absolute;
   top: 0;
-  width: 43.4%;
+  width: 60.76%;
   max-width: none;
   z-index: 1;
 }
@@ -17,13 +17,13 @@
   left: 0;
 }
 .welcome > span:nth-child(2) {
-  left: 18.87%;
+  left: 13.08%;
 }
 .welcome > span:nth-child(3) {
-  left: 37.73%;
+  left: 26.16%;
 }
 .welcome > span:nth-child(4) {
-  left: 56.6%;
+  left: 39.24%;
 }
 .welcome > span:nth-child(even) {
   top: 30%;
@@ -37,5 +37,5 @@
   isolation: isolate;
 }
 .pair > span {
-  width: min(32%, 136px);
+  width: min(44.8%, 190.4px);
 }

@@ -61,7 +61,7 @@ for (const width of [320, 600, 1280]) {
   });
 }
 
-test("로그인 햄스터는 40% 확대하고 방문마다 무작위 색상·자세를 사용한다", async ({
+test("로그인 햄스터는 확대된 크기로 방문마다 무작위 색상·자세를 사용한다", async ({
   page,
 }, info) => {
   await page.route("**/auth/refresh", (route) =>
@@ -98,7 +98,7 @@ test("로그인 햄스터는 40% 확대하고 방문마다 무작위 색상·자
     for (const node of await mascots.all()) {
       await expect(node).toHaveAttribute("data-wear", "none");
       const box = (await node.boundingBox())!;
-      expect(box.width / bounds!.width).toBeCloseTo(0.434, 3);
+      expect(box.width / bounds!.width).toBeCloseTo(0.6076, 3);
       expect(box.x + box.width).toBeLessThanOrEqual(
         bounds!.x + bounds!.width + 1,
       );

@@ -185,7 +185,7 @@
   }
 }
 .home-companions {
-  --home-mascot-size: min(256px, 32svh);
+  --home-mascot-size: min(358.4px, 44.8svh);
   gap: 4px;
 }
 .home-mascot-stage {
@@ -1229,7 +1229,7 @@ fieldset:disabled select {
   color: var(--navy);
 }
 .account-shell .profile-avatar {
-  width: clamp(134.4px, 24vw, 153.6px);
+  width: clamp(188.16px, 33.6vw, 215.04px);
 }
 .account-shell .menu-card {
   background: var(--canvas);
@@ -1372,7 +1372,7 @@ fieldset:disabled select {
 }
 @media (max-width: 959px) {
   .account-shell .profile-avatar {
-    width: 96px;
+    width: 134.4px;
   }
   .account-shell .latest-fitness .fitness-radar svg {
     width: 100%;
@@ -2053,7 +2053,7 @@ fieldset:disabled select {
     max-width: 320px;
   }
   .home-companions {
-    --home-mascot-size: 288px;
+    --home-mascot-size: 403.2px;
     grid-column: 1;
     grid-row: 2;
   }
@@ -2192,6 +2192,8 @@ fieldset:disabled select {
 }
 .shop-stage {
   display: flex;
+  width: 100%;
+  min-width: 0;
   flex-direction: column;
   align-items: center;
   gap: 14px;
@@ -2266,7 +2268,7 @@ fieldset:disabled select {
 }
 .shop-item-art {
   aspect-ratio: 1;
-  max-height: 124px;
+  max-height: 173.6px;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   place-items: center;
