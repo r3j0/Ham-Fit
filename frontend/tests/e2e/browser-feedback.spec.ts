@@ -70,12 +70,11 @@ test("로그인 햄스터는 40% 확대하고 방문마다 무작위 색상·자
   // Control random draws to verify re-entry, without a probabilistic assertion.
   await page.addInitScript(() => {
     const original = crypto.getRandomValues.bind(crypto);
+    // A development Strict Mode remount belongs to the same page visit.
+    const visit = Number(sessionStorage.getItem("test-mascot-visit") || "0");
+    sessionStorage.setItem("test-mascot-visit", String(visit + 1));
     crypto.getRandomValues = ((values: Uint32Array) => {
       if (values instanceof Uint32Array && values.length === 8) {
-        const visit = Number(
-          sessionStorage.getItem("test-mascot-visit") || "0",
-        );
-        sessionStorage.setItem("test-mascot-visit", String(visit + 1));
         for (let i = 0; i < values.length; i++) values[i] = visit + i;
         return values;
       }
@@ -216,49 +215,63 @@ test("간이측정은 회원 햄스터·나이를 사용하고 성별·허리 �
   }
 });
 
-test("직접 입력의 나이는 측정일·생년월일로 계산하며 실제 저장 요청에 반영한다", async ({
-  page,
-}, info) => {
-  const server = await installApi(page);
-  await page.route("**/users/me/profile", (route) =>
-    route.fulfill({ json: { dateOfBirth: "2001-09-15", currentAge: 25 } }),
-  );
-  await page.goto("/onboarding/manual");
-  await expect(
-    page.getByLabel("측정 당시 만 나이", { exact: true }),
-  ).toHaveCount(0);
-  await page.getByLabel("측정일", { exact: true }).fill("2026-09-14");
-  await expect(page.getByLabel("측정 당시 나이")).toContainText("만 24세");
-  await page.getByLabel("측정일", { exact: true }).fill("2026-09-15");
-  await expect(page.getByLabel("측정 당시 나이")).toContainText("만 25세");
-  await page.getByLabel("성별", { exact: true }).selectOption("female");
-  await page.screenshot({
-    path: info.outputPath("manual-profile-age.png"),
-    fullPage: true,
+for (const mode of ["manual", "photo"])
+  test(`${mode} 입력의 나이는 측정일·생년월일로 계산하며 실제 저장 요청에 반영한다`, async ({
+    page,
+  }, info) => {
+    const server = await installApi(page);
+    await page.route("**/users/me/profile", (route) =>
+      route.fulfill({ json: { dateOfBirth: "2001-09-15", currentAge: 25 } }),
+    );
+    await page.goto(`/onboarding/${mode}`);
+    if (mode === "photo") {
+      await page.getByLabel("결과표 파일 선택").setInputFiles({
+        name: "report.png",
+        mimeType: "image/png",
+        buffer: Buffer.from(
+          "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=",
+          "base64",
+        ),
+      });
+      await page
+        .getByRole("button", { name: "이 사진을 보며 직접 입력" })
+        .click();
+    }
+    await expect(
+      page.getByLabel("측정 당시 만 나이", { exact: true }),
+    ).toHaveCount(0);
+    await page.getByLabel("측정일", { exact: true }).fill("2026-09-14");
+    await expect(page.getByLabel("측정 당시 나이")).toContainText("만 24세");
+    await page.getByLabel("측정일", { exact: true }).fill("2026-09-15");
+    await expect(page.getByLabel("측정 당시 나이")).toContainText("만 25세");
+    await page.getByLabel("성별", { exact: true }).selectOption("female");
+    await page.screenshot({
+      path: info.outputPath(`${mode}-profile-age.png`),
+      fullPage: true,
+    });
+    await page.getByRole("button", { name: "측정값 입력하기" }).click();
+    await page
+      .getByRole("button", { name: "측정 항목 추가", exact: true })
+      .click();
+    await page
+      .getByRole("dialog")
+      .getByRole("button")
+      .filter({ hasText: "교차 윗몸일으키기" })
+      .click();
+    await page.locator("#value-cross_sit_up").fill("30");
+    await page
+      .getByRole("button", { name: "1개 항목 저장하기", exact: true })
+      .click();
+    await expect(
+      page.getByRole("heading", { name: "나의 체력을 기록했어요" }),
+    ).toBeVisible();
+    expect(
+      server.mutations.find((m) => m.path === "/measurements")?.body,
+    ).toMatchObject({ measuredOn: "2026-09-15", ageAtMeasurement: 25 });
+    await expect(
+      page.locator(".assessment-complete [data-pose='victory']"),
+    ).toHaveAttribute("data-variant", "cream");
   });
-  await page.getByRole("button", { name: "측정값 입력하기" }).click();
-  await page
-    .getByRole("button", { name: "측정 항목 추가", exact: true })
-    .click();
-  await page
-    .getByRole("dialog")
-    .getByRole("button")
-    .filter({ hasText: "교차 윗몸일으키기" })
-    .click();
-  await page.locator("#value-cross_sit_up").fill("30");
-  await page
-    .getByRole("button", { name: "1개 항목 저장하기", exact: true })
-    .click();
-  await expect(
-    page.getByRole("heading", { name: "나의 체력을 기록했어요" }),
-  ).toBeVisible();
-  expect(
-    server.mutations.find((m) => m.path === "/measurements")?.body,
-  ).toMatchObject({ measuredOn: "2026-09-15", ageAtMeasurement: 25 });
-  await expect(
-    page.locator(".assessment-complete [data-pose='victory']"),
-  ).toHaveAttribute("data-variant", "cream");
-});
 
 test("생년월일 누락·조회 실패·성인 범위 밖은 잘못된 나이로 진행하지 않는다", async ({
   page,
@@ -301,4 +314,61 @@ test("생년월일 누락·조회 실패·성인 범위 밖은 잘못된 나이�
   await expect(
     page.getByRole("button", { name: "측정값 입력하기" }),
   ).toBeDisabled();
+});
+
+for (const width of [600, 1280]) {
+  test(`${width}px 상점 초기화는 미리보기 안에 있고 구매 버튼은 바로 아래에 있다`, async ({
+    page,
+  }, info) => {
+    await page.setViewportSize({ width, height: 900 });
+    const state = await installCommerce(page);
+    await page.goto("/shop");
+    const stage = page.getByRole("region", { name: "코디 미리보기" });
+    await expect(stage.getByRole("button", { name: "초기화" })).toHaveCount(0);
+    await page.getByRole("button", { name: "상의", exact: true }).click();
+    await page.getByRole("button", { name: /민트 티셔츠.*25개/ }).click();
+    const reset = stage.getByRole("button", { name: "초기화" });
+    const purchase = page.getByRole("button", { name: /민트 티셔츠 구매하기/ });
+    await expect(reset).toBeVisible();
+    await expect(purchase).toBeEnabled();
+    await expect(
+      page.getByRole("button", { name: "의상 없이 미리 보기" }),
+    ).toHaveCount(0);
+    const box = (await stage.boundingBox())!,
+      r = (await reset.boundingBox())!,
+      p = (await purchase.boundingBox())!;
+    expect(r.x).toBeGreaterThan(box.x + box.width / 2);
+    expect(r.y).toBeGreaterThan(box.y + box.height / 2);
+    expect(r.x + r.width).toBeLessThanOrEqual(box.x + box.width);
+    expect(r.y + r.height).toBeLessThanOrEqual(box.y + box.height);
+    expect(p.y).toBeGreaterThanOrEqual(box.y + box.height);
+    if (width < 960) {
+      const categories = (await page
+        .getByRole("group", { name: "아이템 종류" })
+        .boundingBox())!;
+      expect(categories.y).toBeGreaterThanOrEqual(p.y + p.height);
+    } else expect(p.x).toBeCloseTo(box.x, 0);
+    await page.screenshot({
+      path: info.outputPath(`shop-actions-${width}.png`),
+      fullPage: true,
+    });
+    await reset.click();
+    await expect(reset).toHaveCount(0);
+    await expect(stage.locator('[data-layer="clothing"]')).toHaveCount(0);
+    expect(state.puts).toBe(0);
+    await purchase.click();
+    await expect(page.getByRole("dialog")).toBeVisible();
+  });
+}
+
+test("그룹의 안내 햄스터는 회원의 색상을 사용하며 핸드폰 자세를 유지한다", async ({
+  page,
+}) => {
+  const state = await installCommerce(page);
+  state.outfit.characterId = "character.gray";
+  state.outfit.rendering.variant = "gray";
+  await page.goto("/groups");
+  const mascot = page.locator('[data-pose="phone"][data-wear="none"]');
+  await expect(mascot).toHaveAttribute("data-variant", "gray");
+  await expect(mascot).toHaveAccessibleName(/햄콩이/);
 });
