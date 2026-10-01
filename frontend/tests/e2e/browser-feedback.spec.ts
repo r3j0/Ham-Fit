@@ -3,7 +3,7 @@ import { installApi, testOutfit } from "./integration-fixtures";
 import { installCommerce } from "./avatar-rewards-fixtures";
 
 for (const width of [320, 600, 1280]) {
-  test(`${width}px 상점 좌우 배치와 그룹의 공용 외곽선`, async ({
+  test(`${width}px 상점 좌우 배치와 외곽선 없는 그룹 양식`, async ({
     page,
   }, info) => {
     await page.emulateMedia({ reducedMotion: "reduce" });
@@ -49,7 +49,7 @@ for (const width of [320, 600, 1280]) {
     expect(boxes[0].y).toBeCloseTo(boxes[1].y, 0);
     for (const box of boxes) {
       expect(box.border).toBe("0px");
-      expect(box.parentBorder).toBe("1px");
+      expect(box.parentBorder).toBe("0px");
     }
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth),

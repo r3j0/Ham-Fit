@@ -190,6 +190,12 @@ test("그룹 생성과 초대 가입은 좁은 화면에서도 두 열로 배치
         parseFloat(getComputedStyle(el.parentElement!).paddingLeft),
       ),
     ).toBeGreaterThanOrEqual(16);
+    const requests = create.locator("..");
+    await expect(requests).toHaveCSS("border-top-width", "0px");
+    if (width >= 960) {
+      const requestBox = (await requests.boundingBox())!;
+      expect(requestBox.y - (frame.y + frame.height)).toBeCloseTo(10, 1);
+    }
     expect(left.y).toBeCloseTo(right.y, 1);
     expect(left.x + left.width).toBeLessThan(right.x);
     expect(left.width).toBeCloseTo(right.width, 1);
