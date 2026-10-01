@@ -1,10 +1,10 @@
 import { avatarPoses, type AvatarOutfit } from "./avatar-outfit";
 import { canRenderAvatar, clothingAsset } from "./avatar-rendering.ts";
 import { POSES } from "../components/hamster/poses.ts";
-import type { HamsterPose } from "../components/hamster/types.ts";
+import type { HamsterPose, ItemCatalog } from "../components/hamster/types.ts";
 import type { Catalog, OutfitSelection, Product } from "./shop-contract";
 
-export function productName(product: Product) {
+export function productName(product: Product, assets?: ItemCatalog) {
   if (product.kind === "character")
     return product.renderKey === "gray"
       ? "햄콩이"
@@ -17,12 +17,13 @@ export function productName(product: Product) {
         ? POSES[product.renderKey as HamsterPose].label
         : undefined) ?? product.renderKey
     );
-  return clothingAsset(product.renderKey)?.label ?? "새로운 의상";
+  return clothingAsset(product.renderKey, assets)?.label ?? "새로운 의상";
 }
 export function previewOutfit(
   catalog: Catalog,
   selection: OutfitSelection,
   saved: AvatarOutfit,
+  assets?: ItemCatalog,
 ): AvatarOutfit | null {
   const character = catalog.products.find(
       (p) => p.id === selection.characterId,
@@ -40,7 +41,8 @@ export function previewOutfit(
   );
   if (
     clothing.some(
-      (p) => !p || !p.slot || clothingAsset(p.renderKey)?.slot !== p.slot,
+      (p) =>
+        !p || !p.slot || clothingAsset(p.renderKey, assets)?.slot !== p.slot,
     )
   )
     return null;
@@ -58,7 +60,7 @@ export function previewOutfit(
       })),
     },
   };
-  return canRenderAvatar(preview.rendering) ? preview : null;
+  return canRenderAvatar(preview.rendering, assets) ? preview : null;
 }
 export function selectProduct(
   selection: OutfitSelection,

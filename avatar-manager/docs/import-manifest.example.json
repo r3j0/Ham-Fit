@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "setId": "set-new",
+  "items": [
+    {
+      "id": "new-shirt",
+      "slot": "top",
+      "label": "새 티셔츠",
+      "frames": {
+        "basic": {
+          "cream": {
+            "src": "top/basic-cream.png",
+            "qa": { "status": "pending", "reviewer": "", "reviewedAt": "" }
+          }
+        }
+      }
+    }
+  ]
+}

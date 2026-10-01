@@ -1,0 +1,32 @@
+{
+  "name": "project-health-avatar-manager",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev --hostname 127.0.0.1 --port 3002",
+    "build": "next build --webpack",
+    "start": "next start --hostname 127.0.0.1 --port 3002",
+    "typecheck": "next typegen && tsc --noEmit",
+    "test": "node --import tsx --test tests/*.test.tsx",
+    "check": "npm run typecheck && npm test && npm run build",
+    "import:assets": "node scripts/import-assets.mjs",
+    "setup:local": "node scripts/setup-local.mjs"
+  },
+  "dependencies": {
+    "next": "16.3.7",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "sharp": "0.35.5"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "tsx": "^4.21.0"
+  },
+  "engines": {
+    "node": ">=20.9.0"
+  }
+}

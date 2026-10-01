@@ -85,7 +85,9 @@ export function Hamster({
                 ? `rotate(${rotation} ${x + width / 2} ${y + height / 2})`
                 : undefined
             }
-            preserveAspectRatio="xMidYMid meet"
+            preserveAspectRatio={
+              layer.fit === "stretch" ? "none" : "xMidYMid meet"
+            }
           />
         );
       })}
