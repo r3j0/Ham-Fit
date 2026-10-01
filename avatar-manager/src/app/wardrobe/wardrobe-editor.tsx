@@ -8,6 +8,7 @@ import { applyArtwork } from '@/components/hamster/artwork';
 import type { ArtworkStore } from '@/components/hamster/artwork';
 import { PublishPanel } from './publish-panel';
 import { ArtworkEditor } from './artwork-editor';
+import { ImportPanel } from './import-panel';
 
 type Store = { document: PlacementDocument; revision: string };
 const slotLabels = { hat: '모자', top: '상의', bottom: '하의', accessory: '액세서리' };
@@ -32,12 +33,12 @@ function NumberControl({ name, label, value, min, max, onChange }: {
   </label>;
 }
 
-export function WardrobeEditor({ catalog, initialStore, initialArtwork }: { catalog: ItemCatalog; initialStore: Store; initialArtwork: ArtworkStore }) {
+export function WardrobeEditor({ catalog, initialStore, initialArtwork, initialItemId, imported }: { catalog: ItemCatalog; initialStore: Store; initialArtwork: ArtworkStore; initialItemId?: string; imported?: string }) {
   const [store, setStore] = useState(initialStore);
   const [artwork, setArtwork] = useState(initialArtwork);
   const [detailOpen, setDetailOpen] = useState(false);
   const [drafts, setDrafts] = useState<Record<string, PlacementChange>>({});
-  const [itemId, setItemId] = useState(Object.keys(catalog)[0] ?? '');
+  const [itemId, setItemId] = useState(initialItemId && catalog[initialItemId] ? initialItemId : Object.keys(catalog)[0] ?? '');
   const [pose, setPose] = useState<HamsterPose>('basic');
   const [variant, setVariant] = useState<HamsterVariant>('cream');
   const [layerId, setLayerId] = useState('layers:0');
@@ -45,6 +46,7 @@ export function WardrobeEditor({ catalog, initialStore, initialArtwork }: { cata
   const [guides, setGuides] = useState(true);
   const [compare, setCompare] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [productDirty, setProductDirty] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState(false);
   const stage = useRef<HTMLDivElement>(null);
@@ -154,6 +156,7 @@ export function WardrobeEditor({ catalog, initialStore, initialArtwork }: { cata
         <button className="primary-button" disabled={!dirty || saving} onClick={save}>{saving ? '저장 중…' : '조정값 저장'}</button></div>
     </div>
     {message && <p className={`editor-message ${error ? 'error' : ''}`} role={error ? 'alert' : 'status'}>{message}</p>}
+    {imported && /^\d+$/.test(imported) && <p className="editor-message" role="status">새 의상 {imported}개를 로컬 초안에 추가했습니다. 배치를 저장하고 가격·판매 상태를 정한 뒤 서버에 등록하세요.</p>}
     <section className="workspace editor-workspace" aria-label="의상 배치 편집">
       <div className="preview-panel editor-preview"><div className="panel-top"><span>PLACEMENT PREVIEW</span><span>1000 × 1000</span></div>
         <div className={`editor-stage ${guides ? 'with-grid' : ''}`} ref={stage} data-testid="editor-preview">
@@ -199,7 +202,9 @@ export function WardrobeEditor({ catalog, initialStore, initialArtwork }: { cata
       const registered = registeredFrame(item, id as HamsterPose, variant).frame;
       return <button key={id} disabled={saving} className={pose === id ? 'selected' : ''} aria-pressed={pose === id} onClick={() => setPose(id as HamsterPose)}><div><Hamster {...selection} pose={id as HamsterPose} catalog={previewCatalog} decorative /></div><span>{value.label}</span><small className="pending">{registered ? '조정 가능' : '미등록'}</small></button>;
     })}</div></section>
-    <PublishPanel catalog={previewCatalog} dirty={dirty || saving || detailOpen} placementRevision={store.revision} artworkRevision={artwork.revision} />
+    <ImportPanel disabled={dirty || saving || detailOpen || productDirty} onBusyChange={setSaving} />
+    {productDirty && <p className="notice">가격·판매 상태를 변경했습니다. 서버에 등록하거나 서버 연결·버전 확인으로 되돌린 후 새 상품을 가져오세요.</p>}
+    <PublishPanel catalog={previewCatalog} dirty={dirty || saving || detailOpen} placementRevision={store.revision} artworkRevision={artwork.revision} onProductChange={setProductDirty} onBusyChange={setSaving} />
     <details className="import-help"><summary>macOS에서 의상 가져오기</summary><p>투명한 1000 × 1000 PNG와 manifest.json이 들어 있는 set 폴더들을 준비합니다. 개발 서버를 Control + C로 종료한 다음 프로젝트 폴더의 터미널에서 실행하세요.</p>
       <pre>{'npm run import:assets -- "/Users/사용자명/my-art/art-production/sets"\nnpm run check\nnpm run dev'}</pre><p>입력 경로는 개별 PNG나 set-001이 아닌 모든 set 폴더를 담은 <strong>sets 폴더</strong>입니다. 유지할 기존 세트도 함께 넣으세요. qa.status가 passed이고 검수자·검수 시각이 있는 프레임만 가져옵니다. 가져온 후 이 페이지를 새로고침하세요.</p></details>
     <footer>자세·색상·레이어별 저장 · PNG 원본 유지 · 저장한 배치는 착장 미리보기에도 적용</footer>

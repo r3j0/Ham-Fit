@@ -6,7 +6,7 @@
 
 `AVATAR_MANAGER_TOKEN`은 32바이트 난수의 소문자 64자리 hex 문자열이다. 없으면 관리자 API는 503으로 비활성화한다. 일반 사용자 access token으로 관리자 API에 접근할 수 없다. 로컬 관리자 Next.js 서버만 토큰을 읽고 NestJS에 전달하며, 브라우저 Origin이 붙은 직접 관리 요청은 거절한다. `avatar-manager/npm run setup:local`이 생성한 `.env.avatar-manager`도 ConfigModule에서 읽으며 기존 `.env`·환경 변수가 우선한다.
 
-`AVATAR_ASSET_DIR`은 실제 PNG를 보관하는 영구 파일 저장소 경로다. 기본값은 `.local/avatar-assets`이며 온라인 배포는 영구 볼륨의 절대 경로를 사용한다. 여러 인스턴스는 공유 볼륨이 필요하다. 객체 저장소를 도입할 때는 `AvatarAssetFiles`를 같은 `upload/read/verify` 계약으로 교체한다.
+`AVATAR_ASSET_STORAGE`는 `file` 또는 `vercel-blob`이다. 로컬 기본값은 file이고 Vercel 기본값은 vercel-blob이다. Blob은 비공개 저장소의 `avatar-assets/<hash>.png`를 사용하며 `BLOB_READ_WRITE_TOKEN` 또는 Vercel의 OIDC 연결로 인증한다. 기존 공개 PNG API 계약은 유지한다. file을 사용하면 `AVATAR_ASSET_DIR`의 기본값은 `.local/avatar-assets`이며 온라인 서버는 영구 볼륨의 절대 경로를 사용한다. Vercel의 file 설정은 기동을 거절한다. 자세한 운영 연결·최초 등록은 [운영 상점 등록 안내](avatar-production-publishing.md)를 따른다.
 
 ## HTTP 계약
 

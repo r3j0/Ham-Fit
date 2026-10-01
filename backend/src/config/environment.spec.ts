@@ -140,4 +140,34 @@ describe('Environment configuration', () => {
       ).toThrow('TRUST_PROXY_CIDRS');
     }
   });
+
+  it('requires durable private Blob credentials before enabling Vercel publishing', () => {
+    const settings = {
+      DATABASE_URL,
+      AUTH_JWT_SECRET,
+      VERCEL: '1',
+      AVATAR_MANAGER_TOKEN: 'c'.repeat(64),
+    };
+    expect(() => validateEnvironment(settings)).toThrow('private Vercel Blob');
+    expect(() =>
+      validateEnvironment({ ...settings, AVATAR_ASSET_STORAGE: 'file' }),
+    ).toThrow('vercel-blob');
+    expect(() =>
+      validateEnvironment({ ...settings, BLOB_READ_WRITE_TOKEN: 'test-token' }),
+    ).not.toThrow();
+    expect(() =>
+      validateEnvironment({
+        ...settings,
+        BLOB_STORE_ID: 'test-store',
+        VERCEL_OIDC_TOKEN: 'test-oidc',
+      }),
+    ).not.toThrow();
+    expect(() =>
+      validateEnvironment({
+        DATABASE_URL,
+        AUTH_JWT_SECRET,
+        AVATAR_ASSET_STORAGE: 'unknown',
+      }),
+    ).toThrow('AVATAR_ASSET_STORAGE');
+  });
 });

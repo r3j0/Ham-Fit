@@ -8,6 +8,7 @@ import {
 } from './assets.controller.js';
 import { AvatarManagerGuard } from './assets.guard.js';
 import { AvatarAssetFiles } from './assets-files.js';
+import { AvatarAssetStorage } from './assets-storage.js';
 import { AvatarAssetsService } from './assets.service.js';
 import { AvatarService } from './avatar.service.js';
 
@@ -23,6 +24,7 @@ import { AvatarService } from './avatar.service.js';
     AvatarService,
     AvatarManagerGuard,
     AvatarAssetFiles,
+    AvatarAssetStorage,
     AvatarAssetsService,
   ],
   exports: [AvatarService],

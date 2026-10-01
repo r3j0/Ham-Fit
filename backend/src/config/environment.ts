@@ -137,6 +137,33 @@ export function validateEnvironment(config: Record<string, unknown>) {
     );
   }
 
+  const storage =
+    config.AVATAR_ASSET_STORAGE ??
+    (config.VERCEL === '1' ? 'vercel-blob' : 'file');
+  if (
+    typeof storage !== 'string' ||
+    !['file', 'vercel-blob'].includes(storage)
+  ) {
+    throw new Error('AVATAR_ASSET_STORAGE must be file or vercel-blob.');
+  }
+  if (config.VERCEL === '1' && storage === 'file') {
+    throw new Error(
+      'Vercel avatar images require AVATAR_ASSET_STORAGE=vercel-blob.',
+    );
+  }
+  if (storage === 'vercel-blob' && config.AVATAR_MANAGER_TOKEN !== undefined) {
+    const nonempty = (value: unknown) =>
+      typeof value === 'string' && value.trim().length > 0;
+    if (
+      !nonempty(config.BLOB_READ_WRITE_TOKEN) &&
+      !(nonempty(config.BLOB_STORE_ID) && nonempty(config.VERCEL_OIDC_TOKEN))
+    ) {
+      throw new Error(
+        'Avatar publishing requires a private Vercel Blob store with BLOB_READ_WRITE_TOKEN or BLOB_STORE_ID and VERCEL_OIDC_TOKEN.',
+      );
+    }
+  }
+
   return {
     ...config,
     NODE_ENV: nodeEnv,
