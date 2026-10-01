@@ -226,6 +226,18 @@ test("권한 변경은 화면 복귀 시 반영되며 실패·잘못된 응답�
   await page.route(`**/api/v1/groups/${id}/join-requests?*`, (route) =>
     route.fulfill({ json: { items: [], nextCursor: null } }),
   );
+  await page.route(`**/api/v1/groups/${id}/members/${other}`, (route) =>
+    route.fulfill({
+      json: {
+        userId: other,
+        nickname: "다른 그룹원",
+        profileCharacter: null,
+        streak: 0,
+        role: leader ? "member" : "leader",
+        joinedAt: group.createdAt,
+      },
+    }),
+  );
   await page.goto(`/groups/${id}`);
   await expect(
     page
@@ -237,14 +249,16 @@ test("권한 변경은 화면 복귀 시 반영되며 실패·잘못된 응답�
       .getByRole("navigation")
       .getByRole("link", { name: "내 프로필", exact: true }),
   ).not.toHaveAttribute("aria-current");
-  await page.getByRole("button", { name: "다른 그룹원 관리" }).click();
+  await page.getByRole("link", { name: "다른 그룹원", exact: true }).click();
   await expect(page.getByRole("button", { name: "그룹장 위임" })).toBeVisible();
+  await page.getByRole("button", { name: "그룹장 위임" }).click();
   leader = false;
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
   await expect(page.getByRole("button", { name: "그룹장 위임" })).toHaveCount(
     0,
   );
   await expect(page.getByRole("dialog")).toHaveCount(0);
+  await page.goBack();
   await expect(
     page.getByRole("button", { name: "가입 신청 관리", exact: true }),
   ).toHaveCount(0);
@@ -502,11 +516,17 @@ test("그룹원과 신청을 한 행에 표시하며 오늘 상태를 검증하�
     await page.goBack();
     await expect(memberRow).toBeVisible();
   }
-  await memberRow.getByRole("button", { name: "다른 그룹원 관리" }).click();
-  await expect(page.getByRole("dialog")).toBeVisible();
-  await expect(page).toHaveURL(`/groups/${id}`);
+  await expect(
+    memberRow.getByRole("button", { name: "다른 그룹원 관리" }),
+  ).toHaveCount(0);
+  await memberRow.getByRole("link").click();
+  await page.getByRole("button", { name: "그룹장 위임" }).click();
+  await expect(
+    page.getByRole("dialog", { name: "그룹장을 위임할까요?" }),
+  ).toBeVisible();
   await page.getByRole("button", { name: "닫기", exact: true }).click();
-  await expect(memberRow.getByRole("button")).toBeFocused();
+  await expect(page.getByRole("button", { name: "그룹장 위임" })).toBeFocused();
+  await page.goBack();
   await page.getByRole("button", { name: "그룹 설정" }).click();
   await expect(page.getByRole("dialog")).toHaveAccessibleName("그룹 설정");
   await expect(

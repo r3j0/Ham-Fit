@@ -10,7 +10,6 @@ import {
   Crown,
   Droplet,
   Flame,
-  MoreHorizontal,
   Trophy,
   UserRound,
   X,
@@ -158,8 +157,7 @@ function Applications({
   );
 }
 
-type Action =
-  { kind: "transfer" | "kick"; member: Member } | { kind: "leave" | "delete" };
+type Action = { kind: "leave" | "delete" };
 function GroupView({ row, refresh }: { row: Detail; refresh: () => void }) {
   const userId = useSession().user!.id,
     router = useRouter(),
@@ -168,7 +166,6 @@ function GroupView({ row, refresh }: { row: Detail; refresh: () => void }) {
     (member) => member.userId === userId && member.role === "leader",
   );
   const [action, setAction] = useState<Action>(),
-    [managed, setManaged] = useState<Member>(),
     [editing, setEditing] = useState(false),
     [applicationsOpen, setApplicationsOpen] = useState(false),
     [applicationsBusy, setApplicationsBusy] = useState(false),
@@ -180,16 +177,11 @@ function GroupView({ row, refresh }: { row: Detail; refresh: () => void }) {
     description: row.description,
     maxMembers: row.maxMembers,
   });
-  const settingsButton = useRef<HTMLButtonElement>(null),
-    memberButton = useRef<HTMLButtonElement | null>(null);
+  const settingsButton = useRef<HTMLButtonElement>(null);
   function closeSettings() {
     setEditing(false);
     setInvite("");
     queueMicrotask(() => settingsButton.current?.focus());
-  }
-  function closeManaged() {
-    setManaged(undefined);
-    queueMicrotask(() => memberButton.current?.focus());
   }
   const [invite, setInvite] = useState(""),
     [message, setMessage] = useState(""),
@@ -294,32 +286,14 @@ function GroupView({ row, refresh }: { row: Detail; refresh: () => void }) {
     const target = action;
     await run(async (current) => {
       const base = `/${row.id}`;
-      if (target.kind === "transfer")
-        await groupMutation(
-          `${base}/leadership`,
-          "POST",
-          JSON.stringify({ userId: target.member.userId }),
-        );
-      else if (target.kind === "kick")
-        await groupMutation(
-          `${base}/members/${target.member.userId}`,
-          "DELETE",
-        );
-      else
-        await groupMutation(
-          target.kind === "leave" ? `${base}/members/me` : base,
-          "DELETE",
-        );
+      await groupMutation(
+        target.kind === "leave" ? `${base}/members/me` : base,
+        "DELETE",
+      );
       if (!current()) return;
       setAction(undefined);
-      setManaged(undefined);
       setEditing(false);
-      if (target.kind === "leave" || target.kind === "delete")
-        router.replace("/groups");
-      else {
-        setMessage("그룹 변경을 반영했어요.");
-        refresh();
-      }
+      router.replace("/groups");
     });
   }
   return (
@@ -420,19 +394,6 @@ function GroupView({ row, refresh }: { row: Detail; refresh: () => void }) {
                       : "오늘 운동 미완료"}
                 </span>
               </div>
-              {leader && member.userId !== userId && (
-                <button
-                  className="icon-button"
-                  aria-label={`${member.nickname ?? "닉네임 미설정"} 관리`}
-                  disabled={busy}
-                  onClick={(event) => {
-                    memberButton.current = event.currentTarget;
-                    setManaged(member);
-                  }}
-                >
-                  <MoreHorizontal size={20} aria-hidden="true" />
-                </button>
-              )}
             </li>
           ))}
         </ul>
@@ -544,59 +505,23 @@ function GroupView({ row, refresh }: { row: Detail; refresh: () => void }) {
           </div>
         </Dialog>
       )}
-      {managed &&
-        leader &&
-        !action &&
-        row.members.some((member) => member.userId === managed.userId) && (
-          <Dialog title="그룹원 관리" busy={busy} onClose={closeManaged}>
-            <div className="stack">
-              <p>{managed.nickname ?? "닉네임 미설정"}</p>
-              <div className={styles.actions}>
-                <button
-                  className="button secondary"
-                  disabled={busy}
-                  onClick={() =>
-                    setAction({ kind: "transfer", member: managed })
-                  }
-                >
-                  그룹장 위임
-                </button>
-                <button
-                  className="button secondary"
-                  disabled={busy}
-                  onClick={() => setAction({ kind: "kick", member: managed })}
-                >
-                  내보내기
-                </button>
-              </div>
-            </div>
-          </Dialog>
-        )}
       {action && (action.kind === "leave" || leader) && (
         <Dialog
           title={
-            action.kind === "transfer"
-              ? "그룹장을 위임할까요?"
-              : action.kind === "kick"
-                ? "그룹원을 내보낼까요?"
-                : action.kind === "leave"
-                  ? "그룹에서 탈퇴할까요?"
-                  : "그룹을 삭제할까요?"
+            action.kind === "leave"
+              ? "그룹에서 탈퇴할까요?"
+              : "그룹을 삭제할까요?"
           }
           busy={busy}
           onClose={() => setAction(undefined)}
         >
           <div className="stack">
             <p>
-              {action.kind === "transfer"
-                ? `${action.member.nickname ?? "선택한 그룹원"}에게 관리 권한이 넘어가요.`
-                : action.kind === "kick"
-                  ? `${action.member.nickname ?? "선택한 그룹원"}의 그룹 참여가 종료돼요.`
-                  : action.kind === "delete"
-                    ? "모든 그룹원의 참여가 종료되며 그룹을 복구할 수 없어요."
-                    : leader
-                      ? "마지막 그룹원이 탈퇴하면 그룹도 삭제돼요."
-                      : "다시 참여하려면 가입 신청과 승인이 필요해요."}
+              {action.kind === "delete"
+                ? "모든 그룹원의 참여가 종료되며 그룹을 복구할 수 없어요."
+                : leader
+                  ? "마지막 그룹원이 탈퇴하면 그룹도 삭제돼요."
+                  : "다시 참여하려면 가입 신청과 승인이 필요해요."}
             </p>
             {error && <Notice>{error}</Notice>}
             <div className="button-row">
@@ -647,9 +572,130 @@ export function GroupDetail({ id }: { id: string }) {
     </Shell>
   );
 }
+function GroupMemberActions({
+  group,
+  member,
+  onChanged,
+}: {
+  group: Detail;
+  member: Member;
+  onChanged: () => void;
+}) {
+  const viewerId = useSession().user!.id,
+    router = useRouter(),
+    begin = useOperationScope();
+  const canManage =
+    member.userId !== viewerId &&
+    group.members.some(
+      (row) => row.userId === viewerId && row.role === "leader",
+    ) &&
+    group.members.some(
+      (row) => row.userId === member.userId && row.role === "member",
+    );
+  const [action, setAction] = useState<"transfer" | "kick">(),
+    [busy, setBusy] = useState(false),
+    [error, setError] = useState("");
+  const guard = useRef(false);
+  async function confirm() {
+    if (!canManage || !action || guard.current) return;
+    guard.current = true;
+    setBusy(true);
+    setError("");
+    const current = begin();
+    try {
+      if (action === "transfer")
+        await groupMutation(
+          `/${group.id}/leadership`,
+          "POST",
+          JSON.stringify({ userId: member.userId }),
+        );
+      else
+        await groupMutation(`/${group.id}/members/${member.userId}`, "DELETE");
+      if (current()) router.replace(`/groups/${group.id}`);
+    } catch (e) {
+      if (current()) {
+        setError(groupError(e));
+        onChanged();
+      }
+    } finally {
+      if (current()) {
+        guard.current = false;
+        setBusy(false);
+      }
+    }
+  }
+  return (
+    <>
+      {error && <Notice>{error}</Notice>}
+      {canManage && (
+        <section className={memberStyles.management} aria-label="그룹원 관리">
+          <h3>그룹원 관리</h3>
+          <div className={styles.actions}>
+            <button
+              className="button secondary"
+              disabled={busy}
+              onClick={() => setAction("transfer")}
+            >
+              그룹장 위임
+            </button>
+            <button
+              className="button secondary"
+              disabled={busy}
+              onClick={() => setAction("kick")}
+            >
+              내보내기
+            </button>
+          </div>
+        </section>
+      )}
+      {canManage && action && (
+        <Dialog
+          title={
+            action === "transfer"
+              ? "그룹장을 위임할까요?"
+              : "그룹원을 내보낼까요?"
+          }
+          busy={busy}
+          onClose={() => setAction(undefined)}
+        >
+          <div className="stack">
+            <p>
+              {action === "transfer"
+                ? `${member.nickname ?? "선택한 그룹원"}에게 관리 권한이 넘어가요.`
+                : `${member.nickname ?? "선택한 그룹원"}의 그룹 참여가 종료돼요.`}
+            </p>
+            {error && <Notice>{error}</Notice>}
+            <div className="button-row">
+              <button
+                className="button secondary"
+                disabled={busy}
+                onClick={() => setAction(undefined)}
+              >
+                취소
+              </button>
+              <button
+                className="button primary"
+                disabled={busy}
+                onClick={() => void confirm()}
+              >
+                확인
+              </button>
+            </div>
+          </div>
+        </Dialog>
+      )}
+    </>
+  );
+}
 export function GroupMember({ id, userId }: { id: string; userId: string }) {
   const load = useCallback(
-      (signal: AbortSignal) => getMember(id, userId, signal),
+      async (signal: AbortSignal) => {
+        const [member, group] = await Promise.all([
+          getMember(id, userId, signal),
+          getGroup(id, signal),
+        ]);
+        return { member, group };
+      },
       [id, userId],
     ),
     resource = useApiResource(load);
@@ -671,20 +717,20 @@ export function GroupMember({ id, userId }: { id: string; userId: string }) {
           >
             <div className={memberStyles.identity}>
               <span className={memberStyles.role}>
-                {resource.data.role === "leader" ? (
+                {resource.data.member.role === "leader" ? (
                   <Crown size={16} aria-hidden="true" />
                 ) : (
                   <UserRound size={16} aria-hidden="true" />
                 )}
-                {resource.data.role === "leader" ? "그룹장" : "그룹원"}
+                {resource.data.member.role === "leader" ? "그룹장" : "그룹원"}
               </span>
               <ProfileCharacter
-                outfit={resource.data.profileCharacter}
+                outfit={resource.data.member.profileCharacter}
                 size={168}
-                label={`${resource.data.nickname ?? "닉네임 미설정"}의 햄스터`}
+                label={`${resource.data.member.nickname ?? "닉네임 미설정"}의 햄스터`}
               />
               <h2 id="group-member-name">
-                {resource.data.nickname ?? "닉네임 미설정"}
+                {resource.data.member.nickname ?? "닉네임 미설정"}
               </h2>
             </div>
             <div className={memberStyles.activity}>
@@ -696,29 +742,29 @@ export function GroupMember({ id, userId }: { id: string; userId: string }) {
                     연속 운동
                   </dt>
                   <dd>
-                    <strong>{resource.data.streak}</strong>
+                    <strong>{resource.data.member.streak}</strong>
                     <span>일</span>
                   </dd>
                 </div>
-                {resource.data.longestStreak !== undefined && (
+                {resource.data.member.longestStreak !== undefined && (
                   <div className={memberStyles.stat}>
                     <dt>
                       <Trophy size={20} aria-hidden="true" />
                       최장 연속 운동
                     </dt>
                     <dd>
-                      <strong>{resource.data.longestStreak}</strong>
+                      <strong>{resource.data.member.longestStreak}</strong>
                       <span>일</span>
                     </dd>
                   </div>
                 )}
-                {resource.data.totalWorkoutDays !== undefined && (
+                {resource.data.member.totalWorkoutDays !== undefined && (
                   <div className={memberStyles.stat}>
                     <dt>
                       <CalendarCheck size={20} aria-hidden="true" />총 운동
                     </dt>
                     <dd>
-                      <strong>{resource.data.totalWorkoutDays}</strong>
+                      <strong>{resource.data.member.totalWorkoutDays}</strong>
                       <span>일</span>
                     </dd>
                   </div>
@@ -727,8 +773,8 @@ export function GroupMember({ id, userId }: { id: string; userId: string }) {
               <p className={memberStyles.joined}>
                 <CalendarDays size={18} aria-hidden="true" />
                 <span>그룹 가입일</span>
-                <time dateTime={resource.data.joinedAt}>
-                  {new Date(resource.data.joinedAt).toLocaleDateString(
+                <time dateTime={resource.data.member.joinedAt}>
+                  {new Date(resource.data.member.joinedAt).toLocaleDateString(
                     "ko-KR",
                     {
                       timeZone: "Asia/Seoul",
@@ -737,6 +783,11 @@ export function GroupMember({ id, userId }: { id: string; userId: string }) {
                 </time>
               </p>
             </div>
+            <GroupMemberActions
+              group={resource.data.group}
+              member={resource.data.member}
+              onChanged={resource.reload}
+            />
           </section>
         ) : (
           <Loading />
