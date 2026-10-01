@@ -161,6 +161,11 @@
   justify-content: flex-end;
   gap: 12px;
 }
+@media (max-width: 959px) {
+  .home-toolbar {
+    margin-bottom: 12px;
+  }
+}
 .notification-bell {
   position: relative;
 }

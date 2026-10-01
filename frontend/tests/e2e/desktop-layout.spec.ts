@@ -148,6 +148,7 @@ test("메인의 알림은 전체 콘텐츠 우측 상단에 두고 미등록 안
             1,
           );
         } else {
+          expect(card.y - toolbarBox.y - toolbarBox.height).toBeCloseTo(32, 1);
           expect(card.y + card.height).toBeLessThanOrEqual(left.y);
         }
       }
