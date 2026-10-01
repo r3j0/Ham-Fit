@@ -161,15 +161,6 @@
   justify-content: flex-end;
   gap: 12px;
 }
-@media (max-width: 959px) {
-  .home-toolbar {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .home-toolbar > .brand,
-  .home-toolbar-actions {
-    grid-column: 1;
-  }
-}
 .notification-bell {
   position: relative;
 }
@@ -183,10 +174,6 @@
   background: #dc2626;
   box-shadow: 0 0 0 2px var(--surface);
   pointer-events: none;
-}
-.home-balance-link {
-  color: inherit;
-  text-decoration: none;
 }
 .home-companions,
 .home-activity {

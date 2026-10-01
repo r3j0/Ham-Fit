@@ -101,11 +101,17 @@ test("메인의 알림은 전체 콘텐츠 우측 상단에 두고 미등록 안
         };
       });
       const bellBox = (await bell.boundingBox())!;
-      const balanceBox = (await page
-        .getByRole("group", { name: "보유 재화" })
+      await expect(page.getByRole("group", { name: "보유 재화" })).toHaveCount(
+        0,
+      );
+      expect(bellBox.x + bellBox.width).toBeCloseTo(content.right, 1);
+      const brandBox = (await page
+        .locator(".home-toolbar > .brand")
         .boundingBox())!;
-      expect(balanceBox.x + balanceBox.width).toBeCloseTo(content.right, 1);
-      expect(bellBox.x + bellBox.width).toBeLessThanOrEqual(balanceBox.x);
+      expect(brandBox.y + brandBox.height / 2).toBeCloseTo(
+        bellBox.y + bellBox.height / 2,
+        1,
+      );
       const toolbarBox = (await page.locator(".home-toolbar").boundingBox())!;
       const actionsBox = (await page
         .locator(".home-toolbar-actions")

@@ -2,7 +2,6 @@
 import Link from "next/link";
 import { HomeGroups } from "./home-groups";
 import { NotificationBell } from "./notification-bell";
-import { SeedBalance } from "./seed-balance";
 import { MyCharacter } from "./my-character";
 import { ArrowRight } from "lucide-react";
 import { Brand, Loading, Notice, Shell } from "./ui";
@@ -21,15 +20,6 @@ export function Home() {
           <Brand />
           <div className="home-toolbar-actions">
             <NotificationBell />
-            {user && (
-              <Link
-                href="/shop"
-                className="home-balance-link"
-                aria-label={`상점, 보유 해바라기씨 ${user.currency.balance.toLocaleString("ko-KR")}개`}
-              >
-                <SeedBalance balance={user.currency.balance} />
-              </Link>
-            )}
           </div>
         </header>
         {profile.status === "loading" && (
