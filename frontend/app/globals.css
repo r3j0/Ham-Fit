@@ -138,6 +138,9 @@
   flex: 1;
   gap: 32px;
 }
+.content.home-content {
+  padding-top: 12px;
+}
 .home-toolbar {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
@@ -2584,5 +2587,11 @@ fieldset:disabled select {
   }
   .roulette-wheel {
     transition: none;
+  }
+}
+
+@media (min-width: 960px) {
+  .content.home-content {
+    padding-top: 20px;
   }
 }
