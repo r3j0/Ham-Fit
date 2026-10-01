@@ -2,6 +2,7 @@
 
 Project Health의 NestJS API 서버입니다. 백엔드 코드·설정·문서·테스트는 이 디렉토리에서 관리합니다.
 
+- [Render Free + Neon Free 배포](docs/render-neon-deployment.md)
 - [그룹·가입 신청·알림 API](docs/groups-api.md)
 - [그룹 미션·룰렛 정책·API](docs/group-missions.md)
 - [하루 전체 루틴 씨앗 지급·완료 보상 영수증 API](docs/activity-rewards.md)
