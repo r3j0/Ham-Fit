@@ -19,9 +19,11 @@ import { useDurableMutation } from "./use-durable-mutation";
 import { Header, Loading, Notice, Shell, SubmitLabel } from "./ui";
 import { useUnsaved } from "./use-unsaved";
 import { SeedIcon } from "./seed-icon";
+import { SeedBalance } from "./seed-balance";
 import {
   RouletteWheel,
   RouletteRewardPopup,
+  RouletteProbabilities,
   useRouletteMotion,
   useRouletteLayout,
   useRouletteReward,
@@ -48,7 +50,7 @@ const results = [
 export function PersonalRoulette() {
   return (
     <Shell className={styles.page}>
-      <Header title="개인 룰렛" back="/account/notifications" />
+      <Header title="스트릭 보상 룰렛" back="/account/notifications" />
       <div className="content stack roulette-page">
         {personalRouletteEnabled ? (
           <PersonalWheel />
@@ -59,8 +61,8 @@ export function PersonalRoulette() {
             </div>
             <h1>개인 룰렛을 준비하고 있어요</h1>
             <p>5일씩 쌓아 가는 연속 운동에 선물을 더할 예정이에요.</p>
-            <Link className="button primary" href="/account/notifications">
-              알림으로
+            <Link className="button primary" href="/">
+              메인으로
             </Link>
           </>
         )}
@@ -83,6 +85,7 @@ function PersonalWheel() {
             a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id),
         );
       const policy =
+        !available.length ||
         available[0]?.policyVersion === personalPolicyVersion
           ? personalPolicy
           : undefined;
@@ -131,18 +134,31 @@ function PersonalWheel() {
   return (
     <>
       <div className="intro">
-        <p className="eyebrow">꾸준함이 가져온 선물</p>
         <h1>나만의 행운 룰렛</h1>
         <p>
           남은 룰렛{" "}
           <strong>{resource.data ? `${tickets.length}회` : "확인 중"}</strong>
         </p>
       </div>
-      <RouletteWheel
-        prizes={layout.prizes}
-        phase={motion.phase}
-        attachWheel={motion.attachWheel}
-      />
+      <div className={styles.layout}>
+        <div className={styles.wheelColumn}>
+          <RouletteWheel
+            prizes={layout.prizes}
+            phase={motion.phase}
+            attachWheel={motion.attachWheel}
+          />
+          {resource.data && !resource.error && (
+            <SeedBalance balance={resource.data.inventory.currency.balance} />
+          )}
+        </div>
+        {resource.data?.policy && (
+          <RouletteProbabilities
+            prizes={prizes}
+            probabilities={resource.data.policy.map((r) => r.probability)}
+            label="스트릭 룰렛 보상 확률"
+          />
+        )}
+      </div>
       {resource.error ? (
         <>
           <Notice>{errorMessage(resource.error)}</Notice>
@@ -178,11 +194,6 @@ function PersonalWheel() {
           onClose={reward.dismiss}
         />
       )}
-      {resource.data && !resource.error && (
-        <p className="caption">
-          보유 해바라기씨 {resource.data.inventory.currency.balance}개
-        </p>
-      )}
       {mutation.pending && !mutation.busy && (
         <Notice tone="info">이전 추첨 결과를 다시 확인해 주세요.</Notice>
       )}
@@ -208,20 +219,8 @@ function PersonalWheel() {
       {!tickets.length && resource.data && !mutation.pending && (
         <p>사용할 룰렛이 없어요. 연속 운동 5일마다 선물을 받을 수 있어요.</p>
       )}
-      {resource.data?.policy && (
-        <details>
-          <summary>이번 룰렛의 보상 확률</summary>
-          <ul>
-            {resource.data.policy.map((r) => (
-              <li key={r.label}>
-                {r.label} · {r.probability}%
-              </li>
-            ))}
-          </ul>
-        </details>
-      )}
-      <Link className="button secondary" href="/account/notifications">
-        알림으로
+      <Link className="button secondary" href="/">
+        메인으로
       </Link>
     </>
   );

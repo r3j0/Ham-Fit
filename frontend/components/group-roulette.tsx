@@ -13,11 +13,12 @@ import { useApiResource } from "./use-api-resource";
 import { useDurableMutation } from "./use-durable-mutation";
 import { Header, Loading, Notice, Shell, SubmitLabel } from "./ui";
 import { useUnsaved } from "./use-unsaved";
-import { SeedIcon } from "./seed-icon";
+import { SeedBalance } from "./seed-balance";
 import {
   RouletteWheel,
   RouletteRewardPopup,
   RoulettePrizeIcon,
+  RouletteProbabilities,
   useRouletteMotion,
   useRouletteLayout,
   useRouletteReward,
@@ -100,10 +101,9 @@ export function GroupRoulette({ id }: { id: string }) {
   }
   return (
     <Shell className={`${styles.page} ${styles.group}`}>
-      <Header title="그룹 룰렛" back="/account/notifications" />
+      <Header title="해바라기 미션 보상 룰렛" back="/account/notifications" />
       <div className="content stack roulette-page">
         <div className="intro">
-          <p className="eyebrow">함께 키운 해바라기의 선물</p>
           <h1>행운을 돌려 보세요</h1>
           <p>
             남은 룰렛{" "}
@@ -112,40 +112,23 @@ export function GroupRoulette({ id }: { id: string }) {
             </strong>
           </p>
         </div>
-        {resource.data && (
-          <p className="shop-balance">
-            <SeedIcon /> 내 해바라기씨{" "}
-            {resource.data.inventory.currency.balance}개
-          </p>
-        )}
-        <div className={styles.groupLayout}>
-          <RouletteWheel
-            prizes={layout.prizes}
-            phase={motion.phase}
-            attachWheel={motion.attachWheel}
+        <div className={styles.layout}>
+          <div className={styles.wheelColumn}>
+            <RouletteWheel
+              prizes={layout.prizes}
+              phase={motion.phase}
+              attachWheel={motion.attachWheel}
+            />
+            {resource.data && !resource.error && (
+              <SeedBalance balance={resource.data.inventory.currency.balance} />
+            )}
+          </div>
+          <RouletteProbabilities
+            prizes={prizes}
+            probabilities={probabilities}
+            label="그룹 룰렛 보상 확률"
+            description="공동 보상은 해당 회차에 물을 준 참여 자격을 유지한 구성원에게 각각 지급돼요."
           />
-          <section
-            className={styles.probabilities}
-            aria-label="그룹 룰렛 보상 확률"
-          >
-            <h2>보상 확률</h2>
-            <ul>
-              {prizes.map((prize, i) => (
-                <li key={prize.label}>
-                  <RoulettePrizeIcon {...prize} />
-                  <span>
-                    {prize.kind === "contributors" ? "기여자마다" : "나에게"}{" "}
-                    {prize.amount}개
-                  </span>
-                  <strong>{probabilities[i]}%</strong>
-                </li>
-              ))}
-            </ul>
-            <p>
-              공동 보상은 해당 회차에 물을 준 참여 자격을 유지한 구성원에게 각각
-              지급돼요.
-            </p>
-          </section>
         </div>
         {error && <Notice>{error}</Notice>}
         {resource.error ? (
@@ -202,23 +185,47 @@ export function GroupRoulette({ id }: { id: string }) {
             있어요.
           </p>
         )}
-        {!!resource.data?.draws.length && (
-          <section className="stack-sm">
-            <h2>최근 받은 선물</h2>
-            {resource.data.draws.slice(0, 10).map((d) => (
-              <div className="reward-history" key={d.id}>
-                <time>{new Date(d.drawnAt).toLocaleDateString("ko-KR")}</time>
-                <span>{labels[groupResults.indexOf(d.result)]}</span>
-                <strong>
-                  내 보상 {d.myReward.reduce((sum, r) => sum + r.amount, 0)}개
-                </strong>
-              </div>
-            ))}
-          </section>
-        )}
         <Link href="/account/notifications" className="button secondary">
           알림으로
         </Link>
+        {!!resource.data?.draws.length && (
+          <section className={styles.history} aria-label="최근 받은 선물">
+            <h2>최근 받은 선물</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">받은 날짜</th>
+                  <th scope="col">당첨 선물</th>
+                  <th scope="col">내 보상</th>
+                </tr>
+              </thead>
+              <tbody>
+                {resource.data.draws.slice(0, 10).map((d) => (
+                  <tr key={d.id}>
+                    <td>
+                      <time dateTime={d.drawnAt}>
+                        {new Date(d.drawnAt).toLocaleDateString("ko-KR")}
+                      </time>
+                    </td>
+                    <td>
+                      <span className={styles.historyPrize}>
+                        <RoulettePrizeIcon
+                          {...prizes[groupResults.indexOf(d.result)]}
+                        />
+                        <span>{labels[groupResults.indexOf(d.result)]}</span>
+                      </span>
+                    </td>
+                    <td>
+                      <strong>
+                        {d.myReward.reduce((sum, r) => sum + r.amount, 0)}개
+                      </strong>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
+        )}
       </div>
     </Shell>
   );

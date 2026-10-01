@@ -16,12 +16,13 @@
   aspect-ratio: 1;
   margin: 20px auto;
   isolation: isolate;
+  container-type: inline-size;
 }
 .wheel {
   position: absolute;
-  inset: 12px;
+  inset: clamp(5px, 3.33cqw, 12px);
   border-radius: 50%;
-  border: 8px solid var(--surface);
+  border: clamp(3px, 2.22cqw, 8px) solid var(--surface);
   box-shadow:
     0 0 0 3px var(--roulette-tone),
     0 16px 40px color-mix(in srgb, var(--roulette-tone) 16%, transparent);
@@ -38,9 +39,10 @@
   position: absolute;
   z-index: 2;
   top: -2px;
-  left: calc(50% - 13px);
-  width: 26px;
-  height: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: clamp(14px, 7.22cqw, 26px);
+  height: clamp(18px, 8.89cqw, 32px);
   background: var(--roulette-tone);
   clip-path: polygon(0 0, 100% 0, 50% 100%);
 }
@@ -49,8 +51,8 @@
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
-  width: 66px;
-  height: 66px;
+  width: clamp(26px, 18.33cqw, 66px);
+  height: clamp(26px, 18.33cqw, 66px);
   display: grid;
   place-items: center;
   border-radius: 50%;
@@ -58,18 +60,40 @@
   box-shadow: 0 0 0 4px
     color-mix(in srgb, var(--roulette-tone) 35%, var(--surface));
 }
+.hub > :global(.seed-icon) {
+  height: clamp(16px, 10cqw, 36px);
+  width: auto;
+}
 .sector {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 58px;
-  height: 58px;
+  width: clamp(22px, 16.11cqw, 58px);
+  height: clamp(22px, 16.11cqw, 58px);
   transform: translate(-50%, -50%) rotate(var(--sector-angle))
-    translateY(calc(-1 * min(25vw, 103px)))
+    translateY(calc(-1 * min(28.61cqw, 103px)))
     rotate(calc(-1 * var(--sector-angle)));
   display: grid;
   place-items: center;
   color: var(--roulette-ink);
+}
+.sector .prizeIcon {
+  width: clamp(20px, 15cqw, 54px);
+  height: clamp(20px, 15cqw, 54px);
+}
+.sector .prizeIcon > svg {
+  width: clamp(13px, 10cqw, 36px);
+  height: clamp(13px, 10cqw, 36px);
+}
+.sector .prizeIcon > :global(.seed-icon) {
+  height: clamp(14px, 10.56cqw, 38px);
+  width: auto;
+}
+.sector .prizeIcon > b {
+  min-width: clamp(12px, 6.67cqw, 24px);
+  height: clamp(12px, 6.67cqw, 24px);
+  padding: 0 2px;
+  font-size: clamp(8px, 3.89cqw, 14px);
 }
 .prizeIcon {
   display: inline-flex;
@@ -104,17 +128,23 @@
 .stage[data-phase="spinning"] .wheel {
   filter: blur(4px);
 }
-.groupLayout {
+.layout {
   display: grid;
   grid-template-columns: minmax(0, 360px) minmax(240px, 300px);
   align-items: end;
   justify-content: center;
   gap: 24px;
 }
+.wheelColumn {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
 .probabilities {
+  min-width: 0;
   text-align: left;
   padding: 18px;
-  margin-bottom: 20px;
   background: color-mix(in srgb, var(--roulette-light) 60%, var(--surface));
   border-radius: var(--radius-card);
 }
@@ -131,7 +161,7 @@
 }
 .probabilities li {
   display: grid;
-  grid-template-columns: 38px 1fr auto;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
   gap: 10px;
   align-items: center;
   font-size: 13px;
@@ -164,13 +194,128 @@
   margin-top: 14px;
 }
 @media (max-width: 959px) {
-  .groupLayout {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 0;
+  .layout {
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+    gap: 16px;
+    align-items: center;
   }
   .probabilities {
-    justify-self: end;
-    width: min(100%, 300px);
+    padding: 12px;
+  }
+}
+.history {
+  overflow: hidden;
+  border: 1px solid var(--roulette-mid);
+  border-radius: var(--radius-card);
+  text-align: left;
+  background: var(--surface);
+}
+.history h2 {
+  padding: 18px;
+  color: var(--roulette-ink);
+  font-size: 18px;
+}
+.history table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.history th {
+  color: var(--roulette-ink);
+  background: var(--roulette-light);
+  font-weight: 600;
+}
+.history th,
+.history td {
+  padding: 12px 18px;
+  border-top: 1px solid var(--roulette-light);
+}
+.history th:first-child {
+  width: 28%;
+}
+.history th:last-child {
+  width: 20%;
+}
+.history th:last-child,
+.history td:last-child {
+  text-align: right;
+}
+.historyPrize {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.historyPrize .prizeIcon {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+}
+.historyPrize .prizeIcon > svg {
+  width: 24px;
+  height: 24px;
+}
+.historyPrize .prizeIcon > :global(.seed-icon) {
+  height: 26px;
+  width: auto;
+}
+.historyPrize .prizeIcon > b {
+  min-width: 18px;
+  height: 18px;
+  font-size: 11px;
+}
+@media (max-width: 639px) {
+  .layout {
+    gap: 10px;
+  }
+  .probabilities {
+    padding: 10px;
+  }
+  .probabilities h2 {
+    font-size: 14px;
+    margin-bottom: 8px;
+  }
+  .probabilities ul {
+    gap: 6px;
+  }
+  .probabilities li {
+    grid-template-columns: 26px minmax(0, 1fr) auto;
+    gap: 5px;
+    font-size: 11px;
+  }
+  .probabilities strong {
+    font-size: 12px;
+  }
+  .probabilities .prizeIcon {
+    width: 24px;
+    height: 28px;
+  }
+  .probabilities .prizeIcon > svg {
+    width: 16px;
+    height: 16px;
+  }
+  .probabilities .prizeIcon > :global(.seed-icon) {
+    height: 22px;
+  }
+  .probabilities .prizeIcon > b {
+    min-width: 14px;
+    height: 14px;
+    font-size: 9px;
+    padding: 0 2px;
+  }
+  .probabilities p {
+    font-size: 11px;
+    margin-top: 10px;
+  }
+  .history table {
+    font-size: 12px;
+  }
+  .history th,
+  .history td {
+    padding: 10px 8px;
+  }
+  .historyPrize {
+    gap: 6px;
   }
 }
 .reward {

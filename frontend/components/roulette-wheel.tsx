@@ -86,6 +86,34 @@ export function RoulettePrizeIcon({ kind, amount }: RoulettePrize) {
   );
 }
 
+export function RouletteProbabilities({
+  prizes,
+  probabilities,
+  label,
+  description,
+}: {
+  prizes: RoulettePrize[];
+  probabilities: number[];
+  label: string;
+  description?: string;
+}) {
+  return (
+    <section className={styles.probabilities} aria-label={label}>
+      <h2>보상 확률</h2>
+      <ul>
+        {prizes.map((prize, i) => (
+          <li key={prize.label}>
+            <RoulettePrizeIcon {...prize} />
+            <span>{prize.label}</span>
+            <strong>{probabilities[i]}%</strong>
+          </li>
+        ))}
+      </ul>
+      {description && <p>{description}</p>}
+    </section>
+  );
+}
+
 /** The server chooses the result; animation only reveals that saved result. */
 export function useRouletteMotion() {
   const wheel = useRef<HTMLDivElement>(null),

@@ -14,6 +14,7 @@ async function setup(page: Page, kind: "personal" | "group", count = 2) {
     failTickets: false,
     failSpin: false,
     reward: "seeds" as "seeds" | "clothing" | "pose",
+    draws: [] as Record<string, unknown>[],
   };
   const path =
     kind === "personal"
@@ -53,7 +54,7 @@ async function setup(page: Page, kind: "personal" | "group", count = 2) {
       });
     }
     if (new URL(request.url()).pathname.endsWith("/draws"))
-      return route.fulfill({ json: { items: [], nextCursor: null } });
+      return route.fulfill({ json: { items: state.draws, nextCursor: null } });
     state.writes.push({
       body: request.postData()!,
       key: request.headers()["idempotency-key"],
@@ -72,7 +73,7 @@ async function setup(page: Page, kind: "personal" | "group", count = 2) {
     const draw =
       kind === "personal"
         ? {
-            id: id(30),
+            id: id(30 + ticketIndex),
             ticketId,
             drawnAt: date,
             policyVersion: selected.policyVersion,
@@ -106,7 +107,7 @@ async function setup(page: Page, kind: "personal" | "group", count = 2) {
             },
           }
         : {
-            id: id(30),
+            id: id(30 + ticketIndex),
             ticketId,
             roundId: id(2),
             drawnAt: date,
@@ -116,6 +117,7 @@ async function setup(page: Page, kind: "personal" | "group", count = 2) {
             recipients: [{ userId: testUser.id, amount: 3 }],
             myReward: [{ amount: 3, transactionId: id(31) }],
           };
+    state.draws.push(draw);
     return route.fulfill({ status: 201, json: { draw, replayed: false } });
   });
   return { state, url };
@@ -144,8 +146,38 @@ for (const kind of ["personal", "group"] as const) {
           getComputedStyle(el).getPropertyValue("--roulette-tone").trim(),
         ),
     ).toBe(kind === "personal" ? "#0a2a70" : "#ff7f00");
-    for (const width of [320, 390, 800, 1218]) {
+    const legend = page.getByRole("region", {
+      name:
+        kind === "personal" ? "스트릭 룰렛 보상 확률" : "그룹 룰렛 보상 확률",
+    });
+    await expect(legend).toBeVisible();
+    await expect(
+      page.getByRole("heading", {
+        name:
+          kind === "personal" ? "스트릭 보상 룰렛" : "해바라기 미션 보상 룰렛",
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(page.locator(".eyebrow, details")).toHaveCount(0);
+    const navigation = page.getByRole("link", {
+      name: kind === "personal" ? "메인으로" : "알림으로",
+      exact: true,
+    });
+    await expect(navigation).toHaveAttribute(
+      "href",
+      kind === "personal" ? "/" : "/account/notifications",
+    );
+    const balance = page.getByRole("group", { name: "보유 재화" });
+    await expect(balance).toHaveText("100");
+    for (const width of [320, 390, 559, 800, 1218]) {
       await page.setViewportSize({ width, height: 900 });
+      const bounds = await legend.boundingBox(),
+        wheelBounds = await wheel.boundingBox(),
+        balanceBounds = await balance.boundingBox();
+      expect(bounds!.x).toBeGreaterThan(wheelBounds!.x + wheelBounds!.width);
+      expect(balanceBounds!.y).toBeGreaterThan(
+        wheelBounds!.y + wheelBounds!.height,
+      );
       expect(
         await page.evaluate(() => document.documentElement.scrollWidth),
       ).toBeLessThanOrEqual(width);
@@ -163,8 +195,6 @@ for (const kind of ["personal", "group"] as const) {
       kind === "personal" ? "해바라기씨 3개" : "기여자마다 3개",
     );
     if (kind === "group") {
-      const legend = page.getByRole("region", { name: "그룹 룰렛 보상 확률" });
-      await expect(legend).toBeVisible();
       expect(await legend.locator("li").allTextContents()).toEqual([
         "1나에게 1개50%",
         "3나에게 3개25%",
@@ -173,14 +203,15 @@ for (const kind of ["personal", "group"] as const) {
         "3기여자마다 3개4%",
         "7기여자마다 7개1%",
       ]);
-      const bounds = await legend.boundingBox(),
-        wheelBounds = await wheel.boundingBox();
-      expect(bounds!.x).toBeGreaterThan(wheelBounds!.x + wheelBounds!.width);
-      expect(bounds!.y + bounds!.height).toBeCloseTo(
-        wheelBounds!.y + wheelBounds!.height,
-        0,
-      );
-      await expect(page.locator("details")).toHaveCount(0);
+    } else {
+      expect(await legend.locator("li strong").allTextContents()).toEqual([
+        "60%",
+        "25%",
+        "10%",
+        "4.3%",
+        "0.6%",
+        "0.1%",
+      ]);
     }
     await page.evaluate(() => {
       Math.random = () => 0.02;
@@ -228,6 +259,29 @@ for (const kind of ["personal", "group"] as const) {
       page.getByRole("button", { name: "룰렛 돌리기", exact: true }),
     ).toBeEnabled();
     expect(state.writes).toHaveLength(1);
+    await expect(balance).toHaveText("103");
+    if (kind === "group") {
+      const history = page.getByRole("region", { name: "최근 받은 선물" });
+      await expect(history.getByRole("table")).toBeVisible();
+      await expect(history.locator("tbody tr")).toHaveCount(1);
+      await expect(history.locator("tbody tr")).toHaveText(
+        `${new Date(date).toLocaleDateString("ko-KR")}3기여자마다 3개3개`,
+      );
+      await expect(history.locator("tbody .seed-icon")).toHaveCount(1);
+      const historyBounds = await history.boundingBox(),
+        navigationBounds = await navigation.boundingBox();
+      expect(historyBounds!.y).toBeGreaterThan(
+        navigationBounds!.y + navigationBounds!.height,
+      );
+      await page.setViewportSize({ width: 320, height: 900 });
+      expect(
+        await page.evaluate(() => document.documentElement.scrollWidth),
+      ).toBeLessThanOrEqual(320);
+      await page.screenshot({
+        path: info.outputPath("group-history-320.png"),
+        fullPage: true,
+      });
+    }
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page.evaluate(() => {
       Math.random = () => 0.98;
