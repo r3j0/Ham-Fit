@@ -36,7 +36,10 @@ const originalFiles = [
   'data-analysis/data/processed/workout_videos_v2_complete.csv',
 ];
 const git = (...params) =>
-  execFileSync('git', params, { cwd: repository, maxBuffer: 64 * 1024 * 1024 });
+  execFileSync('git', ['-c', 'core.autocrlf=false', ...params], {
+    cwd: repository,
+    maxBuffer: 64 * 1024 * 1024,
+  });
 const commit = git('rev-parse', 'HEAD').toString().trim();
 const archive = git(
   'archive',

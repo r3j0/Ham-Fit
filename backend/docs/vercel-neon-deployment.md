@@ -13,7 +13,7 @@ cd backend
 node scripts/prepare-vercel.mjs
 ```
 
-출력의 `deploymentDirectory`를 Vercel CLI의 `--cwd`로 사용한다. 묶음에는 backend와 원본 Python/CSV만 있고 FE, Git, 로컬 DB, `.env*`, node_modules는 포함되지 않는다. Mac의 CRLF 체크아웃이 아니라 Git의 LF CSV를 사용하므로 배포 영상 검증 보고서의 SHA와 일치한다. 출력 폴더가 비어 있지 않으면 덮어쓰지 않는다.
+출력의 `deploymentDirectory`를 Vercel CLI의 `--cwd`로 사용한다. 묶음에는 backend와 원본 Python/CSV만 있고 FE, Git, 로컬 DB, `.env*`, node_modules는 포함되지 않는다. Mac의 CRLF 체크아웃이 아니라 `git -c core.autocrlf=false archive`로 Git의 LF CSV를 사용하므로 배포 영상 검증 보고서의 SHA와 일치한다. 출력 폴더가 비어 있지 않으면 덮어쓰지 않는다.
 
 기존 FE `ham-fit`에 연결하지 말고 새 API 프로젝트 `ham-fit-api`에 연결한다. API 프로젝트의 빌드 루트는 배포 묶음의 루트이고 서비스 entrypoint는 `backend/Dockerfile`이다. Singapore `sin1`을 사용한다. Dockerfile의 `PORT`는 플랫폼 환경변수로 재정의 가능하다.
 
