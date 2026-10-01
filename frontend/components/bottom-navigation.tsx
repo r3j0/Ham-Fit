@@ -15,7 +15,6 @@ export function BottomNavigation() {
   const workoutRoute =
     pathname === "/workout" ||
     pathname.startsWith("/workout-routines/") ||
-    pathname === "/workouts" ||
     pathname.startsWith("/workouts/");
   const groupRoute = pathname === "/groups" || pathname.startsWith("/groups/");
   const profileRoute =

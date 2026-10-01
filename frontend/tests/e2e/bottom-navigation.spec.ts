@@ -57,7 +57,6 @@ for (const [width, height] of [
     for (const [path, current] of [
       ["/", "메인"],
       ["/workout", "운동"],
-      ["/workouts", "운동"],
       [`/workouts/${testWorkout.id}`, "운동"],
       [`/workouts/${testWorkout.id}/replay`, "운동"],
       ["/workouts/history/2026-09-27", "운동"],
@@ -67,7 +66,6 @@ for (const [width, height] of [
       ["/account/settings?tab=nickname", "내 프로필"],
       ["/account/settings?tab=birth", "내 프로필"],
       ["/account/preferences", "내 프로필"],
-      ["/account/workouts", "내 프로필"],
       ["/account/workouts/history/2026-09-27", "내 프로필"],
       [`/account/workouts/${testWorkout.id}/replay`, "내 프로필"],
       ["/measurements", "내 프로필"],
@@ -197,7 +195,11 @@ for (const [width, height] of [
     await expect(bell).toBeVisible();
     const toolbar = (await page.locator(".home-toolbar").boundingBox())!;
     const bellBox = (await bell.boundingBox())!;
-    expect(bellBox.x + bellBox.width).toBeCloseTo(toolbar.x + toolbar.width, 1);
+    const balance = (await page
+      .getByRole("group", { name: "보유 재화" })
+      .boundingBox())!;
+    expect(balance.x).toBeGreaterThan(bellBox.x + bellBox.width);
+    expect(balance.x + balance.width).toBeCloseTo(toolbar.x + toolbar.width, 1);
     await expect(
       page.getByText("그룹 알림 확인하기", { exact: true }),
     ).toHaveCount(0);
@@ -213,8 +215,9 @@ for (const [width, height] of [
     await expect(
       page.getByRole("region", { name: "내 그룹의 햄스터" }).getByRole("img"),
     ).toHaveCount(0);
-    await mascots.focus();
-    await mascots.press("Enter");
+    await expect(mascots).toHaveCount(0);
+    await group.focus();
+    await group.press("Enter");
     await expect(page).toHaveURL("/groups");
     await home.click();
     await bell.click();

@@ -77,11 +77,11 @@ for (const status of [
     });
     await page.evaluate(() => window.dispatchEvent(new Event("pagehide")));
     await page.getByRole("link", { name: "운동 기록으로" }).click();
-    await expect(page).toHaveURL("/account/workouts");
+    await expect(page).toHaveURL("/workout");
     expect(state.posts).toBe(0);
     expect(state.row.routine[0].revision).toBe(1);
     await expect(
-      page.getByRole("link", { name: "운동 영상 보기" }).first(),
+      page.getByRole("region", { name: "운동 기록", exact: true }),
     ).toBeVisible();
   });
 }

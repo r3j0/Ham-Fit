@@ -6,8 +6,10 @@ export function authDestination(next: string): string {
     /^\/workout-routines\/[a-f0-9-]+\/(?:items\/[a-f0-9-]+(?:\/practice|\/replay)?|complete(?:\/(?:streak|reward|water))?)$/.test(
       next,
     ) ||
-    /^\/workouts(?:\/[a-f0-9-]+)?$/.test(next) ||
-    /^\/account\/workouts(?:\/history\/\d{4}-\d{2}-\d{2}|\/[a-f0-9-]+\/replay)?$/.test(
+    /^\/workouts(?:\/history\/\d{4}-\d{2}-\d{2}|\/[a-f0-9-]+(?:\/replay)?)$/.test(
+      next,
+    ) ||
+    /^\/account\/workouts(?:\/history\/\d{4}-\d{2}-\d{2}|\/[a-f0-9-]+\/replay)$/.test(
       next,
     ) ||
     /^\/measurements(?:\/new|\/[a-f0-9-]+(?:\/edit)?)?$/.test(next) ||

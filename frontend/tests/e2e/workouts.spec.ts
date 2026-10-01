@@ -451,9 +451,7 @@ test("legacy users are guided to a birth profile, measurement, or unsupported-ag
       })
     ).status(),
   ).toBe(200);
-  await openAuthenticated(page, "/workouts");
-  await expect(page.getByText("아직 운동 이력이 없어요")).toBeVisible();
-  await page.getByRole("link", { name: "오늘 운동 준비하기" }).click();
+  await openAuthenticated(page, "/workout");
   await page
     .getByRole("button", { name: "오늘 운동 준비하기", exact: true })
     .click();
@@ -489,56 +487,6 @@ test("legacy users are guided to a birth profile, measurement, or unsupported-ag
   await expect(
     page.getByRole("link", { name: "생년월일 확인하기" }),
   ).toHaveAttribute("href", "/account/settings?tab=birth");
-});
-
-test("history retains its first page on failure and retries the same cursor without duplicates", async ({
-  page,
-}) => {
-  await installApi(page, testRecord());
-  const workout = testWorkout;
-  let failed = false;
-  const cursors: string[] = [];
-  // Legacy records remain readable when served by a compatible backend.
-  await page.route("**/api/v1/workouts/history?*", async (route) => {
-    const cursor = new URL(route.request().url()).searchParams.get("cursor");
-    const data = { items: [workout], nextCursor: null };
-    if (!cursor)
-      return route.fulfill({
-        json: { ...data, nextCursor: workout.id },
-      });
-    cursors.push(cursor);
-    if (!failed) {
-      failed = true;
-      return route.fulfill({
-        status: 503,
-        json: { message: "history test failure" },
-      });
-    }
-    return route.fulfill({
-      json: {
-        items: [
-          workout,
-          {
-            ...workout,
-            id: "4129204b-3c7c-4f78-926b-7967b3eb8c18",
-            koreanDate: "2026-09-26",
-          },
-        ],
-        nextCursor: null,
-      },
-    });
-  });
-  await page.goto("/workouts");
-  await expect(page.locator(".workout-list > li")).toHaveCount(1);
-  await page.getByRole("button", { name: "이전 운동 더 보기" }).click();
-  await expect(page.getByRole("main").getByRole("alert")).toBeVisible();
-  await expect(page.locator(".workout-list > li")).toHaveCount(1);
-  await page.getByRole("button", { name: "이전 운동 더 보기" }).click();
-  await expect(page.locator(".workout-list > li")).toHaveCount(2);
-  expect(cursors).toEqual([workout.id, workout.id]);
-  await expect(
-    page.getByRole("button", { name: "이전 운동 더 보기" }),
-  ).toHaveCount(0);
 });
 
 // Legacy multi-assignment navigation stays compatible; current routine persistence is tested above.

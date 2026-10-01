@@ -462,10 +462,17 @@ test("legacy disconnection is visible but does not block new routines; invalid n
   );
 });
 
-test("두 기록 API의 페이지를 보존하고 실패한 커서만 재시도한다", async ({
+test("달력은 루틴 이력의 다음 페이지 실패를 복구하고 중복 기록 없이 상세를 연다", async ({
   page,
 }) => {
   const row = routineFixture();
+  row.status = "completed";
+  row.progress.completedItems = row.routine.length;
+  for (const item of row.routine) {
+    item.status = "completed";
+    item.resultStatus = "completed";
+    item.completedAt = "2026-09-29T03:00:00.000Z";
+  }
   await setup(page, row);
   let fail = true;
   const cursors: string[] = [];
@@ -474,10 +481,8 @@ test("두 기록 API의 페이지를 보존하고 실패한 커서만 재시도�
     if (!cursor)
       return route.fulfill({ json: { items: [row], nextCursor: row.id } });
     cursors.push(cursor);
-    if (fail) {
-      fail = false;
+    if (fail)
       return route.fulfill({ status: 503, json: { message: "unavailable" } });
-    }
     return route.fulfill({
       json: {
         items: [
@@ -488,18 +493,37 @@ test("두 기록 API의 페이지를 보존하고 실패한 커서만 재시도�
             koreanDate: "2026-09-28",
             recordingAllowed: false,
             recordingExpiresAt: "2026-09-28T15:00:00.000Z",
+            routine: row.routine.map((item) => ({
+              ...item,
+              completedAt: "2026-09-28T03:00:00.000Z",
+            })),
           },
         ],
         nextCursor: null,
       },
     });
   });
-  await page.goto("/account/workouts");
-  await expect(page.locator(".workout-list > li")).toHaveCount(3);
-  await page.getByRole("button", { name: "이전 운동 더 보기" }).click();
-  await expect(page.getByRole("main").getByRole("alert")).toBeVisible();
-  await expect(page.locator(".workout-list > li")).toHaveCount(3);
-  await page.getByRole("button", { name: "이전 운동 더 보기" }).click();
-  await expect(page.locator(".workout-list > li")).toHaveCount(6);
-  expect(cursors).toEqual([row.id, row.id]);
+  await page.goto("/workout");
+  const calendar = page.getByRole("region", { name: "운동 기록", exact: true });
+  await expect(calendar.getByRole("alert")).toBeVisible();
+  await expect(calendar.getByRole("link")).toHaveCount(0);
+  fail = false;
+  await calendar
+    .getByRole("button", { name: "운동 기록 다시 불러오기" })
+    .click();
+  await expect(calendar.getByText("2일 운동했어요")).toBeVisible();
+  expect(cursors.length).toBeGreaterThanOrEqual(2);
+  expect(cursors.every((cursor) => cursor === row.id)).toBe(true);
+  await calendar
+    .getByRole("link", { name: "9월 29일 오늘, 운동함", exact: true })
+    .click();
+  const records = page.getByRole("list", { name: "선택한 날짜의 운동 기록" });
+  await expect(records.getByRole("listitem")).toHaveCount(3);
+  await records.getByRole("link").first().click();
+  await expect(page).toHaveURL(
+    `/workout-routines/${row.id}/items/${row.routine[0].id}/replay`,
+  );
+  await expect(
+    page.getByRole("heading", { name: "운동 다시보기", exact: true }),
+  ).toBeVisible();
 });

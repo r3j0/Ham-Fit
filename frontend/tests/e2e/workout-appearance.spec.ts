@@ -99,9 +99,6 @@ test("운동 상태는 완료 초록, 진행 중 회색, 나머지 미완료 노
       completedAt: status === "completed" ? completed.completedAt : null,
     })),
   );
-  await page.goto("/workouts");
-  const cards = page.locator(".workout-card");
-  await expect(cards).toHaveCount(5);
   const labels = [
     "운동 완료",
     "운동 진행 중",
@@ -115,12 +112,11 @@ test("운동 상태는 완료 초록, 진행 중 회색, 나머지 미완료 노
     ...Array(3).fill("rgb(155, 113, 0)"),
   ];
   for (let index = 0; index < statuses.length; index++) {
+    await page.goto(`/workouts/status-${index}`);
     await expect(
-      cards.nth(index).getByRole("img", { name: labels[index], exact: true }),
+      page.getByRole("img", { name: labels[index], exact: true }),
     ).toHaveCSS("color", colors[index]);
-    await expect(cards.nth(index).locator("time")).toHaveText(
-      "2026년 9월 27일",
-    );
+    await expect(page.locator("main time")).toHaveText("2026년 9월 27일");
   }
 });
 
@@ -131,7 +127,6 @@ test("운동 하위 경로와 메뉴에 Skyblue를 적용하고 메인과 프로
   for (const [path, title] of [
     ["/workout?mode=assessment", "간이측정"],
     ["/workout", "운동"],
-    ["/workouts", "운동 이력"],
     ["/workouts/history/2026-09-27", "운동 기록 상세"],
     [`/workouts/${completed.id}`, "운동 중"],
     [`/workouts/${completed.id}/replay`, "운동 다시보기"],

@@ -337,7 +337,7 @@ test("프로필 조회 오류에는 재화와 리포트를 숨기고 재시도�
   expect(api.mutations).toEqual([]);
 });
 
-test("프로필의 운동 이력·다시보기·날짜 이동은 Orange와 프로필 메뉴를 유지한다", async ({
+test("저장된 프로필 다시보기·날짜 주소는 유지하고 뒤로 가기는 운동 달력으로 이동한다", async ({
   page,
 }, info) => {
   const api = await installApi(page);
@@ -363,8 +363,9 @@ test("프로필의 운동 이력·다시보기·날짜 이동은 Orange와 프�
     route.fulfill({ json: completed }),
   );
   await page.goto("/account");
-  await page.getByRole("link", { name: "내 운동 이력", exact: true }).click();
-  await expect(page).toHaveURL("/account/workouts");
+  await expect(
+    page.getByRole("link", { name: "내 운동 이력", exact: true }),
+  ).toHaveCount(0);
   const nav = page.getByRole("navigation", { name: "하단 메뉴" });
   async function expectProfile() {
     await expect(page.getByRole("main")).toHaveCSS("color", "rgb(51, 37, 28)");
@@ -373,11 +374,7 @@ test("프로필의 운동 이력·다시보기·날짜 이동은 Orange와 프�
     ).toHaveAttribute("aria-current", "location");
     await expect(nav).toHaveCSS("background-color", "rgb(255, 248, 241)");
   }
-  await expectProfile();
-  await page
-    .getByRole("link", { name: "운동 다시보기", exact: true })
-    .first()
-    .click();
+  await page.goto(`/account/workouts/${completed.id}/replay`);
   await expect(page).toHaveURL(`/account/workouts/${completed.id}/replay`);
   await expect(
     page.getByRole("heading", { name: "운동 다시보기", exact: true }),
@@ -425,9 +422,6 @@ test("프로필의 운동 이력·다시보기·날짜 이동은 Orange와 프�
       .getByRole("listitem"),
   ).toHaveCount(1);
   await page.getByRole("link", { name: "이전 화면", exact: true }).click();
-  await expect(page).toHaveURL("/account/workouts");
-  await expectProfile();
-  await nav.getByRole("link", { name: "운동", exact: true }).click();
   await expect(page).toHaveURL("/workout");
   await expect(nav).toHaveClass(/kspo-sky-theme/);
   await expect(page.getByRole("main")).toHaveCSS("color", "rgb(16, 46, 58)");

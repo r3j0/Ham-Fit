@@ -55,51 +55,6 @@ export const sendWorkoutEvent = (id: string, key: string, body: string) => {
   }).then((r) => r.data);
 };
 
-export interface CombinedHistoryPage extends WorkoutPage {
-  legacyUnavailable: boolean;
-}
-/** Each source keeps its own cursor. A failed next page leaves the visible page intact. */
-export async function getCombinedHistoryPage(
-  cursor?: string,
-  signal?: AbortSignal,
-): Promise<CombinedHistoryPage> {
-  const position: { legacy?: string | null; routine?: string | null } = cursor
-    ? JSON.parse(cursor)
-    : {};
-  const [legacy, routine] = await Promise.allSettled([
-    position.legacy === null
-      ? Promise.resolve({ items: [], nextCursor: null } as WorkoutPage)
-      : getWorkoutHistory(position.legacy, signal),
-    position.routine === null
-      ? Promise.resolve({ items: [], nextCursor: null })
-      : getRoutineHistory(position.routine, signal),
-  ]);
-  signal?.throwIfAborted();
-  if (routine.status === "rejected") throw routine.reason;
-  const legacyUnavailable =
-    legacy.status === "rejected" &&
-    legacy.reason instanceof ApiError &&
-    legacy.reason.code === "RECOMMENDATION_NOT_CONNECTED";
-  if (legacy.status === "rejected" && !legacyUnavailable) throw legacy.reason;
-  const old =
-    legacy.status === "fulfilled"
-      ? legacy.value
-      : { items: [], nextCursor: null };
-  const next = { legacy: old.nextCursor, routine: routine.value.nextCursor };
-  if (
-    (next.legacy && next.legacy === position.legacy) ||
-    (next.routine && next.routine === position.routine)
-  )
-    throw new Error("운동 이력의 페이지를 확인할 수 없어요.");
-  return {
-    items: [...routine.value.items.flatMap(routineWorkouts), ...old.items].sort(
-      (a, b) => b.koreanDate.localeCompare(a.koreanDate),
-    ),
-    nextCursor: next.legacy || next.routine ? JSON.stringify(next) : null,
-    legacyUnavailable,
-  };
-}
-
 export async function getActivityHistory(signal?: AbortSignal) {
   const routineRead = async () => {
     const rows = new Map<string, WorkoutRoutine>();

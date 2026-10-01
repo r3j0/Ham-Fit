@@ -225,8 +225,8 @@ export function TodayWorkout({ embedded = false }: { embedded?: boolean }) {
           {created && created.koreanDate !== today && (
             <Notice tone="info">
               이전 요청으로 준비한 {created.koreanDate} 운동을 확인했어요.{" "}
-              <Link href="/workouts" className="text-link">
-                운동 이력 보기
+              <Link href="/workout#workout-history-title" className="text-link">
+                운동 달력 보기
               </Link>
             </Notice>
           )}
