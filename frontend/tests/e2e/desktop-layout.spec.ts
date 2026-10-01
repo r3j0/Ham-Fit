@@ -125,7 +125,11 @@ test("메인의 알림은 전체 콘텐츠 우측 상단에 두고 미등록 안
         right = (await activity.boundingBox())!;
       if (onboarded) {
         await expect(intro).toHaveCount(0);
-        if (width >= 960) expect(left.y).toBeCloseTo(right.y, 1);
+        if (width >= 960)
+          expect(left.y + left.height / 2).toBeCloseTo(
+            right.y + right.height / 2,
+            1,
+          );
       } else {
         await expect(intro).toBeVisible();
         const card = (await intro.boundingBox())!;
@@ -133,7 +137,13 @@ test("메인의 알림은 전체 콘텐츠 우측 상단에 두고 미등록 안
           expect(card.x).toBeCloseTo(right.x, 1);
           expect(card.width).toBeCloseTo(right.width, 1);
           expect(card.x).toBeGreaterThanOrEqual(left.x + left.width);
-          expect(card.y).toBeCloseTo(left.y, 1);
+          const information = (await page
+            .locator(".home-information")
+            .boundingBox())!;
+          expect(information.y + information.height / 2).toBeCloseTo(
+            left.y + left.height / 2,
+            1,
+          );
           expect(right.y).toBeGreaterThanOrEqual(card.y + card.height);
           const today = (await activity
             .locator(":scope > section")

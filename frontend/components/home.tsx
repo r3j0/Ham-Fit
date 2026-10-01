@@ -35,37 +35,39 @@ export function Home() {
         )}
         {user && (
           <>
-            {!user.isOnboarded && (
-              <section className="feature-card home-intro stack">
-                <h2>내 체력 기록부터 시작해요</h2>
-                <p className="muted">
-                  국민체력100 결과표가 있다면 측정한 항목부터 등록해 보세요.
-                </p>
-                <Link className="button primary" href="/onboarding">
-                  체력 기록 등록하기
-                  <ArrowRight size={18} />
-                </Link>
-              </section>
-            )}
+            <div className="home-information">
+              {!user.isOnboarded && (
+                <section className="feature-card home-intro stack">
+                  <h2>내 체력 기록부터 시작해요</h2>
+                  <p className="muted">
+                    국민체력100 결과표가 있다면 측정한 항목부터 등록해 보세요.
+                  </p>
+                  <Link className="button primary" href="/onboarding">
+                    체력 기록 등록하기
+                    <ArrowRight size={18} />
+                  </Link>
+                </section>
+              )}
+              <div
+                className="home-activity"
+                data-current-workout={
+                  user.currentCurriculum &&
+                  user.currentCurriculum.status !== "completed"
+                    ? true
+                    : undefined
+                }
+              >
+                <section className="stack" aria-labelledby="today-title">
+                  <TodayWorkout embedded />
+                </section>
+                <WorkoutStreak />
+              </div>
+            </div>
             <div className="home-companions">
               <div className="home-mascot-stage">
                 <MyCharacter />
               </div>
               <HomeGroups />
-            </div>
-            <div
-              className="home-activity"
-              data-current-workout={
-                user.currentCurriculum &&
-                user.currentCurriculum.status !== "completed"
-                  ? true
-                  : undefined
-              }
-            >
-              <section className="stack" aria-labelledby="today-title">
-                <TodayWorkout embedded />
-              </section>
-              <WorkoutStreak />
             </div>
           </>
         )}

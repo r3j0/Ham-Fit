@@ -165,6 +165,15 @@
   .home-toolbar {
     margin-bottom: 12px;
   }
+  .home-intro {
+    order: 1;
+  }
+  .home-companions {
+    order: 2;
+  }
+  .home-activity {
+    order: 3;
+  }
 }
 .notification-bell {
   position: relative;
@@ -179,6 +188,9 @@
   background: #dc2626;
   box-shadow: 0 0 0 2px var(--surface);
   pointer-events: none;
+}
+.home-information {
+  display: contents;
 }
 .home-companions,
 .home-activity {
@@ -2050,8 +2062,9 @@ fieldset:disabled select {
   .home-content {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
     align-content: start;
-    align-items: start;
+    align-items: center;
     gap: 32px 48px;
     min-height: calc(100dvh - var(--bottom-navigation-height) - 64px);
   }
@@ -2059,34 +2072,25 @@ fieldset:disabled select {
     grid-column: 1 / -1;
     grid-row: 1;
   }
-  .home-content > .home-intro {
-    grid-column: 2;
-    grid-row: 2;
-  }
   .home-content > .loading,
   .home-content > div.stack {
     grid-column: 1 / -1;
   }
-  .home-content > .home-intro .button {
+  .home-information {
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+    min-width: 0;
+    grid-column: 2;
+    grid-row: 2;
+  }
+  .home-information > .home-intro .button {
     max-width: 320px;
   }
   .home-companions {
     --home-mascot-size: 564.48px;
     grid-column: 1;
     grid-row: 2;
-  }
-  .home-activity {
-    grid-column: 2;
-    grid-row: 2;
-  }
-  .home-content:has(> .home-intro) > .home-companions {
-    grid-row: 2 / span 2;
-  }
-  .home-content:has(> .home-intro) {
-    grid-template-rows: auto auto 1fr;
-  }
-  .home-content:has(> .home-intro) > .home-activity {
-    grid-row: 3;
   }
   .home-mascot-stage {
     min-height: 320px;
