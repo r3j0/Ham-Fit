@@ -263,9 +263,20 @@ test("실제 시청은 탐색을 제외하고 80% 미만 완료 요청을 중단
   await expect.poll(async () => (await read()).status).toBe("in_progress");
   await video.evaluate((v: HTMLVideoElement) => v.pause());
   await expect.poll(async () => (await read()).status).toBe("interrupted");
+  await expect(video).toHaveAttribute("controls", "");
+  const resumePosition = await video.evaluate(
+    (v: HTMLVideoElement) => v.currentTime,
+  );
+  await video.evaluate((v: HTMLVideoElement) => v.play());
+  await expect.poll(async () => (await read()).status).toBe("in_progress");
+  await expect
+    .poll(() => video.evaluate((v: HTMLVideoElement) => v.currentTime))
+    .toBeGreaterThan(resumePosition + 0.5);
   await expect(
     page.getByRole("button", { name: "이어서 운동하기" }),
-  ).toBeEnabled();
+  ).toHaveCount(0);
+  await video.evaluate((v: HTMLVideoElement) => v.pause());
+  await expect.poll(async () => (await read()).status).toBe("interrupted");
   await page.screenshot({
     path: info.outputPath("v2-interrupted.png"),
     fullPage: true,

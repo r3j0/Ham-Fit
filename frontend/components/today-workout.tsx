@@ -204,7 +204,7 @@ export function TodayWorkout({
                   )}
                 </>
               )}
-              {todayRoutine?.cardioRecommendation && (
+              {showAll && todayRoutine?.cardioRecommendation && (
                 <section
                   className="feature-card stack-sm"
                   aria-label="유산소 운동 안내"

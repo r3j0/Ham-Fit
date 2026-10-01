@@ -29,6 +29,7 @@ export function AssignedWorkoutList({
             {workout.routine && (
               <RoutinePrescription
                 prescription={workout.routine.prescription}
+                compact
               />
             )}
           </div>
@@ -37,11 +38,7 @@ export function AssignedWorkoutList({
               <Check size={18} aria-hidden="true" />
               완료
             </span>
-          ) : activeId && workout.id !== activeId ? (
-            <button className={`button secondary ${styles.start}`} disabled>
-              앞 운동 완료 후 시작
-            </button>
-          ) : (
+          ) : activeId && workout.id !== activeId ? null : (
             <Link
               className={`button secondary ${styles.start}`}
               href={workoutHref(workout)}

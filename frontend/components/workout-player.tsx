@@ -56,8 +56,7 @@ export function WorkoutPlayer({
     state.terminalPending;
   const canPlay =
     readOnly ||
-    (!actionBlocked &&
-      (workout.status === "in_progress" || workout.status === "completed"));
+    (state.connected && !state.recovering && state.error === undefined);
   const verified =
     workout.video.playbackStatus === "verified" && !!workout.video.playbackUrl;
   const completed = workout.status === "completed";
@@ -141,7 +140,8 @@ export function WorkoutPlayer({
   ]);
   function capture(type: "progress" | "pause") {
     const media = video.current;
-    if (media && session.getSnapshot().workout.status === "in_progress")
+    // The journal also queues a pause behind an unacknowledged native start.
+    if (media)
       void session.record(
         type,
         samplePlayback(media, session.getSnapshot().workout),
@@ -169,6 +169,38 @@ export function WorkoutPlayer({
     }
     // Some mobile browsers require another gesture after awaiting the API; native controls remain available.
     await video.current?.play().catch(() => {});
+  }
+  async function playFromControls() {
+    const media = video.current;
+    if (!media) return;
+    if (session.getSnapshot().workout.routine) session.canRecord();
+    // Finish a native pause before starting again, preserving its original request.
+    if (session.getSnapshot().terminalPending) await session.retry();
+    if (media.paused) return;
+    let latest = session.getSnapshot();
+    const viewingOnly = latest.workout.routine && !latest.recordingAllowed;
+    if (
+      !viewingOnly &&
+      (!latest.connected ||
+        latest.recovering ||
+        latest.error !== undefined ||
+        latest.terminalPending)
+    ) {
+      media.pause();
+      return;
+    }
+    setPlaying(true);
+    lastSave.current = performance.now();
+    if (
+      !viewingOnly &&
+      !["in_progress", "completed"].includes(latest.workout.status)
+    ) {
+      // Native controls can resume an interrupted routine without another button.
+      await session.record("start", samplePlayback(media, latest.workout));
+      latest = session.getSnapshot();
+      if (latest.error !== undefined || latest.workout.status !== "in_progress")
+        media.pause();
+    }
   }
   function finalize(type: "end" | "complete") {
     if (session.getSnapshot().workout.routine && !session.canRecord()) {
@@ -272,25 +304,7 @@ export function WorkoutPlayer({
                 media.currentTime = Math.min(position, media.duration);
               restored.current = true;
             }}
-            onPlay={() => {
-              if (session.getSnapshot().workout.routine) session.canRecord();
-              const latest = session.getSnapshot();
-              if (
-                !(latest.workout.routine && !latest.recordingAllowed) &&
-                (!latest.connected ||
-                  latest.recovering ||
-                  !["in_progress", "completed"].includes(
-                    latest.workout.status,
-                  ) ||
-                  latest.error !== undefined ||
-                  latest.terminalPending)
-              ) {
-                video.current?.pause();
-                return;
-              }
-              setPlaying(true);
-              lastSave.current = performance.now();
-            }}
+            onPlay={() => void playFromControls()}
             onPause={() => {
               setPlaying(false);
               if (!suppressPause.current) capture("pause");
