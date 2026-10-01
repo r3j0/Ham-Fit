@@ -268,7 +268,7 @@ export function Groups() {
           <MascotPose
             pose="phone"
             variant="cream"
-            size={96}
+            size={115.2}
             label="핸드폰을 보는 햄돌이"
           />
         </div>

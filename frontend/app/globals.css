@@ -1229,7 +1229,7 @@ fieldset:disabled select {
   color: var(--navy);
 }
 .account-shell .profile-avatar {
-  width: clamp(112px, 20vw, 128px);
+  width: clamp(134.4px, 24vw, 153.6px);
 }
 .account-shell .menu-card {
   background: var(--canvas);
@@ -1366,7 +1366,7 @@ fieldset:disabled select {
 }
 @media (max-width: 959px) {
   .account-shell .profile-avatar {
-    width: 80px;
+    width: 96px;
   }
   .account-shell .latest-fitness .fitness-radar svg {
     width: 100%;

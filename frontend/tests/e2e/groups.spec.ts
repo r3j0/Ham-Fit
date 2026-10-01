@@ -176,13 +176,13 @@ test("그룹 생성과 초대 가입은 좁은 화면에서도 두 열로 배치
     await page.setViewportSize({ width, height: 786 });
     const left = (await create.boundingBox())!,
       right = (await join.boundingBox())!;
-    const mascot = page.getByRole("img", { name: "핸드폰을 보는 크림 햄스터" });
+    const mascot = page.getByRole("img", { name: "핸드폰을 보는 햄돌이" });
     await expect(mascot).toHaveAttribute("data-pose", "phone");
     await expect(mascot).toHaveAttribute("data-variant", "cream");
     const art = (await mascot.boundingBox())!,
       frame = (await mascot.locator("..").boundingBox())!;
-    expect(art.width).toBeCloseTo(96, 1);
-    expect(art.height).toBeCloseTo(120, 1);
+    expect(art.width).toBeCloseTo(115.2, 1);
+    expect(art.height).toBeCloseTo(115.2, 1);
     expect(art.x + art.width / 2).toBeCloseTo(frame.x + frame.width / 2, 1);
     expect(
       await create.evaluate((el) =>
@@ -278,6 +278,9 @@ test("그룹원과 신청을 한 행에 표시하며 오늘 상태를 검증하�
     await page.setViewportSize({ width, height: 844 });
     const row = region.getByRole("listitem").last(),
       name = row.getByRole("link");
+    const hamster = (await row.locator(".profile-character").boundingBox())!;
+    expect(hamster.width).toBeCloseTo(36 * 1.4, 1);
+    expect(hamster.height).toBeCloseTo(36 * 1.4, 1);
     await expect(name).toHaveCSS("text-decoration-line", "none");
     const boxes = await row.evaluate((el) =>
       [...el.children].map((child) => {

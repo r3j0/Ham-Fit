@@ -137,7 +137,7 @@ test("프로필은 재화·가입 경과일·활동 리포트와 대표 캐릭�
       0,
     );
     const avatarBox = (await avatar.boundingBox())!;
-    expect(avatarBox.width).toBe(width < 960 ? 80 : 128);
+    expect(avatarBox.width).toBeCloseTo(width < 960 ? 96 : 153.6, 1);
     await expect(avatar).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
     const chart = (await page.locator(".fitness-radar svg").boundingBox())!;
     const reportBox = (await report.boundingBox())!;
