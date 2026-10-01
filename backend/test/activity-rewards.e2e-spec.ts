@@ -19,6 +19,7 @@ import { AvatarService } from '../src/avatar/avatar.service.js';
 import { DatabaseService } from '../src/database/database.service.js';
 import { GroupsService } from '../src/groups/groups.service.js';
 import { GroupMissionsService } from '../src/groups/group-missions.service.js';
+import { GroupMissionWaterService } from '../src/groups/group-mission-water.service.js';
 import { WorkoutRoutinesService } from '../src/recommendations/workout-routines.service.js';
 import { RoutineAlgorithm } from '../src/recommendations/routine-algorithm.js';
 import { recordRoutineReward } from '../src/users/activity-rewards.service.js';
@@ -307,27 +308,25 @@ describe('daily whole-routine rewards and immutable HTTP receipts on PostgreSQL'
     });
     expect(await balance()).toBe(1);
   });
-  it('snapshots only actual contributions to every eligible group and preserves them after rename/deletion', async () => {
+  it('preserves the immutable completion receipt while delayed water goes to one selected group', async () => {
     const a = await group();
     const b = await group();
     const row = await createRoutine(owner.user.id, 1);
     await complete(row);
     const receipt = (await get(row.id)).body;
-    expect(receipt.waters).toEqual(
-      [a, b]
-        .sort((x, y) => x.groupId.localeCompare(y.groupId))
-        .map((value) => ({
-          groupId: value.groupId,
-          groupName: '[TEST ONLY] evidence',
-          roundId: value.roundId,
-          amount: 1,
-        })),
+    expect(receipt.waters).toEqual([]);
+    const water = new GroupMissionWaterService(db, () => now);
+    await water.select(
+      owner.user.id,
+      { sourceKind: 'routine', sourceId: row.id },
+      a.groupId,
+      randomUUID(),
     );
     expect(
       await db.groupMissionContribution.count({
         where: { groupId: { in: [a.groupId, b.groupId] } },
       }),
-    ).toBe(2);
+    ).toBe(1);
     await db.group.update({
       where: { id: a.groupId },
       data: { name: 'renamed' },

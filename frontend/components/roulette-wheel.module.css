@@ -1,0 +1,377 @@
+.page {
+  --roulette-tone: #0a2a70;
+  --roulette-light: #dbe8ff;
+  --roulette-mid: #a6c3f7;
+  --roulette-ink: #0a2a70;
+}
+.group {
+  --roulette-tone: #ff7f00;
+  --roulette-light: #fff0e0;
+  --roulette-mid: #ffd0a0;
+  --roulette-ink: #733200;
+}
+.stage {
+  position: relative;
+  width: min(100%, 360px);
+  aspect-ratio: 1;
+  margin: 20px auto;
+  isolation: isolate;
+  container-type: inline-size;
+}
+.wheel {
+  position: absolute;
+  inset: clamp(5px, 3.33cqw, 12px);
+  border-radius: 50%;
+  border: clamp(3px, 2.22cqw, 8px) solid var(--surface);
+  box-shadow:
+    0 0 0 3px var(--roulette-tone),
+    0 16px 40px color-mix(in srgb, var(--roulette-tone) 16%, transparent);
+  background: conic-gradient(
+    var(--roulette-light) 0deg 60deg,
+    var(--roulette-mid) 60deg 120deg,
+    var(--roulette-light) 120deg 180deg,
+    var(--roulette-mid) 180deg 240deg,
+    var(--roulette-light) 240deg 300deg,
+    var(--roulette-mid) 300deg 360deg
+  );
+}
+.pointer {
+  position: absolute;
+  z-index: 2;
+  top: -2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: clamp(14px, 7.22cqw, 26px);
+  height: clamp(18px, 8.89cqw, 32px);
+  background: var(--roulette-tone);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+}
+.hub {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: clamp(26px, 18.33cqw, 66px);
+  height: clamp(26px, 18.33cqw, 66px);
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: 0 0 0 4px
+    color-mix(in srgb, var(--roulette-tone) 35%, var(--surface));
+}
+.hub > :global(.seed-icon) {
+  height: clamp(16px, 10cqw, 36px);
+  width: auto;
+}
+.sector {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: clamp(22px, 16.11cqw, 58px);
+  height: clamp(22px, 16.11cqw, 58px);
+  transform: translate(-50%, -50%) rotate(var(--sector-angle))
+    translateY(calc(-1 * min(28.61cqw, 103px)))
+    rotate(calc(-1 * var(--sector-angle)));
+  display: grid;
+  place-items: center;
+  color: var(--roulette-ink);
+}
+.sector .prizeIcon {
+  width: clamp(20px, 15cqw, 54px);
+  height: clamp(20px, 15cqw, 54px);
+}
+.sector .prizeIcon > svg {
+  width: clamp(13px, 10cqw, 36px);
+  height: clamp(13px, 10cqw, 36px);
+}
+.sector .prizeIcon > :global(.seed-icon) {
+  height: clamp(14px, 10.56cqw, 38px);
+  width: auto;
+}
+.sector .prizeIcon > b {
+  min-width: clamp(12px, 6.67cqw, 24px);
+  height: clamp(12px, 6.67cqw, 24px);
+  padding: 0 2px;
+  font-size: clamp(8px, 3.89cqw, 14px);
+}
+.prizeIcon {
+  display: inline-flex;
+  position: relative;
+  align-items: center;
+  justify-content: center;
+  width: 54px;
+  height: 54px;
+  gap: 2px;
+  color: var(--roulette-ink);
+}
+.prizeIcon > svg {
+  width: 36px;
+  height: 36px;
+  stroke-width: 1.8;
+}
+.prizeIcon > b {
+  position: absolute;
+  bottom: -2px;
+  right: -3px;
+  min-width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  padding: 0 4px;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--roulette-ink);
+  font-size: 14px;
+  box-shadow: 0 1px 5px #0001;
+}
+.stage[data-phase="spinning"] .wheel {
+  filter: blur(4px);
+}
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 360px) minmax(240px, 300px);
+  align-items: end;
+  justify-content: center;
+  gap: 24px;
+}
+.wheelColumn {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.probabilities {
+  min-width: 0;
+  text-align: left;
+  padding: 18px;
+  background: color-mix(in srgb, var(--roulette-light) 60%, var(--surface));
+  border-radius: var(--radius-card);
+}
+.probabilities h2 {
+  color: var(--roulette-ink);
+  font-size: 17px;
+  margin-bottom: 12px;
+}
+.probabilities ul {
+  display: grid;
+  gap: 8px;
+  padding: 0;
+  list-style: none;
+}
+.probabilities li {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  font-size: 13px;
+}
+.probabilities .prizeIcon {
+  width: 36px;
+  height: 36px;
+}
+.probabilities .prizeIcon > svg {
+  width: 24px;
+  height: 24px;
+}
+.probabilities .prizeIcon > :global(.seed-icon) {
+  height: 26px;
+  width: auto;
+}
+.probabilities .prizeIcon > b {
+  min-width: 18px;
+  height: 18px;
+  font-size: 11px;
+}
+.probabilities strong {
+  color: var(--roulette-ink);
+  font-size: 15px;
+}
+.probabilities p {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+  margin-top: 14px;
+}
+@media (max-width: 959px) {
+  .layout {
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+    gap: 16px;
+    align-items: center;
+  }
+  .probabilities {
+    padding: 12px;
+  }
+}
+.history {
+  overflow: hidden;
+  border: 1px solid var(--roulette-mid);
+  border-radius: var(--radius-card);
+  text-align: left;
+  background: var(--surface);
+}
+.history h2 {
+  padding: 18px;
+  color: var(--roulette-ink);
+  font-size: 18px;
+}
+.history table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.history th {
+  color: var(--roulette-ink);
+  background: var(--roulette-light);
+  font-weight: 600;
+}
+.history th,
+.history td {
+  padding: 12px 18px;
+  border-top: 1px solid var(--roulette-light);
+}
+.history th:first-child {
+  width: 28%;
+}
+.history th:last-child {
+  width: 20%;
+}
+.history th:last-child,
+.history td:last-child {
+  text-align: right;
+}
+.historyPrize {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.historyPrize .prizeIcon {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+}
+.historyPrize .prizeIcon > svg {
+  width: 24px;
+  height: 24px;
+}
+.historyPrize .prizeIcon > :global(.seed-icon) {
+  height: 26px;
+  width: auto;
+}
+.historyPrize .prizeIcon > b {
+  min-width: 18px;
+  height: 18px;
+  font-size: 11px;
+}
+@media (max-width: 639px) {
+  .layout {
+    gap: 10px;
+  }
+  .probabilities {
+    padding: 10px;
+  }
+  .probabilities h2 {
+    font-size: 14px;
+    margin-bottom: 8px;
+  }
+  .probabilities ul {
+    gap: 6px;
+  }
+  .probabilities li {
+    grid-template-columns: 26px minmax(0, 1fr) auto;
+    gap: 5px;
+    font-size: 11px;
+  }
+  .probabilities strong {
+    font-size: 12px;
+  }
+  .probabilities .prizeIcon {
+    width: 24px;
+    height: 28px;
+  }
+  .probabilities .prizeIcon > svg {
+    width: 16px;
+    height: 16px;
+  }
+  .probabilities .prizeIcon > :global(.seed-icon) {
+    height: 22px;
+  }
+  .probabilities .prizeIcon > b {
+    min-width: 14px;
+    height: 14px;
+    font-size: 9px;
+    padding: 0 2px;
+  }
+  .probabilities p {
+    font-size: 11px;
+    margin-top: 10px;
+  }
+  .history table {
+    font-size: 12px;
+  }
+  .history th,
+  .history td {
+    padding: 10px 8px;
+  }
+  .historyPrize {
+    gap: 6px;
+  }
+}
+.reward {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  gap: 20px;
+  padding: 18px 0 0;
+  animation: reveal 260ms ease-out;
+}
+.reward > .prizeIcon {
+  width: 104px;
+  height: 104px;
+  border-radius: 50%;
+  background: var(--roulette-light);
+}
+.reward > .prizeIcon > svg {
+  width: 58px;
+  height: 58px;
+}
+.reward > .prizeIcon > :global(.seed-icon) {
+  height: 64px;
+  width: auto;
+}
+.reward > .prizeIcon > b {
+  right: 0;
+  bottom: 0;
+  min-width: 32px;
+  height: 32px;
+  font-size: 18px;
+}
+.reward h2 {
+  color: var(--roulette-ink);
+  font-size: 24px;
+}
+.reward p {
+  color: var(--muted);
+}
+.reward button {
+  width: 100%;
+}
+@keyframes reveal {
+  from {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .stage[data-phase="spinning"] .wheel {
+    filter: none;
+  }
+  .reward {
+    animation: none;
+  }
+}

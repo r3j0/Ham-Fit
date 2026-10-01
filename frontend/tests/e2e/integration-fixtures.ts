@@ -256,6 +256,16 @@ export async function installApi(
     if (/\/groups\/[^/]+\/missions\/current$/.test(path))
       return send({ id: null, status: "not_started" });
     if (path === "/workouts/current") return send(testWorkout);
+    if (path === "/users/me/group-mission-water")
+      return send({
+        sourceKind: new URL(request.url()).searchParams.get("sourceKind"),
+        sourceId: new URL(request.url()).searchParams.get("sourceId"),
+        koreanDate: "2026-09-29",
+        status: "unavailable",
+        reason: "no_eligible_missions",
+        options: [],
+        contribution: null,
+      });
     if (path === "/workout-routines/current") return send(null);
     if (path === "/groups/overview" && method === "GET")
       return route.fulfill({ json: { items: [] } });

@@ -231,9 +231,14 @@ for (const result of ["seeds", "pose", "fallback"] as const) {
       .getByRole("region", { name: "개인 룰렛", exact: true })
       .getByRole("link", { name: "룰렛 돌리기" })
       .click();
-    await page.getByText("이번 룰렛의 보상 확률").click();
+    const probabilities = page.getByRole("region", {
+      name: "스트릭 룰렛 보상 확률",
+    });
     await expect(
-      page.getByText("랜덤 자세 · 0.1%", { exact: true }),
+      probabilities.getByText("랜덤 자세", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      probabilities.getByText("0.1%", { exact: true }),
     ).toBeVisible();
     await page
       .getByRole("button", { name: "룰렛 돌리기", exact: true })
@@ -241,14 +246,14 @@ for (const result of ["seeds", "pose", "fallback"] as const) {
     await expect(
       page.getByRole("button", { name: "이전 추첨 결과 확인" }),
     ).toBeVisible();
-    await page.getByRole("link", { name: "알림으로", exact: true }).click();
+    await page.getByRole("link", { name: "이전 화면", exact: true }).click();
     await expect(page.getByLabel("개인 룰렛 사용 가능 횟수")).toHaveText("0회");
     await page.reload();
     await page.getByRole("link", { name: "이전 추첨 결과 확인" }).click();
     await page.getByRole("button", { name: "이전 추첨 결과 확인" }).click();
     if (result === "pose")
       await expect(
-        page.getByRole("link", { name: "옷장에서 확인하기" }),
+        page.getByText("받은 아이템은 내 옷장에서 확인할 수 있어요."),
       ).toBeVisible();
     else
       await expect(
@@ -259,13 +264,18 @@ for (const result of ["seeds", "pose", "fallback"] as const) {
     await expect(
       page.getByRole("button", { name: "룰렛 돌리기", exact: true }),
     ).toBeDisabled();
-    await expect(
-      page.getByText(`보유 해바라기씨 ${commerce.balance}개`),
-    ).toBeVisible();
+    await expect(page.getByRole("group", { name: "보유 재화" })).toHaveText(
+      `${commerce.balance}`,
+    );
     expect(writes).toHaveLength(2);
     expect(writes[0]).toEqual(writes[1]);
     expect(JSON.parse(writes[0].body)).toEqual({ ticketId: id(31) });
-    await page.getByRole("link", { name: "알림으로", exact: true }).click();
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: "확인", exact: true })
+      .click();
+    await expect(page).toHaveURL("/");
+    await page.goto("/account/notifications");
     await expect(
       page
         .getByRole("region", { name: "개인 룰렛", exact: true })

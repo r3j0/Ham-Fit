@@ -1,0 +1,293 @@
+.card {
+  display: grid;
+  gap: 14px;
+  padding: 20px;
+  border: 1px solid #efdfb9;
+  border-radius: 24px;
+  background: linear-gradient(145deg, #fffaf0, #fffdf7);
+  min-width: 0;
+}
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+.heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.heading h2 {
+  font-size: 16px;
+}
+.infoButton {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  border-radius: 50%;
+  color: #8b806b;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.infoButton:hover {
+  background: #f3ead7;
+}
+.infoButton:focus-visible {
+  outline: 2px solid var(--navy);
+  outline-offset: 2px;
+}
+.visual {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  align-items: center;
+  gap: 18px;
+}
+.plantFrame {
+  display: grid;
+  place-items: center;
+  width: 120px;
+  height: 128px;
+}
+.meter {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+.stageLabel {
+  color: #6d755a;
+  font-size: 13px;
+  font-weight: 600;
+}
+.waterCount {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  white-space: nowrap;
+}
+.waterCount svg {
+  align-self: center;
+  color: #b18436;
+  flex-shrink: 0;
+}
+.waterCount strong {
+  color: var(--navy);
+  font-size: 28px;
+  line-height: 1.2;
+}
+.waterCount span {
+  color: #8b806b;
+  font-size: 13px;
+}
+.progress,
+.choice progress {
+  width: 100%;
+  height: 8px;
+  border: 0;
+  border-radius: 999px;
+  overflow: hidden;
+  background: #f0e7d3;
+  accent-color: #dfab33;
+}
+.progress::-webkit-progress-bar,
+.choice progress::-webkit-progress-bar {
+  background: #f0e7d3;
+}
+.progress::-webkit-progress-value,
+.choice progress::-webkit-progress-value {
+  background: #dfab33;
+  border-radius: 999px;
+}
+.progress::-moz-progress-bar,
+.choice progress::-moz-progress-bar {
+  background: #dfab33;
+  border-radius: 999px;
+}
+.contribution {
+  color: var(--muted);
+  font-size: 13px;
+  text-align: right;
+}
+.contribution strong {
+  color: var(--navy);
+  margin-left: 4px;
+  font-weight: 600;
+}
+.notStartedText {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.7;
+}
+.guideStages {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 4px;
+  list-style: none;
+  padding: 0;
+  margin: 0 0 16px;
+}
+.guideStages li {
+  display: grid;
+  justify-items: center;
+  align-items: end;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.guideStages img {
+  align-self: center;
+}
+.hint {
+  color: var(--muted);
+  font-size: 13px;
+}
+.waterPage {
+  width: 100%;
+  display: grid;
+  justify-items: center;
+  gap: 20px;
+}
+.waterPage > p {
+  color: var(--muted);
+  line-height: 1.65;
+}
+.waterPage > :global(.button),
+.waterPage > :global(.notice) {
+  width: 100%;
+}
+.waterPage h1 {
+  overflow-wrap: anywhere;
+}
+.waterHero {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 180px;
+  height: 180px;
+  background: #fff6dc;
+  border-radius: 50%;
+}
+.waterDrop {
+  display: grid;
+  place-items: center;
+  position: absolute;
+  right: 5px;
+  bottom: 8px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #e7f4fc;
+  color: #3686ae;
+  border: 4px solid #fff;
+}
+.success {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #55734c;
+  background: #eff5e9;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.groupLink {
+  color: var(--navy);
+  font-size: 14px;
+  font-weight: 700;
+}
+.choices {
+  display: grid;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  text-align: left;
+}
+.choice {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border: 2px solid #ede7de;
+  border-radius: 18px;
+  background: #fff;
+  cursor: pointer;
+  min-width: 0;
+}
+.choice[data-selected] {
+  border-color: #d9a339;
+  background: #fffbef;
+}
+.choice:focus-within {
+  outline: 2px solid var(--navy);
+  outline-offset: 3px;
+}
+.choice input {
+  width: 18px;
+  height: 18px;
+  min-height: 0;
+  padding: 0;
+  flex-shrink: 0;
+  accent-color: #b17a18;
+}
+.choice img {
+  flex-shrink: 0;
+}
+.choiceInfo {
+  display: grid;
+  flex: 1;
+  gap: 6px;
+  min-width: 0;
+}
+.choiceInfo strong {
+  font-size: 16px;
+  overflow-wrap: anywhere;
+}
+.choiceInfo > span {
+  color: var(--muted);
+  font-size: 12px;
+}
+.choice progress {
+  height: 6px;
+}
+.choices:disabled .choice {
+  cursor: default;
+  opacity: 0.7;
+}
+@media (max-width: 400px) {
+  .card {
+    padding: 18px;
+    gap: 10px;
+  }
+  .visual {
+    grid-template-columns: 100px minmax(0, 1fr);
+    gap: 12px;
+  }
+  .plantFrame {
+    width: 100px;
+    height: 112px;
+  }
+  .plantFrame img:not(:global(.seed-icon)) {
+    width: 100px;
+  }
+  .waterCount strong {
+    font-size: 26px;
+  }
+  .choice {
+    padding: 12px;
+    gap: 10px;
+  }
+}

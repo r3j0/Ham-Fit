@@ -313,7 +313,7 @@ test("민트 티셔츠 합성, 햄돌이·햄콩이 전환, 412 충돌과 작은
     ),
   ).toBe(false);
 });
-test("그룹 미션은 시작 인원과 참여 자격을 표시하고 룰렛 응답 유실을 복구한다", async ({
+test("그룹 미션은 성장 모습과 참여 자격을 표시하고 룰렛 응답 유실을 복구한다", async ({
   page,
 }) => {
   await installApi(page, testRecord());
@@ -424,7 +424,9 @@ test("그룹 미션은 시작 인원과 참여 자격을 표시하고 룰렛 응
   await page.goto(`/groups/${groupId}`);
   await page.getByRole("button", { name: "새 미션 시작", exact: true }).click();
   await page.getByRole("button", { name: "미션 시작", exact: true }).click();
-  await expect(page.getByText("물 3 / 28번 · 시작 인원 2명")).toBeVisible();
+  await expect(
+    page.getByRole("progressbar", { name: "물 주기 달성도" }),
+  ).toHaveAttribute("value", "3");
   eligible = false;
   await page.reload();
   await expect(
@@ -467,7 +469,7 @@ test("그룹 미션은 시작 인원과 참여 자격을 표시하고 룰렛 응
   expect(writes).toHaveLength(2);
   expect(writes[0]).toEqual(writes[1]);
 });
-test("완료 전 진입을 막고 완료→스트릭→실제 씨앗→실제 물 순서로 이동한다", async ({
+test("완료 전 진입을 막고 완료→스트릭→실제 물→실제 씨앗 순서로 이동한다", async ({
   page,
 }, info) => {
   test.skip(
@@ -511,6 +513,24 @@ test("완료 전 진입을 막고 완료→스트릭→실제 씨앗→실제 �
       },
     }),
   );
+  await page.route("**/api/v1/users/me/group-mission-water**", (route) =>
+    route.fulfill({
+      json: {
+        sourceKind: "routine",
+        sourceId: routine.id,
+        koreanDate: routine.koreanDate,
+        status: "contributed",
+        reason: null,
+        options: [],
+        contribution: {
+          groupId: id(22),
+          groupName: "함께 운동",
+          roundId: id(23),
+          amount: 1,
+        },
+      },
+    }),
+  );
   const base = `/workout-routines/${routine.id}/complete`;
   await page.goto(base);
   await expect(page.getByText("아직 마치지 않은 운동이 있어요.")).toBeVisible();
@@ -534,16 +554,16 @@ test("완료 전 진입을 막고 완료→스트릭→실제 씨앗→실제 �
   ).toBeVisible();
   await page.getByRole("link", { name: "다음", exact: true }).click();
   await expect(
-    page.getByRole("heading", { name: "해바라기씨 1개를 받았어요!" }),
-  ).toBeVisible();
-  await page.getByRole("link", { name: "다음", exact: true }).click();
-  await expect(
-    page.getByRole("heading", { name: "해바라기에 물을 줬어요!" }),
+    page.getByRole("heading", { name: "함께 운동 그룹에 물을 주었어요!" }),
   ).toBeVisible();
   await page.screenshot({
     path: info.outputPath("water-receipt.png"),
     fullPage: true,
   });
+  await page.getByRole("link", { name: "다음", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "해바라기씨 1개를 받았어요!" }),
+  ).toBeVisible();
   await page.getByRole("link", { name: "메인으로", exact: true }).click();
   await expect(page).toHaveURL("/");
 });

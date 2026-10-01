@@ -29,6 +29,7 @@ export const readinessSchema = [
   { table: 'group_notifications', columns: ['id'] },
   { table: 'group_mission_rounds', columns: ['id'] },
   { table: 'activity_achievements', columns: ['id'] },
+  { table: 'group_mission_water_choices', columns: ['achievement_id'] },
   { table: 'group_roulette_tickets', columns: ['id'] },
   { table: 'group_roulette_draws', columns: ['id'] },
   { table: 'streak_roulette_policies', columns: ['version'] },

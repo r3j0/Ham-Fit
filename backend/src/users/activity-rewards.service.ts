@@ -16,9 +16,13 @@ async function completionEvidence(
 ) {
   const achievement = await tx.activityAchievement.findFirst({
     where: { userId, sourceKind: 'routine', sourceId: routineId },
-    include: {
+    select: {
       contributions: {
-        include: { round: { include: { group: true } } },
+        select: {
+          groupId: true,
+          roundId: true,
+          round: { select: { group: { select: { name: true } } } },
+        },
         orderBy: { groupId: 'asc' },
       },
       streakTickets: { select: { id: true }, orderBy: { id: 'asc' } },
