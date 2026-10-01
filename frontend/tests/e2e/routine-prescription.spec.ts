@@ -47,10 +47,8 @@ for (const sets of [2, 3])
     await installRoutine(page, row);
     await page.goto("/workout");
     const list = page.getByRole("list", { name: "오늘 배정된 운동" });
-    await expect(list.getByRole("heading")).toHaveText(
-      row.routine.map((item) => item.title),
-    );
-    for (const [index, item] of row.routine.entries()) {
+    await expect(list.getByRole("heading")).toHaveText([row.routine[0].title]);
+    for (const [index, item] of [row.routine[0]].entries()) {
       const prescription = list
         .getByRole("listitem")
         .nth(index)
@@ -128,7 +126,7 @@ test("추천 스냅샷의 계산용 3은 측정 기준 미달과 grade:null 표�
   await page.goto("/workout");
   await expect(
     page.getByRole("list", { name: "오늘 배정된 운동" }).getByRole("listitem"),
-  ).toHaveCount(3);
+  ).toHaveCount(1);
   await page.goto(`/measurements/${record.id}`);
   await expect(page.locator(".radar-grade").nth(3)).toHaveText("기준 미달");
   const report = page.getByRole("region", { name: "측정 상세 리포트" });

@@ -7,8 +7,10 @@ import { RoutinePrescription } from "./routine-prescription";
 
 export function AssignedWorkoutList({
   workouts,
+  started = false,
 }: {
   workouts: readonly Workout[];
+  started?: boolean;
 }) {
   return (
     <ul className={styles.list} aria-label="오늘 배정된 운동">
@@ -38,7 +40,7 @@ export function AssignedWorkoutList({
               className={`button secondary ${styles.start}`}
               href={workoutHref(workout)}
             >
-              {workout.status === "assigned"
+              {!started && workout.status === "assigned"
                 ? "운동 시작하기"
                 : "운동 이어하기"}
             </Link>

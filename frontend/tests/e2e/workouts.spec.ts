@@ -310,6 +310,35 @@ test("unavailable media has an explicit retry and never uses originalUrl", async
   page,
 }) => {
   const { workout } = await prepare(page);
+  // Media availability varies by catalog/runtime; inject the unavailable contract explicitly.
+  await page.route(
+    `**/api/v2/workout-routines/${workout.routine!.id}`,
+    async (route) => {
+      const response = await route.fetch();
+      const routine = await response.json();
+      await route.fulfill({
+        response,
+        json: {
+          ...routine,
+          routine: routine.routine.map((item: { id: string }) =>
+            item.id === workout.routine!.itemId
+              ? {
+                  ...item,
+                  playbackStatus: "unavailable",
+                  playbackUrl: null,
+                  verifiedDurationSeconds: null,
+                }
+              : item,
+          ),
+        },
+      });
+    },
+  );
+  const originalRequests: string[] = [];
+  page.on("request", (request) => {
+    if (request.url() === workout.video.originalUrl)
+      originalRequests.push(request.url());
+  });
   await openAuthenticated(page, workoutHref(workout));
   await expect(
     page.getByText("현재 이 영상을 재생할 수 없어요.", { exact: false }),
@@ -321,6 +350,11 @@ test("unavailable media has an explicit retry and never uses originalUrl", async
   await expect(
     page.getByRole("button", { name: "운동 시작", exact: true }),
   ).toHaveCount(0);
+  await page.getByRole("button", { name: "영상 다시 확인하기" }).click();
+  await expect(
+    page.getByText("현재 이 영상을 재생할 수 없어요.", { exact: false }),
+  ).toBeVisible();
+  expect(originalRequests).toEqual([]);
 });
 
 test("50% 시청은 완료 버튼으로 우회하지 못하고 80% 구간에서만 완료된다", async ({
@@ -382,7 +416,28 @@ test("50% 시청은 완료 버튼으로 우회하지 못하고 80% 구간에서�
     expect(response.status()).toBe(200);
   }
   await openAuthenticated(page);
-  await expect(page.getByRole("link", { name: "운동 목록으로" })).toBeVisible();
+  const currentRoutine = parseRoutine(
+    await (
+      await page.request.get(
+        `${routineApi}/workout-routines/${workout.routine!.id}`,
+        { headers },
+      )
+    ).json(),
+  );
+  const next = currentRoutine.routine.find(
+    (item) => item.status !== "completed",
+  );
+  await expect(
+    page.getByRole("link", {
+      name: next ? "다음 운동으로" : "오늘 운동 마치기",
+      exact: true,
+    }),
+  ).toHaveAttribute(
+    "href",
+    next
+      ? `/workout-routines/${currentRoutine.id}/items/${next.id}`
+      : `/workout-routines/${currentRoutine.id}/complete`,
+  );
   await expect.poll(async () => (await read()).resultStatus).toBe("completed");
 });
 
@@ -538,14 +593,16 @@ test("여러 운동은 각자의 영상과 기록으로 완료하고 목록에�
   await page.goto("/workout");
   const list = page.getByRole("list", { name: "오늘 배정된 운동" });
   await expect(list.getByRole("link", { name: "운동 시작하기" })).toHaveCount(
-    2,
+    1,
   );
   for (let index = 0; index < rows.length; index++) {
     const row = rows[index];
     await list
       .getByRole("listitem")
       .filter({ hasText: row.video.title })
-      .getByRole("link", { name: "운동 시작하기" })
+      .getByRole("link", {
+        name: index === 0 ? "운동 시작하기" : "운동 이어하기",
+      })
       .click();
     await expect(page).toHaveURL(`/workouts/${row.id}`);
     await expect(
@@ -566,12 +623,17 @@ test("여러 운동은 각자의 영상과 기록으로 완료하고 목록에�
     ).toBeVisible();
     await page.getByRole("link", { name: "운동 목록으로" }).click();
     await expect(page).toHaveURL("/workout");
-    await expect(list.getByText("완료", { exact: true })).toHaveCount(
-      index + 1,
-    );
-    await expect(list.getByRole("link", { name: "운동 시작하기" })).toHaveCount(
-      rows.length - index - 1,
-    );
+    if (index + 1 < rows.length) {
+      await expect(list.getByRole("listitem")).toHaveCount(1);
+      await expect(
+        list.getByRole("link", { name: "운동 이어하기" }),
+      ).toHaveCount(1);
+    } else {
+      await expect(list).toHaveCount(0);
+      await expect(
+        page.getByText("오늘의 모든 운동을 완료했어요."),
+      ).toBeVisible();
+    }
   }
   expect(
     events.filter((event) => event.type === "start").map((event) => event.id),
@@ -585,9 +647,8 @@ test("여러 운동은 각자의 영상과 기록으로 완료하고 목록에�
     .getByRole("navigation")
     .getByRole("link", { name: "메인", exact: true })
     .click();
-  await expect(list.getByRole("listitem")).toHaveCount(2);
-  await expect(list.getByText("완료", { exact: true })).toHaveCount(2);
-  await expect(list.getByRole("link")).toHaveCount(0);
+  await expect(list).toHaveCount(0);
+  await expect(page.getByText("오늘의 모든 운동을 완료했어요.")).toBeVisible();
 });
 
 // Hold real video progress responses across multiple ticks to catch layout/reload regressions.

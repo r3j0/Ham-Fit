@@ -97,11 +97,16 @@ test("unknown prescription stays manual; no guessed timer or completion writes",
 });
 test("sequence chooses first unfinished item and completion only when all are complete", () => {
   const r = routineFixture();
+  const original = [...r.routine];
+  r.routine.reverse();
+  assert.ok(nextRoutineHref(r).endsWith(original[0].id));
+  assert.deepEqual(r.routine, [...original].reverse());
+  r.routine.reverse();
   assert.ok(nextRoutineHref(r).endsWith(r.routine[0].id));
   r.routine[0].status = "completed";
-  assert.ok(nextRoutineHref(r, r.routine[0].id).endsWith(r.routine[1].id));
+  assert.ok(nextRoutineHref(r).endsWith(r.routine[1].id));
   r.routine[2].status = "completed";
-  assert.ok(nextRoutineHref(r, r.routine[2].id).endsWith(r.routine[1].id));
+  assert.ok(nextRoutineHref(r).endsWith(r.routine[1].id));
   r.routine[1].status = "completed";
   assert.equal(nextRoutineHref(r), `/workout-routines/${r.id}/complete`);
 });

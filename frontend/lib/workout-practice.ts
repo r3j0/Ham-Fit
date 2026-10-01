@@ -20,11 +20,10 @@ export function doseRange(
     ? { min, max }
     : null;
 }
-export function nextRoutineHref(routine: WorkoutRoutine, itemId?: string) {
-  const at = routine.routine.findIndex((i) => i.id === itemId);
-  const next =
-    routine.routine.slice(at + 1).find((i) => i.status !== "completed") ??
-    routine.routine.find((i) => i.status !== "completed");
+export function nextRoutineHref(routine: WorkoutRoutine) {
+  const next = [...routine.routine]
+    .sort((a, b) => a.order - b.order)
+    .find((i) => i.status !== "completed");
   return next
     ? `/workout-routines/${routine.id}/items/${next.id}`
     : `/workout-routines/${routine.id}/complete`;

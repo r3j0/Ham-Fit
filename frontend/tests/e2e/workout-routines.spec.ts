@@ -90,6 +90,98 @@ async function setup(
   return state;
 }
 
+for (const route of ["/", "/workout"])
+  test(`${route}에서는 첫 미완료 운동만 표시하고 중단·완료 이력에 따라 이어간다`, async ({
+    page,
+  }, info) => {
+    const row = routineFixture();
+    const state = await setup(page, row);
+    const list = page.getByRole("list", { name: "오늘 배정된 운동" });
+    const first = row.routine[0];
+    for (const phase of [
+      "new",
+      "started",
+      "interrupted",
+      "next",
+      "complete",
+    ] as const) {
+      if (phase !== "new") {
+        first.status =
+          phase === "started"
+            ? "in_progress"
+            : phase === "interrupted"
+              ? "interrupted"
+              : "completed";
+        first.performedAt = row.serverTime;
+        first.progress.watchedSeconds =
+          phase === "started" ? 0 : phase === "interrupted" ? 20 : 60;
+        first.progress.positionSeconds = first.progress.watchedSeconds;
+        first.progress.intervals = first.progress.watchedSeconds
+          ? [{ start: 0, end: first.progress.watchedSeconds }]
+          : [];
+        if (phase === "next" || phase === "complete") {
+          first.completedAt = row.serverTime;
+          first.resultStatus = "completed";
+        }
+        if (phase === "complete")
+          for (const item of row.routine) {
+            item.status = "completed";
+            item.resultStatus = "completed";
+            item.performedAt = item.completedAt = row.serverTime;
+            item.progress = {
+              durationSeconds: 60,
+              watchedSeconds: 60,
+              positionSeconds: 60,
+              intervals: [{ start: 0, end: 60 }],
+            };
+          }
+        row.progress.completedItems = row.routine.filter(
+          (item) => item.status === "completed",
+        ).length;
+        row.status = phase === "complete" ? "completed" : "in_progress";
+      }
+      await page.goto(route);
+      await expect(
+        page.getByRole("region", { name: "유산소 운동 안내" }),
+      ).toContainText("걷기 20분");
+      await expect(
+        page.getByText(
+          /첫 운동부터 시작|첫 운동 다시 보기|영상 운동을 마친 뒤 권장하는 활동이에요/,
+        ),
+      ).toHaveCount(0);
+      if (phase === "complete") {
+        await expect(list).toHaveCount(0);
+        await expect(
+          page.getByRole("link", { name: "오늘 운동 완료 확인" }),
+        ).toHaveAttribute("href", `/workout-routines/${row.id}/complete`);
+        await expect(
+          page.getByText("오늘의 모든 운동을 완료했어요."),
+        ).toBeVisible();
+      } else {
+        const current = row.routine[phase === "next" ? 1 : 0];
+        await expect(list.getByRole("listitem")).toHaveCount(1);
+        await expect(list.getByRole("heading")).toHaveText([current.title]);
+        await expect(list.getByRole("link")).toHaveCount(1);
+        await expect(
+          list.getByRole("link", {
+            name: phase === "new" ? "운동 시작하기" : "운동 이어하기",
+            exact: true,
+          }),
+        ).toHaveAttribute(
+          "href",
+          `/workout-routines/${row.id}/items/${current.id}`,
+        );
+      }
+      if (phase === "next")
+        await page.screenshot({
+          path: info.outputPath("next-workout.png"),
+          fullPage: true,
+        });
+    }
+    expect(state.requests).toEqual([]);
+    expect(state.events).toEqual([]);
+  });
+
 for (const cardio of [
   { activity: "걷기", minutes: 20 },
   { activity: "뛰기", minutes: 13 },
@@ -112,7 +204,7 @@ for (const cardio of [
       page
         .getByRole("list", { name: "오늘 배정된 운동" })
         .getByRole("listitem"),
-    ).toHaveCount(3);
+    ).toHaveCount(1);
     await expect(
       page.getByRole("region", { name: "유산소 운동 안내" }),
     ).toContainText(`${cardio.activity} ${cardio.minutes}분`);
@@ -145,7 +237,7 @@ for (const cardio of [
       page
         .getByRole("list", { name: "오늘 배정된 운동" })
         .getByRole("listitem"),
-    ).toHaveCount(3);
+    ).toHaveCount(1);
     await expect(guidance).toContainText(
       `${cardio.activity} ${cardio.minutes}분`,
     );
@@ -176,7 +268,7 @@ for (const cardio of [
   });
 
 for (const missing of [false, true])
-  test(`유산소가 ${missing ? "누락된" : "null인"} 과거 응답은 안내 없이 모든 영상을 표시한다`, async ({
+  test(`유산소가 ${missing ? "누락된" : "null인"} 과거 응답은 안내 없이 현재 운동만 표시한다`, async ({
     page,
   }) => {
     const row = routineFixture();
@@ -188,7 +280,7 @@ for (const missing of [false, true])
       page
         .getByRole("list", { name: "오늘 배정된 운동" })
         .getByRole("listitem"),
-    ).toHaveCount(3);
+    ).toHaveCount(1);
     await expect(
       page.getByRole("region", { name: "유산소 운동 안내" }),
     ).toHaveCount(0);
@@ -197,7 +289,7 @@ for (const missing of [false, true])
       page
         .getByRole("list", { name: "오늘 배정된 운동" })
         .getByRole("listitem"),
-    ).toHaveCount(3);
+    ).toHaveCount(1);
     expect(state.requests).toHaveLength(0);
     expect(state.events).toHaveLength(0);
   });
@@ -222,10 +314,11 @@ test("영상 항목만 완료한 루틴은 유산소 수행 없이 전체 완료
     page.getByText("오늘의 모든 운동을 완료했어요.", { exact: true }),
   ).toBeVisible();
   await expect(
-    page
-      .getByRole("list", { name: "오늘 배정된 운동" })
-      .getByText("완료", { exact: true }),
-  ).toHaveCount(3);
+    page.getByRole("list", { name: "오늘 배정된 운동" }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("link", { name: "오늘 운동 완료 확인" }),
+  ).toHaveAttribute("href", `/workout-routines/${row.id}/complete`);
   await expect(
     page.getByRole("region", { name: "유산소 운동 안내" }),
   ).toContainText("걷기 20분");
@@ -289,7 +382,7 @@ test("이전 next 미확정 요청은 원래 키로 확인하고 지난 배정�
     .click();
   await expect(
     page.getByRole("list", { name: "오늘 배정된 운동" }).getByRole("listitem"),
-  ).toHaveCount(3);
+  ).toHaveCount(1);
   expect(keys[0]).toBe(oldKey);
   expect(keys[1]).not.toBe(oldKey);
   expect(state.requests).toHaveLength(1);
@@ -313,7 +406,7 @@ test("item playback reuses recovery, saves only the selected item and replays co
   );
   await page.goto("/workout");
   const list = page.getByRole("list", { name: "오늘 배정된 운동" });
-  await expect(list.getByRole("listitem")).toHaveCount(3);
+  await expect(list.getByRole("listitem")).toHaveCount(1);
   await expect(list).toContainText("10회 × 2세트 · 휴식 30초");
   await list.getByRole("link", { name: "운동 시작하기" }).first().click();
   await page.getByRole("button", { name: "운동 시작", exact: true }).click();
@@ -332,7 +425,13 @@ test("item playback reuses recovery, saves only the selected item and replays co
     `/workout-routines/${row.id}/items/${row.routine[1].id}`,
   );
   await page.getByRole("link", { name: "이전 화면", exact: true }).click();
-  await expect(list.getByText("완료", { exact: true })).toHaveCount(1);
+  await expect(list.getByRole("heading")).toHaveText([row.routine[1].title]);
+  await expect(
+    list.getByRole("link", { name: "운동 이어하기" }),
+  ).toHaveAttribute(
+    "href",
+    `/workout-routines/${row.id}/items/${row.routine[1].id}`,
+  );
   expect(state.events.every((event) => event.item === row.routine[0].id)).toBe(
     true,
   );
@@ -447,7 +546,7 @@ test("legacy disconnection is visible but does not block new routines; invalid n
   await page.goto("/workout");
   await expect(
     page.getByRole("list", { name: "오늘 배정된 운동" }).getByRole("listitem"),
-  ).toHaveCount(3);
+  ).toHaveCount(1);
   await expect(
     page.getByText(
       "이전 단일 운동 기록을 불러오지 못해 새 루틴 기록만 표시해요.",

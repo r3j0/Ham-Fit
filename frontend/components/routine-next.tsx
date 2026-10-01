@@ -42,7 +42,7 @@ export function RoutineNext({
           </button>
         </>
       ) : row && completed ? (
-        <Link className="button primary" href={nextRoutineHref(row, itemId)}>
+        <Link className="button primary" href={nextRoutineHref(row)}>
           {row.status === "completed" ? "오늘 운동 마치기" : "다음 운동으로"}
         </Link>
       ) : row ? (

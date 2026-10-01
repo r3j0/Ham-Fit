@@ -4,7 +4,7 @@ import { routineFixture } from "../fixtures/routine";
 import { prepareAssessment } from "./workout-helpers";
 import type { Workout } from "../../lib/workout-types";
 
-test("메인과 운동 탭은 오늘의 여러 배정을 모두 보여주고 시작·이어하기만 진행 화면으로 연결한다", async ({
+test("메인과 운동 탭은 오늘의 첫 미완료 배정 하나만 보여주고 진행 이력을 이어간다", async ({
   page,
 }) => {
   const api = await installApi(page, testRecord());
@@ -45,15 +45,14 @@ test("메인과 운동 탭은 오늘의 여러 배정을 모두 보여주고 시
       exact: true,
     });
     const list = today.getByRole("list", { name: "오늘 배정된 운동" });
-    await expect(list.getByRole("listitem")).toHaveCount(3);
-    await expect(
-      today.getByRole("link", { name: "운동 시작하기", exact: true }),
-    ).toHaveAttribute("href", `/workouts/${testWorkout.id}`);
+    await expect(list.getByRole("listitem")).toHaveCount(1);
     await expect(
       today.getByRole("link", { name: "운동 이어하기", exact: true }),
-    ).toHaveAttribute("href", "/workouts/second");
-    await expect(list.getByText("완료", { exact: true })).toHaveCount(1);
-    await expect(today.getByRole("link")).toHaveCount(2);
+    ).toHaveAttribute("href", `/workouts/${testWorkout.id}`);
+    await expect(list.getByRole("heading")).toHaveText([
+      testWorkout.video.title,
+    ]);
+    await expect(today.getByRole("link")).toHaveCount(1);
     await expect(
       today.getByText(
         /내 운동 이력|운동 상태 새로고침|내 측정 기록과 운동 이력|배정 ·|저장된 시청량|어제 운동/,
@@ -62,7 +61,7 @@ test("메인과 운동 탭은 오늘의 여러 배정을 모두 보여주고 시
     await expect(today.locator("video")).toHaveCount(0);
     await expect(page.getByRole("timer")).toHaveCount(0);
   }
-  await page.getByRole("link", { name: "운동 시작하기", exact: true }).click();
+  await page.getByRole("link", { name: "운동 이어하기", exact: true }).click();
   await expect(page).toHaveURL(`/workouts/${testWorkout.id}`);
   await expect(
     page.getByRole("heading", { name: "운동 중", exact: true }),
@@ -110,7 +109,7 @@ test("오늘 배정이 없으면 이전 운동을 오늘로 표시하지 않고 
   ).toBeVisible();
   await expect(
     page.getByRole("list", { name: "오늘 배정된 운동" }).getByRole("listitem"),
-  ).toHaveCount(3);
+  ).toHaveCount(1);
   await expect(page.locator("video")).toHaveCount(0);
   expect(requests).toBe(1);
 });
@@ -157,8 +156,8 @@ test("다른 기기에서 완료한 운동은 화면 복귀 시 완료로 바뀌
     completedAt: "2026-09-27T03:00:00.000Z",
   };
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
-  await expect(list.getByText("완료", { exact: true })).toBeVisible();
-  await expect(list.getByRole("link")).toHaveCount(0);
+  await expect(page.getByText("오늘의 모든 운동을 완료했어요.")).toBeVisible();
+  await expect(list).toHaveCount(0);
   await expect(
     page.getByRole("button", { name: "운동 상태 새로고침" }),
   ).toHaveCount(0);

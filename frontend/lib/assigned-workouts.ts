@@ -21,3 +21,17 @@ export function assignedWorkoutsForDay(
           : a.id.localeCompare(b.id)),
     );
 }
+
+/** Input is the deduplicated assignment/order sequence for one day. */
+export function currentWorkoutStep(rows: readonly Workout[]) {
+  return {
+    workout: rows.find((row) => row.status !== "completed") ?? null,
+    started: rows.some(
+      (row) =>
+        row.status !== "assigned" ||
+        row.performedAt != null ||
+        row.progress.watchedSeconds > 0 ||
+        row.progress.positionSeconds > 0,
+    ),
+  };
+}
