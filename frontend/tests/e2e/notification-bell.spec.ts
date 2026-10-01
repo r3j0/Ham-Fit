@@ -45,7 +45,7 @@ test("뒤 페이지의 미확인 알림도 빨간 점으로 표시하며 읽음 
   expect(dotBounds.y).toBeLessThan(linkBounds.y + linkBounds.height / 2);
   await bell.click();
   await page.getByRole("button", { name: "읽음으로 표시" }).click();
-  await expect(page.getByText("아직 알림이 없어요.")).toBeVisible();
+  await expect(page.getByText("새 그룹 알림이 없어요.")).toBeVisible();
   await page.getByRole("link", { name: "이전 화면", exact: true }).click();
   await expect(page).toHaveURL("/");
   await expect(bell).toBeVisible();

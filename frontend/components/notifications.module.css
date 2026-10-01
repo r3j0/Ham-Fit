@@ -24,6 +24,38 @@
   font-size: 12px;
   line-height: 1.5;
 }
+.rouletteHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+.rouletteHeading h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.rouletteHeading h3 {
+  min-width: 0;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.count {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--tint);
+  color: var(--navy);
+  font-size: 14px;
+  font-weight: 700;
+}
+.rouletteGroup {
+  display: grid;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
 .actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

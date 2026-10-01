@@ -1,15 +1,13 @@
 import {
   invalid,
   integer,
-  number,
   object,
   text,
   timestamp,
   uuid,
 } from "./api-contract.ts";
-import { parseInventory, type Inventory } from "./shop-contract.ts";
 import { isWorkoutDate } from "./workout-history.ts";
-/** Proposed API: enable only after BE accepts frontend/BACKEND-REQUESTS.md. */
+/** Completion receipt remains gated until its backend contract is available. */
 export interface ActivityReward {
   routineId: string;
   koreanDate: string;
@@ -56,88 +54,121 @@ export function parseActivityReward(value: unknown): ActivityReward {
 }
 export interface PersonalTicket {
   id: string;
-  earnedAt: string;
+  achievementId: string;
   koreanDate: string;
-  streak: number;
+  segmentStartDate: string;
+  streakDays: number;
+  createdAt: string;
   policyVersion: string;
-  status: "available" | "used" | "invalidated";
+  status: "available" | "used";
   usable: boolean;
   usedAt: string | null;
 }
-export function parsePersonalTicket(value: unknown): PersonalTicket {
-  const row = object(value);
+function validateMilestone(row: Record<string, unknown>) {
   if (
-    !uuid(row.id) ||
-    !timestamp(row.earnedAt) ||
     !text(row.koreanDate) ||
     !isWorkoutDate(row.koreanDate) ||
-    !integer(row.streak, 5) ||
-    row.streak % 5 !== 0 ||
+    !text(row.segmentStartDate) ||
+    !isWorkoutDate(row.segmentStartDate) ||
+    !integer(row.streakDays, 5) ||
+    row.streakDays % 5 !== 0 ||
+    (Date.parse(row.koreanDate) - Date.parse(row.segmentStartDate)) / 86400000 +
+      1 !==
+      row.streakDays
+  )
+    invalid();
+}
+export function parsePersonalTicket(value: unknown): PersonalTicket {
+  const row = object(value);
+  validateMilestone(row);
+  if (
+    !uuid(row.id) ||
+    !uuid(row.achievementId) ||
+    !timestamp(row.createdAt) ||
     !text(row.policyVersion) ||
-    !["available", "used", "invalidated"].includes(String(row.status)) ||
+    !["available", "used"].includes(String(row.status)) ||
     typeof row.usable !== "boolean" ||
+    row.usable !== (row.status === "available") ||
     !(row.usedAt === null || timestamp(row.usedAt)) ||
-    (row.status === "used") !== (row.usedAt !== null) ||
-    (row.usable && row.status !== "available")
+    (row.status === "used") !== (row.usedAt !== null)
   )
     invalid();
   return row as unknown as PersonalTicket;
 }
-export interface PersonalPolicy {
-  version: string;
-  rewards: {
-    id: string;
-    kind: "currency" | "clothing" | "pose";
-    amount: number | null;
-    probability: number;
-  }[];
-}
-export function parsePersonalPolicy(value: unknown): PersonalPolicy {
-  const row = object(value);
-  if (!text(row.version) || !Array.isArray(row.rewards) || !row.rewards.length)
-    invalid();
-  let total = 0;
-  const ids = new Set();
-  for (const r of row.rewards.map(object)) {
-    if (
-      !text(r.id) ||
-      ids.has(r.id) ||
-      !["currency", "clothing", "pose"].includes(String(r.kind)) ||
-      !number(r.probability) ||
-      r.probability > 100 ||
-      (r.kind === "currency" ? !integer(r.amount, 1) : r.amount !== null)
-    )
-      invalid();
-    ids.add(r.id);
-    total += r.probability;
-  }
-  if (Math.abs(total - 100) > 0.00001) invalid();
-  return row as unknown as PersonalPolicy;
-}
-export interface PersonalDraw extends Inventory {
+export const personalPolicyVersion = "streak-2026-10-01-v1";
+// Display only. Source: backend/docs/streak-roulette.md, checked 2026-10-01.
+// Future policy versions need their own table; this table never decides a draw.
+export const personalPolicy = [
+  { label: "해바라기씨 1개", probability: 60 },
+  { label: "해바라기씨 3개", probability: 25 },
+  { label: "해바라기씨 5개", probability: 10 },
+  { label: "해바라기씨 10개", probability: 4.3 },
+  { label: "랜덤 의상", probability: 0.6 },
+  { label: "랜덤 자세", probability: 0.1 },
+] as const;
+export interface PersonalDraw {
   id: string;
   ticketId: string;
   drawnAt: string;
   policyVersion: string;
-  result:
-    | { kind: "currency"; amount: number; productId: null }
-    | { kind: "clothing" | "pose"; amount: null; productId: string };
+  originalResult:
+    "seeds_1" | "seeds_3" | "seeds_5" | "seeds_10" | "clothing" | "pose";
+  actualReward: {
+    kind: "seeds" | "clothing" | "pose";
+    amount: number;
+    productId: string | null;
+    transactionId: string | null;
+  };
+  fallback: { applied: boolean; reason: "no_eligible_product" | null };
+  achievement: {
+    id: string;
+    koreanDate: string;
+    segmentStartDate: string;
+    streakDays: number;
+    achievedAt: string;
+    sourceKind: "routine" | "daily_assignment";
+    sourceId: string;
+  };
 }
 export function parsePersonalDraw(value: unknown): PersonalDraw {
   const row = object(value),
-    result = object(row.result),
-    inventory = parseInventory(row);
+    reward = object(row.actualReward),
+    fallback = object(row.fallback),
+    achievement = object(row.achievement);
+  validateMilestone(achievement);
   if (
     !uuid(row.id) ||
     !uuid(row.ticketId) ||
     !timestamp(row.drawnAt) ||
     !text(row.policyVersion) ||
-    !["currency", "clothing", "pose"].includes(String(result.kind)) ||
-    (result.kind === "currency"
-      ? !integer(result.amount, 1) || result.productId !== null
-      : result.amount !== null ||
-        !text(result.productId) ||
-        !inventory.inventory.some((i) => i.productId === result.productId))
+    !["seeds_1", "seeds_3", "seeds_5", "seeds_10", "clothing", "pose"].includes(
+      String(row.originalResult),
+    ) ||
+    !uuid(achievement.id) ||
+    !uuid(achievement.sourceId) ||
+    !timestamp(achievement.achievedAt) ||
+    !["routine", "daily_assignment"].includes(String(achievement.sourceKind)) ||
+    !["seeds", "clothing", "pose"].includes(String(reward.kind)) ||
+    !integer(reward.amount, 1) ||
+    typeof fallback.applied !== "boolean"
+  )
+    invalid();
+  if (reward.kind === "seeds") {
+    if (reward.productId !== null || !uuid(reward.transactionId)) invalid();
+    const item =
+      row.originalResult === "clothing" || row.originalResult === "pose";
+    if (
+      fallback.applied !== item ||
+      fallback.reason !== (item ? "no_eligible_product" : null)
+    )
+      invalid();
+  } else if (
+    reward.amount !== 1 ||
+    !text(reward.productId) ||
+    reward.transactionId !== null ||
+    row.originalResult !== reward.kind ||
+    fallback.applied ||
+    fallback.reason !== null
   )
     invalid();
   return row as unknown as PersonalDraw;

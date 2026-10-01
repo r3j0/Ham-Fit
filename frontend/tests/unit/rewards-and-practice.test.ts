@@ -14,7 +14,8 @@ import {
 import {
   parseActivityReward,
   parsePersonalDraw,
-  parsePersonalPolicy,
+  parsePersonalTicket,
+  personalPolicy,
 } from "../../lib/personal-reward-contract.ts";
 import {
   parseCatalog,
@@ -310,28 +311,110 @@ test("seed and water screens require authoritative unique receipt entries", () =
     }),
   );
 });
-test("personal policy is server-supplied and must total 100; item win must be in inventory", () => {
+const personalAchievement = () => ({
+  id: id(3),
+  koreanDate: "2026-10-05",
+  segmentStartDate: "2026-10-01",
+  streakDays: 5,
+  achievedAt: "2026-10-05T00:00:00Z",
+  sourceKind: "routine",
+  sourceId: id(4),
+});
+const personalDraw = () => ({
+  id: id(1),
+  ticketId: id(2),
+  drawnAt: "2026-10-05T01:00:00Z",
+  policyVersion: "streak-2026-10-01-v1",
+  achievement: personalAchievement(),
+  originalResult: "seeds_1",
+  actualReward: {
+    kind: "seeds",
+    amount: 1,
+    productId: null,
+    transactionId: id(5),
+  },
+  fallback: { applied: false, reason: null },
+});
+test("personal tickets preserve actual milestone evidence and used state", () => {
+  const ticket = {
+    ...personalAchievement(),
+    achievementId: id(3),
+    id: id(2),
+    createdAt: date,
+    policyVersion: "streak-2026-10-01-v1",
+    status: "available",
+    usable: true,
+    usedAt: null,
+  };
+  assert.equal(parsePersonalTicket(ticket).streakDays, 5);
   assert.equal(
-    parsePersonalPolicy({
-      version: "test-only",
-      rewards: [{ id: "test", kind: "currency", amount: 1, probability: 100 }],
-    }).version,
-    "test-only",
+    parsePersonalTicket({
+      ...ticket,
+      status: "used",
+      usable: false,
+      usedAt: date,
+    }).usable,
+    false,
+  );
+  for (const change of [
+    { streakDays: 6 },
+    { segmentStartDate: "2026-10-02" },
+    { usable: false },
+    { status: "used" },
+    { achievementId: "bad" },
+  ]) {
+    assert.throws(() => parsePersonalTicket({ ...ticket, ...change }));
+  }
+});
+test("personal draws distinguish seeds, actual items, and documented fallback without inventory synthesis", () => {
+  assert.equal(parsePersonalDraw(personalDraw()).actualReward.amount, 1);
+  const fallback = {
+    ...personalDraw(),
+    originalResult: "clothing",
+    actualReward: { ...personalDraw().actualReward, amount: 50 },
+    fallback: { applied: true, reason: "no_eligible_product" },
+  };
+  assert.equal(parsePersonalDraw(fallback).fallback.applied, true);
+  const item = {
+    ...personalDraw(),
+    originalResult: "pose",
+    actualReward: {
+      kind: "pose",
+      amount: 1,
+      productId: "pose.run",
+      transactionId: null,
+    },
+  };
+  assert.equal(parsePersonalDraw(item).actualReward.productId, "pose.run");
+  assert.throws(() =>
+    parsePersonalDraw({ ...item, originalResult: "clothing" }),
   );
   assert.throws(() =>
-    parsePersonalPolicy({
-      version: "x",
-      rewards: [{ id: "x", kind: "currency", amount: 1, probability: 99 }],
+    parsePersonalDraw({
+      ...fallback,
+      fallback: { applied: false, reason: null },
     }),
   );
   assert.throws(() =>
     parsePersonalDraw({
-      ...inventory(),
-      id: id(1),
-      ticketId: id(2),
-      drawnAt: date,
-      policyVersion: "x",
-      result: { kind: "pose", productId: "pose.run", amount: null },
+      ...item,
+      actualReward: { ...item.actualReward, amount: 0 },
     }),
+  );
+  assert.throws(() =>
+    parsePersonalDraw({
+      ...personalDraw(),
+      achievement: { ...personalAchievement(), streakDays: 10 },
+    }),
+  );
+});
+test("the versioned personal probability display matches the published backend policy", () => {
+  assert.deepEqual(
+    personalPolicy.map((row) => row.probability),
+    [60, 25, 10, 4.3, 0.6, 0.1],
+  );
+  assert.ok(
+    Math.abs(personalPolicy.reduce((n, row) => n + row.probability, 0) - 100) <
+      1e-8,
   );
 });

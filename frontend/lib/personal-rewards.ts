@@ -1,10 +1,9 @@
 import { api, invalidateUserProfile } from "./session";
-import { invalid, object } from "./api-contract";
+import { invalid, object, integer, pageOf } from "./api-contract";
 import { readPages } from "./groups";
 import {
   parseActivityReward,
   parsePersonalDraw,
-  parsePersonalPolicy,
   parsePersonalTicket,
 } from "./personal-reward-contract";
 export const dailyRewardsEnabled =
@@ -25,18 +24,19 @@ export async function getActivityReward(
   return row;
 }
 export const getPersonalTickets = (signal?: AbortSignal) =>
-  readPages("/users/me/roulette/tickets", parsePersonalTicket, signal);
-export const getPersonalPolicy = (version: string, signal?: AbortSignal) =>
-  api<unknown>(
-    `/users/me/roulette/policy?version=${encodeURIComponent(version)}`,
+  readPages("/users/me/streak-roulette/tickets", parsePersonalTicket, signal);
+export async function getPersonalTicketCount(signal?: AbortSignal) {
+  const { data } = await api<unknown>(
+    "/users/me/streak-roulette/tickets?limit=1",
     { signal },
-  ).then(({ data }) => {
-    const policy = parsePersonalPolicy(data);
-    if (policy.version !== version) invalid();
-    return policy;
-  });
+  );
+  const row = object(data);
+  pageOf(row, parsePersonalTicket);
+  if (!integer(row.availableCount)) invalid();
+  return row.availableCount;
+}
 export async function spinPersonal(body: string, key: string) {
-  const { data } = await api<unknown>("/users/me/roulette/spins", {
+  const { data } = await api<unknown>("/users/me/streak-roulette/spins", {
     method: "POST",
     body,
     headers: { "X-CSRF-Protection": "1", "Idempotency-Key": key },

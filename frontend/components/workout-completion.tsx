@@ -9,7 +9,6 @@ import { errorMessage } from "@/lib/http";
 import { useApiResource } from "./use-api-resource";
 import { Header, Loading, Notice, Shell } from "./ui";
 import { MascotPose } from "./mascot/MascotPose";
-import { RewardLinks } from "./personal-roulette";
 export function WorkoutCompletion({
   id,
   step = "complete",
@@ -197,7 +196,6 @@ function Completed({
       {step !== "complete" && reward.loading && (
         <Loading label="보상 내역을 확인하고 있어요" />
       )}
-      {next === "/" && <RewardLinks />}
       {step === "streak" && (reward.loading || activity.loading) ? (
         <button className="button primary" disabled>
           완료 내역 확인 중

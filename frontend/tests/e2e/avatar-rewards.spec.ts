@@ -412,11 +412,37 @@ test("그룹 미션은 시작 인원과 참여 자격을 표시하고 룰렛 응
   await expect(
     page.getByText("미션 시작 후 들어왔어요. 다음 미션부터 참여할 수 있어요."),
   ).toBeVisible();
-  await page.getByRole("link", { name: "그룹 룰렛 · 1회" }).click();
+  await page.route("**/api/v1/groups?*", (route) =>
+    route.fulfill({
+      json: {
+        items: [
+          {
+            id: groupId,
+            name: "함께 운동",
+            description: "미션",
+            maxMembers: 5,
+            currentMembers: 2,
+            createdAt: date,
+            role: "leader",
+          },
+        ],
+        nextCursor: null,
+      },
+    }),
+  );
+  await page.goto("/account/notifications");
+  await page
+    .getByRole("region", { name: "그룹 룰렛", exact: true })
+    .getByRole("link", { name: "룰렛 돌리기" })
+    .click();
   await page.getByRole("button", { name: "룰렛 돌리기", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "이전 추첨 결과 확인" }),
   ).toBeVisible();
+  await page.getByRole("link", { name: "알림으로", exact: true }).click();
+  await expect(page.getByLabel("그룹 룰렛 사용 가능 횟수")).toHaveText("0회");
+  await page.getByRole("link", { name: "이전 추첨 결과 확인" }).click();
+  await expect(page).toHaveURL(`/groups/${groupId}/roulette`);
   await page.reload();
   await page.getByRole("button", { name: "이전 추첨 결과 확인" }).click();
   await expect(page.getByText("내가 받은 해바라기씨 3개")).toBeVisible();
@@ -553,74 +579,3 @@ for (const kind of ["reps", "hold", "timed"] as const)
       page.getByRole("link", { name: "영상으로 돌아가 완료하기" }),
     ).toBeVisible();
   });
-test("개인 룰렛은 서버 정책과 아이템 지급 결과를 표시한다 (제안 계약)", async ({
-  page,
-}) => {
-  test.skip(
-    process.env.E2E_PROPOSED_REWARDS !== "true",
-    "제안 BE 계약을 켠 별도 테스트 서버에서 실행",
-  );
-  const commerce = await installCommerce(page);
-  let used = false;
-  await page.route("**/api/v1/users/me/roulette/**", (route) => {
-    const path = new URL(route.request().url()).pathname;
-    if (path.endsWith("/tickets"))
-      return route.fulfill({
-        json: {
-          items: [
-            {
-              id: id(31),
-              earnedAt: date,
-              koreanDate: "2026-10-01",
-              streak: 5,
-              policyVersion: "test-only",
-              status: used ? "used" : "available",
-              usable: !used,
-              usedAt: used ? date : null,
-            },
-          ],
-          nextCursor: null,
-        },
-      });
-    if (path.endsWith("/policy"))
-      return route.fulfill({
-        json: {
-          version: "test-only",
-          rewards: [
-            { id: "test", kind: "pose", amount: null, probability: 100 },
-          ],
-        },
-      });
-    used = true;
-    commerce.owned.push("pose.run");
-    return route.fulfill({
-      status: 201,
-      json: {
-        replayed: false,
-        draw: {
-          id: id(32),
-          ticketId: id(31),
-          drawnAt: date,
-          policyVersion: "test-only",
-          result: { kind: "pose", amount: null, productId: "pose.run" },
-          currency: { balance: commerce.balance },
-          inventory: commerce.owned.map((productId) => ({
-            productId,
-            source: productId === "pose.run" ? "reward" : "default",
-            acquiredAt: date,
-          })),
-        },
-      },
-    });
-  });
-  await page.goto("/roulette/personal");
-  await page.getByText("이번 룰렛의 보상 확률").click();
-  await expect(page.getByText("랜덤 자세 · 100%")).toBeVisible();
-  await page.getByRole("button", { name: "룰렛 돌리기" }).click();
-  await expect(
-    page.getByRole("link", { name: "옷장에서 확인하기" }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "룰렛 돌리기" }),
-  ).toBeDisabled();
-});

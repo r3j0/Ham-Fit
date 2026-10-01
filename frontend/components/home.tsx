@@ -4,7 +4,6 @@ import { HomeGroups } from "./home-groups";
 import { NotificationBell } from "./notification-bell";
 import { SeedBalance } from "./seed-balance";
 import { MyCharacter } from "./my-character";
-import { RewardLinks } from "./personal-roulette";
 import { ArrowRight } from "lucide-react";
 import { Loading, Notice, Shell } from "./ui";
 import { TodayWorkout } from "./today-workout";
@@ -74,7 +73,6 @@ export function Home() {
                 <TodayWorkout embedded />
               </section>
               <WorkoutStreak />
-              <RewardLinks />
             </div>
           </>
         )}

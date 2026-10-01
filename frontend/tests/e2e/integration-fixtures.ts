@@ -246,10 +246,10 @@ export async function installApi(
         ),
       });
     if (
-      path === "/users/me/roulette/tickets" ||
+      path === "/users/me/streak-roulette/tickets" ||
       /\/groups\/[^/]+\/roulette\/(tickets|draws)$/.test(path)
     )
-      return send({ items: [], nextCursor: null });
+      return send({ items: [], availableCount: 0, nextCursor: null });
     if (/\/groups\/[^/]+\/missions\/current$/.test(path))
       return send({ id: null, status: "not_started" });
     if (path === "/workouts/current") return send(testWorkout);

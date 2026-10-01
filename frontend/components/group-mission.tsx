@@ -1,12 +1,7 @@
 "use client";
-import Link from "next/link";
 import { useCallback, useState } from "react";
 import { errorMessage } from "@/lib/http";
-import {
-  getMission,
-  getGroupTickets,
-  startMission,
-} from "@/lib/group-missions";
+import { getMission, startMission } from "@/lib/group-missions";
 import type { MissionStage } from "@/lib/group-mission-contract";
 import { useApiResource } from "./use-api-resource";
 import { useDurableMutation } from "./use-durable-mutation";
@@ -109,7 +104,6 @@ export function GroupMission({
     useCallback(
       async (signal: AbortSignal) => ({
         mission: await getMission(id, signal),
-        tickets: await getGroupTickets(id, signal),
       }),
       [id],
     ),
@@ -134,8 +128,7 @@ export function GroupMission({
       resource.reload();
     }
   }
-  const mission = resource.data?.mission,
-    tickets = resource.data?.tickets.filter((t) => t.usable).length ?? 0;
+  const mission = resource.data?.mission;
   return (
     <section className="mission-card stack-sm" aria-label="그룹 해바라기 미션">
       <div className="mission-heading">
@@ -210,14 +203,6 @@ export function GroupMission({
       )}
       {!leader && mission?.status === "not_started" && (
         <p className="caption">그룹장이 미션을 시작할 수 있어요.</p>
-      )}
-      {resource.data && (
-        <Link
-          className={`button ${tickets ? "primary" : "secondary"}`}
-          href={`/groups/${id}/roulette`}
-        >
-          그룹 룰렛 · {tickets}회
-        </Link>
       )}
       <p className="caption">
         해바라기가 완성되면 내 물 주기 7번마다 룰렛 1회를 받아요.

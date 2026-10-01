@@ -102,5 +102,5 @@ test("알림 페이지 병합, 읽음 저장 실패와 재시도, 잘못된 응�
   await expect(page.getByRole("main").getByRole("alert")).toContainText(
     "서버 응답을 확인할 수 없어요",
   );
-  await expect(page.getByText("아직 알림이 없어요.")).toHaveCount(0);
+  await expect(page.getByText("새 그룹 알림이 없어요.")).toHaveCount(0);
 });

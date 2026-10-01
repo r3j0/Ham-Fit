@@ -2,16 +2,17 @@
 import Link from "next/link";
 import { useCallback, useState } from "react";
 import {
-  getPersonalPolicy,
   getPersonalTickets,
   personalRouletteEnabled,
   spinPersonal,
 } from "@/lib/personal-rewards";
-import { getGroups } from "@/lib/groups";
-import { getGroupTickets } from "@/lib/group-missions";
 import { getCatalog, getInventory } from "@/lib/shop";
 import { productName } from "@/lib/avatar-preview";
-import type { PersonalDraw } from "@/lib/personal-reward-contract";
+import {
+  personalPolicy,
+  personalPolicyVersion,
+  type PersonalDraw,
+} from "@/lib/personal-reward-contract";
 import { errorMessage } from "@/lib/http";
 import { useApiResource } from "./use-api-resource";
 import { useDurableMutation } from "./use-durable-mutation";
@@ -21,7 +22,7 @@ import { useUnsaved } from "./use-unsaved";
 export function PersonalRoulette() {
   return (
     <Shell>
-      <Header title="개인 룰렛" back="/" />
+      <Header title="개인 룰렛" back="/account/notifications" />
       <div className="content stack roulette-page">
         {personalRouletteEnabled ? (
           <PersonalWheel />
@@ -32,8 +33,8 @@ export function PersonalRoulette() {
             </div>
             <h1>개인 룰렛을 준비하고 있어요</h1>
             <p>5일씩 쌓아 가는 연속 운동에 선물을 더할 예정이에요.</p>
-            <Link className="button primary" href="/">
-              메인으로
+            <Link className="button primary" href="/account/notifications">
+              알림으로
             </Link>
           </>
         )}
@@ -53,11 +54,12 @@ function PersonalWheel() {
         .filter((t) => t.usable)
         .sort(
           (a, b) =>
-            a.earnedAt.localeCompare(b.earnedAt) || a.id.localeCompare(b.id),
+            a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id),
         );
-      const policy = available.length
-        ? await getPersonalPolicy(available[0].policyVersion, signal)
-        : null;
+      const policy =
+        available[0]?.policyVersion === personalPolicyVersion
+          ? personalPolicy
+          : undefined;
       return { tickets: available, inventory, catalog, policy };
     }, []),
   );
@@ -84,7 +86,7 @@ function PersonalWheel() {
     }
   }
   const wonProduct = resource.data?.catalog.products.find(
-    (p) => p.id === draw?.result.productId,
+    (p) => p.id === draw?.actualReward.productId,
   );
   return (
     <>
@@ -115,15 +117,26 @@ function PersonalWheel() {
       {draw && (
         <div className="reward-result" role="status">
           <h2>
-            {draw.result.kind === "currency"
-              ? `해바라기씨 ${draw.result.amount}개를 받았어요!`
-              : `${wonProduct ? productName(wonProduct) : draw.result.kind === "pose" ? "새로운 자세" : "새로운 의상"}를 받았어요!`}
+            {draw.actualReward.kind === "seeds"
+              ? `해바라기씨 ${draw.actualReward.amount}개를 받았어요!`
+              : `${wonProduct ? productName(wonProduct) : draw.actualReward.kind === "pose" ? "새로운 자세" : "새로운 의상"}를 받았어요!`}
           </h2>
-          <p>보유 해바라기씨 {draw.currency.balance}개</p>
-          {draw.result.kind !== "currency" && (
+          {draw.fallback.applied && (
+            <p>
+              받을 수 있는{" "}
+              {draw.originalResult === "clothing" ? "의상" : "자세"}이 없어
+              해바라기씨로 지급됐어요.
+            </p>
+          )}
+          {draw.actualReward.kind !== "seeds" && (
             <Link href="/shop/wardrobe">옷장에서 확인하기</Link>
           )}
         </div>
+      )}
+      {resource.data && !resource.error && (
+        <p className="caption">
+          보유 해바라기씨 {resource.data.inventory.currency.balance}개
+        </p>
       )}
       {mutation.pending && !mutation.busy && (
         <Notice tone="info">이전 추첨 결과를 다시 확인해 주세요.</Notice>
@@ -150,70 +163,17 @@ function PersonalWheel() {
         <details>
           <summary>이번 룰렛의 보상 확률</summary>
           <ul>
-            {resource.data.policy.rewards.map((r) => (
-              <li key={r.id}>
-                {r.kind === "currency"
-                  ? `해바라기씨 ${r.amount}개`
-                  : r.kind === "clothing"
-                    ? "랜덤 의상"
-                    : "랜덤 자세"}{" "}
-                · {r.probability}%
+            {resource.data.policy.map((r) => (
+              <li key={r.label}>
+                {r.label} · {r.probability}%
               </li>
             ))}
           </ul>
         </details>
       )}
-      <Link className="button secondary" href="/">
-        메인으로
+      <Link className="button secondary" href="/account/notifications">
+        알림으로
       </Link>
     </>
-  );
-}
-export function RewardLinks() {
-  const resource = useApiResource(
-    useCallback(async (signal: AbortSignal) => {
-      const groups = await getGroups(signal);
-      const [personal, ...counts] = await Promise.all([
-        personalRouletteEnabled
-          ? getPersonalTickets(signal).then(
-              (t) => t.filter((x) => x.usable).length,
-            )
-          : Promise.resolve(null),
-        ...groups.map((g) =>
-          getGroupTickets(g.id, signal).then((t) => ({
-            id: g.id,
-            name: g.name,
-            count: t.filter((x) => x.usable).length,
-          })),
-        ),
-      ]);
-      return { personal, groups: counts };
-    }, []),
-  );
-  return (
-    <div className="stack-sm reward-links">
-      <Link className="button secondary" href="/roulette/personal">
-        개인 룰렛
-        {resource.data?.personal != null
-          ? ` · ${resource.data.personal}회`
-          : ""}
-      </Link>
-      {resource.data?.groups
-        .filter((g) => g.count > 0)
-        .map((g) => (
-          <Link
-            key={g.id}
-            className="button primary"
-            href={`/groups/${g.id}/roulette`}
-          >
-            {g.name} 룰렛 · {g.count}회
-          </Link>
-        ))}
-      {resource.error ? (
-        <button className="text-button" onClick={resource.reload}>
-          룰렛 횟수 다시 확인
-        </button>
-      ) : null}
-    </div>
   );
 }

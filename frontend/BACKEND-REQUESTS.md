@@ -1,6 +1,6 @@
 # FE 연동 구현과 BE 요청 규격
 
-기준: 최신 main `95b3a69`에 BE PR #9의 `44d1355`까지 병합됨. 2026-10-01 사용자 확정 답변을 반영한 BE 작업 전달 규격이다. 이 문서 변경은 요청 규격만 포함하며 BE 소스·DB·실행 서버는 변경하지 않는다. 기존 계획보다 아래 최신 확정 사항을 우선한다.
+기준: 최신 main `95b3a69`에 BE PR #9의 `44d1355`까지 병합됨. 2026-10-01 사용자 확정 답변을 반영한 BE 작업 전달 규격이다. 이 문서의 이전 요청 규격과 아래 최신 연동 상태를 구분한다. 기존 계획보다 아래 최신 확정 사항을 우선한다.
 
 ## 다른 세션의 BE 담당자에게 전달할 작업
 
@@ -35,7 +35,7 @@
 
 ## 완료 보상 API 요청 및 개인 룰렛 연동 상태
 
-완료 보상 영수증은 아직 BE 미구현이다. 개인 룰렛은 병합된 BE에 구현됐으나 아래에 정리한 FE 계약 변경이 남았다. 현재 `.env.example`의 두 출시 설정은 `false`로 유지한다. 활성화 설정만 바꾸면 계약 불일치로 실패한다.
+완료 보상 영수증은 별도 출시 설정으로 유지한다. 개인 룰렛은 `/users/me/streak-roulette`의 실제 BE 계약으로 연결했으며, 로컬 테스트 서버와 `.env.example`에서 `NEXT_PUBLIC_PERSONAL_ROULETTE_ENABLED=true`로 활성화한다. 일일 보상 영수증 설정은 별개다.
 
 ### 1. 완료 보상 영수증
 
@@ -84,25 +84,29 @@
 - 정책 `streak-2026-10-01-v1`: 씨앗 1/3/5/10개 각각 60/25/10/4.3%, 미보유 판매 의상 0.6%, 미보유 판매 자세 0.1%. 상품 없음/전부 보유 시 의상은 씨앗 50개, 자세는 70개로 대체한다.
 - 정책 조회 API는 없다. FE의 현재 제안 `getPersonalPolicy()`를 그대로 호출할 수 없다. 확정 버전의 표시용 정책표를 채택하거나 BE 조회 API를 추가해야 한다. 추첨·지급 판단은 계속 서버만 담당한다.
 
-**남은 FE 작업:** `lib/personal-rewards.ts`의 이전 `/users/me/roulette` 경로, `personal-reward-contract.ts`의 `earnedAt/streak/result/currency/inventory` 구조, 화면의 정렬/보상/잔액 표시를 위 계약으로 교체하고 실제 API로 검증한다. 현재 페이지는 준비 상태이며 플래그는 끈다. 이전 제안 계약의 mock 테스트는 새 BE 연동 완료 근거가 아니다.
+**2026-10-01 FE 연동 완료:** 실제 티켓·달성 근거·`actualReward`·대체 지급 계약을 파싱한다. 알림의 개인 횟수는 티켓 페이지와 무관한 서버 `availableCount`를 사용하고, 추첨 대상은 페이지를 끝까지 읽어 발급 시각/ID 순서로 선택한다. 보상 확률은 위 확정 버전의 표시용 표이며 서버 조회 API를 만들지 않는다. 결과에 잔액을 합성하지 않고 지급 후 inventory를 다시 조회한다. 개인·그룹 룰렛 진입점은 `/account/notifications`로 통합하며, 미확정 추첨 저널이 있으면 0회여도 같은 키·본문의 결과 확인 진입을 허용한다.
+
+### 3. 현재 미션 참여자 물 횟수
+
+그룹 상세와 그룹원 상세의 `missionContribution: {roundId,waterCount} | null`을 읽는다. 현재 회차의 유효 참가자는 0회를 포함해 물 아이콘·누적 횟수를 표시하고, 미참여자는 표시하지 않는다. 필드 미제공 구버전에서도 가짜 0회를 만들지 않는다. 이번 변경은 BE 그룹 서비스의 응답 확장·DB 통합 테스트를 포함하고 로컬 테스트 BE에 같은 서비스를 적용했다. 마이그레이션은 필요 없다. 현재 회차 선택·탈퇴 후 재가입·새 회차 초기화는 [그룹 API](../backend/docs/groups-api.md)를 따른다. 운영 서버 반영은 별도 배포다.
 
 ## 의상 및 자세 등록 요청 — hamster-outputter-v2
 
 사용자 지정 `hamster-outputter-v2.zip`을 현재 출력기로 사용한다. 이전 `little-wardrobe-stage/v1` 의상 좌표 및 스포츠웨어 4종은 활성 출력기에서 제외했다. 원본 16자세 × 크림/그레이 32장과 기본 자세의 민트 티셔츠 2장만 새 registry에서 지원한다. 상세 이식 범위는 [HAMSTER-OUTPUTTER.md](HAMSTER-OUTPUTTER.md)를 참고한다.
 
-| 제안 productId        | 이름        | slot/occupiesSlots | renderKey    | 가격                       | 지원               |
-| --------------------- | ----------- | ------------------ | ------------ | -------------------------- | ------------------ |
-| `clothing.mint-shirt` | 민트 티셔츠 | top / [top]        | `mint-shirt` | 확정 25                    | basic × cream/gray |
+| 제안 productId        | 이름        | slot/occupiesSlots | renderKey    | 가격    | 지원               |
+| --------------------- | ----------- | ------------------ | ------------ | ------- | ------------------ |
+| `clothing.mint-shirt` | 민트 티셔츠 | top / [top]        | `mint-shirt` | 확정 25 | basic × cream/gray |
 
 공통 `kind=clothing, ownershipScope=shared, scopeCharacterId=null`. productId는 제안이며 FE는 실제 BE catalog의 ID와 가격을 사용한다. 두 캐릭터별 `{characterId,poseId:"pose.basic",clothingIds:[<등록된 상품 ID>]}` 조합을 명시적으로 등록해야 한다. 민트 티셔츠를 다른 자세로 착용 가능한 것으로 등록하면 안 된다. 모자·하의 실물은 ZIP에 없으므로 등록하지 않는다.
 
 ### 2026-10-01 확정 상품·가격
 
-| 가격 | renderKey |
-| ---- | --------- |
-| 기본 지급·비판매 | `basic` |
-| 50개 | `curious`, `drink`, `lying`, `stretch`, `droopy`, `cant-hear`, `foam-roller`, `phone`, `toilet` |
-| 70개 | `passion`, `victory`, `run`, `pushup`, `situp`, `weight` |
+| 가격             | renderKey                                                                                       |
+| ---------------- | ----------------------------------------------------------------------------------------------- |
+| 기본 지급·비판매 | `basic`                                                                                         |
+| 50개             | `curious`, `drink`, `lying`, `stretch`, `droopy`, `cant-hear`, `foam-roller`, `phone`, `toilet` |
+| 70개             | `passion`, `victory`, `run`, `pushup`, `situp`, `weight`                                        |
 
 사용자 답변으로 위 분류를 확정했다. BE 상품 행에서 가격과 `priceProvisional=false`를 반영하고 기존 상품 revision 증가 규칙을 사용한다. 신규 상품은 검증된 조합을 등록한 뒤 판매한다. 임시 60개를 유지하지 않는다. 캐릭터 `character.cream`/`character.gray` 및 `pose.basic`의 기본 지급 정책과 내부 ID는 유지하며 표시 이름만 햄돌이/햄콩이다.
 

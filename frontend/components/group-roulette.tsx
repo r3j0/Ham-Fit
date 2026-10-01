@@ -71,7 +71,7 @@ export function GroupRoulette({ id }: { id: string }) {
   }
   return (
     <Shell>
-      <Header title="그룹 룰렛" back={`/groups/${id}`} />
+      <Header title="그룹 룰렛" back="/account/notifications" />
       <div className="content stack roulette-page">
         <div className="intro">
           <p className="eyebrow">함께 키운 해바라기의 선물</p>
@@ -195,8 +195,8 @@ export function GroupRoulette({ id }: { id: string }) {
             ))}
           </section>
         )}
-        <Link href={`/groups/${id}`} className="button secondary">
-          그룹으로 돌아가기
+        <Link href="/account/notifications" className="button secondary">
+          알림으로
         </Link>
       </div>
     </Shell>

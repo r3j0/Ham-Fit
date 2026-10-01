@@ -69,7 +69,7 @@ test("실제 알림: 신청·거절·승인 알림과 읽음 상태를 계정별
     await expect(page.getByText("새 그룹 가입 신청이 도착했어요.")).toHaveCount(
       0,
     );
-    await expect(page.getByText("아직 알림이 없어요.")).toBeVisible();
+    await expect(page.getByText("새 그룹 알림이 없어요.")).toBeVisible();
     expect(
       (
         await (

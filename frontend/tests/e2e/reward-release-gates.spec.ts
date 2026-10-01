@@ -30,16 +30,20 @@ test("기본 출시 설정은 미구현 지급 API를 호출하거나 보상 획
   );
   const proposed: string[] = [];
   page.on("request", (req) => {
-    if (/\/users\/me\/(activity-rewards|roulette)/.test(req.url()))
+    if (
+      /\/users\/me\/(activity-rewards|roulette|streak-roulette)/.test(req.url())
+    )
       proposed.push(req.url());
   });
-  await page.goto("/roulette/personal");
-  await expect(
-    page.getByRole("heading", { name: "개인 룰렛을 준비하고 있어요" }),
-  ).toBeVisible();
-  await expect(page.getByRole("button", { name: "룰렛 돌리기" })).toHaveCount(
-    0,
-  );
+  if (process.env.E2E_PERSONAL_ROULETTE !== "true") {
+    await page.goto("/roulette/personal");
+    await expect(
+      page.getByRole("heading", { name: "개인 룰렛을 준비하고 있어요" }),
+    ).toBeVisible();
+    await expect(page.getByRole("button", { name: "룰렛 돌리기" })).toHaveCount(
+      0,
+    );
+  }
   await page.goto(`/workout-routines/${routine.id}/complete/streak`);
   await expect(
     page.getByRole("link", { name: "메인으로", exact: true }),
