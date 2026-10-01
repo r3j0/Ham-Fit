@@ -37,6 +37,10 @@ for (const width of [320, 600, 1218]) {
       };
       await page.goto(`/workout-routines/${row.id}/items/${item.id}`);
       const guide = page.getByRole("region", { name: "운동 방법" });
+      await expect(guide).toContainText("아래와 같은 방식으로 운동하세요!");
+      await expect(
+        guide.getByText("아래와 같은 방식으로 운동하세요!"),
+      ).toHaveCSS("font-weight", "700");
       await expect(guide).toContainText(`${value}${unit}`);
       await expect(guide).toContainText("20초");
       await expect(guide).toContainText("3세트");
@@ -191,3 +195,33 @@ test("홈은 빈 그룹 영역을 숨기고 두 제목은 KSPO Blue이며 완료
     fullPage: true,
   });
 });
+
+for (const width of [320, 600, 1218]) {
+  test(`${width}px 상태 햄스터는 모바일 목록 위·데스크톱 기록 위에 있다`, async ({
+    page,
+  }, info) => {
+    await page.setViewportSize({ width, height: 900 });
+    await installRoutine(page, routineFixture());
+    await page.goto("/workout");
+    const mascot = page.getByRole("img", {
+      name: "오늘의 운동 상태를 보여주는 내 햄스터",
+    });
+    await expect(mascot).toBeVisible();
+    const box = (await mascot.boundingBox())!;
+    const list = (await page
+      .getByRole("list", { name: "오늘 배정된 운동" })
+      .boundingBox())!;
+    const calendar = (await page
+      .getByRole("region", { name: "운동 기록", exact: true })
+      .boundingBox())!;
+    if (width < 960) expect(box.y + box.height).toBeLessThan(list.y);
+    else {
+      expect(box.x).toBeGreaterThan(list.x + list.width);
+      expect(box.y + box.height).toBeLessThan(calendar.y);
+    }
+    await page.screenshot({
+      path: info.outputPath(`mascot-position-${width}.png`),
+      fullPage: true,
+    });
+  });
+}

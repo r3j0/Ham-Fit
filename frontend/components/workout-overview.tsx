@@ -27,6 +27,7 @@ export function WorkoutOverview({
         </div>
       ) : (
         <div className={`content ${styles.overview}`}>
+          <WorkoutHistoryMascot />
           <section
             className={styles.assignment}
             aria-labelledby="today-workout-title"
@@ -34,7 +35,6 @@ export function WorkoutOverview({
             <TodayWorkout embedded showAll />
           </section>
           <div className={styles.history}>
-            <WorkoutHistoryMascot />
             <WorkoutCalendar />
           </div>
         </div>
