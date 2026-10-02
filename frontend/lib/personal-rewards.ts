@@ -14,7 +14,7 @@ export async function getActivityReward(
   routineId: string,
   signal?: AbortSignal,
 ) {
-  if (!dailyRewardsEnabled) return null;
+  if (!dailyRewardsEnabled && !personalRouletteEnabled) return null;
   const { data } = await api<unknown>(
     `/users/me/activity-rewards?routineId=${encodeURIComponent(routineId)}`,
     { signal },

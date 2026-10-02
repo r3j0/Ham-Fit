@@ -5,3 +5,62 @@
   border-radius: var(--radius-hero);
   background: var(--canvas);
 }
+
+.rouletteCelebration {
+  margin: 8px 0;
+}
+.rouletteReward {
+  position: relative;
+  width: min(240px, 65vw);
+}
+.rouletteReward > div {
+  width: 100%;
+  margin: 12px 0;
+}
+.ticketBadge {
+  position: absolute;
+  bottom: 12px;
+  right: 0;
+  display: grid;
+  place-items: center;
+  width: 68px;
+  height: 68px;
+  border: 5px solid var(--surface);
+  border-radius: 50%;
+  background: #0a2a70;
+  color: #fff;
+  font-size: 28px;
+  font-weight: 800;
+  box-shadow: 0 6px 20px #0a2a7026;
+}
+.ticketTitle {
+  color: #0a2a70;
+}
+.ticketHint {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+@media (max-height: 740px) {
+  .rouletteStep.rouletteStep {
+    gap: 12px;
+    padding-top: 12px;
+  }
+  .rouletteStep .rouletteCelebration {
+    margin: 0;
+  }
+  .rouletteStep .rouletteReward {
+    width: 160px;
+  }
+  .rouletteStep .rouletteReward > div {
+    margin: 8px 0;
+  }
+  .rouletteStep .ticketBadge {
+    width: 52px;
+    height: 52px;
+    font-size: 22px;
+  }
+  .rouletteStep h1 {
+    font-size: 24px;
+  }
+}

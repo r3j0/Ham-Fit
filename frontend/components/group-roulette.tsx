@@ -101,7 +101,7 @@ export function GroupRoulette({ id }: { id: string }) {
   }
   return (
     <Shell className={`${styles.page} ${styles.group}`}>
-      <Header title="해바라기 미션 보상 룰렛" back="/account/notifications" />
+      <Header title="해바라기 미션 보상 룰렛" back={`/groups/${id}`} />
       <div className="content stack roulette-page">
         <div className="intro">
           <h1>행운을 돌려 보세요</h1>
@@ -185,8 +185,8 @@ export function GroupRoulette({ id }: { id: string }) {
             있어요.
           </p>
         )}
-        <Link href="/account/notifications" className="button secondary">
-          알림으로
+        <Link href={`/groups/${id}`} className="button secondary">
+          그룹으로
         </Link>
         {!!resource.data?.draws.length && (
           <section className={styles.history} aria-label="최근 받은 선물">

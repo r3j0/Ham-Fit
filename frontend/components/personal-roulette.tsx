@@ -50,7 +50,7 @@ const results = [
 export function PersonalRoulette() {
   return (
     <Shell className={styles.page}>
-      <Header title="스트릭 보상 룰렛" back="/account/notifications" />
+      <Header title="스트릭 보상 룰렛" back="/" />
       <div className="content stack roulette-page">
         {personalRouletteEnabled ? (
           <PersonalWheel />

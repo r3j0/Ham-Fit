@@ -80,6 +80,35 @@ async function setup(page: Page) {
       },
     }),
   );
+  await page.route("**/api/v1/users/me/activity-rewards?*", (route) =>
+    route.fulfill({
+      json: {
+        routineId: routine.id,
+        koreanDate: routine.koreanDate,
+        seed: { status: "not_eligible", amount: 0, transactionId: null },
+        waters: [],
+        personalTicketIds: [],
+      },
+    }),
+  );
+  await page.route("**/api/v1/users/me/group-mission-water**", (route) =>
+    route.fulfill({
+      json: {
+        sourceKind: "routine",
+        sourceId: routine.id,
+        koreanDate: routine.koreanDate,
+        status: "contributed",
+        reason: null,
+        options: [],
+        contribution: {
+          groupId: "30000000-0000-4000-8000-000000000001",
+          groupName: "함께 운동",
+          roundId: "30000000-0000-4000-8000-000000000002",
+          amount: 1,
+        },
+      },
+    }),
+  );
   return { routine, state, base: `/workout-routines/${routine.id}/complete` };
 }
 

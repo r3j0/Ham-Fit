@@ -57,13 +57,34 @@ async function setup(page: Page) {
   return commerce;
 }
 
-test("알림에 개인 전체 횟수와 여러 그룹의 페이지 병합 횟수를 모으고 모바일에서도 표시한다", async ({
+async function installGroup(page: Page, n: number) {
+  await page.route(`**/api/v1/groups/${id(n)}`, (route) =>
+    route.fulfill({
+      json: {
+        ...group(n),
+        currentMembers: 1,
+        members: [
+          {
+            userId: testUser.id,
+            nickname: "운동 친구",
+            profileCharacter: null,
+            role: "leader",
+            streak: 5,
+            joinedAt: date,
+            todayWorkoutCompleted: true,
+          },
+        ],
+      },
+    }),
+  );
+}
+
+test("개인 룰렛은 연속 운동 아래, 그룹 룰렛은 각 그룹 맨 아래에서 진입한다", async ({
   page,
 }, info) => {
   await setup(page);
-  await page.route("**/api/v1/groups?*", (route) =>
-    route.fulfill({ json: { items: [group(1), group(2)], nextCursor: null } }),
-  );
+  await installGroup(page, 1);
+  await installGroup(page, 2);
   await page.route(`**/api/v1/groups/${id(1)}/roulette/tickets?*`, (route) =>
     route.fulfill({
       json: new URL(route.request().url()).searchParams.has("cursor")
@@ -83,74 +104,108 @@ test("알림에 개인 전체 횟수와 여러 그룹의 페이지 병합 횟수
       },
     }),
   );
+  const ticketRequests: string[] = [];
+  page.on("request", (request) => {
+    if (request.url().includes("roulette/tickets"))
+      ticketRequests.push(request.url());
+  });
   await page.goto("/account/notifications");
-  await expect(page.getByLabel("그룹 룰렛 사용 가능 횟수")).toHaveText("3회");
-  const groups = page.getByRole("region", { name: "그룹 룰렛", exact: true });
-  await expect(groups.getByRole("link", { name: "룰렛 돌리기" })).toHaveCount(
-    2,
-  );
-  if (process.env.E2E_PERSONAL_ROULETTE === "true")
-    await expect(page.getByLabel("개인 룰렛 사용 가능 횟수")).toHaveText("7회");
-  else
-    await expect(page.getByLabel("개인 룰렛 사용 가능 횟수")).toHaveText(
-      "준비 중",
-    );
-  for (const width of [320, 390, 1218]) {
-    await page.setViewportSize({ width, height: 844 });
-    expect(
-      await page.evaluate(() => document.documentElement.scrollWidth),
-    ).toBeLessThanOrEqual(width);
-    await page.screenshot({
-      path: info.outputPath(`roulette-notifications-${width}.png`),
-      fullPage: true,
-    });
-  }
-  await groups.getByRole("link", { name: "룰렛 돌리기" }).first().click();
-  await expect(page).toHaveURL(`/groups/${id(1)}/roulette`);
+  await expect(page.getByText("새 그룹 알림이 없어요.")).toBeVisible();
+  await expect(page.getByRole("region", { name: /룰렛/ })).toHaveCount(0);
+  expect(ticketRequests).toHaveLength(0);
   await page.goto("/");
-  await expect(
-    page.getByRole("link", { name: /개인 룰렛|함께 운동 .*룰렛/ }),
-  ).toHaveCount(0);
+  const personal = page.getByRole("region", { name: "개인 룰렛", exact: true });
+  if (process.env.E2E_PERSONAL_ROULETTE === "true") {
+    await expect(page.getByLabel("개인 룰렛 사용 가능 횟수")).toHaveText("7회");
+    for (const width of [320, 390, 1218]) {
+      await page.setViewportSize({ width, height: 844 });
+      const streak = await page
+        .getByRole("region", { name: "연속 운동", exact: true })
+        .boundingBox();
+      const entry = await personal.boundingBox();
+      expect(entry!.y).toBeGreaterThanOrEqual(streak!.y + streak!.height);
+      expect(
+        await page.evaluate(() => document.documentElement.scrollWidth),
+      ).toBeLessThanOrEqual(width);
+      await personal.screenshot({
+        path: info.outputPath(`personal-entry-${width}.png`),
+      });
+    }
+    await personal.getByRole("link", { name: "룰렛 돌리기" }).click();
+    await expect(page).toHaveURL("/roulette/personal");
+    await page.getByRole("link", { name: "이전 화면", exact: true }).click();
+    await expect(page).toHaveURL("/");
+    await expect(personal).toBeVisible();
+  } else {
+    await expect(personal).toHaveCount(0);
+  }
+  for (const n of [1, 2]) {
+    ticketRequests.length = 0;
+    await page.goto(`/groups/${id(n)}`);
+    const entry = page.getByRole("region", { name: "그룹 룰렛", exact: true });
+    await expect(page.getByLabel("그룹 룰렛 사용 가능 횟수")).toHaveText(
+      n === 1 ? "2회" : "1회",
+    );
+    expect(
+      ticketRequests.every((url) => url.includes(`/groups/${id(n)}/`)),
+    ).toBe(true);
+    await expect(
+      page.locator("main > .content > section").last(),
+    ).toHaveAttribute("aria-label", "그룹 룰렛");
+    for (const width of [320, 390, 1218]) {
+      await page.setViewportSize({ width, height: 844 });
+      expect(
+        await page.evaluate(() => document.documentElement.scrollWidth),
+      ).toBeLessThanOrEqual(width);
+      await entry.screenshot({
+        path: info.outputPath(`group-${n}-entry-${width}.png`),
+      });
+      if (width === 390 && n === 1)
+        await page.screenshot({
+          path: info.outputPath("group-page.png"),
+          fullPage: true,
+        });
+    }
+    await entry.getByRole("link", { name: "룰렛 돌리기" }).click();
+    await expect(page).toHaveURL(`/groups/${id(n)}/roulette`);
+    await page.getByRole("link", { name: "이전 화면", exact: true }).click();
+    await expect(page).toHaveURL(`/groups/${id(n)}`);
+    await expect(page.getByLabel("그룹 룰렛 사용 가능 횟수")).toHaveText(
+      n === 1 ? "2회" : "1회",
+    );
+  }
 });
 
-test("0회는 비활성화하고 조회 실패를 0회로 표시하지 않으며 다른 그룹은 계속 사용할 수 있다", async ({
-  page,
-}) => {
+test("0회는 비활성화하고 조회 실패는 재시도로 복구한다", async ({ page }) => {
   await setup(page);
-  await page.route("**/api/v1/groups?*", (route) =>
-    route.fulfill({ json: { items: [group(1), group(2)], nextCursor: null } }),
-  );
+  await installGroup(page, 1);
   let fail = false;
   await page.route(`**/api/v1/groups/${id(1)}/roulette/tickets?*`, (route) =>
     fail
       ? route.fulfill({ status: 503, json: {} })
       : route.fulfill({ json: { items: [], nextCursor: null } }),
   );
-  await page.route(`**/api/v1/groups/${id(2)}/roulette/tickets?*`, (route) =>
-    route.fulfill({ json: { items: [ticket(13)], nextCursor: null } }),
-  );
-  await page.goto("/account/notifications");
-  const groups = page.getByRole("region", { name: "그룹 룰렛", exact: true });
+  await page.goto(`/groups/${id(1)}`);
+  const entry = page.getByRole("region", { name: "그룹 룰렛", exact: true });
+  await expect(page.getByLabel("그룹 룰렛 사용 가능 횟수")).toHaveText("0회");
   await expect(
-    groups.getByRole("button", { name: "룰렛 돌리기" }),
+    entry.getByRole("button", { name: "룰렛 돌리기" }),
   ).toBeDisabled();
   fail = true;
-  await page.getByRole("button", { name: "알림 새로고침" }).click();
+  await page.reload();
   await expect(page.getByLabel("그룹 룰렛 사용 가능 횟수")).toHaveText(
     "확인 필요",
   );
-  await expect(groups.getByRole("link", { name: "룰렛 돌리기" })).toHaveCount(
-    1,
-  );
+  await expect(
+    entry.getByRole("button", { name: "룰렛 돌리기" }),
+  ).toBeDisabled();
   fail = false;
-  await groups
-    .getByRole("button", { name: "그룹 룰렛 횟수 다시 확인" })
-    .click();
-  await expect(page.getByLabel("그룹 룰렛 사용 가능 횟수")).toHaveText("1회");
+  await entry.getByRole("button", { name: "그룹 룰렛 횟수 다시 확인" }).click();
+  await expect(page.getByLabel("그룹 룰렛 사용 가능 횟수")).toHaveText("0회");
 });
 
 for (const result of ["seeds", "pose", "fallback"] as const) {
-  test(`개인 룰렛 실제 계약: ${result} 지급과 응답 유실·알림 복귀 복구`, async ({
+  test(`개인 룰렛 실제 계약: ${result} 지급과 응답 유실·메인 복귀 복구`, async ({
     page,
   }) => {
     test.skip(
@@ -226,7 +281,7 @@ for (const result of ["seeds", "pose", "fallback"] as const) {
         },
       });
     });
-    await page.goto("/account/notifications");
+    await page.goto("/");
     await page
       .getByRole("region", { name: "개인 룰렛", exact: true })
       .getByRole("link", { name: "룰렛 돌리기" })
@@ -247,7 +302,13 @@ for (const result of ["seeds", "pose", "fallback"] as const) {
       page.getByRole("button", { name: "이전 추첨 결과 확인" }),
     ).toBeVisible();
     await page.getByRole("link", { name: "이전 화면", exact: true }).click();
-    await expect(page.getByLabel("개인 룰렛 사용 가능 횟수")).toHaveText("0회");
+    await expect(page).toHaveURL("/");
+    await expect(
+      page.getByRole("link", { name: "이전 추첨 결과 확인" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("region", { name: "개인 룰렛", exact: true }),
+    ).toHaveCount(0);
     await page.reload();
     await page.getByRole("link", { name: "이전 추첨 결과 확인" }).click();
     await page.getByRole("button", { name: "이전 추첨 결과 확인" }).click();
@@ -275,12 +336,10 @@ for (const result of ["seeds", "pose", "fallback"] as const) {
       .getByRole("button", { name: "확인", exact: true })
       .click();
     await expect(page).toHaveURL("/");
-    await page.goto("/account/notifications");
+    await page.goto("/");
     await expect(
-      page
-        .getByRole("region", { name: "개인 룰렛", exact: true })
-        .getByRole("button", { name: "룰렛 돌리기" }),
-    ).toBeDisabled();
+      page.getByRole("region", { name: "개인 룰렛", exact: true }),
+    ).toHaveCount(0);
   });
 }
 

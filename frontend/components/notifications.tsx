@@ -8,7 +8,6 @@ import { useApiResource } from "./use-api-resource";
 import { useOperationScope } from "./use-operation-scope";
 import { Header, Loading, Notice, Shell } from "./ui";
 import styles from "./notifications.module.css";
-import { RouletteNotifications } from "./roulette-notifications";
 const labels = {
   join_requested: "새 그룹 가입 신청이 도착했어요.",
   join_approved: "그룹 가입이 승인됐어요.",
@@ -23,7 +22,6 @@ export function Notifications() {
     guard = useRef(false);
   const [busy, setBusy] = useState(false),
     [error, setError] = useState("");
-  const [rouletteRevision, setRouletteRevision] = useState(0);
   const [dismissed, setDismissed] = useState<Set<string>>(() => new Set());
   const unread = resource.data?.filter(
     (row) => row.readAt === null && !dismissed.has(row.id),
@@ -59,10 +57,7 @@ export function Notifications() {
             className="icon-button"
             aria-label="알림 새로고침"
             title="알림 새로고침"
-            onClick={() => {
-              resource.reload();
-              setRouletteRevision((revision) => revision + 1);
-            }}
+            onClick={resource.reload}
             disabled={resource.loading || busy}
           >
             <RefreshCw size={22} aria-hidden="true" />
@@ -70,7 +65,6 @@ export function Notifications() {
         }
       />
       <div className="content stack">
-        <RouletteNotifications key={rouletteRevision} />
         {error && <Notice>{error}</Notice>}
         {resource.error !== undefined ? (
           <>

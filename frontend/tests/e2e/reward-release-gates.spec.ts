@@ -6,7 +6,8 @@ test("기본 출시 설정은 미구현 지급 API를 호출하거나 보상 획
   page,
 }) => {
   test.skip(
-    process.env.E2E_PROPOSED_REWARDS === "true",
+    process.env.E2E_PROPOSED_REWARDS === "true" ||
+      process.env.E2E_PERSONAL_ROULETTE === "true",
     "기본 false 출시 설정의 서버에서 실행",
   );
   await installApi(page, testRecord());
@@ -45,16 +46,11 @@ test("기본 출시 설정은 미구현 지급 API를 호출하거나 보상 획
     );
   }
   await page.goto(`/workout-routines/${routine.id}/complete/streak`);
+  await page.getByRole("link", { name: "메인으로", exact: true }).click();
+  await expect(page).toHaveURL("/");
   await expect(
-    page.getByRole("link", { name: "다음", exact: true }),
-  ).toBeVisible();
-  await page.getByRole("link", { name: "다음", exact: true }).click();
-  await expect(page).toHaveURL(
-    `/workout-routines/${routine.id}/complete/water`,
-  );
-  await expect(
-    page.getByText("운동을 마칠 때 참여 중인 그룹 미션이 없었어요."),
-  ).toBeVisible();
+    page.getByRole("region", { name: "오늘의 그룹 물 주기" }),
+  ).toHaveCount(0);
   await expect(
     page.getByText(/해바라기씨 1개를 받았어요|해바라기에 물을 줬어요/),
   ).toHaveCount(0);
