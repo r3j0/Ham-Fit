@@ -89,7 +89,16 @@ function ShopView({
   wardrobe: boolean;
   reload: () => void;
 }) {
-  const { catalog, inventory } = data;
+  const { catalog } = data;
+  const [purchasedInventory, setPurchasedInventory] = useState<{
+    source: ShopData["inventory"];
+    value: ShopData["inventory"];
+  }>();
+  // Apply the purchase receipt immediately, until a fresh inventory arrives.
+  const inventory =
+    purchasedInventory?.source === data.inventory
+      ? purchasedInventory.value
+      : data.inventory;
   const [acknowledged, setAcknowledged] = useState<AvatarOutfit>();
   const outfit =
     acknowledged && acknowledged.revision > data.outfit.revision
@@ -124,13 +133,34 @@ function ShopView({
       (category === "pose" ? p.kind === "pose" : p.slot === category) &&
       (wardrobe ? owned.has(p.id) : p.saleStatus !== "retired"),
   );
-  async function buy() {
-    const product = purchaseTarget;
+  const currentTarget = catalog.products.find(
+    (p) => p.id === purchaseTarget?.id,
+  );
+  const canConfirmPurchase = !!(
+    purchaseTarget &&
+    currentTarget &&
+    currentTarget.catalogRevision === purchaseTarget.catalogRevision &&
+    currentTarget.price === purchaseTarget.price &&
+    currentTarget.saleStatus === "on_sale" &&
+    !currentTarget.priceProvisional &&
+    !owned.has(currentTarget.id) &&
+    (currentTarget.price ?? Infinity) <= inventory.currency.balance &&
+    preview &&
+    (currentTarget.kind === "pose"
+      ? draft.poseId === currentTarget.id
+      : draft.clothingIds.includes(currentTarget.id))
+  );
+  async function buy(retry = false) {
     if (
-      !purchaseMutation.pending &&
-      (!product || product.priceProvisional || product.saleStatus !== "on_sale")
+      guard.current ||
+      busy ||
+      (retry
+        ? !purchaseMutation.pending
+        : !!purchaseMutation.pending || !canConfirmPurchase)
     )
       return;
+    guard.current = true;
+    const product = purchaseTarget;
     const current = begin();
     setError("");
     setMessage("");
@@ -143,6 +173,7 @@ function ShopView({
         purchase,
       );
       if (!current() || !result) return;
+      setPurchasedInventory({ source: data.inventory, value: result });
       setPurchaseTarget(undefined);
       setMessage("구매했어요. 내 옷장에서 착용하고 저장할 수 있어요.");
       reload();
@@ -152,6 +183,8 @@ function ShopView({
         setPurchaseTarget(undefined);
         reload();
       }
+    } finally {
+      guard.current = false;
     }
   }
   async function save() {
@@ -313,7 +346,7 @@ function ShopView({
               <button
                 className="button secondary"
                 disabled={busy}
-                onClick={() => void buy()}
+                onClick={() => void buy(true)}
               >
                 이전 구매 결과 확인
               </button>
@@ -492,9 +525,16 @@ function ShopView({
               <br />
               옷장에서 착용하고 코디를 저장해 주세요.
             </p>
+            {!canConfirmPurchase && (
+              <Notice>
+                상품이나 보유 정보가 변경되었어요. 창을 닫고 다시 확인해 주세요.
+              </Notice>
+            )}
             <button
               className="button primary"
-              disabled={busy}
+              disabled={
+                busy || !!purchaseMutation.pending || !canConfirmPurchase
+              }
               onClick={() => void buy()}
             >
               <SubmitLabel busy={busy}>구매 확정</SubmitLabel>
