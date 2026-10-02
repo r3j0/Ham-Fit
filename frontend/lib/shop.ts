@@ -49,7 +49,24 @@ export async function purchase(body: string, key: string) {
       headers: { "X-CSRF-Protection": "1", "Idempotency-Key": key },
       body,
     },
-  );
+  ).catch((error: unknown) => {
+    // An older API deployment lacks the batch route. Never substitute single
+    // purchases: that could charge for only part of the confirmed bundle.
+    if (
+      batch &&
+      error instanceof ApiError &&
+      error.status === 404 &&
+      !error.code
+    )
+      throw new ApiError(
+        404,
+        "전체 구매 기능을 준비 중이에요. 잠시 후 다시 시도해 주세요.",
+        {},
+        undefined,
+        "SHOP_BATCH_UNAVAILABLE",
+      );
+    throw error;
+  });
   const saved = batch
     ? parseBatchPurchase(data, request.items)
     : parsePurchase(data, request.productId, request.catalogRevision);
@@ -63,8 +80,13 @@ export function shopError(error: unknown) {
       CATALOG_CHANGED:
         "상품 정보가 변경되었어요. 최신 가격을 확인한 뒤 다시 구매해 주세요.",
       ALREADY_OWNED: "이미 보유한 아이템이에요. 옷장을 확인해 주세요.",
+      PRODUCT_NOT_FOUND:
+        "상품을 찾을 수 없어요. 상품 목록을 새로 확인해 주세요.",
+      SHOP_BATCH_UNAVAILABLE:
+        "전체 구매 기능을 준비 중이에요. 잠시 후 다시 시도해 주세요.",
       ITEM_NOT_OWNED: "보유한 아이템만 착용할 수 있어요.",
-      UNSUPPORTED_COMBINATION: "이 자세와 의상은 함께 착용할 수 없어요.",
+      UNSUPPORTED_COMBINATION:
+        "이 캐릭터·자세에서 지원하지 않는 의상이 있어요.",
       OUTFIT_CONFLICT:
         "다른 곳에서 코디를 변경했어요. 최신 코디를 확인한 뒤 다시 선택해 주세요.",
     };

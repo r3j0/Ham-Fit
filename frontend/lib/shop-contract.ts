@@ -178,7 +178,42 @@ export function sameSelection(a: OutfitSelection, b: OutfitSelection) {
     a.clothingIds.every((id) => b.clothingIds.includes(id))
   );
 }
-export const supportedSelection = (
+export function supportedSelection(
   catalog: Catalog,
   selection: OutfitSelection,
-) => catalog.combinations.some((c) => sameSelection(c, selection));
+) {
+  const products = new Map(catalog.products.map((p) => [p.id, p]));
+  if (
+    products.get(selection.characterId)?.kind !== "character" ||
+    products.get(selection.poseId)?.kind !== "pose" ||
+    new Set(selection.clothingIds).size !== selection.clothingIds.length
+  )
+    return false;
+  const clothing = selection.clothingIds.map((id) => products.get(id));
+  if (
+    clothing.some(
+      (p) =>
+        !p ||
+        p.kind !== "clothing" ||
+        (p.scopeCharacterId !== null &&
+          p.scopeCharacterId !== selection.characterId),
+    )
+  )
+    return false;
+  const slots = clothing.flatMap((p) => p!.occupiesSlots);
+  if (new Set(slots).size !== slots.length) return false;
+  if (catalog.combinations.some((c) => sameSelection(c, selection)))
+    return true;
+  // Independently registered layers can be mixed across sets, one per slot.
+  return (
+    clothing.length > 0 &&
+    clothing.every(
+      (p) =>
+        p!.occupiesSlots.length === 1 &&
+        p!.occupiesSlots[0] === p!.slot &&
+        catalog.combinations.some((c) =>
+          sameSelection(c, { ...selection, clothingIds: [p!.id] }),
+        ),
+    )
+  );
+}

@@ -636,3 +636,106 @@ test("전체 구매 대상은 보유 아이템을 제외하고 해제 시 버튼
       .sort(),
   );
 });
+
+test("옷장에서 서로 다른 세트의 모자·상의·하의를 저장하고 같은 부위만 교체한다", async ({
+  page,
+}) => {
+  const { state, products } = await installSlots(page);
+  const mix = [clothes[0], clothes[4], clothes[2]];
+  const otherHat = clothes[3];
+  state.owned.push(...[...mix, otherHat].map((p) => p.id));
+  await page.route("**/api/v1/users/me/avatar/outfit", async (route) => {
+    if (route.request().method() !== "PUT") return route.fallback();
+    const body = route.request().postDataJSON();
+    expect(route.request().headers()["if-match"]).toBe(
+      `"${state.outfit.revision}"`,
+    );
+    state.puts++;
+    state.outfit = {
+      ...state.outfit,
+      ...body,
+      revision: state.outfit.revision + 1,
+      rendering: {
+        variant: body.characterId.split(".")[1],
+        pose: "basic",
+        clothing: body.clothingIds.map((productId: string) => {
+          const p = products.find((p) => p.id === productId)!;
+          return {
+            productId,
+            slot: p.slot,
+            renderKey: p.renderKey,
+            occupiesSlots: p.occupiesSlots,
+          };
+        }),
+      },
+    };
+    return route.fulfill({ json: state.outfit });
+  });
+  await page.goto("/shop/wardrobe");
+  for (const p of mix) await toggle(page, p);
+  const save = page.getByRole("button", { name: "코디 저장", exact: true });
+  await expect(save).toBeEnabled();
+  await save.click();
+  await expect(page.getByText("대표 코디를 저장했어요.")).toBeVisible();
+  expect(state.outfit.clothingIds.slice().sort()).toEqual(
+    mix.map((p) => p.id).sort(),
+  );
+  await toggle(page, otherHat);
+  await save.click();
+  await expect(save).toBeDisabled();
+  expect(state.outfit.clothingIds.slice().sort()).toEqual(
+    [otherHat.id, mix[1].id, mix[2].id].sort(),
+  );
+  await page.reload();
+  const preview = page.getByRole("img", { name: "내 캐릭터 미리보기" });
+  await expect(preview.locator("image")).toHaveCount(4);
+  await expect(preview).not.toHaveAttribute("data-hamster-warnings");
+  expect(state.puts).toBe(2);
+});
+
+test("이전 서버의 전체 구매 404는 기능 준비 안내로 표시하고 단건 구매로 부분 결제하지 않는다", async ({
+  page,
+}) => {
+  const { state, batchRequests } = await installSlots(page);
+  const unavailable = (route: import("@playwright/test").Route) =>
+    route.fulfill({
+      status: 404,
+      json: {
+        statusCode: 404,
+        message: "Cannot POST /api/v1/shop/purchases/batch",
+      },
+    });
+  await page.route("**/api/v1/shop/purchases/batch", unavailable);
+  await page.goto("/shop");
+  for (const p of firstSet) await toggle(page, p);
+  await page
+    .getByRole("button", { name: "전체 구매하기", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "전체 구매 확정", exact: true })
+    .click();
+  await expect(
+    page.getByText(
+      "전체 구매 기능을 준비 중이에요. 잠시 후 다시 시도해 주세요.",
+    ),
+  ).toBeVisible();
+  await expect(page.getByText(/기록을 찾을 수 없어요/)).toHaveCount(0);
+  expect(state.balance).toBe(100);
+  expect(state.purchases).toEqual([]);
+  expect(state.owned).not.toEqual(
+    expect.arrayContaining(firstSet.map((p) => p.id)),
+  );
+  await page.unroute("**/api/v1/shop/purchases/batch", unavailable);
+  await page
+    .getByRole("button", { name: "전체 구매하기", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "전체 구매 확정", exact: true })
+    .click();
+  await expect(
+    page.getByText("구매했어요. 내 옷장에서 착용하고 저장할 수 있어요."),
+  ).toBeVisible();
+  expect(state.balance).toBe(25);
+  expect(batchRequests).toHaveLength(1);
+  expect(state.purchases).toEqual([]);
+});
