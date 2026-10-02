@@ -662,4 +662,170 @@ describe('avatar and shop with real PostgreSQL', () => {
       });
     }
   });
+  const batchItems = () =>
+    ['pose.curious', 'pose.run'].map((productId) => ({
+      productId,
+      catalogRevision: revisions.get(productId)!,
+    }));
+  const buyBatch = (a: Account, items = batchItems(), key = randomUUID()) =>
+    api(a, 'post', '/shop/purchases/batch')
+      .set('Idempotency-Key', key)
+      .send({ items });
+
+  it('atomically rejects the whole batch when only the first item is affordable', async () => {
+    const a = await register();
+    await fund(a, 70);
+    await buyBatch(a)
+      .expect(409)
+      .expect(({ body }) => expect(body.code).toBe('INSUFFICIENT_FUNDS'));
+    expect(await balance(a)).toBe(70);
+    expect(await db.avatarPurchase.count({ where: { userId: a.id } })).toBe(0);
+    expect(
+      await db.avatarPurchaseBatch.count({ where: { userId: a.id } }),
+    ).toBe(0);
+    expect(
+      await db.currencyTransaction.count({
+        where: { userId: a.id, kind: 'purchase' },
+      }),
+    ).toBe(0);
+    expect(await db.avatarOwnership.count({ where: { userId: a.id } })).toBe(3);
+  });
+
+  it('purchases at the exact total, replays reordered concurrent batches once, and keeps the outfit', async () => {
+    const a = await register();
+    await fund(a, 120);
+    const key = randomUUID();
+    const result = await Promise.all([
+      buyBatch(a, batchItems(), key),
+      buyBatch(a, batchItems().reverse(), key),
+    ]);
+    expect(result.map((r) => r.status).sort((a, b) => a - b)).toEqual([
+      200, 201,
+    ]);
+    for (const r of result) {
+      expect(r.body).toMatchObject({
+        totalPrice: 120,
+        currency: { balance: 0 },
+      });
+      expect(r.body.purchases).toHaveLength(2);
+      expect(r.headers['idempotency-replayed']).toBe(String(r.body.replayed));
+    }
+    expect(result[0].body.purchases).toEqual(result[1].body.purchases);
+    expect(
+      await db.avatarPurchaseBatch.count({ where: { userId: a.id } }),
+    ).toBe(1);
+    expect(await db.avatarPurchase.count({ where: { userId: a.id } })).toBe(2);
+    expect(
+      await db.currencyTransaction.count({
+        where: { userId: a.id, kind: 'purchase' },
+      }),
+    ).toBe(2);
+    expect(await service.outfit(a.id)).toMatchObject({
+      ...defaultOutfit,
+      revision: 1,
+    });
+    const changed = batchItems().map((item, i) => ({
+      ...item,
+      catalogRevision: item.catalogRevision + i,
+    }));
+    await buyBatch(a, changed, key)
+      .expect(409)
+      .expect(({ body }) => expect(body.code).toBe('IDEMPOTENCY_CONFLICT'));
+    await buy(a, 'pose.curious', key)
+      .expect(409)
+      .expect(({ body }) => expect(body.code).toBe('IDEMPOTENCY_CONFLICT'));
+  });
+
+  it('does not reuse a single purchase key for a batch or purchase already owned products', async () => {
+    const a = await register();
+    await fund(a);
+    const key = randomUUID();
+    await buy(a, 'pose.run', key).expect(201);
+    await buyBatch(a, batchItems(), key)
+      .expect(409)
+      .expect(({ body }) => expect(body.code).toBe('IDEMPOTENCY_CONFLICT'));
+    await buyBatch(a)
+      .expect(409)
+      .expect(({ body }) => expect(body.code).toBe('ALREADY_OWNED'));
+    expect(await balance(a)).toBe(130);
+    expect(await db.avatarPurchase.count({ where: { userId: a.id } })).toBe(1);
+    expect(
+      await db.avatarPurchaseBatch.count({ where: { userId: a.id } }),
+    ).toBe(0);
+  });
+
+  it('rolls back earlier items when a later batch item has a stale revision or is unavailable', async () => {
+    const a = await register();
+    await fund(a);
+    const items = batchItems();
+    items[1].catalogRevision++;
+    await buyBatch(a, items)
+      .expect(409)
+      .expect(({ body }) => expect(body.code).toBe('CATALOG_CHANGED'));
+    await buyBatch(a, [
+      batchItems()[0],
+      { productId: 'pose.basic', catalogRevision: 1 },
+    ]).expect(409);
+    await buyBatch(a, [
+      batchItems()[0],
+      { productId: 'pose.zz-missing', catalogRevision: 1 },
+    ]).expect(404);
+    expect(await balance(a)).toBe(200);
+    expect(await db.avatarPurchase.count({ where: { userId: a.id } })).toBe(0);
+    expect(
+      await db.avatarPurchaseBatch.count({ where: { userId: a.id } }),
+    ).toBe(0);
+  });
+
+  it('serializes overlapping batch and single purchases without partial batches or double charges', async () => {
+    const a = await register();
+    await fund(a, 120);
+    const results = await Promise.all([buyBatch(a), buy(a, 'pose.run')]);
+    expect(results.map((r) => r.status).sort((a, b) => a - b)).toEqual([
+      201, 409,
+    ]);
+    const batchWon = results[0].status === 201;
+    expect(await balance(a)).toBe(batchWon ? 0 : 50);
+    expect(await db.avatarPurchase.count({ where: { userId: a.id } })).toBe(
+      batchWon ? 2 : 1,
+    );
+    expect(
+      await db.avatarPurchaseBatch.count({ where: { userId: a.id } }),
+    ).toBe(batchWon ? 1 : 0);
+  });
+
+  it('requires batch authentication, CSRF, a request key and 2–4 unique strict items', async () => {
+    const a = await register();
+    await request(app.getHttpServer())
+      .post('/api/v1/shop/purchases/batch')
+      .send({ items: batchItems() })
+      .expect(401);
+    await request(app.getHttpServer())
+      .post('/api/v1/shop/purchases/batch')
+      .set('Authorization', `Bearer ${a.token}`)
+      .send({ items: batchItems() })
+      .expect(403);
+    await buyBatch(a).set('Origin', 'https://untrusted.test').expect(403);
+    await api(a, 'post', '/shop/purchases/batch')
+      .send({ items: batchItems() })
+      .expect(400);
+    for (const body of [
+      { items: [] },
+      { items: [batchItems()[0]] },
+      { items: [batchItems()[0], batchItems()[0]] },
+      {
+        items: Array.from({ length: 5 }, (_, n) => ({
+          productId: `pose.test-${n}`,
+          catalogRevision: 1,
+        })),
+      },
+      { items: batchItems(), price: 1 },
+      { items: batchItems().map((p) => ({ ...p, price: 1 })) },
+    ])
+      await api(a, 'post', '/shop/purchases/batch')
+        .set('Idempotency-Key', randomUUID())
+        .send(body)
+        .expect(400);
+    expect(await balance(a)).toBe(0);
+  });
 });

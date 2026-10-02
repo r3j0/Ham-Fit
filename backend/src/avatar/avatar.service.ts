@@ -1,9 +1,14 @@
+import { randomUUID } from 'node:crypto';
 import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service.js';
 import { Prisma } from '../generated/prisma/client.js';
 import type { AvatarProduct } from '../generated/prisma/client.js';
 import { avatarError, combinationId } from './avatar-input.js';
-import type { OutfitInput, PurchaseInput } from './avatar-input.js';
+import type {
+  BatchPurchaseInput,
+  OutfitInput,
+  PurchaseInput,
+} from './avatar-input.js';
 import { outfitRelations, outfitView } from './avatar-view.js';
 
 @Injectable()
@@ -167,91 +172,186 @@ export class AvatarService {
   async purchase(userId: string, key: string, input: PurchaseInput) {
     return this.database.$transaction(async (tx) => {
       await this.lockUser(tx, userId);
-      const previous = await tx.avatarPurchase.findUnique({
+      if (
+        await tx.avatarPurchaseBatch.findUnique({
+          where: { userId_key: { userId, key } },
+        })
+      )
+        avatarError(
+          409,
+          'IDEMPOTENCY_CONFLICT',
+          '같은 요청 키에 다른 구매 내용을 사용할 수 없습니다.',
+        );
+      return this.purchaseInTransaction(tx, userId, key, input);
+    });
+  }
+
+  async purchaseBatch(userId: string, key: string, input: BatchPurchaseInput) {
+    // Canonical order makes a reordered retry equivalent and keeps product locks consistent.
+    const items = [...input.items].sort((a, b) =>
+      a.productId.localeCompare(b.productId),
+    );
+    return this.database.$transaction(async (tx) => {
+      await this.lockUser(tx, userId);
+      const previous = await tx.avatarPurchaseBatch.findUnique({
         where: { userId_key: { userId, key } },
+        include: { purchases: true },
       });
       if (previous) {
         if (
-          previous.productId !== input.productId ||
-          previous.catalogRevision !== input.catalogRevision
+          previous.purchases.length !== items.length ||
+          items.some(
+            (item) =>
+              !previous.purchases.some(
+                (p) =>
+                  p.productId === item.productId &&
+                  p.catalogRevision === item.catalogRevision,
+              ),
+          )
         )
           avatarError(
             409,
             'IDEMPOTENCY_CONFLICT',
             '같은 요청 키에 다른 구매 내용을 사용할 수 없습니다.',
           );
+        const purchases = previous.purchases
+          .sort((a, b) => a.productId.localeCompare(b.productId))
+          .map((p) => this.purchaseView(p));
         return {
           replayed: true,
-          purchase: this.purchaseView(previous),
+          purchases,
+          totalPrice: purchases.reduce((total, p) => total + p.price, 0),
           ...(await this.state(tx, userId)),
         };
       }
-      // FOR SHARE permits other buyers but serializes price/status updates.
-      // Whichever transaction obtains this lock first defines the sale terms.
-      const rows = await tx.$queryRaw<
-        Array<{ id: string }>
-      >`SELECT id FROM ${this.database.table('avatar_products')} WHERE id = ${input.productId} FOR SHARE`;
-      if (!rows.length)
-        avatarError(404, 'PRODUCT_NOT_FOUND', '상품을 찾을 수 없습니다.');
-      const product = await tx.avatarProduct.findUniqueOrThrow({
-        where: { id: input.productId },
-      });
-      this.assertSale(product);
-      if (product.catalogRevision !== input.catalogRevision)
-        avatarError(
-          409,
-          'CATALOG_CHANGED',
-          '상품 가격 또는 판매 조건이 변경되었습니다. 다시 조회해 주세요.',
-        );
       if (
-        await tx.avatarOwnership.findUnique({
-          where: { userId_productId: { userId, productId: input.productId } },
+        await tx.avatarPurchase.findUnique({
+          where: { userId_key: { userId, key } },
         })
       )
-        avatarError(409, 'ALREADY_OWNED', '이미 보유한 아이템입니다.');
-      const price = product.price!;
-      // The guarded UPDATE also locks the actual currency row, so unrelated
-      // currency writers cannot cause a lost update or an overdraw.
-      const debit = await tx.userCurrency.updateMany({
-        where: { userId, balance: { gte: price } },
-        data: { balance: { decrement: price } },
+        avatarError(
+          409,
+          'IDEMPOTENCY_CONFLICT',
+          '같은 요청 키에 다른 구매 내용을 사용할 수 없습니다.',
+        );
+      // Acquire ALL product locks before touching currency, matching user -> products -> currency.
+      await tx.$queryRaw`SELECT id FROM ${this.database.table('avatar_products')} WHERE id IN (${Prisma.join(items.map((item) => item.productId))}) ORDER BY id FOR SHARE`;
+      const batch = await tx.avatarPurchaseBatch.create({
+        data: { userId, key },
       });
-      if (!debit.count) {
-        if (!(await tx.userCurrency.findUnique({ where: { userId } })))
-          avatarError(503, 'CURRENCY_MISSING', '재화 정보가 누락되었습니다.');
-        avatarError(409, 'INSUFFICIENT_FUNDS', '해바라기씨가 부족합니다.');
+      const purchases = [];
+      for (const item of items) {
+        const result = await this.purchaseInTransaction(
+          tx,
+          userId,
+          randomUUID(),
+          item,
+          batch.id,
+        );
+        purchases.push(result.purchase);
       }
-      const purchase = await tx.avatarPurchase.create({
-        data: {
-          userId,
-          key,
-          productId: product.id,
-          price,
-          catalogRevision: product.catalogRevision,
-        },
-      });
-      await tx.avatarOwnership.create({
-        data: { userId, productId: product.id, source: 'purchase' },
-      });
-      const currency = await tx.userCurrency.findUniqueOrThrow({
-        where: { userId },
-      });
-      await tx.currencyTransaction.create({
-        data: {
-          userId,
-          eventKey: `purchase:${key}`,
-          kind: 'purchase',
-          amount: -price,
-          balanceAfter: currency.balance,
-          purchaseId: purchase.id,
-        },
-      });
+      // Every debit, ownership and receipt is in this transaction: any rejection rolls ALL back.
       return {
         replayed: false,
-        purchase: this.purchaseView(purchase),
+        purchases,
+        totalPrice: purchases.reduce((total, p) => total + p.price, 0),
         ...(await this.state(tx, userId)),
       };
     });
+  }
+
+  private async purchaseInTransaction(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    key: string,
+    input: PurchaseInput,
+    batchId?: string,
+  ) {
+    const previous = await tx.avatarPurchase.findUnique({
+      where: { userId_key: { userId, key } },
+    });
+    if (previous) {
+      if (
+        previous.productId !== input.productId ||
+        previous.catalogRevision !== input.catalogRevision
+      )
+        avatarError(
+          409,
+          'IDEMPOTENCY_CONFLICT',
+          '같은 요청 키에 다른 구매 내용을 사용할 수 없습니다.',
+        );
+      return {
+        replayed: true,
+        purchase: this.purchaseView(previous),
+        ...(await this.state(tx, userId)),
+      };
+    }
+    // FOR SHARE permits other buyers but serializes price/status updates.
+    // Whichever transaction obtains this lock first defines the sale terms.
+    const rows = await tx.$queryRaw<
+      Array<{ id: string }>
+    >`SELECT id FROM ${this.database.table('avatar_products')} WHERE id = ${input.productId} FOR SHARE`;
+    if (!rows.length)
+      avatarError(404, 'PRODUCT_NOT_FOUND', '상품을 찾을 수 없습니다.');
+    const product = await tx.avatarProduct.findUniqueOrThrow({
+      where: { id: input.productId },
+    });
+    this.assertSale(product);
+    if (product.catalogRevision !== input.catalogRevision)
+      avatarError(
+        409,
+        'CATALOG_CHANGED',
+        '상품 가격 또는 판매 조건이 변경되었습니다. 다시 조회해 주세요.',
+      );
+    if (
+      await tx.avatarOwnership.findUnique({
+        where: { userId_productId: { userId, productId: input.productId } },
+      })
+    )
+      avatarError(409, 'ALREADY_OWNED', '이미 보유한 아이템입니다.');
+    const price = product.price!;
+    // The guarded UPDATE also locks the actual currency row, so unrelated
+    // currency writers cannot cause a lost update or an overdraw.
+    const debit = await tx.userCurrency.updateMany({
+      where: { userId, balance: { gte: price } },
+      data: { balance: { decrement: price } },
+    });
+    if (!debit.count) {
+      if (!(await tx.userCurrency.findUnique({ where: { userId } })))
+        avatarError(503, 'CURRENCY_MISSING', '재화 정보가 누락되었습니다.');
+      avatarError(409, 'INSUFFICIENT_FUNDS', '해바라기씨가 부족합니다.');
+    }
+    const purchase = await tx.avatarPurchase.create({
+      data: {
+        userId,
+        key,
+        batchId,
+        productId: product.id,
+        price,
+        catalogRevision: product.catalogRevision,
+      },
+    });
+    await tx.avatarOwnership.create({
+      data: { userId, productId: product.id, source: 'purchase' },
+    });
+    const currency = await tx.userCurrency.findUniqueOrThrow({
+      where: { userId },
+    });
+    await tx.currencyTransaction.create({
+      data: {
+        userId,
+        eventKey: `purchase:${key}`,
+        kind: 'purchase',
+        amount: -price,
+        balanceAfter: currency.balance,
+        purchaseId: purchase.id,
+      },
+    });
+    return {
+      replayed: false,
+      purchase: this.purchaseView(purchase),
+      ...(await this.state(tx, userId)),
+    };
   }
 
   private assertSale(product: AvatarProduct) {

@@ -13,12 +13,23 @@ const purchaseSchema = z.strictObject({
   productId,
   catalogRevision: z.number().int().positive().max(2147483647),
 });
+const batchPurchaseSchema = z.strictObject({
+  items: z
+    .array(purchaseSchema)
+    .min(2)
+    .max(4)
+    .refine(
+      (items) =>
+        new Set(items.map((item) => item.productId)).size === items.length,
+    ),
+});
 const outfitSchema = z.strictObject({
   characterId: productId,
   poseId: productId,
   clothingIds: z.array(productId).max(3),
 });
 export type PurchaseInput = z.infer<typeof purchaseSchema>;
+export type BatchPurchaseInput = z.infer<typeof batchPurchaseSchema>;
 export type OutfitInput = z.infer<typeof outfitSchema>;
 function parse<T>(schema: z.ZodType<T>, value: unknown): T {
   const result = schema.safeParse(value);
@@ -27,6 +38,8 @@ function parse<T>(schema: z.ZodType<T>, value: unknown): T {
   return result.data;
 }
 export const parsePurchase = (input: unknown) => parse(purchaseSchema, input);
+export const parseBatchPurchase = (input: unknown) =>
+  parse(batchPurchaseSchema, input);
 export const parseOutfit = (input: unknown) => parse(outfitSchema, input);
 export const parsePurchaseKey = (input: unknown) =>
   parse(z.uuid(), input).toLowerCase();

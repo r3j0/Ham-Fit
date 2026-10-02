@@ -91,6 +91,7 @@ model User {
   avatarInventory             AvatarOwnership[]
   avatarOutfit                AvatarOutfit?
   avatarPurchases             AvatarPurchase[]
+  avatarPurchaseBatches       AvatarPurchaseBatch[]
   currencyTransactions        CurrencyTransaction[]
   activityAchievements        ActivityAchievement[]
   missionParticipants         GroupMissionParticipant[]
@@ -611,6 +612,17 @@ model AvatarOutfit {
   @@map("avatar_outfits")
 }
 
+model AvatarPurchaseBatch {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  key String @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  purchases AvatarPurchase[]
+  @@unique([userId, key])
+  @@map("avatar_purchase_batches")
+}
+
 model AvatarPurchase {
   id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   userId String @map("user_id") @db.Uuid
@@ -622,6 +634,9 @@ model AvatarPurchase {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Restrict)
   product AvatarProduct @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   transaction CurrencyTransaction?
+  batchId String? @map("batch_id") @db.Uuid
+  batch AvatarPurchaseBatch? @relation(fields: [batchId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+  @@index([batchId])
   @@unique([userId, key])
   @@unique([userId, productId])
   @@map("avatar_purchases")

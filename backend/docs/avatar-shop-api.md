@@ -300,3 +300,15 @@ BE 담당자는 새 forward-only 마이그레이션을 작성해 상품과 호�
 이 작업에서는 **개발·운영 DB에 적용하거나 배포하지 않았다**. 향후 적용은 기존 DB 운영 절차에 따라 백업·잠금 시간·마이그레이션 검토 후 새 서버보다 먼저 진행해야 한다. 대규모 백필의 운영 잠금 시간은 별도 스테이징 검증 대상이다. 계정 삭제는 개인 소유·코디·구매·거래를 CASCADE로 삭제하고 공용 카탈로그를 보존한다.
 
 2026-10-01 개인 룰렛도 `grantCurrencyInTransaction`의 지급 핵심을 재사용한다. 개인 지급 키 `streak-roulette:<drawId>`는 그룹 지급 키와 분리한다. 소유권 source CHECK는 신규 `20261001000200_streak_roulette_draws`에서 확장하며 기존 기본 지급·구매·코디 계약과 기존 마이그레이션을 유지한다.
+
+## 전체 구매 (2026-10-02)
+
+사용자 요청으로 현재 착용한 미보유 아이템 2개 이상을 한 번에 구매한다. 기존 단건 `POST /shop/purchases`의 요청·응답 계약은 유지한다.
+
+`POST /api/v1/shop/purchases/batch`는 기존 인증·CSRF·JSON·`Idempotency-Key`를 사용한다. body는 `{ "items": [{ "productId": "...", "catalogRevision": 1 }, ...] }`다. 중복 없는 2–4개만 허용하며 가격·사용자 ID 등 추가 필드는 거절한다. 합계는 서버의 확정 가격으로 계산한다.
+
+최초 성공은 201, 동일 구매의 재시도는 200과 `Idempotency-Replayed`를 반환한다. 응답은 `{ replayed, purchases: [기존 purchase 필드들], totalPrice, currency, inventory }`다. `purchases`는 상품 ID 순서이며, 순서만 다른 동일 items는 같은 요청이다. 같은 키의 상품 집합·revision이 바뀌거나 단건/전체 구매 사이에 키를 재사용하면 `409 IDEMPOTENCY_CONFLICT`다.
+
+사용자 잠금 → 상품 ID 순서의 전체 상품 잠금 → 기존 단건 구매 처리를 하나의 트랜잭션에서 실행한다. 전체 금액 부족(`INSUFFICIENT_FUNDS`), 하나라도 이미 보유(`ALREADY_OWNED`), 가격 변경(`CATALOG_CHANGED`), 판매 불가 등으로 실패하면 모든 차감·소유권·구매 내역·묶음 기록을 롤백한다. 자동 착용·대표 코디 저장은 하지 않는다. 응답 유실 시 같은 키/body로 복구하며 당시 구매 금액과 최신 보유·잔액을 반환한다.
+
+신규 마이그레이션 `20261002001000_avatar_purchase_batches`를 서버 배포 전에 적용한다. 기존 구매는 nullable `batch_id`를 유지하며, 신규 묶음 요청 키와 각 상품의 기존 구매·재화 거래 기록을 연결한다. 이 문서 갱신으로 운영 DB 적용이나 배포가 수행된 것은 아니다.

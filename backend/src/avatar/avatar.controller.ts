@@ -20,6 +20,7 @@ import {
   parseOutfit,
   parseOutfitRevision,
   parsePurchase,
+  parseBatchPurchase,
   parsePurchaseKey,
 } from './avatar-input.js';
 import { AvatarService } from './avatar.service.js';
@@ -49,6 +50,25 @@ export class ShopController {
       request.user.id,
       parsePurchaseKey(key),
       parsePurchase(body),
+    );
+    response.status(result.replayed ? 200 : 201);
+    response.setHeader('Idempotency-Replayed', String(result.replayed));
+    return result;
+  }
+  @Post('purchases/batch')
+  @Header('Cache-Control', 'no-store')
+  async purchaseBatch(
+    @Req() request: AuthenticatedRequest,
+    @Headers('idempotency-key') key: unknown,
+    @Body() body: unknown,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    if (!request.is('application/json'))
+      avatarError(400, 'INVALID_INPUT', 'JSON 요청이 필요합니다.');
+    const result = await this.avatar.purchaseBatch(
+      request.user.id,
+      parsePurchaseKey(key),
+      parseBatchPurchase(body),
     );
     response.status(result.replayed ? 200 : 201);
     response.setHeader('Idempotency-Replayed', String(result.replayed));
