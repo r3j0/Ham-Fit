@@ -251,7 +251,7 @@ test("whole outfit supports independent layers but rejects slot conflicts and mi
     }),
   );
 });
-test("only server-listed full combinations can be saved", () => {
+test("base outfits and unknown clothing still require server support", () => {
   const product = (id: string, kind: string, renderKey: string) => ({
     id,
     kind,

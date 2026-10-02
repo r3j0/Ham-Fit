@@ -21,7 +21,7 @@ export class AvatarService {
     return this.database.$transaction(
       async (tx) => ({
         products: await tx.avatarProduct.findMany({ orderBy: { id: 'asc' } }),
-        // Explicit whole combinations also let FE filter unsupported previews.
+        // Single-item entries certify layers that FE can mix across different slots.
         combinations: (
           await tx.avatarCombination.findMany({
             include: { items: { orderBy: { productId: 'asc' } } },
@@ -152,12 +152,46 @@ export class AvatarService {
           '보유한 아이템만 저장할 수 있습니다.',
         );
       const id = combinationId(input);
-      if (!(await tx.avatarCombination.findUnique({ where: { id } })))
-        avatarError(
-          422,
-          'UNSUPPORTED_COMBINATION',
-          '지원하지 않는 렌더링 조합입니다.',
+      if (!(await tx.avatarCombination.findUnique({ where: { id } }))) {
+        const clothing = input.clothingIds.map((productId) =>
+          byId.get(productId)!,
         );
+        const individualIds = clothing.map((product) =>
+          combinationId({ ...input, clothingIds: [product.id] }),
+        );
+        // Each separate layer must be registered for this exact character/pose.
+        // Sets do not constrain mixing; unsupported artwork still fails closed.
+        if (
+          !clothing.length ||
+          clothing.some(
+            (product) =>
+              product.occupiesSlots.length !== 1 ||
+              product.occupiesSlots[0] !== product.slot,
+          ) ||
+          (await tx.avatarCombination.count({
+            where: { id: { in: individualIds } },
+          })) !== individualIds.length
+        )
+          avatarError(
+            422,
+            'UNSUPPORTED_COMBINATION',
+            '해당 캐릭터·자세에서 지원하지 않는 의상입니다.',
+          );
+        // Different users may save the same new mix concurrently. Only the
+        // transaction that inserts the immutable parent may insert its items.
+        const created = await tx.avatarCombination.createMany({
+          data: { id, characterId: input.characterId, poseId: input.poseId },
+          skipDuplicates: true,
+        });
+        if (created.count) {
+          await tx.avatarCombinationItem.createMany({
+            data: input.clothingIds.map((productId) => ({
+              combinationId: id,
+              productId,
+            })),
+          });
+        }
+      }
       // Whole outfit is a single immutable combination reference, so readers
       // cannot see a new character paired with old clothing during a save.
       const saved = await tx.avatarOutfit.update({

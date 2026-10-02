@@ -794,6 +794,131 @@ describe('avatar and shop with real PostgreSQL', () => {
     ).toBe(batchWon ? 1 : 0);
   });
 
+  it('buys four items atomically and mixes separately registered hat/top/bottom layers across sets, users and characters', async () => {
+    const suffix = randomUUID();
+    const clothingIds = [
+      'set-a-hat',
+      'set-b-top',
+      'set-c-bottom',
+      'set-d-top',
+    ].map((name) => `clothing.${name}-${suffix}`);
+    await db.$transaction(async (tx) => {
+      for (const [index, productId] of clothingIds.entries()) {
+        const slot = ['hat', 'top', 'bottom', 'top'][index];
+        await tx.avatarProduct.create({
+          data: {
+            id: productId,
+            kind: 'clothing',
+            slot,
+            occupiesSlots: [slot],
+            renderKey: productId,
+            ownershipScope: 'shared',
+            saleStatus: 'on_sale',
+            price: [30, 25, 20, 25][index],
+            priceProvisional: false,
+          },
+        });
+        for (const characterId of ['character.cream', 'character.gray']) {
+          for (const poseId of ['pose.basic', 'pose.run']) {
+            const input = { characterId, poseId, clothingIds: [productId] };
+            await tx.avatarCombination.create({
+              data: {
+                id: combinationId(input),
+                characterId,
+                poseId,
+                items: { create: { productId } },
+              },
+            });
+          }
+        }
+      }
+    });
+    const accounts = [await register(), await register()];
+    const items = [...clothingIds.slice(0, 3), 'pose.run'].map((productId) => ({
+      productId,
+      catalogRevision: revisions.get(productId) ?? 1,
+    }));
+    for (const a of accounts) {
+      await fund(a, 145);
+      const key = randomUUID();
+      const result = await buyBatch(a, items, key).expect(201);
+      expect(result.body.purchases).toHaveLength(4);
+      expect(result.body).toMatchObject({
+        totalPrice: 145,
+        currency: { balance: 0 },
+      });
+      await buyBatch(a, [...items].reverse(), key).expect(200);
+      expect(await db.avatarPurchase.count({ where: { userId: a.id } })).toBe(
+        4,
+      );
+      expect(
+        await db.currencyTransaction.count({
+          where: { userId: a.id, kind: 'purchase' },
+        }),
+      ).toBe(4);
+      expect(await service.outfit(a.id)).toMatchObject(defaultOutfit);
+    }
+    const mix = { ...defaultOutfit, clothingIds: clothingIds.slice(0, 3) };
+    expect(
+      await db.avatarCombination.findUnique({
+        where: { id: combinationId(mix) },
+      }),
+    ).toBeNull();
+    // Same recipe saved by separate users must have exactly one immutable parent/items.
+    await Promise.all(accounts.map((a) => save(a, mix).expect(200)));
+    expect(
+      await db.avatarCombinationItem.count({
+        where: { combinationId: combinationId(mix) },
+      }),
+    ).toBe(3);
+    const a = accounts[0];
+    await fund(a, 25);
+    await buy(a, clothingIds[3]).expect(201);
+    const replacement = {
+      ...mix,
+      clothingIds: [clothingIds[0], clothingIds[3], clothingIds[2]],
+    };
+    await save(a, replacement, 2).expect(200);
+    await save(a, { ...replacement, characterId: 'character.gray' }, 3).expect(
+      200,
+    );
+    await save(
+      a,
+      { ...replacement, characterId: 'character.gray', poseId: 'pose.run' },
+      4,
+    ).expect(200);
+    // Duplicate slots still fail, even though each piece is individually registered.
+    await save(a, { ...mix, clothingIds: [clothingIds[1], clothingIds[3]] }, 5)
+      .expect(400)
+      .expect(({ body }) => expect(body.code).toBe('SLOT_CONFLICT'));
+    await save(
+      a,
+      { ...mix, clothingIds: [clothingIds[1], clothingIds[1]] },
+      5,
+    ).expect(400);
+    await buy(a, 'pose.curious').expect(409); // No remaining funds.
+    await db.avatarOwnership.create({
+      data: {
+        userId: a.id,
+        productId: 'pose.curious',
+        source: 'streak_roulette',
+      },
+    });
+    await save(a, { ...mix, poseId: 'pose.curious' }, 5)
+      .expect(422)
+      .expect(({ body }) => expect(body.code).toBe('UNSUPPORTED_COMBINATION'));
+    await api(a, 'get', '/users/me/avatar/outfit')
+      .expect(200)
+      .expect(({ body }) =>
+        expect(body).toMatchObject({
+          characterId: 'character.gray',
+          poseId: 'pose.run',
+          clothingIds: replacement.clothingIds.slice().sort(),
+          revision: 5,
+        }),
+      );
+  });
+
   it('requires batch authentication, CSRF, a request key and 2–4 unique strict items', async () => {
     const a = await register();
     await request(app.getHttpServer())

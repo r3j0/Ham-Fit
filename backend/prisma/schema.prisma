@@ -568,8 +568,8 @@ model AvatarProduct {
   @@map("avatar_products")
 }
 
-// Each immutable row certifies one complete rendered combination. Absence
-// means unsupported, including combinations of otherwise compatible pieces.
+// Immutable rendered recipes preserve saved outfits. Single-item recipes also
+// certify layers that can be composed across distinct hat/top/bottom slots.
 model AvatarCombination {
   id String @id
   characterId String @map("character_id")
