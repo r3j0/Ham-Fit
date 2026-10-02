@@ -44,7 +44,7 @@ export function ProfileCharacter({
       aria-hidden={label ? undefined : true}
       data-pose={outfit?.rendering.pose ?? "basic"}
       data-variant={outfit?.rendering.variant ?? "cream"}
-      data-wear="none"
+      data-wear={outfit?.rendering.clothing.length ? "outfit" : "none"}
     >
       <Hamster
         {...(outfit ? avatarRenderSelection(outfit.rendering) : {})}

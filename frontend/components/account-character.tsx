@@ -1,11 +1,10 @@
 "use client";
-import { getOutfit } from "@/lib/shop";
-import { useApiResource } from "./use-api-resource";
+import { useMemberOutfit } from "./member-outfit-provider";
 import { ProfileCharacter } from "./profile-character";
 import { Loading } from "./ui";
 
 export function AccountCharacter() {
-  const resource = useApiResource(getOutfit);
+  const resource = useMemberOutfit();
   if (!resource.data)
     return resource.error ? (
       <button className="text-button" onClick={resource.reload}>

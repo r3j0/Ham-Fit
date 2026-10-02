@@ -25,6 +25,17 @@ export function canRenderAvatar(
   );
 }
 
+/** Keep the whole outfit when a scene's pose has no matching garment artwork. */
+export function avatarSceneRendering(
+  rendering: AvatarOutfit["rendering"],
+  pose: HamsterPose | undefined,
+  catalog: ItemCatalog,
+) {
+  const scene = { ...rendering, pose: pose ?? rendering.pose };
+  if (canRenderAvatar(scene, catalog)) return scene;
+  return canRenderAvatar(rendering, catalog) ? rendering : null;
+}
+
 export function clothingAsset(
   renderKey: string,
   catalog: ItemCatalog = DEFAULT_ITEMS,

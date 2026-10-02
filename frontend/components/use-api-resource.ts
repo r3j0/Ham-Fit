@@ -5,6 +5,7 @@ export type ResourcePolicy = {
   refreshIntervalMs?: number | false;
   staleTimeMs?: number;
   enabled?: boolean;
+  refreshKey?: string | number;
 };
 export function useApiResource<T>(
   load: (signal: AbortSignal) => Promise<T>,
@@ -12,6 +13,7 @@ export function useApiResource<T>(
     refreshIntervalMs = false,
     staleTimeMs = 300000,
     enabled = true,
+    refreshKey,
   }: ResourcePolicy = {},
 ) {
   const [snapshot, setSnapshot] = useState<{
@@ -68,7 +70,7 @@ export function useApiResource<T>(
       window.removeEventListener("focus", focus);
       document.removeEventListener("visibilitychange", focus);
     };
-  }, [load, version, refreshIntervalMs, staleTimeMs, enabled]);
+  }, [load, version, refreshIntervalMs, staleTimeMs, enabled, refreshKey]);
   const current = snapshot?.load === load;
   return {
     data: current ? snapshot.data : undefined,

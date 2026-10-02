@@ -1,10 +1,9 @@
 "use client";
-import { getOutfit } from "@/lib/shop";
-import { useApiResource } from "./use-api-resource";
+import { useMemberOutfit } from "./member-outfit-provider";
 import { ProfileCharacter } from "./profile-character";
 import { Loading } from "./ui";
 export function MyCharacter() {
-  const resource = useApiResource(getOutfit);
+  const resource = useMemberOutfit();
   return (
     <div className="my-character stack-sm">
       {resource.data ? (

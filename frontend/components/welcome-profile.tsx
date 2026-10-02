@@ -11,7 +11,7 @@ import {
 import { getOutfit, saveOutfit } from "@/lib/shop";
 import { sameSelection } from "@/lib/shop-contract";
 import type { AvatarOutfit } from "@/lib/avatar-outfit";
-import { MascotPose } from "./mascot/MascotPose";
+import { OutfitMascot } from "./outfit-mascot";
 import { useApiResource } from "./use-api-resource";
 import { useOperationScope } from "./use-operation-scope";
 import { Loading, Notice, Shell, SubmitLabel } from "./ui";
@@ -147,8 +147,8 @@ function ProfileChoice({
             disabled={busy}
             onClick={() => setVariant(v)}
           >
-            <MascotPose
-              variant={v}
+            <OutfitMascot
+              rendering={{ ...base.rendering, variant: v }}
               pose={variant === v ? "victory" : "basic"}
               size={140}
               label=""
