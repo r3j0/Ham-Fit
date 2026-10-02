@@ -191,7 +191,10 @@ test("실제 API: 생성·초대·승인/거절·멤버 조회·강퇴·위임·
     );
     page.on("dialog", (d) => d.accept());
     await page.goto(`/groups/${groupId}`);
-    await page.getByRole("button", { name: "꾸준한운동 관리" }).click();
+    await page.getByRole("link", { name: "꾸준한운동", exact: true }).click();
+    await expect(
+      page.getByRole("region", { name: "그룹원 관리" }),
+    ).toBeVisible();
     await page.getByRole("button", { name: "내보내기", exact: true }).click();
     await page
       .getByRole("dialog")
@@ -217,7 +220,10 @@ test("실제 API: 생성·초대·승인/거절·멤버 조회·강퇴·위임·
       .getByRole("dialog", { name: "가입 신청 관리" })
       .getByRole("button", { name: "닫기" })
       .click();
-    await page.getByRole("button", { name: "꾸준한운동 관리" }).click();
+    await page.getByRole("link", { name: "꾸준한운동", exact: true }).click();
+    await expect(
+      page.getByRole("region", { name: "그룹원 관리" }),
+    ).toBeVisible();
     await page.getByRole("button", { name: "그룹장 위임" }).click();
     await page
       .getByRole("dialog")

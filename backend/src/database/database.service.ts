@@ -56,8 +56,8 @@ export class DatabaseService
   async isReady(): Promise<boolean> {
     try {
       // PostgreSQL resolves every CTE's table/columns during parsing, including
-      // unused CTEs. The planner discards these checks, so no account/history
-      // rows are read. Only the catalog EXISTS executes, in one round trip.
+      // unused CTEs. The planner discards them, including their ACL checks.
+      // Check column privileges explicitly without reading account/history rows.
       const checks = readinessSchema.map(
         ({ table, columns }, index) =>
           Prisma.sql`${Prisma.raw(`schema_check_${index}`)} AS (
@@ -66,9 +66,17 @@ export class DatabaseService
           LIMIT 0
         )`,
       );
+      const privileges = readinessSchema.flatMap(({ table, columns }) => {
+        const qualified = `"${this.dbSchema.replaceAll('"', '""')}"."${table}"`;
+        return columns.map(
+          (column) =>
+            Prisma.sql`pg_catalog.has_column_privilege(${qualified}, ${column}, 'SELECT')`,
+        );
+      });
       const [row] = await this.$queryRaw<Array<{ ready: boolean }>>`
         WITH ${Prisma.join(checks)}
-        SELECT EXISTS(SELECT 1 FROM ${Prisma.raw(`"${this.dbSchema.replaceAll('"', '""')}"."measurement_definitions"`)} LIMIT 1) AS ready
+        SELECT EXISTS(SELECT 1 FROM ${Prisma.raw(`"${this.dbSchema.replaceAll('"', '""')}"."measurement_definitions"`)} LIMIT 1)
+          AND ${Prisma.join(privileges, ' AND ')} AS ready
       `;
       return row?.ready === true;
     } catch {
