@@ -1,0 +1,7 @@
+.week {
+  width: 100%;
+  max-width: 440px;
+  padding: 20px 8px;
+  border-radius: var(--radius-hero);
+  background: var(--canvas);
+}

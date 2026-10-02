@@ -22,7 +22,11 @@ async function setup(page: Page, count = 2) {
     item.progress.intervals = [{ start: 0, end: 48 }];
   }
   await page.route("**/api/v2/workout-routines/**", (route) =>
-    route.fulfill({ json: routine }),
+    route.fulfill({
+      json: new URL(route.request().url()).pathname.endsWith("/history")
+        ? { items: [routine], nextCursor: null }
+        : routine,
+    }),
   );
   const options = Array.from({ length: count }, (_, n) => ({
     groupId: id(n + 1),
