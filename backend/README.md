@@ -1,183 +1,185 @@
-# Backend
+# 🛠️ 햄피트 백엔드
 
-Project Health의 NestJS API 서버입니다. 백엔드 코드·설정·문서·테스트는 이 디렉토리에서 관리합니다.
+햄피트의 인증·체력 기록·맞춤 운동·그룹·보상을 제공하는 NestJS API 서버입니다. 사용자 데이터는 PostgreSQL에 저장하며, 신규 운동 루틴은 데이터 분석 영역의 Python 원본을 직접 호출해 생성합니다.
 
-- [Vercel Hobby + Neon 배포](docs/vercel-neon-deployment.md)
-- [Render Free + Neon Free 배포](docs/render-neon-deployment.md)
-- [그룹·가입 신청·알림 API](docs/groups-api.md)
-- [그룹 미션·룰렛 정책·API](docs/group-missions.md)
-- [하루 전체 루틴 씨앗 지급·완료 보상 영수증 API](docs/activity-rewards.md)
-- [캐릭터·코디·상점 API](docs/avatar-shop-api.md)
-- [출력기 v2 상품·확정 가격·a-plus 호환 정책](docs/avatar-outputter-v2.md)
-- [그룹 기능 검증·변경 파일](docs/groups-verification.md)
-- [개발 원칙](AGENTS.md)
-- [API 버전 관리](docs/api-versioning.md): 현재 `/api/v1`, DB·측정 기준·기록 수정 버전과 구분
-- [계정 스키마](docs/account-schema.md): 이메일·비밀번호 등 계정 필드와 사용자 관계
-- [계정 정보 변경·온보딩·재화·커리큘럼·영구 탈퇴 API](docs/users-api.md)
-- [개인 운동 설정 API·가입/탈퇴·배포 순서](docs/user-preferences-api.md)
-- [회원가입·로그인·로그아웃·토큰 갱신 API와 직접 테스트](docs/auth-api.md)
-- [회원가입 닉네임·프로필 조회/수정과 프론트 연동](docs/nickname-profile.md)
-- [측정 데이터 명세](docs/measurement-data-spec.md)
-- [측정 기록 CRUD API와 직접 테스트](docs/measurements-api.md)
-- [간이측정·공식 종목 평가·6축 조회 API](docs/measurement-evaluation-api.md)
-- [절대악력 원본 입력·상대악력 환산 및 평가 계약](docs/absolute-grip.md)
-- [공식 평가 기준 조사·적용 범위](docs/research-fitness-criteria.md)
-- [국민체력100 사진 추출 API·환경설정·프론트 연동](docs/measurement-extraction-api.md)
-- [DB 설계와 마이그레이션](docs/database.md)
-- [일별 운동·수행 결과 API 설계](docs/recommendations/workouts-api.md)
-- [생년월일 프로필 API와 KST 만 나이](docs/recommendations/birth-profile.md)
-- [추천 알고리즘 연결 상태·재연결 경계](docs/recommendations/provenance.md)
-- [여러 운동 루틴 API·실제 Python 연결·런타임 설정](docs/recommendations/routines-api.md)
-- [영상 HTTPS·Range·메타데이터 검증 범위](docs/recommendations/media-verification.md)
-- [알고리즘 연결 제거·BE 계약 검증](docs/recommendations/verification.md)
+[프로젝트 소개](../README.md) · [프론트엔드](../frontend/README.md) · [데이터 분석](../data-analysis/README.md) · [개발 원칙](AGENTS.md)
 
-2026-09-29 사용자 결정으로 `/api/v2/workout-routines/today`에서 원본 Python의 당일 추천 함수를 직접 호출하고 하루 한 루틴의 여러 운동·처방·진행을 저장한다. 당일 재요청은 저장값을 반환하며 영상의 실제 시청률 80% 이상에서 중단·종료하면 완료로 기록한다. Python 환경과 읽기 전용 원본 데이터가 필요하며 [준비 절차](docs/recommendations/routines-api.md)를 따른다. 기존 `/api/v1/workouts` 단일 영상 API는 미연결 상태와 기존 계약을 유지한다. 운영 경로에 복사한 알고리즘이나 대체 추천 계산은 없다.
+## 지원 기능
 
-## 개발 환경
+| 영역             | 제공 기능                                                                               | 계약 문서                                                                                                       |
+| ---------------- | --------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| 인증·계정        | 이메일 가입·로그인·로그아웃·토큰 갱신, Argon2id 비밀번호 해싱, 계정 정보 변경·회원 탈퇴 | [인증](docs/auth-api.md), [사용자](docs/users-api.md)                                                           |
+| 프로필·운동 설정 | 닉네임·생년월일, 온보딩 상태, 운동량·운동 목적·보유 도구                                | [프로필](docs/nickname-profile.md), [운동 설정](docs/user-preferences-api.md), [보유 도구](docs/owned-tools.md) |
+| 체력 기록        | 국민체력100·성인 간이측정 CRUD, 부분 저장, 종목별 평가와 최신 6축 조회                  | [측정](docs/measurements-api.md), [평가](docs/measurement-evaluation-api.md)                                    |
+| 사진 추출        | 결과표 사진에서 저장 전 초안을 추출하고 사용자 확인 후 기존 측정 API로 저장             | [사진 추출](docs/measurement-extraction-api.md)                                                                 |
+| 맞춤 루틴        | KST 당일 루틴 생성·조회, 여러 운동과 처방·유산소 권장량, 영상별 진행·이력               | [루틴 API](docs/recommendations/routines-api.md)                                                                |
+| 그룹             | 생성·가입 신청·초대 코드·그룹원 관리·알림, 최대 5명 그룹                                | [그룹 API](docs/groups-api.md)                                                                                  |
+| 그룹 미션        | 미션 시작·성장·기여도·물 주기·그룹 룰렛                                                 | [그룹 미션](docs/group-missions.md), [물 주기](docs/group-mission-water.md)                                     |
+| 활동·보상        | 전체 루틴 완료 보상, 연속 운동 집계와 개인 룰렛                                         | [완료 보상](docs/activity-rewards.md), [스트릭](docs/activity-streaks.md), [개인 룰렛](docs/streak-roulette.md) |
+| 캐릭터·상점      | 캐릭터 선택·상품·구매·보유 목록·대표 코디, 아바타 매니저 메타데이터 게시                | [상점](docs/avatar-shop-api.md), [아바타 매니저](docs/avatar-manager.md)                                        |
+| 운영 상태        | 프로세스 상태와 DB·스키마·카탈로그 readiness                                            | [DB 안내](docs/database.md)                                                                                     |
 
-Node.js 24.15 이상(`.nvmrc`), npm, NestJS 12, TypeScript ESM, PostgreSQL 17, Prisma 7.10을 사용합니다. 패키지 버전은 `package-lock.json`으로 고정합니다. 아래 명령은 모두 `backend/`에서 실행합니다.
+대부분의 API는 `/api/v1`이며 당일 루틴은 `/api/v2/workout-routines`를 사용합니다. 기존 `/api/v1/workouts`의 단일 영상 추천 계산기는 미연결 상태를 유지합니다. 새 연동은 v2 루틴 계약을 사용하세요.
 
-## 시작하기
+## 기술과 요구 환경
 
-로컬 PostgreSQL 실행 파일(`initdb`, `pg_ctl`)이 PATH에 있다면:
+- Node.js `^24.15.0 || >=26.0.0`, npm (`.nvmrc`: 24)
+- NestJS 12, TypeScript 6, ESM
+- PostgreSQL 17, Prisma 7.10와 `pg` 어댑터
+- Python 3.9 이상, NumPy·pandas: 신규 추천 실행에 필요
+- Vitest·Supertest, Oxlint·Prettier
+
+패키지 버전은 `package-lock.json`, 추천 런타임 버전은 `requirements-recommendation.txt`를 기준으로 설치합니다. 아래 명령은 모두 `backend/`에서 실행합니다.
+
+## 실행 방법
+
+### 1. Node.js 의존성 설치
 
 ```bash
+cd backend
 nvm use
 npm ci
+```
+
+### 2. 데이터베이스 준비
+
+**로컬 DB 도우미 사용** — `initdb`, `pg_ctl`이 PATH에 있는 환경:
+
+```bash
 npm run db:local:start
 npm run auth:secret
 npm run db:migrate:deploy
-npm run start:dev
 ```
 
-`db:local:start`는 `backend/.local/`에 전용 DB 클러스터를 만들고 `127.0.0.1:15432`에서 실행합니다. 개발·테스트 DB를 분리하고 임의로 생성한 비밀번호를 사용합니다. `.env`가 없으면 접속 설정을 생성하며, 기존 `.env`는 덮어쓰지 않습니다. 기본 포트를 바꾸려면 최초 초기화 시 `LOCAL_POSTGRES_PORT`를 지정합니다. 종료는 `npm run db:local:stop`입니다.
+도우미는 `.local/`에 전용 클러스터를 만들고 `127.0.0.1:15432`에서 실행합니다. 개발용 `project_health`와 테스트용 `project_health_test` DB를 만들고, `.env`가 없으면 임의 비밀번호를 포함한 접속 설정을 생성합니다. 기존 `.env`는 덮어쓰지 않습니다. 첫 초기화 시 `LOCAL_POSTGRES_PORT`로 포트를 바꿀 수 있으며 종료는 `npm run db:local:stop`입니다.
 
-이미 준비한 PostgreSQL을 사용한다면 `.env.example`을 `.env`로 복사하고 실제 접속 정보로 바꾼 뒤 `npm run auth:secret`, `npm run db:migrate:deploy`를 실행합니다. 개발 도우미가 만든 DB는 배포용 인프라가 아닙니다.
+**이미 준비된 PostgreSQL 사용** — 새 체크아웃에서:
 
-기본 API 주소는 `http://localhost:3001/api/v1`입니다.
+```bash
+cp .env.example .env
+# .env의 DATABASE_URL과 TEST_DATABASE_URL을 실제 접속 정보로 수정
+npm run auth:secret
+npm run db:migrate:deploy
+```
 
-인증·측정·상태 확인 API 모두 명시적인 v1 경로를 사용합니다. 이전 `/api/...` 경로와 미지원 버전은 404를 반환합니다. 프론트와 호출 도구도 기본 경로를 `/api/v1`로 설정합니다.
+`TEST_DATABASE_URL`은 개발·운영 DB와 분리합니다. `DIRECT_URL`을 비워 두면 Prisma CLI도 `DATABASE_URL`을 사용합니다. 별도 마이그레이션 접속 주소가 필요한 환경에서는 `DIRECT_URL`을 지정합니다.
+
+### 3. 추천 런타임 준비
+
+```bash
+python3 -m venv .local/recommendation-venv
+.local/recommendation-venv/bin/python -m pip install -r requirements-recommendation.txt
+export RECOMMENDATION_PYTHON="$PWD/.local/recommendation-venv/bin/python"
+```
+
+원본 `../data-analysis/src/recommendation_v2.py`와 `../data-analysis/data/processed/workout_videos_v2_complete.csv`가 필요합니다. 백엔드는 원본을 복사·재구현하지 않고 읽기 전용으로 실행합니다. 터미널을 새로 열면 `RECOMMENDATION_PYTHON`을 다시 지정하거나 `.env`에 가상환경 Python의 절대 경로를 저장하세요.
+
+### 4. 개발 서버 실행
+
+```bash
+npm run start:dev
+```
 
 ```bash
 curl http://localhost:3001/api/v1/health
 curl http://localhost:3001/api/v1/health/ready
 ```
 
-`/health`는 프로세스 응답 여부, `/health/ready`는 실제 DB 연결·필수 스키마·조회 권한·검사 카탈로그 준비 여부를 검사합니다. readiness는 SQL 한 번으로 스키마를 해석하고 필수 컬럼의 SELECT 권한과 카탈로그 존재를 확인하며 사용자·이력 행을 읽지 않습니다. 테이블·컬럼 권한이 빠진 제한 계정도 준비되지 않은 상태로 판단합니다. 준비되지 않으면 503을 반환하고 DB 접속 정보는 노출하지 않습니다. 서버 시작 시 DB 연결에 실패하면 시작을 중단합니다.
-
-2026-09-21 정정으로 선호 운동·운동 목적·개인별 목표/기준값과 `currentFitness` 프로필 응답을 제거했습니다. 기존 측정 CRUD·저장 데이터와 유효한 기록 1건 이상의 온보딩 조건은 유지합니다.
-
-2026-09-26부터 별도 UserPreference에 운동량 선호·단일 운동 목적을 저장하며 2026-09-29 보유 도구 목록을 추가했습니다. 기존 프로필·계정 변경 계약과 온보딩을 유지하며 신규 루틴 추천에서 저장된 운동량·목적·보유 도구를 사용합니다. 가입 중지 → 마이그레이션 → 모든 신규 서버 교체 → 누락 점검 → 가입 재개 순서가 필요합니다. [운동 설정 API](docs/user-preferences-api.md)에 요청·응답·복구 절차를 정리했습니다.
-
-2026-09-24부터 공식 수치 기준을 확보하지 못한 성인 `self_curl_up`은 신규 입력에서 제외합니다. 최신 카탈로그는 `nfa100-2026-09-24`이며, 기존 기록·과거 카탈로그와 청소년 `curl_up`은 유지합니다. [평가 API](docs/measurement-evaluation-api.md)에 신규 입력과 기존 기록 수정 계약을 정리했습니다.
-
-현재 이메일 인증·국민체력100 측정 CRUD와 이메일·비밀번호 변경·온보딩·재화 조회·영구 탈퇴를 구현했습니다. 운동 1회분 배정·완료·이력은 내부 서비스까지 제공하며 콘텐츠·추천 HTTP 호출은 후속 범위입니다. 비밀번호는 Argon2id 해시로 저장하고, 측정 기록은 인증된 본인만 조회·수정·삭제합니다. [인증 테스트](docs/auth-api.md)와 [측정 기록 테스트](docs/measurements-api.md)에 curl 예제가 있습니다. 간이측정 저장·공식 종목 평가·최신 회차의 6축 조회도 제공합니다. 소셜 로그인·이메일 확인·비밀번호 재설정은 후속 범위입니다.
+`health`는 프로세스 응답을, `health/ready`는 실제 DB 연결·필수 스키마·조회 권한·검사 카탈로그를 확인합니다. 준비되지 않았으면 readiness는 503을 반환합니다. 시작 시 DB 연결에 실패하면 서버가 시작되지 않습니다.
 
 ## 환경변수
 
-시스템 환경변수가 `.env`보다 우선합니다. 실제 접속 정보와 `.local/`은 Git에서 제외됩니다.
+시스템 환경변수가 `.env`보다 우선합니다. 전체 예시는 [.env.example](.env.example)을 참고하세요.
 
-| 변수                       | 기본값                    | 용도                                                            |
-| -------------------------- | ------------------------- | --------------------------------------------------------------- |
-| `NODE_ENV`                 | `development`             | `development`, `production`, `test`                             |
-| `PORT`                     | `3001`                    | API 포트                                                        |
-| `FRONTEND_ORIGIN`          | `http://localhost:3000`   | CORS 허용 origin. 인증을 대신하지 않음                          |
-| `DATABASE_URL`             | 없음, 필수                | PostgreSQL 접속 주소. `schema` 옵션 지원                        |
-| `TEST_DATABASE_URL`        | 없음, 통합 테스트 시 필수 | 개발·운영 DB와 다른 테스트 전용 DB                              |
-| `AUTH_JWT_SECRET`          | 없음, 필수                | 임의 32바이트 키의 64자리 hex 표현                              |
-| `AUTH_ACCESS_TTL_SECONDS`  | `900`                     | access token 수명(60~3600초)                                    |
-| `AUTH_REFRESH_TTL_SECONDS` | `604800`                  | 세션 고정 수명(3600~2592000초, access보다 길어야 함)            |
-| `AUTH_COOKIE_SAME_SITE`    | `lax`                     | 운영 HTTPS에서 `none` 허용                                      |
-| `TRUST_PROXY_CIDRS`        | 없음                      | 실제 신뢰할 프록시 IP/CIDR을 쉼표로 구분                        |
-| `OPENAI_API_KEY`           | 없음, 추출 사용 시 필수   | 서버 비밀 설정. 미설정 시 추출만 503                            |
-| `OPENAI_OCR_MODEL`         | 없음, 추출 사용 시 필수   | 이미지·Responses·Structured Outputs 지원 및 계정 접근 확인 필요 |
+| 변수                                  | 기본값·필요 조건                                                 | 용도                                                  |
+| ------------------------------------- | ---------------------------------------------------------------- | ----------------------------------------------------- |
+| `NODE_ENV`                            | `development`                                                    | 실행 환경 (`development`, `production`, `test`)       |
+| `PORT`                                | `3001`                                                           | API 포트                                              |
+| `FRONTEND_ORIGIN`                     | `http://localhost:3000`                                          | CORS 허용 origin. 경로·끝 슬래시 없이 지정            |
+| `DATABASE_URL`                        | 필수                                                             | PostgreSQL 실행 접속 주소                             |
+| `DIRECT_URL`                          | 선택                                                             | Prisma CLI의 별도 마이그레이션 접속 주소              |
+| `TEST_DATABASE_URL`                   | 통합 테스트 시 필수                                              | 분리된 테스트 DB                                      |
+| `AUTH_JWT_SECRET`                     | 필수                                                             | 임의 32바이트의 64자리 hex 키. `auth:secret`으로 생성 |
+| `AUTH_ACCESS_TTL_SECONDS`             | `900`                                                            | access token 수명                                     |
+| `AUTH_REFRESH_TTL_SECONDS`            | `604800`                                                         | refresh 세션 수명                                     |
+| `AUTH_COOKIE_SAME_SITE`               | `lax`                                                            | 운영 HTTPS 환경에서 `none` 사용 가능                  |
+| `TRUST_PROXY_CIDRS`                   | 없음                                                             | 실제 신뢰할 프록시 IP/CIDR                            |
+| `RECOMMENDATION_PYTHON`               | PATH의 `python3`                                                 | 추천 실행용 Python 경로                               |
+| `RECOMMENDATION_SOURCE_PATH`          | `../data-analysis/src/recommendation_v2.py`                      | 추천 원본 경로                                        |
+| `WORKOUT_VIDEOS_PATH`                 | `../data-analysis/data/processed/workout_videos_v2_complete.csv` | 추천 카탈로그 경로                                    |
+| `WORKOUT_MEDIA_REPORT_PATH`           | `.local/recommendation/media-verification.json`                  | 검증된 재생 URL·길이 보고서                           |
+| `OPENAI_API_KEY` / `OPENAI_OCR_MODEL` | 사진 추출 시 필요                                                | 서버 전용 키와 이미지 추출 모델                       |
+| `AVATAR_MANAGER_TOKEN`                | 매니저 게시 시 필요                                              | 64자리 소문자 hex 게시 토큰                           |
 
-## DB와 배포 명령
+사진 추출 설정이 없으면 추출 기능만 503을 반환합니다. 추천 실행 환경이나 원본이 없으면 신규 루틴 생성이 실패하며 임의 추천으로 대체하지 않습니다. 미디어 검증 자료가 없으면 재생 URL이 제공되지 않을 수 있습니다. 실제 영상 검증 절차는 [미디어 안내](docs/recommendations/media-verification.md)를 참고하세요.
 
-| 명령어                                     | 용도                                        |
-| ------------------------------------------ | ------------------------------------------- |
-| `npm run db:local:start` / `db:local:stop` | 전용 로컬 PostgreSQL 시작·종료              |
-| `npm run db:generate`                      | 스키마에서 Prisma Client 생성               |
-| `npm run db:validate`                      | Prisma 스키마 검증                          |
-| `npm run db:migrate:dev -- --name 이름`    | 개발 DB에서 새 마이그레이션 작성            |
-| `npm run db:migrate:deploy`                | 검토·커밋한 마이그레이션 적용               |
-| `npm run db:status`                        | 마이그레이션 상태 확인                      |
-| `npm run start:dev`                        | 클라이언트 생성 후 변경 감지 서버 실행      |
-| `npm run start:debug`                      | 디버깅 서버 실행                            |
-| `npm run build`                            | 클라이언트 생성 후 `dist/` 빌드             |
-| `npm run start:prod`                       | 빌드된 서버 실행                            |
-| `npm run auth:secret`                      | 로컬 JWT 키 생성, 기존 값 보존              |
-| `npm run auth:cleanup`                     | 만료된 세션·refresh token·요청 제한 행 정리 |
+## 주요 명령과 테스트
 
-배포 파이프라인에서는 의존성 설치·빌드 후 해당 환경의 `DATABASE_URL`로 `db:migrate:deploy`를 한 번 실행하고 서버를 시작합니다. `NODE_ENV=production`, HTTPS `FRONTEND_ORIGIN`, 비밀 관리 기능으로 주입한 `AUTH_JWT_SECRET`을 설정하고 API도 HTTPS로 제공합니다. 서버가 시작할 때 임의로 마이그레이션·샘플 사용자 생성을 실행하지 않습니다. 만료 세션 정리는 배포 환경에서 정기 실행합니다.
+| 명령                                      | 용도                                             |
+| ----------------------------------------- | ------------------------------------------------ |
+| `npm run start:dev` / `start:debug`       | 개발·디버깅 서버, Prisma Client 자동 생성        |
+| `npm run build` / `start:prod`            | Prisma Client 생성·빌드 / 빌드된 서버 실행       |
+| `npm run db:generate` / `db:validate`     | Prisma Client 생성 / 스키마 검사                 |
+| `npm run db:migrate:dev -- --name 이름`   | 개발 DB에서 새 마이그레이션 작성                 |
+| `npm run db:migrate:deploy` / `db:status` | 커밋한 마이그레이션 적용 / 상태 확인             |
+| `npm run auth:secret` / `auth:cleanup`    | 로컬 키 생성 / 만료 세션·토큰·요청 제한 정리     |
+| `npm test` / `test:watch` / `test:cov`    | 단위 테스트 / 감시 실행 / 커버리지               |
+| `npm run test:e2e`                        | 실제 PostgreSQL 통합 테스트                      |
+| `npm run format` / `format:check`         | 서식 정리 / 검사                                 |
+| `npm run check`                           | 스키마·생성·서식·린트·타입·단위·통합 테스트·빌드 |
 
-## 검사와 테스트
+전체 검증에는 테스트 DB와 추천 Python 환경이 필요합니다.
 
 ```bash
+export RECOMMENDATION_PYTHON="$PWD/.local/recommendation-venv/bin/python"
 npm run check
 ```
 
-스키마·서식·린트·타입 검사, 단위·통합 테스트와 빌드를 실행합니다. 단위 테스트만 실행할 때는 `npm test`를 사용합니다. `npm run format`은 서식 정리, `npm run format:check`는 서식 검사입니다.
-
-`npm run test:e2e`는 `TEST_DATABASE_URL`의 DB 안에 매번 새로운 임시 스키마를 만들고 마이그레이션을 두 번 적용합니다. 실제 PostgreSQL로 테스트한 뒤 자신이 만든 스키마만 정리합니다. 테스트 DB가 설정되지 않거나 개발 DB와 같으면 실패하며, 인메모리 DB로 대체하거나 테스트를 건너뛰지 않습니다. 실행 환경은 로컬 DB 접속과 테스트용 포트 열기를 허용해야 합니다.
-
-HTTP 테스트 앱은 `await app.listen(0, '127.0.0.1')`로 시작하고 종료 시 `app.close()`합니다. macOS에서 Supertest의 자동 wildcard 바인딩이 다른 로컬 서버와 겹치는 문제를 방지합니다. [404 실패 분석과 재현](docs/auth-test-failure-analysis.md)을 참고합니다.
-
-| 테스트                           | 검증                                                                     |
-| -------------------------------- | ------------------------------------------------------------------------ |
-| `src/config/environment.spec.ts` | 환경변수·접속 주소 검증                                                  |
-| `test/accounts.e2e-spec.ts`      | 확장 계정 컬럼, 이메일 유일성·정규화, 수정 시각                          |
-| `test/auth.e2e-spec.ts`          | 실제 API·해싱·토큰 회전·재사용·동시 요청·로그아웃·CSRF·요청 제한         |
-| `test/database.e2e-spec.ts`      | 실제 저장·조회, 부분 기록, 단위·연령·값 제약, 동시 삭제, 카탈로그 불변성 |
-| `test/measurements.e2e-spec.ts`  | 측정 CRUD·소유권·재시도 중복 방지·수정 충돌·삭제·페이지 조회             |
-| `test/app.e2e-spec.ts`           | 서버 초기화, CORS, 상태 확인·503 응답                                    |
-
-추가 평가 검증: `src/measurements/evaluation/measurement-evaluator.spec.ts`의 공식 경계·방향·연령·출처·미평가·6축·목표값 검사, `test/measurement-evaluation.e2e-spec.ts`의 간이측정 저장·최신 회차·기존 데이터·온보딩 회귀 검사. [검증 결과](docs/measurement-evaluation-verification.md)를 참고합니다.
-
-추가 PostgreSQL 통합 테스트:
-
-- `test/users.e2e-spec.ts`: 폐기 API/응답 제거·온보딩 스냅샷·재화 제약·영구 삭제/쿠키·모든 토큰 차단
-- `test/account-update.e2e-spec.ts`: 이메일·비밀번호 변경·본인 확인·중복/동시 요청·세션 폐기·이전 자격증명 차단
-- `test/curricula.e2e-spec.ts`: 현재 배정/소유권·중복 키·동시 배정/완료·완료 이력 보존
-- `test/user-migration.e2e-spec.ts`: 폐기 데이터 제거와 계정/측정/잔액/배정/세션 보존·재화 백필·기존 사용자 온보딩
-- `test/measurement-extraction.e2e-spec.ts`: 이미지 업로드·인증·실제 카탈로그·호출 제한·추출 시 저장/온보딩 불변·확인 후 기존 저장. OpenAI transport만 대역 사용
-- `src/measurements/extraction/*.spec.ts`: 실제 이미지 디코딩, 추출 내용 검증, strict 스키마·프롬프트 전달, 외부 오류·시간/횟수 제한
-
-새 사용자 기능 마이그레이션의 적용 절차는 [DB 문서](docs/database.md), 프론트 연동 예시는 [사용자 API](docs/users-api.md)를 참고합니다. 테스트는 운영·개발 DB에 적용하지 않습니다.
+통합 테스트는 `TEST_DATABASE_URL` 안에 임시 스키마를 만들고 마이그레이션을 적용한 뒤 자신이 만든 스키마만 정리합니다. 테스트 DB가 없거나 개발 DB와 같으면 실패합니다. 운동 루틴 통합 테스트는 실제 Python 원본과 CSV를 사용합니다. OCR 테스트의 외부 호출 대역은 실제 유료 모델 호출 검증과 구분합니다.
 
 ## 디렉토리 구조
 
 ```text
 backend/
-├── AGENTS.md
-├── docs/                       # 계정·측정·DB 명세
+├── docs/                  # API 계약·정책·배포·검증 기록
 ├── prisma/
-│   ├── schema.prisma
-│   └── migrations/             # 테이블·제약·공식 기준 데이터
-├── scripts/                    # 로컬 DB 및 격리 테스트 도우미
+│   ├── schema.prisma      # 데이터 모델
+│   └── migrations/        # 테이블·제약·기준 데이터 변경
+├── scripts/               # DB·인증·추천 Python 연결·배포 도우미
 ├── src/
-│   ├── auth/                   # 이메일 인증 API·해싱·토큰·가드
-│   ├── config/                 # 환경변수 검증
-│   ├── curricula/              # 운동 1회분 배정·완료·이력 내부 서비스
-│   ├── users/                  # 계정 정보 변경·온보딩 조회·영구 탈퇴
-│   ├── database/               # Prisma 연결·종료·준비 상태
-│   ├── generated/prisma/       # 생성 코드, Git 제외
-│   ├── measurements/           # 공식 카탈로그·본인 측정 기록 CRUD
-│   └── health/
-├── test/
-└── prisma.config.ts
+│   ├── auth/              # 인증·세션·가드
+│   ├── users/             # 계정·프로필·설정·재화
+│   ├── measurements/      # 기록·평가·사진 추출
+│   ├── recommendations/   # 루틴·진행·추천 원본 호출
+│   ├── groups/            # 그룹·미션·물 주기
+│   ├── avatar/            # 상점·코디·게시 메타데이터
+│   ├── curricula/         # 기존 운동 배정 내부 서비스
+│   ├── database/          # DB 연결·readiness
+│   ├── config/            # 환경·버전·요청 설정
+│   └── health/            # 상태 확인 API
+├── test/                  # 실제 DB와 HTTP 통합 테스트
+└── requirements-recommendation.txt
 ```
 
-새 기능은 기능별 Nest 모듈·컨트롤러·서비스로 추가하며, 필요한 모듈에서 `DatabaseModule`을 import해 `DatabaseService`를 주입합니다. ESM 로컬 import는 `.js` 확장자를 사용합니다. 생성 코드는 직접 수정하지 않습니다.
+## 기여하기
 
-Prisma 구성은 [공식 NestJS 안내](https://docs.prisma.io/docs/guides/frameworks/nestjs)를 참고하되 이 저장소의 ESM 설정을 유지합니다.
+1. [공통 기여 규칙](../CONTRIBUTING.md)과 [백엔드 개발 원칙](AGENTS.md), 변경할 기능의 `docs/` 계약을 먼저 확인합니다.
+2. 기능별 Nest 모듈·컨트롤러·서비스로 변경하고 필요한 모듈에서 `DatabaseModule`을 import합니다. ESM 로컬 import에는 `.js` 확장자를 사용합니다.
+3. DB 변경은 Prisma 스키마와 새 마이그레이션을 함께 작성합니다. 생성된 Prisma 코드는 직접 수정하지 않습니다.
+4. 인증된 본인 소유권, 생성 요청의 멱등성, 측정 수정·삭제의 revision, Decimal 문자열 정밀도를 보존합니다.
+5. 알고리즘 변경은 `data-analysis/` 원본에서 진행합니다. 기준 자료에는 출처·버전·확인일을 기록하고 사용자 결과를 하드코딩하지 않습니다.
+6. 영향받는 단위·통합 테스트와 API 문서를 갱신하고 `npm run check` 결과를 PR에 적습니다. 기존 계약을 깨는 변경은 새 API 버전으로 추가합니다.
 
-## 성인 스텝검사 참고 평가 (2026-09-24)
+백엔드 코드·설정·테스트·문서는 `backend/`에서 관리합니다. 프론트 연동이 필요한 변경은 요청·응답·오류·배포 순서를 함께 설명하세요.
 
-회복 심박수 원본을 보존하고 측정 당시 성별·나이·신장·체중으로 최대산소섭취량을 추정합니다. 부분 저장, 계산 근거 및 참고 등급 계약은 [스텝검사 안내](docs/step-assessment.md)를 따릅니다. 과거의 YMCA 기준 미확보 설명은 새로 저장·수정하는 성인 기록에 한해 이 계약으로 대체되며, 기존 스냅샷은 유지됩니다.
+## 배포와 상세 문서
 
-- [캐릭터·대표 코디·해바라기씨 상점 API 및 FE 연동](docs/avatar-shop-api.md) · [검증 결과](docs/avatar-shop-verification.md)
+의존성 설치·빌드, 해당 환경의 마이그레이션 적용, 서버 실행 순으로 준비합니다. 일반 서버 시작은 마이그레이션이나 샘플 사용자 생성을 자동으로 수행하지 않습니다. 운영에는 HTTPS origin과 서버 비밀 설정이 필요합니다.
 
-2026-09-30 그룹 미션·룰렛을 `/api/v1/groups/:groupId` 아래에 추가했다. 그룹장 수동 시작, 고정 구성원 스냅샷, 당일 전체 운동 성공의 자동 물 주기, 14N 성장 목표, 누적 기여 기반 룰렛권과 기존 개인 재화 지급을 제공한다. [정책·권한·멱등성·삭제·동시성](docs/group-missions.md), [실제 검증 결과](docs/group-missions-verification.md)를 참고한다.
+추천을 실행하는 배포물에는 `dist/` 외에도 Python 환경, `scripts/recommendation-runner.py`, 읽기 전용 원본 모듈과 CSV가 필요합니다. 의상 PNG는 프론트 정적 파일로 제공하며 백엔드는 상품·가격·보유·코디 메타데이터를 관리합니다.
 
-2026-10-01 개인 연속 운동 룰렛을 `/api/v1/users/me/streak-roulette`에 추가했다. 실제 연속 5배수 달성의 자동 권 발급, 수동 추첨, 기존 재화·미보유 상점 아이템 지급과 결과 복구를 제공한다. [정책·API·DB·마이그레이션](docs/streak-roulette.md), [단계별 검증](docs/streak-roulette-verification.md)을 참고한다.
+- [DB 설계·마이그레이션](docs/database.md), [API 버전 관리](docs/api-versioning.md)
+- [추천 연결 경계](docs/recommendations/provenance.md), [추천 런타임·진행 계약](docs/recommendations/routines-api.md)
+- [절대악력 환산](docs/absolute-grip.md), [스텝검사 참고 평가](docs/step-assessment.md), [평가 기준 조사](docs/research-fitness-criteria.md)
+- [Vercel 배포](docs/vercel-neon-deployment.md), [Render 배포](docs/render-neon-deployment.md)
+- [아바타 게시·배포](docs/avatar-production-publishing.md), [출력기 v2](docs/avatar-outputter-v2.md)
