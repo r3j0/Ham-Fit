@@ -2518,40 +2518,6 @@ fieldset:disabled select {
   font-size: 28px;
   letter-spacing: -1px;
 }
-.streak-celebration {
-  font-size: 108px;
-  animation: streak-grow 0.6s cubic-bezier(0.2, 1.5, 0.5, 1);
-}
-.streak-marks {
-  display: flex;
-  justify-content: center;
-  gap: 10px;
-  padding: 20px 0;
-}
-.streak-marks span {
-  display: grid;
-  place-items: center;
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  background: #edece7;
-  color: #aaa79b;
-}
-.streak-marks .filled {
-  background: #f8c36b;
-  color: #805622;
-  animation: streak-grow 0.5s both;
-}
-@keyframes streak-grow {
-  from {
-    opacity: 0;
-    transform: scale(0.5) translateY(15px);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
-}
 .practice-progress {
   display: flex;
   flex-wrap: wrap;
@@ -2590,9 +2556,7 @@ fieldset:disabled select {
   color: #376e7c;
 }
 @media (prefers-reduced-motion: reduce) {
-  .is-spinning,
-  .streak-celebration,
-  .streak-marks .filled {
+  .is-spinning {
     animation: none;
   }
   .roulette-wheel {

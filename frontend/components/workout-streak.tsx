@@ -1,13 +1,8 @@
 "use client";
 import Link from "next/link";
-import Image from "next/image";
-import { SeedIcon } from "./seed-icon";
 import { ChevronRight, Flame } from "lucide-react";
-import {
-  completedRoutineDate,
-  dateFromKey,
-  shiftDay,
-} from "@/lib/workout-history";
+import { completedRoutineDate } from "@/lib/workout-history";
+import { WorkoutWeek } from "./workout-week";
 import {
   useWorkoutHistory,
   WorkoutHistoryFeedback,
@@ -27,9 +22,6 @@ export function WorkoutStreak() {
       .filter((day): day is string => day !== null),
   );
   const activity = useApiResource(getActivityProfile);
-  const days = Array.from({ length: 7 }, (_, index) =>
-    shiftDay(today, index - 6),
-  );
   return (
     <section className="stack" aria-labelledby="workout-streak-title">
       <div className={`section-heading ${styles.streakHeading}`}>
@@ -58,53 +50,11 @@ export function WorkoutStreak() {
           {!ready || error ? (
             <WorkoutHistoryFeedback />
           ) : (
-            <ol className={styles.week} aria-label="최근 7일 운동 기록">
-              {days.map((day) => {
-                const date = dateFromKey(day);
-                const done = completed.has(day);
-                const fullRoutine = completedRoutines.has(day);
-                return (
-                  <li
-                    key={day}
-                    aria-label={`${date.getMonth() + 1}월 ${date.getDate()}일${day === today ? " 오늘" : ""}, ${fullRoutine ? "운동 루틴 완료" : done ? "운동 영상 완료" : "완료 기록 없음"}`}
-                  >
-                    <span className={styles.weekday} aria-hidden="true">
-                      {day === today ? "오늘" : "일월화수목금토"[date.getDay()]}
-                    </span>
-                    <span
-                      className={styles.weekMark}
-                      data-completed={done || undefined}
-                      data-today={day === today || undefined}
-                      data-workout-status={
-                        fullRoutine
-                          ? "routine_completed"
-                          : done
-                            ? "video_completed"
-                            : "none"
-                      }
-                      aria-hidden="true"
-                    >
-                      {fullRoutine ? (
-                        <Image
-                          src="/icons/sunflower.png"
-                          width={34}
-                          height={34}
-                          alt=""
-                          className={styles.completionIcon}
-                        />
-                      ) : done ? (
-                        <SeedIcon
-                          height={34}
-                          className={styles.completionIcon}
-                        />
-                      ) : (
-                        <span className={styles.emptyDot} />
-                      )}
-                    </span>
-                  </li>
-                );
-              })}
-            </ol>
+            <WorkoutWeek
+              today={today}
+              completed={completed}
+              completedRoutines={completedRoutines}
+            />
           )}
         </div>
         {legacyUnavailable && (

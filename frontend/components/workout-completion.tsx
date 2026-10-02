@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { getRoutine } from "@/lib/workout-routines";
 import { getActivityProfile } from "@/lib/activity-profile";
 import { getActivityReward } from "@/lib/personal-rewards";
@@ -11,6 +11,13 @@ import { Header, Loading, Notice, Shell } from "./ui";
 import { MascotPose } from "./mascot/MascotPose";
 import { SeedIcon } from "./seed-icon";
 import { WorkoutWater } from "./workout-water";
+import { MemberMascot } from "./member-mascot";
+import { CompletionMotion } from "./completion-motion";
+import { WorkoutWeek } from "./workout-week";
+import { useActivityHistory } from "./use-activity-history";
+import { completedRoutineDate, shiftDay } from "@/lib/workout-history";
+import type { WorkoutRoutine } from "@/lib/workout-routine";
+import styles from "./workout-completion.module.css";
 export function WorkoutCompletion({
   id,
   step = "complete",
@@ -35,10 +42,9 @@ export function WorkoutCompletion({
         ) : routine.data ? (
           routine.data.status === "completed" ? (
             <Completed
-              id={id}
+              key={`${id}:${step}`}
+              routine={routine.data}
               step={step}
-              koreanDate={routine.data.koreanDate}
-              today={routine.data.serverKoreanDate}
             />
           ) : (
             <>
@@ -59,17 +65,36 @@ export function WorkoutCompletion({
   );
 }
 function Completed({
-  id,
+  routine,
   step,
-  koreanDate,
-  today,
 }: {
-  id: string;
+  routine: WorkoutRoutine;
   step: "complete" | "streak" | "reward" | "water";
-  koreanDate: string;
-  today: string;
 }) {
-  const activity = useApiResource(getActivityProfile);
+  const { id, koreanDate, serverKoreanDate: today } = routine;
+  const activity = useApiResource(getActivityProfile, {
+    enabled: step === "streak",
+  });
+  const history = useActivityHistory(shiftDay(today, -6), today, {
+    enabled: step === "streak",
+  });
+  const [celebrated, setCelebrated] = useState(false);
+  const finishCelebration = useCallback(() => setCelebrated(true), []);
+  // The just-completed routine is authoritative even if the history read lags.
+  const completedRoutines = new Set(
+    [...history.routines, routine]
+      .map(completedRoutineDate)
+      .filter((day): day is string => day !== null),
+  );
+  const completed = new Set([...history.completed, ...completedRoutines]);
+  const animateToday = koreanDate === today && completedRoutines.has(today);
+  const waitingForAnimation =
+    step === "complete"
+      ? !celebrated
+      : step === "streak" &&
+        !activity.error &&
+        !history.error &&
+        (!history.ready || (animateToday && !celebrated));
   const reward = useApiResource(
     useCallback(
       (signal: AbortSignal) =>
@@ -100,7 +125,9 @@ function Completed({
     <>
       {step === "complete" && (
         <>
-          <MascotPose pose="victory" size={230} label="운동을 마친 햄스터" />
+          <CompletionMotion kind="jump" onComplete={finishCelebration}>
+            <MascotPose pose="victory" size={230} label="운동을 마친 햄스터" />
+          </CompletionMotion>
           <h1>
             {koreanDate === today
               ? "오늘의 운동 완료!"
@@ -120,31 +147,45 @@ function Completed({
             </>
           ) : activity.data ? (
             <>
-              <div className="streak-celebration" aria-hidden="true">
-                🔥
-              </div>
+              <MemberMascot
+                pose="passion"
+                size={190}
+                label="연속 운동을 응원하는 내 햄스터"
+              />
               <h1>현재 {activity.data.streak}일 연속!</h1>
-              <div
-                className="streak-marks"
-                aria-label={`현재 연속 운동 ${activity.data.streak}일`}
-              >
-                {Array.from({ length: 5 }, (_, i) => (
-                  <span
-                    key={i}
-                    className={
-                      i <
-                      (activity.data!.streak === 0
-                        ? 0
-                        : ((activity.data!.streak - 1) % 5) + 1)
-                        ? "filled"
-                        : ""
-                    }
-                    style={{ animationDelay: `${i * 120}ms` }}
+              {history.error ? (
+                <>
+                  <Notice>
+                    운동 기록을 불러오지 못했어요. 다시 확인해 주세요.
+                  </Notice>
+                  <button
+                    className="text-button"
+                    disabled={history.loading}
+                    onClick={history.reload}
                   >
-                    ✓
-                  </span>
-                ))}
-              </div>
+                    운동 기록 다시 불러오기
+                  </button>
+                </>
+              ) : history.ready ? (
+                <div className={styles.week}>
+                  <WorkoutWeek
+                    today={today}
+                    completed={completed}
+                    completedRoutines={completedRoutines}
+                    onTodayAnimationEnd={
+                      animateToday ? finishCelebration : undefined
+                    }
+                  />
+                </div>
+              ) : (
+                <Loading label="운동 기록을 불러오고 있어요" />
+              )}
+              {history.legacyUnavailable && (
+                <Notice tone="info">
+                  이전 단일 운동 기록을 불러오지 못해 최근 기록에 일부 누락이
+                  있을 수 있어요.
+                </Notice>
+              )}
               <p>꾸준히 쌓아 온 하루하루예요.</p>
             </>
           ) : (
@@ -180,9 +221,10 @@ function Completed({
       {step !== "complete" && reward.loading && (
         <Loading label="보상 내역을 확인하고 있어요" />
       )}
-      {step === "streak" && (reward.loading || activity.loading) ? (
+      {waitingForAnimation ||
+      (step === "streak" && (reward.loading || activity.loading)) ? (
         <button className="button primary" disabled>
-          완료 내역 확인 중
+          다음
         </button>
       ) : (
         <Link className="button primary" href={next}>
