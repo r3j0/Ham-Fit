@@ -352,9 +352,26 @@ test("그룹 미션은 성장 단계별 이미지와 물·내 기여만 간결�
       "value",
       String(phase.water),
     );
-    await card.screenshot({
-      path: info.outputPath(`mission-${phase.stage}-390.png`),
-    });
+    for (const width of [320, 390, 1440]) {
+      await page.setViewportSize({ width, height: 844 });
+      const plant = await image.boundingBox();
+      const frame = await card.boundingBox();
+      expect(plant).not.toBeNull();
+      expect(frame).not.toBeNull();
+      expect(
+        Math.abs(plant!.x + plant!.width / 2 - (frame!.x + frame!.width / 2)),
+      ).toBeLessThan(1);
+      expect(plant!.x).toBeGreaterThanOrEqual(frame!.x);
+      expect(plant!.x + plant!.width).toBeLessThanOrEqual(
+        frame!.x + frame!.width,
+      );
+      expect(
+        await page.evaluate(() => document.documentElement.scrollWidth),
+      ).toBeLessThanOrEqual(width);
+      await card.screenshot({
+        path: info.outputPath(`mission-${phase.stage}-${width}.png`),
+      });
+    }
   }
   await expect(card.getByText("해바라기 완성!")).toBeVisible();
   await expect(

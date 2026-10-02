@@ -10,7 +10,7 @@ The seed uses the existing `SeedIcon` and the finished flower uses the existing 
 | Bud       | [bud.png](bud.png)                             |
 | Sunflower | [../sunflower.png](../sunflower.png)           |
 
-`MissionGrowthImage` renders the server's current stage in both the group card and water selection options. The card shows one current illustration, shared water progress, and the user's water count. The five-stage overview, participation rules, and roulette explanation are available in the mission information dialog.
+`MissionGrowthImage` renders the server's current stage in both the group card and water selection options. `MissionGrowthScene` centers the illustration in the group card, with CSS soil, hills, sky, clouds, and sunlight changing by stage. The finished flower keeps the original PNG and adds a decorative SVG stem and leaves behind it; no raster asset is modified. The card shows one current illustration, shared water progress, and the user's water count. The five-stage overview, participation rules, and roulette explanation are available in the mission information dialog.
 
 ## Generation prompts
 
