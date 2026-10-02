@@ -187,3 +187,31 @@ npm run dev
 ## 📄 라이선스
 
 현재 저장소에는 별도 `LICENSE` 파일이 없으며 백엔드 패키지는 `UNLICENSED`로 표기되어 있습니다. 코드·캐릭터 이미지·외부 데이터의 재사용 허용 범위는 저장소 관리자에게 확인해 주세요.
+
+## 👥 팀원
+
+<table>
+  <tbody>
+    <tr>
+      <td align="center" width="33%">
+        <a href="https://github.com/r3j0"><img src="https://avatars.githubusercontent.com/u/100785255?v=4&amp;s=192" alt="r3j0 GitHub 프로필 사진" width="96" height="96" /></a>
+      </td>
+      <td align="center" width="33%">
+        <a href="https://github.com/Dong-H-LEE"><img src="https://avatars.githubusercontent.com/u/263304985?v=4&amp;s=192" alt="Dong-H-LEE GitHub 프로필 사진" width="96" height="96" /></a>
+      </td>
+      <td align="center" width="33%">
+        <a href="https://github.com/jieunpark215"><img src="https://avatars.githubusercontent.com/u/316811245?v=4&amp;s=192" alt="jieunpark215 GitHub 프로필 사진" width="96" height="96" /></a>
+      </td>
+    </tr>
+    <tr>
+      <td align="center"><a href="https://github.com/r3j0"><strong>박정근</strong></a></td>
+      <td align="center"><a href="https://github.com/Dong-H-LEE"><strong>이동현</strong></a></td>
+      <td align="center"><a href="https://github.com/jieunpark215"><strong>박지은</strong></a></td>
+    </tr>
+    <tr>
+      <td align="center">Next.js · UI<br />Vercel 배포 · Supabase</td>
+      <td align="center">NestJS · PostgreSQL</td>
+      <td align="center">데이터 수집·전처리<br />맞춤 운동 추천 알고리즘 개발</td>
+    </tr>
+  </tbody>
+</table>
