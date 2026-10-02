@@ -152,6 +152,45 @@ describe('API bootstrap (e2e)', () => {
       .expect(200, { status: 'ok', database: 'ok' });
   });
 
+  it('requires runtime SELECT grants on every checked table and column', async () => {
+    const url = new URL(process.env.DATABASE_URL!);
+    const schema = url.searchParams.get('schema')!;
+    expect(schema).toMatch(/^test_[a-f0-9]+$/);
+    const db = app.get(DatabaseService);
+    const role = `readiness_${randomUUID().replaceAll('-', '')}`;
+    const roleSql = Prisma.raw(`"${role}"`);
+    const schemaSql = Prisma.raw(`"${schema}"`);
+    const water = Prisma.raw(`"${schema}"."group_mission_water_choices"`);
+    let reader: DatabaseService | undefined;
+    await db.$executeRaw`CREATE ROLE ${roleSql}`;
+    try {
+      await db.$executeRaw`GRANT USAGE ON SCHEMA ${schemaSql} TO ${roleSql}`;
+      await db.$executeRaw`GRANT SELECT ON ALL TABLES IN SCHEMA ${schemaSql} TO ${roleSql}`;
+      // Use a real restricted database session, without changing the app pool.
+      url.searchParams.set('options', `-c role=${role}`);
+      reader = new DatabaseService(
+        new ConfigService({ DATABASE_URL: url.toString() }),
+      );
+      await reader.onModuleInit();
+      expect(await reader.isReady()).toBe(true);
+
+      await db.$executeRaw`REVOKE SELECT ON ${water} FROM ${roleSql}`;
+      expect(await reader.isReady()).toBe(false);
+      await db.$executeRaw`GRANT SELECT ON ${water} TO ${roleSql}`;
+      expect(await reader.isReady()).toBe(true);
+
+      await db.$executeRaw`REVOKE SELECT ON ${db.table('users')} FROM ${roleSql}`;
+      await db.$executeRaw`GRANT SELECT (id, email) ON ${db.table('users')} TO ${roleSql}`;
+      expect(await reader.isReady()).toBe(false);
+      await db.$executeRaw`GRANT SELECT (updated_at) ON ${db.table('users')} TO ${roleSql}`;
+      expect(await reader.isReady()).toBe(true);
+    } finally {
+      await reader?.onModuleDestroy();
+      await db.$executeRaw`DROP OWNED BY ${roleSql}`;
+      await db.$executeRaw`DROP ROLE ${roleSql}`;
+    }
+  });
+
   it('fails app initialization when the configured database cannot be connected to', async () => {
     const databaseUrl = new URL(
       app.get(ConfigService).getOrThrow<string>('DATABASE_URL'),
