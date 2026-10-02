@@ -1,0 +1,46 @@
+{
+  "updatedAt": "2026-10-02",
+  "packages": [
+    {
+      "file": "set001-navy-shorts-bottom-r3.zip",
+      "sha256": "a9a387a5914fdcd0adc3599f8ecd67b2a878a8f0d5772e8c1a80ca6b28d54aae"
+    },
+    {
+      "file": "set003-denim-shorts-bottom-r1.zip",
+      "sha256": "cbcd26129361b217ea6b2cd5a06e3e06da91436194e59e80c0aad1168b2e4096"
+    }
+  ],
+  "targets": [
+    "navy-shorts",
+    "set003-denim-shorts"
+  ],
+  "previousBundle": "3c35bac6c3850075a338e36c4ac9ae8e16ee7ddde2298e238f995de17544d1c9",
+  "bundle": "a0804ae434a2c8c4df9a1e4a55397d1aa87266a55d2d2c01249e3f54f5c7f7aa",
+  "catalogProducts": 12,
+  "updatedFrames": 64,
+  "referencedAssets": 481,
+  "newPngs": 64,
+  "qa": {
+    "packageFileHashes": "passed",
+    "baselineMatch": "exact current display",
+    "editorRoundTrip": "exact display/source/geometry/hashes",
+    "otherTenProducts": "unchanged",
+    "transparentPng": "1000x1000 RGBA",
+    "renderer": "64 full-set frames, 448 same-set combinations without warnings",
+    "projectChecks": {
+      "lint": "passed",
+      "typecheck": "passed",
+      "unitTests": 192,
+      "productionBuild": "passed",
+      "e2e": 2
+    }
+  },
+  "backendChanges": false,
+  "storage": "frontend static files",
+  "deployment": {
+    "id": "dpl_J9KLDE5JNo3CryTdK9oSrSEuAtA7",
+    "url": "https://ham-fit.vercel.app",
+    "displayAndSourceSnapshots": "exact match",
+    "representativePngHashes": "both shorts / both characters passed"
+  }
+}
