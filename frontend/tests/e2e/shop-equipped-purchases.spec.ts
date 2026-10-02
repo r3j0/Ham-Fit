@@ -200,7 +200,7 @@ for (const width of [320, 1280]) {
     for (const p of firstSet) {
       await expect(buyButton(page, p)).toHaveCSS("color", "rgb(255, 255, 255)");
       expect((await row(page, p).boundingBox())!.height).toBeLessThanOrEqual(
-        66,
+        76,
       );
     }
     const preview = page.getByRole("img", { name: "내 캐릭터 미리보기" });

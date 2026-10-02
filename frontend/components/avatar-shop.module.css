@@ -144,7 +144,7 @@
 }
 
 .tryOn {
-  padding: 12px;
+  padding: 16px;
   border: 1px solid var(--border);
   border-radius: 18px;
   background: var(--surface);
@@ -155,7 +155,7 @@
 }
 .tryOnList {
   display: grid;
-  gap: 6px;
+  gap: 10px;
   list-style: none;
   padding: 0;
   margin: 0;
@@ -165,15 +165,15 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 4px 8px;
-  padding: 6px 8px;
+  gap: 8px 12px;
+  padding: 10px 12px;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 12px;
   background: var(--canvas);
 }
 .tryOnName {
   display: grid;
-  gap: 2px;
+  gap: 4px;
   min-width: 0;
   flex: 1 1 92px;
   overflow-wrap: anywhere;
@@ -202,7 +202,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
 }
 .tryOnHeader h2 {
   min-width: 0;
