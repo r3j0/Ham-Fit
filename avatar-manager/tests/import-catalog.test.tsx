@@ -34,6 +34,17 @@ test('adds a reviewed set while preserving existing products, placements and pix
     assert.equal(await readFile(path.join(root, '.local/artwork.json'), 'utf8'), 'existing pixel fixture');
   } finally { await rm(root, { recursive: true, force: true }); }
 });
+
+test('a fresh empty editor can import a formerly bundled product ID again', async () => {
+  const root = await mkdtemp(path.join(tmpdir(), 'avatar-fresh-import-'));
+  try {
+    const result = await importCatalog(await files('mint-shirt'), root);
+    assert.deepEqual(result.added, ['mint-shirt']);
+    const catalog = JSON.parse(await readFile(path.join(root, '.local/catalog.json'), 'utf8'));
+    assert.deepEqual(Object.keys(catalog), ['mint-shirt']);
+    assert.equal(catalog['mint-shirt'].label, 'New shirt');
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
 test('rejects duplicate product IDs without replacing the existing snapshot', async () => {
   const root = await draft();
   try {

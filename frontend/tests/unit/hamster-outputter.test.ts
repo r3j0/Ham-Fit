@@ -29,7 +29,7 @@ test("v2 원본과 사용자 지정 기본 캐릭터의 배치·등록 범위를
   placements.basic.assets.gray.src = "/hamsters/base/basic-gray-hamkong.webp";
   assert.deepEqual(POSES, placements);
   assert.equal(Object.keys(POSES).length, 16);
-  assert.deepEqual(Object.keys(DEFAULT_ITEMS), ["mint-shirt"]);
+  assert.deepEqual(Object.keys(DEFAULT_ITEMS), []);
   const status = JSON.parse(
     read("components/hamster/provenance/CATALOG_STATUS.json").toString(),
   );
@@ -46,10 +46,24 @@ test("v2 원본과 사용자 지정 기본 캐릭터의 배치·등록 범위를
   }
 });
 test("모든 자세·색상에서 의상 프레임을 빌려오지 않고 선택을 유지한다", () => {
+  const catalog: ItemCatalog = {
+    "mint-shirt": {
+      slot: "top",
+      label: "테스트 티셔츠",
+      poses: {
+        basic: Object.fromEntries(
+          ["cream", "gray"].map((variant) => [
+            variant,
+            { layers: [{ src: `/test/shirt-${variant}.png`, zIndex: 20 }] },
+          ]),
+        ),
+      },
+    },
+  };
   for (const pose of Object.keys(POSES))
     for (const variant of ["cream", "gray"]) {
       const selection = Object.freeze({ pose, variant, top: "mint-shirt" });
-      const result = resolveHamster(selection, DEFAULT_ITEMS);
+      const result = resolveHamster(selection, catalog);
       assert.equal(
         result.layers[0].src,
         pose === "basic"
