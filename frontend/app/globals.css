@@ -231,7 +231,9 @@
 }
 .home-mascot-stage > span,
 .home-mascot-stage .my-character > [role="img"] {
-  width: min(112%, var(--home-mascot-size), calc(100vw - 24px)) !important;
+  width: calc(
+    min(112%, var(--home-mascot-size), calc(100vw - 24px)) * 0.7
+  ) !important;
   max-width: none;
 }
 .home-intro {
@@ -2109,8 +2111,8 @@ fieldset:disabled select {
     padding-bottom: 0;
   }
   .home-mascot-stage .my-character > [data-pose="basic"] {
-    /* Trim half the basic pose's 24% transparent top at its 112% canvas width. */
-    margin-top: -13.44%;
+    /* Keep the transparent-top trim proportional to the smaller canvas. */
+    margin-top: calc(-13.44% * 0.7);
   }
   .profile-card {
     grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr) minmax(0, 1.2fr);

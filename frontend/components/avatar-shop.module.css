@@ -17,6 +17,10 @@
   }
 }
 
+.shopPreview > :global(.profile-character) {
+  max-width: 70%;
+}
+
 .wardrobeLink {
   width: auto;
   min-width: 132px;

@@ -21,7 +21,7 @@ export function WorkoutHistoryMascot() {
     <div className={styles.mascotStage}>
       <MemberMascot
         pose={pose}
-        size={280}
+        size={196}
         label="오늘의 운동 상태를 보여주는 내 햄스터"
       />
     </div>

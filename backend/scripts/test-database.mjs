@@ -13,15 +13,16 @@ if (!process.env.TEST_DATABASE_URL) {
 const testUrl = new URL(process.env.TEST_DATABASE_URL);
 if (!['postgres:', 'postgresql:'].includes(testUrl.protocol))
   throw new Error('TEST_DATABASE_URL must use PostgreSQL.');
-if (process.env.DATABASE_URL) {
-  const applicationUrl = new URL(process.env.DATABASE_URL);
+for (const key of ['DATABASE_URL', 'DIRECT_URL']) {
+  if (!process.env[key]) continue;
+  const applicationUrl = new URL(process.env[key]);
   if (
     applicationUrl.hostname === testUrl.hostname &&
     (applicationUrl.port || '5432') === (testUrl.port || '5432') &&
     applicationUrl.pathname === testUrl.pathname
   ) {
     throw new Error(
-      'TEST_DATABASE_URL must target a different database from DATABASE_URL.',
+      `TEST_DATABASE_URL must target a different database from ${key}.`,
     );
   }
 }
@@ -36,6 +37,8 @@ const env = {
   ...process.env,
   NODE_ENV: 'test',
   DATABASE_URL: testUrl.toString(),
+  // Prisma CLI must never inherit the production migration connection.
+  DIRECT_URL: testUrl.toString(),
   AUTH_JWT_SECRET: randomBytes(32).toString('hex'),
   AUTH_ACCESS_TTL_SECONDS: '900',
   AUTH_REFRESH_TTL_SECONDS: '604800',

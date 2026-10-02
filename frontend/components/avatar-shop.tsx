@@ -187,7 +187,12 @@ function ShopView({
     <>
       <div className={styles.layout}>
         <div className={styles.preview}>
-          <section className="shop-stage" aria-label="코디 미리보기">
+          <section
+            className={
+              wardrobe ? "shop-stage" : `shop-stage ${styles.shopPreview}`
+            }
+            aria-label="코디 미리보기"
+          >
             {!wardrobe && (
               <Link
                 href="/shop/wardrobe"
@@ -199,7 +204,7 @@ function ShopView({
             {preview ? (
               <ProfileCharacter
                 outfit={preview}
-                size={280}
+                size={wardrobe ? 280 : 196}
                 label="내 캐릭터 미리보기"
               />
             ) : (
