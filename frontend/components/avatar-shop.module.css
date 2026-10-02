@@ -144,16 +144,18 @@
 }
 
 .tryOn {
-  padding: 16px;
+  padding: 12px;
   border: 1px solid var(--border);
   border-radius: 18px;
   background: var(--surface);
 }
 .tryOn h2 {
-  margin: 0 0 12px;
+  margin: 0 0 8px;
   font-size: 16px;
 }
 .tryOnList {
+  display: grid;
+  gap: 6px;
   list-style: none;
   padding: 0;
   margin: 0;
@@ -163,21 +165,20 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 8px 12px;
-  padding: 12px 0;
-}
-.tryOnRow + .tryOnRow {
-  border-top: 1px solid var(--border);
+  gap: 4px 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--canvas);
 }
 .tryOnName {
   display: grid;
-  gap: 4px;
+  gap: 2px;
   min-width: 0;
-  flex: 1 1 100px;
+  flex: 1 1 92px;
   overflow-wrap: anywhere;
 }
-.tryOnName > span,
-.owned {
+.tryOnName > span {
   color: var(--muted);
   font-size: 12px;
 }
@@ -190,4 +191,8 @@
   min-height: 44px;
   padding: 10px 12px;
   font-size: 12px;
+}
+
+:global(.kspo-sky-theme) .whiteBuy:global(.button.primary):not(:disabled) {
+  color: #fff;
 }

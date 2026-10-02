@@ -133,6 +133,14 @@ function ShopView({
       (category === "pose" ? p.kind === "pose" : p.slot === category) &&
       (wardrobe ? owned.has(p.id) : p.saleStatus !== "retired"),
   );
+  const tryOnProducts = categories.flatMap(({ id, label }) => {
+    const product = catalog.products.find((p) =>
+      id === "pose"
+        ? p.id === draft.poseId
+        : p.slot === id && draft.clothingIds.includes(p.id),
+    );
+    return product && !owned.has(product.id) ? [{ product, label }] : [];
+  });
   const currentTarget = catalog.products.find(
     (p) => p.id === purchaseTarget?.id,
   );
@@ -283,57 +291,45 @@ function ShopView({
             )}
             <SeedBalance balance={inventory.currency.balance} />
           </section>
-          {!wardrobe && (
+          {!wardrobe && tryOnProducts.length > 0 && (
             <section className={styles.tryOn} aria-label="현재 착용 아이템">
               <h2>현재 착용 아이템</h2>
               <ul className={styles.tryOnList}>
-                {categories.map(({ id, label }) => {
-                  const product = catalog.products.find((p) =>
-                    id === "pose"
-                      ? p.id === draft.poseId
-                      : p.slot === id && draft.clothingIds.includes(p.id),
-                  );
-                  const isOwned = !!product && owned.has(product.id);
-                  return (
-                    <li key={id} className={styles.tryOnRow} aria-label={label}>
-                      <div className={styles.tryOnName}>
-                        <span>{label}</span>
-                        <strong>
-                          {product ? productName(product, assets) : "미착용"}
-                        </strong>
-                      </div>
-                      {product &&
-                        (isOwned ? (
-                          <span className={styles.owned}>보유 중</span>
-                        ) : (
-                          <button
-                            type="button"
-                            className={`button primary ${styles.tryOnBuy}`}
-                            disabled={
-                              busy ||
-                              !!purchaseMutation.pending ||
-                              product.saleStatus !== "on_sale" ||
-                              product.priceProvisional ||
-                              !preview ||
-                              (product.price ?? Infinity) >
-                                inventory.currency.balance
-                            }
-                            onClick={() => setPurchaseTarget(product)}
-                            aria-label={`${productName(product, assets)} 구매하기`}
-                          >
-                            {product.saleStatus !== "on_sale"
-                              ? "판매하지 않는 아이템"
-                              : product.priceProvisional
-                                ? "가격 확정 전"
-                                : (product.price ?? Infinity) >
-                                    inventory.currency.balance
-                                  ? "해바라기씨 부족"
-                                  : `구매하기 · ${product.price}개`}
-                          </button>
-                        ))}
-                    </li>
-                  );
-                })}
+                {tryOnProducts.map(({ product, label }) => (
+                  <li
+                    key={product.id}
+                    className={styles.tryOnRow}
+                    aria-label={label}
+                  >
+                    <div className={styles.tryOnName}>
+                      <span>{label}</span>
+                      <strong>{productName(product, assets)}</strong>
+                    </div>
+                    <button
+                      type="button"
+                      className={`button primary ${styles.tryOnBuy} ${styles.whiteBuy}`}
+                      disabled={
+                        busy ||
+                        !!purchaseMutation.pending ||
+                        product.saleStatus !== "on_sale" ||
+                        product.priceProvisional ||
+                        !preview ||
+                        (product.price ?? Infinity) > inventory.currency.balance
+                      }
+                      onClick={() => setPurchaseTarget(product)}
+                      aria-label={`${productName(product, assets)} 구매하기`}
+                    >
+                      {product.saleStatus !== "on_sale"
+                        ? "판매하지 않는 아이템"
+                        : product.priceProvisional
+                          ? "가격 확정 전"
+                          : (product.price ?? Infinity) >
+                              inventory.currency.balance
+                            ? "해바라기씨 부족"
+                            : `구매하기 · ${product.price}개`}
+                    </button>
+                  </li>
+                ))}
               </ul>
             </section>
           )}

@@ -121,11 +121,16 @@ for (const width of [320, 1280]) {
     const { state } = await installSlots(page);
     await page.setViewportSize({ width, height: 900 });
     await page.goto("/shop");
-    await expect(panel(page).getByText("미착용", { exact: true })).toHaveCount(
-      3,
-    );
+    await expect(panel(page)).toHaveCount(0);
     for (const p of firstSet) await toggle(page, p);
     for (const p of firstSet) await expect(buyButton(page, p)).toBeEnabled();
+    await expect(panel(page).getByRole("listitem")).toHaveCount(3);
+    for (const p of firstSet) {
+      await expect(buyButton(page, p)).toHaveCSS("color", "rgb(255, 255, 255)");
+      expect((await row(page, p).boundingBox())!.height).toBeLessThanOrEqual(
+        66,
+      );
+    }
     const preview = page.getByRole("img", { name: "내 캐릭터 미리보기" });
     await expect(preview.locator("image")).toHaveCount(4);
     await page.getByRole("button", { name: "자세", exact: true }).click();
@@ -139,7 +144,7 @@ for (const width of [320, 1280]) {
     ).toBeLessThanOrEqual(width);
     const hat = firstSet.find((p) => p.slot === "hat")!;
     await toggle(page, hat);
-    await expect(row(page, hat)).toContainText("미착용");
+    await expect(row(page, hat)).toHaveCount(0);
     await expect(row(page, hat).getByRole("button")).toHaveCount(0);
     await expect(preview.locator("image")).toHaveCount(3);
     const otherHat = clothes.find((p) => p.slot === "hat" && p.id !== hat.id)!;
@@ -172,7 +177,7 @@ for (const width of [320, 1280]) {
     await dialog
       .getByRole("button", { name: "구매 확정", exact: true })
       .click();
-    await expect(row(page, hat)).toContainText("보유 중");
+    await expect(row(page, hat)).toHaveCount(0);
     expect(JSON.parse(state.purchases[0].body)).toEqual({
       productId: hat.id,
       catalogRevision: hat.catalogRevision,
@@ -181,9 +186,7 @@ for (const width of [320, 1280]) {
     expect(state.puts).toBe(0);
     await expect(preview.locator("image")).toHaveCount(4);
     await page.getByRole("button", { name: "초기화", exact: true }).click();
-    await expect(panel(page).getByText("미착용", { exact: true })).toHaveCount(
-      3,
-    );
+    await expect(panel(page)).toHaveCount(0);
     await expect(panel(page).getByRole("button")).toHaveCount(0);
   });
 }
@@ -214,7 +217,7 @@ test("보유·판매 불가·가격 미확정·잔액 부족은 부위별로 구
     occupiesSlots: p.occupiesSlots,
   }));
   await page.reload();
-  for (const p of firstSet) await expect(row(page, p)).toContainText("보유 중");
+  for (const p of firstSet) await expect(row(page, p)).toHaveCount(0);
   await expect(panel(page).getByRole("button")).toHaveCount(0);
   expect(state.purchases).toEqual([]);
   expect(state.puts).toBe(0);
@@ -243,7 +246,7 @@ test("구매 후 재조회 실패에도 응답의 보유·잔액을 즉시 반�
       button.click();
       button.click();
     });
-  await expect(row(page, hat)).toContainText("보유 중");
+  await expect(row(page, hat)).toHaveCount(0);
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(
     page.getByRole("button", { name: "다시 불러오기" }),
@@ -253,7 +256,7 @@ test("구매 후 재조회 실패에도 응답의 보유·잔액을 즉시 반�
   await expect(buyButton(page, top)).toBeEnabled();
   await buyButton(page, top).click();
   await page.getByRole("button", { name: "구매 확정", exact: true }).click();
-  await expect(row(page, top)).toContainText("보유 중");
+  await expect(row(page, top)).toHaveCount(0);
   await expect(page.getByRole("group", { name: "보유 재화" })).toHaveText("0");
   await expect(buyButton(page, bottom)).toBeDisabled();
   await expect(buyButton(page, bottom)).toHaveText("해바라기씨 부족");
@@ -285,13 +288,13 @@ test("부위별 구매 응답 유실은 원래 요청으로 복구하고 다음 
   expect(state.balance).toBe(70);
   await retry.click();
   await expect(retry).toHaveCount(0);
-  await expect(row(page, hat)).toContainText("보유 중");
+  await expect(row(page, hat)).toHaveCount(0);
   await expect(buyButton(page, top)).toBeEnabled();
   expect(state.purchases).toHaveLength(2);
   expect(state.purchases[0]).toEqual(state.purchases[1]);
   await buyButton(page, top).click();
   await page.getByRole("button", { name: "구매 확정", exact: true }).click();
-  await expect(row(page, top)).toContainText("보유 중");
+  await expect(row(page, top)).toHaveCount(0);
   expect(state.purchases).toHaveLength(3);
   expect(state.purchases[2].key).not.toBe(state.purchases[0].key);
   expect(JSON.parse(state.purchases[2].body).productId).toBe(top.id);
@@ -338,8 +341,7 @@ for (const code of [
     await expect(
       page.getByRole("img", { name: "내 캐릭터 미리보기" }).locator("image"),
     ).toHaveCount(4);
-    if (code === "ALREADY_OWNED")
-      await expect(row(page, hat)).toContainText("보유 중");
+    if (code === "ALREADY_OWNED") await expect(row(page, hat)).toHaveCount(0);
     if (code === "INSUFFICIENT_FUNDS")
       await expect(buyButton(page, hat)).toBeDisabled();
     if (code === "CATALOG_CHANGED") {
@@ -348,7 +350,7 @@ for (const code of [
       await page
         .getByRole("button", { name: "구매 확정", exact: true })
         .click();
-      await expect(row(page, hat)).toContainText("보유 중");
+      await expect(row(page, hat)).toHaveCount(0);
       expect(state.purchases[0].key).not.toBe(rejectedKey);
       expect(JSON.parse(state.purchases[0].body)).toEqual({
         productId: hat.id,
@@ -382,7 +384,7 @@ test("확인창이 열린 동안 가격이 갱신되면 이전 가격으로 구�
   await expect(buyButton(page, hat)).toHaveText("구매하기 · 35개");
   await buyButton(page, hat).click();
   await dialog.getByRole("button", { name: "구매 확정", exact: true }).click();
-  await expect(row(page, hat)).toContainText("보유 중");
+  await expect(row(page, hat)).toHaveCount(0);
   expect(JSON.parse(state.purchases[0].body)).toEqual({
     productId: hat.id,
     catalogRevision: 2,
