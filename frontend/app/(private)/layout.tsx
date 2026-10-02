@@ -1,3 +1,4 @@
+import { MemberOutfitProvider } from "@/components/member-outfit-provider";
 import { AvatarCatalogProvider } from "@/components/avatar-catalog-provider";
 import { RequireSession } from "@/components/session-provider";
 import { BottomNavigation } from "@/components/bottom-navigation";
@@ -9,10 +10,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <UserProfileProvider>
         <WorkoutHistoryProvider>
           <AvatarCatalogProvider>
-            <div className="authenticated-app">
-              {children}
-              <BottomNavigation />
-            </div>
+            <MemberOutfitProvider>
+              <div className="authenticated-app">
+                {children}
+                <BottomNavigation />
+              </div>
+            </MemberOutfitProvider>
           </AvatarCatalogProvider>
         </WorkoutHistoryProvider>
       </UserProfileProvider>

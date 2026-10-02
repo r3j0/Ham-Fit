@@ -9,7 +9,8 @@ export const readinessSchema = [
   { table: 'avatar_products', columns: ['catalog_revision'] },
   { table: 'avatar_outfits', columns: ['revision'] },
   { table: 'avatar_ownerships', columns: ['source'] },
-  { table: 'avatar_purchases', columns: ['price'] },
+  { table: 'avatar_purchases', columns: ['price', 'batch_id'] },
+  { table: 'avatar_purchase_batches', columns: ['user_id', 'key'] },
   { table: 'currency_transactions', columns: ['amount'] },
   { table: 'user_currencies', columns: ['balance'] },
   {

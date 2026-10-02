@@ -6,6 +6,7 @@ import {
   parseCatalog,
   parseInventory,
   parsePurchase,
+  parseBatchPurchase,
   sameSelection,
   type OutfitSelection,
 } from "./shop-contract";
@@ -38,16 +39,20 @@ export async function saveOutfit(selection: OutfitSelection, revision: number) {
   return saved;
 }
 export async function purchase(body: string, key: string) {
-  const request = JSON.parse(body) as {
-    productId: string;
-    catalogRevision: number;
-  };
-  const { data } = await api<unknown>("/shop/purchases", {
-    method: "POST",
-    headers: { "X-CSRF-Protection": "1", "Idempotency-Key": key },
-    body,
-  });
-  const saved = parsePurchase(data, request.productId, request.catalogRevision);
+  type Item = { productId: string; catalogRevision: number };
+  const request = JSON.parse(body) as Item | { items: Item[] };
+  const batch = "items" in request;
+  const { data } = await api<unknown>(
+    batch ? "/shop/purchases/batch" : "/shop/purchases",
+    {
+      method: "POST",
+      headers: { "X-CSRF-Protection": "1", "Idempotency-Key": key },
+      body,
+    },
+  );
+  const saved = batch
+    ? parseBatchPurchase(data, request.items)
+    : parsePurchase(data, request.productId, request.catalogRevision);
   invalidateUserProfile();
   return saved;
 }

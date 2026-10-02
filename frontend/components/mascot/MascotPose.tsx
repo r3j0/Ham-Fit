@@ -1,10 +1,18 @@
 import type { CSSProperties } from "react";
 import { Hamster } from "../hamster/Hamster";
 import { POSES } from "../hamster/poses";
-import type { HamsterPose, HamsterVariant } from "../hamster/types";
+import type {
+  HamsterPose,
+  HamsterVariant,
+  HamsterProps,
+  ItemCatalog,
+} from "../hamster/types";
 import styles from "./MascotPose.module.css";
 
-export type MascotPoseProps = {
+export type MascotPoseProps = Pick<
+  HamsterProps<ItemCatalog>,
+  "hat" | "top" | "bottom" | "catalog"
+> & {
   pose?: HamsterPose;
   variant?: HamsterVariant;
   size?: number;
@@ -19,6 +27,10 @@ export function MascotPose({
   size = 160,
   label,
   className,
+  hat,
+  top,
+  bottom,
+  catalog,
 }: MascotPoseProps) {
   const width = Number.isFinite(size)
     ? Math.min(2000, Math.max(24, size))
@@ -35,9 +47,17 @@ export function MascotPose({
       aria-hidden={title ? undefined : true}
       data-pose={pose}
       data-variant={variant}
-      data-wear="none"
+      data-wear={hat || top || bottom ? "outfit" : "none"}
     >
-      <Hamster pose={pose} variant={variant} decorative />
+      <Hamster
+        pose={pose}
+        variant={variant}
+        hat={hat}
+        top={top}
+        bottom={bottom}
+        catalog={catalog ?? {}}
+        decorative
+      />
     </span>
   );
 }

@@ -73,6 +73,13 @@ it('backfills existing users and repairs defaults without resetting purchases, f
       expect(
         (await client.query(`SELECT * FROM ${table} ORDER BY 1`)).rows,
       ).toEqual(before[i]);
+    // The current service needs the additive batch schema; old defaults stay intact.
+    await client.query(
+      await readFile(
+        new URL('20261002001000_avatar_purchase_batches/migration.sql', root),
+        'utf8',
+      ),
+    );
     url.searchParams.set('schema', schema);
     db = new DatabaseService(
       new ConfigService({ DATABASE_URL: url.toString() }),

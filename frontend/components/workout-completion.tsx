@@ -13,10 +13,11 @@ import { nextRoutineHref } from "@/lib/workout-practice";
 import { errorMessage } from "@/lib/http";
 import { useApiResource } from "./use-api-resource";
 import { Header, Loading, Notice, Shell } from "./ui";
-import { MascotPose } from "./mascot/MascotPose";
 import { SeedIcon } from "./seed-icon";
 import { WorkoutWater } from "./workout-water";
 import { MemberMascot } from "./member-mascot";
+import { useMemberOutfit } from "./member-outfit-provider";
+import { useAvatarCatalog } from "./avatar-catalog-provider";
 import { CompletionMotion } from "./completion-motion";
 import { WorkoutWeek } from "./workout-week";
 import { useActivityHistory } from "./use-activity-history";
@@ -82,6 +83,13 @@ function Completed({
   step: CompletionStep;
 }) {
   const { id, koreanDate, serverKoreanDate: today } = routine;
+  const outfit = useMemberOutfit();
+  const assets = useAvatarCatalog();
+  const mascotReady = Boolean(
+    outfit.data
+      ? !outfit.data.rendering.clothing.length || assets.catalog || assets.error
+      : outfit.error,
+  );
   const activity = useApiResource(getActivityProfile, {
     enabled: step === "streak",
   });
@@ -152,8 +160,16 @@ function Completed({
     <>
       {step === "complete" && (
         <>
-          <CompletionMotion kind="jump" onComplete={finishCelebration}>
-            <MascotPose pose="victory" size={230} label="운동을 마친 햄스터" />
+          <CompletionMotion
+            kind="jump"
+            onComplete={finishCelebration}
+            ready={mascotReady}
+          >
+            <MemberMascot
+              pose="victory"
+              size={230}
+              label="운동을 마친 햄스터"
+            />
           </CompletionMotion>
           <h1>
             {koreanDate === today

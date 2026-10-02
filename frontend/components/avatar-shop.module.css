@@ -142,3 +142,88 @@
     font-size: 20px;
   }
 }
+
+.tryOn {
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--surface);
+}
+.tryOn h2 {
+  margin: 0;
+  font-size: 16px;
+}
+.tryOnList {
+  display: grid;
+  gap: 10px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.tryOnRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--canvas);
+}
+.tryOnName {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  flex: 1 1 92px;
+  overflow-wrap: anywhere;
+}
+.tryOnName > span {
+  color: var(--muted);
+  font-size: 12px;
+}
+.tryOnName > strong {
+  font-size: 14px;
+}
+.tryOnBuy {
+  width: auto;
+  max-width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  font-size: 12px;
+}
+
+:global(.kspo-sky-theme) .whiteBuy:global(.button.primary):not(:disabled) {
+  color: #fff;
+}
+
+.tryOnHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.tryOnHeader h2 {
+  min-width: 0;
+  font-size: 14px;
+}
+.tryOnHeader button {
+  flex-shrink: 0;
+}
+.purchaseItems {
+  display: grid;
+  gap: 8px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 14px;
+}
+.purchaseItems li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.purchaseItems strong {
+  white-space: nowrap;
+}

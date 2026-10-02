@@ -8,15 +8,18 @@ export function CompletionMotion({
   onComplete,
   children,
   className = "",
+  ready = true,
 }: {
   kind: "jump" | "sunflower";
   onComplete: () => void;
   children: ReactNode;
   className?: string;
+  ready?: boolean;
 }) {
   const ref = useRef<HTMLSpanElement>(null);
   const completed = useRef(false);
   useEffect(() => {
+    if (!ready) return;
     const element = ref.current!;
     // Back navigation can restore component state while reconnecting effects.
     if (completed.current) {
@@ -103,7 +106,7 @@ export function CompletionMotion({
       media.removeEventListener("change", reduce);
       animation?.cancel();
     };
-  }, [kind, onComplete]);
+  }, [kind, onComplete, ready]);
   return (
     <span
       ref={ref}
