@@ -4,6 +4,7 @@ import { errorMessage } from "@/lib/http";
 import { getMission, startMission } from "@/lib/group-missions";
 import { Droplets, Info } from "lucide-react";
 import { MissionGrowthImage, stageNames } from "./mission-growth-image";
+import { MissionGrowthScene } from "./mission-growth-scene";
 import styles from "./group-mission.module.css";
 import { missionStages } from "@/lib/group-mission-contract";
 import { useApiResource } from "./use-api-resource";
@@ -51,7 +52,11 @@ export function GroupMission({
   }
   const mission = resource.data?.mission;
   return (
-    <section className={styles.card} aria-label="그룹 해바라기 미션">
+    <section
+      className={styles.card}
+      data-stage={mission?.id ? mission.stage : "seed"}
+      aria-label="그룹 해바라기 미션"
+    >
       <div className={styles.heading}>
         <h2>함께 키우는 해바라기</h2>
         <button
@@ -77,33 +82,26 @@ export function GroupMission({
       {!mission && !resource.error && <Loading />}
       {mission?.id ? (
         <>
-          <div className={styles.visual}>
-            <div className={styles.plantFrame}>
-              <MissionGrowthImage stage={mission.stage} />
-            </div>
-            <div className={styles.meter}>
-              <p className={styles.stageLabel}>
-                {mission.status === "completed"
-                  ? "해바라기 완성!"
-                  : `${stageNames[mission.stage]} 단계`}
-              </p>
+          <MissionGrowthScene stage={mission.stage} />
+          <div className={styles.meter}>
+            <div className={styles.meterHeading}>
               <p className={styles.waterCount}>
                 <Droplets size={18} aria-hidden="true" />
                 <strong>{mission.waterCount}</strong>
                 <span>/ {mission.totalTarget}회</span>
               </p>
-              <progress
-                className={styles.progress}
-                value={mission.waterCount}
-                max={mission.totalTarget}
-                aria-label="물 주기 달성도"
-                aria-valuetext={`함께 준 물 ${mission.waterCount}회 / ${mission.totalTarget}회`}
-              />
+              <p className={styles.contribution}>
+                내가 준 물 <strong>{mission.me.waterCount}회</strong>
+              </p>
             </div>
+            <progress
+              className={styles.progress}
+              value={mission.waterCount}
+              max={mission.totalTarget}
+              aria-label="물 주기 달성도"
+              aria-valuetext={`함께 준 물 ${mission.waterCount}회 / ${mission.totalTarget}회`}
+            />
           </div>
-          <p className={styles.contribution}>
-            내가 준 물 <strong>{mission.me.waterCount}회</strong>
-          </p>
           {!mission.me.eligible && (
             <Notice tone="info">
               {mission.me.reason === "not_in_snapshot"
@@ -115,21 +113,17 @@ export function GroupMission({
       ) : (
         mission && (
           <>
-            <div className={styles.visual}>
-              <div className={styles.plantFrame}>
-                <MissionGrowthImage stage="seed" />
-              </div>
-              <p className={styles.notStartedText}>
-                물을 주며 해바라기를 키워 보세요.
-              </p>
-            </div>
+            <MissionGrowthScene stage="seed" />
+            <p className={styles.notStartedText}>
+              물을 주며 해바라기를 키워 보세요.
+            </p>
           </>
         )
       )}
       {(mutation.pending ||
         (leader && mission && mission.status !== "in_progress")) && (
         <button
-          className="button primary"
+          className={`button primary ${styles.startButton}`}
           disabled={mutation.busy || (!mutation.pending && memberCount < 2)}
           onClick={() => (mutation.pending ? void start() : setConfirm(true))}
         >
