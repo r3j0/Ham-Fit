@@ -319,7 +319,7 @@ BE 담당자는 새 forward-only 마이그레이션을 작성해 상품과 호�
 
 배포 서버 `https://ham-fit-api.vercel.app`의 무인증 POST 확인에서 단건 `/api/v1/shop/purchases`는 401, 전체 `/api/v1/shop/purchases/batch`는 404 `Cannot POST`를 반환했다. 최신 main의 전체 구매 Controller가 운영 서버에 반영되지 않은 상태다. 프론트엔드는 이 경우 측정 기록용 404 문구 대신 전체 구매 기능 준비 안내를 표시한다. 개별 구매로 자동 대체하면 일부 결제가 생길 수 있으므로 대체하지 않는다. 상품 자체가 없는 `PRODUCT_NOT_FOUND` 응답은 별도 상품 안내를 표시한다.
 
-실제 전체 구매 복구에는 기존 `20261002001000_avatar_purchase_batches` 마이그레이션 적용 확인 후 이 브랜치의 서버 배포가 필요하다. DB 적용·운영 배포는 이번 로컬 수정에 포함되지 않는다. 서버 배포 후 아래 무인증 경로 검사에서 두 경로 모두 401이어야 한다. 구매·재화 변경 없이 인증 경계에 실제 경로가 있는지 확인하며, 404 또는 네트워크 실패는 검사를 실패시킨다.
+실제 전체 구매 복구에는 기존 `20261002001000_avatar_purchase_batches` 마이그레이션 적용 확인 후 이 브랜치의 서버 배포가 필요하다. 후속 운영 적용은 [상점 오류 수정 운영 배포 기록](shop-production-deployment-2026-10-02.md)을 따른다. 서버 배포 후 아래 무인증 경로 검사에서 두 경로 모두 401이어야 한다. 구매·재화 변경 없이 인증 경계에 실제 경로가 있는지 확인하며, 404 또는 네트워크 실패는 검사를 실패시킨다.
 
 ```sh
 node scripts/verify-shop-routes.mjs https://ham-fit-api.vercel.app
