@@ -107,7 +107,7 @@ function ShopView({
   const [draft, setDraft] = useState<OutfitSelection>(outfit);
   const [revision, setRevision] = useState(outfit.revision);
   const [category, setCategory] = useState<string>("hat");
-  const [purchaseTarget, setPurchaseTarget] = useState<Product>();
+  const [purchaseTargets, setPurchaseTargets] = useState<Product[]>();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(""),
     [message, setMessage] = useState("");
@@ -141,22 +141,27 @@ function ShopView({
     );
     return product && !owned.has(product.id) ? [{ product, label }] : [];
   });
-  const currentTarget = catalog.products.find(
-    (p) => p.id === purchaseTarget?.id,
-  );
+  const purchaseTotal =
+    purchaseTargets?.reduce((total, p) => total + (p.price ?? 0), 0) ?? 0;
+  const canAffordPurchase = purchaseTotal <= inventory.currency.balance;
   const canConfirmPurchase = !!(
-    purchaseTarget &&
-    currentTarget &&
-    currentTarget.catalogRevision === purchaseTarget.catalogRevision &&
-    currentTarget.price === purchaseTarget.price &&
-    currentTarget.saleStatus === "on_sale" &&
-    !currentTarget.priceProvisional &&
-    !owned.has(currentTarget.id) &&
-    (currentTarget.price ?? Infinity) <= inventory.currency.balance &&
+    purchaseTargets?.length &&
     preview &&
-    (currentTarget.kind === "pose"
-      ? draft.poseId === currentTarget.id
-      : draft.clothingIds.includes(currentTarget.id))
+    canAffordPurchase &&
+    purchaseTargets.every((target) => {
+      const current = catalog.products.find((p) => p.id === target.id);
+      return (
+        current &&
+        current.catalogRevision === target.catalogRevision &&
+        current.price === target.price &&
+        current.saleStatus === "on_sale" &&
+        !current.priceProvisional &&
+        !owned.has(current.id) &&
+        (current.kind === "pose"
+          ? draft.poseId === current.id
+          : draft.clothingIds.includes(current.id))
+      );
+    })
   );
   async function buy(retry = false) {
     if (
@@ -168,27 +173,28 @@ function ShopView({
     )
       return;
     guard.current = true;
-    const product = purchaseTarget;
+    const items =
+      purchaseTargets?.map((p) => ({
+        productId: p.id,
+        catalogRevision: p.catalogRevision,
+      })) ?? [];
     const current = begin();
     setError("");
     setMessage("");
     try {
       const result = await purchaseMutation.run(
-        JSON.stringify({
-          productId: product?.id,
-          catalogRevision: product?.catalogRevision,
-        }),
+        JSON.stringify(items.length > 1 ? { items } : (items[0] ?? {})),
         purchase,
       );
       if (!current() || !result) return;
       setPurchasedInventory({ source: data.inventory, value: result });
-      setPurchaseTarget(undefined);
+      setPurchaseTargets(undefined);
       setMessage("구매했어요. 내 옷장에서 착용하고 저장할 수 있어요.");
       reload();
     } catch (e) {
       if (current()) {
         setError(shopError(e));
-        setPurchaseTarget(undefined);
+        setPurchaseTargets(undefined);
         reload();
       }
     } finally {
@@ -293,7 +299,23 @@ function ShopView({
           </section>
           {!wardrobe && tryOnProducts.length > 0 && (
             <section className={styles.tryOn} aria-label="현재 착용 아이템">
-              <h2>현재 착용 아이템</h2>
+              <div className={styles.tryOnHeader}>
+                <h2>현재 착용 아이템</h2>
+                {tryOnProducts.length >= 2 && (
+                  <button
+                    type="button"
+                    className={`button primary ${styles.tryOnBuy} ${styles.whiteBuy}`}
+                    disabled={busy || !!purchaseMutation.pending || !preview}
+                    onClick={() =>
+                      setPurchaseTargets(
+                        tryOnProducts.map(({ product }) => product),
+                      )
+                    }
+                  >
+                    전체 구매하기
+                  </button>
+                )}
+              </div>
               <ul className={styles.tryOnList}>
                 {tryOnProducts.map(({ product, label }) => (
                   <li
@@ -316,7 +338,7 @@ function ShopView({
                         !preview ||
                         (product.price ?? Infinity) > inventory.currency.balance
                       }
-                      onClick={() => setPurchaseTarget(product)}
+                      onClick={() => setPurchaseTargets([product])}
                       aria-label={`${productName(product, assets)} 구매하기`}
                     >
                       {product.saleStatus !== "on_sale"
@@ -471,10 +493,12 @@ function ShopView({
           </div>
         </div>
       </div>
-      {purchaseTarget && (
+      {purchaseTargets && (
         <Dialog
-          title="구매할까요?"
-          onClose={() => setPurchaseTarget(undefined)}
+          title={
+            purchaseTargets.length > 1 ? "전체 구매할까요?" : "구매할까요?"
+          }
+          onClose={() => setPurchaseTargets(undefined)}
           busy={busy}
         >
           <div className={styles.purchaseContent}>
@@ -486,17 +510,32 @@ function ShopView({
               )}
               <div className={styles.purchaseName}>
                 <span>구매할 아이템</span>
-                <strong>{productName(purchaseTarget, assets)}</strong>
+                <strong>
+                  {purchaseTargets.length > 1
+                    ? `${purchaseTargets.length}개 아이템`
+                    : productName(purchaseTargets[0], assets)}
+                </strong>
               </div>
             </div>
+            {purchaseTargets.length > 1 && (
+              <ul
+                className={styles.purchaseItems}
+                aria-label="구매할 아이템 목록"
+              >
+                {purchaseTargets.map((p) => (
+                  <li key={p.id}>
+                    <span>{productName(p, assets)}</span>
+                    <strong>{p.price?.toLocaleString("ko-KR")}개</strong>
+                  </li>
+                ))}
+              </ul>
+            )}
             <dl className={styles.purchaseSummary}>
               <div className={styles.purchaseTotal}>
                 <dt>결제 금액</dt>
                 <dd>
                   <SeedIcon height={28} alt="해바라기씨" />
-                  <strong>
-                    {purchaseTarget.price?.toLocaleString("ko-KR")}
-                  </strong>
+                  <strong>{purchaseTotal.toLocaleString("ko-KR")}</strong>
                   <span>개</span>
                 </dd>
               </div>
@@ -504,12 +543,12 @@ function ShopView({
                 <dt>보유 해바라기씨</dt>
                 <dd>{inventory.currency.balance.toLocaleString("ko-KR")}개</dd>
               </div>
-              {purchaseTarget.price !== null && (
+              {canAffordPurchase && (
                 <div className={styles.purchaseBalance}>
                   <dt>구매 후 잔액</dt>
                   <dd>
                     {(
-                      inventory.currency.balance - purchaseTarget.price
+                      inventory.currency.balance - purchaseTotal
                     ).toLocaleString("ko-KR")}
                     개
                   </dd>
@@ -521,19 +560,28 @@ function ShopView({
               <br />
               옷장에서 착용하고 코디를 저장해 주세요.
             </p>
-            {!canConfirmPurchase && (
+            {!canAffordPurchase ? (
               <Notice>
-                상품이나 보유 정보가 변경되었어요. 창을 닫고 다시 확인해 주세요.
+                해바라기씨가 부족해요. 전체 금액이 있어야 구매할 수 있어요.
               </Notice>
+            ) : (
+              !canConfirmPurchase && (
+                <Notice>
+                  상품이나 보유 정보가 변경되었어요. 창을 닫고 다시 확인해
+                  주세요.
+                </Notice>
+              )
             )}
             <button
-              className="button primary"
+              className={`button primary ${styles.whiteBuy}`}
               disabled={
                 busy || !!purchaseMutation.pending || !canConfirmPurchase
               }
               onClick={() => void buy()}
             >
-              <SubmitLabel busy={busy}>구매 확정</SubmitLabel>
+              <SubmitLabel busy={busy}>
+                {purchaseTargets.length > 1 ? "전체 구매 확정" : "구매 확정"}
+              </SubmitLabel>
             </button>
           </div>
         </Dialog>

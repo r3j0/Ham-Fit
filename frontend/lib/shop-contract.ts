@@ -138,6 +138,38 @@ export function parsePurchase(
     invalid();
   return inventory;
 }
+export function parseBatchPurchase(
+  value: unknown,
+  items: { productId: string; catalogRevision: number }[],
+) {
+  const row = object(value);
+  if (
+    !Array.isArray(row.purchases) ||
+    row.purchases.length !== items.length ||
+    items.length < 2 ||
+    items.length > 4 ||
+    new Set(items.map((item) => item.productId)).size !== items.length ||
+    !integer(row.totalPrice, 1)
+  )
+    invalid();
+  const receipts = row.purchases.map(object);
+  if (new Set(receipts.map((p) => p.id)).size !== items.length) invalid();
+  for (const item of items) {
+    const matches = receipts.filter((p) => p.productId === item.productId);
+    if (matches.length !== 1) invalid();
+    parsePurchase(
+      { ...row, purchase: matches[0] },
+      item.productId,
+      item.catalogRevision,
+    );
+  }
+  if (
+    receipts.reduce((total, p) => total + (p.price as number), 0) !==
+    row.totalPrice
+  )
+    invalid();
+  return parseInventory(row);
+}
 export function sameSelection(a: OutfitSelection, b: OutfitSelection) {
   return (
     a.characterId === b.characterId &&

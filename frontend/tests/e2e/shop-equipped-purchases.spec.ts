@@ -111,7 +111,79 @@ async function installSlots(page: Page) {
       },
     });
   });
-  return { state, products };
+  const batchRequests: { key: string; body: string }[] = [];
+  const receipts = new Map<
+    string,
+    {
+      purchases: {
+        id: string;
+        productId: string;
+        price: number;
+        catalogRevision: number;
+        createdAt: string;
+      }[];
+      totalPrice: number;
+    }
+  >();
+  await page.route("**/api/v1/shop/purchases/batch", async (route) => {
+    const req = route.request();
+    const key = req.headers()["idempotency-key"];
+    batchRequests.push({ key, body: req.postData()! });
+    const items = req.postDataJSON().items as {
+      productId: string;
+      catalogRevision: number;
+    }[];
+    const previous = receipts.get(key);
+    if (!previous) {
+      const selected = items.map((item) =>
+        products.find((p) => p.id === item.productId)!,
+      );
+      let code = "";
+      if (selected.some((p) => state.owned.includes(p.id)))
+        code = "ALREADY_OWNED";
+      else if (
+        selected.some((p, i) => p.catalogRevision !== items[i].catalogRevision)
+      )
+        code = "CATALOG_CHANGED";
+      else if (
+        selected.some((p) => p.saleStatus !== "on_sale" || p.priceProvisional)
+      )
+        code = "NOT_FOR_SALE";
+      const totalPrice = selected.reduce((total, p) => total + p.price!, 0);
+      if (!code && totalPrice > state.balance) code = "INSUFFICIENT_FUNDS";
+      if (code) return route.fulfill({ status: 409, json: { code } });
+      state.balance -= totalPrice;
+      state.owned.push(...selected.map((p) => p.id));
+      receipts.set(key, {
+        totalPrice,
+        purchases: selected.map((p, i) => ({
+          id: rewardId(90 + i),
+          productId: p.id,
+          price: p.price!,
+          catalogRevision: p.catalogRevision,
+          createdAt: rewardDate,
+        })),
+      });
+      if (state.losePurchase) {
+        state.losePurchase = false;
+        return route.abort();
+      }
+    }
+    return route.fulfill({
+      status: previous ? 200 : 201,
+      json: {
+        ...receipts.get(key),
+        replayed: !!previous,
+        currency: { balance: state.balance },
+        inventory: state.owned.map((productId) => ({
+          productId,
+          source: "purchase",
+          acquiredAt: rewardDate,
+        })),
+      },
+    });
+  });
+  return { state, products, batchRequests };
 }
 
 for (const width of [320, 1280]) {
@@ -390,4 +462,177 @@ test("확인창이 열린 동안 가격이 갱신되면 이전 가격으로 구�
     catalogRevision: 2,
   });
   expect(state.balance).toBe(65);
+});
+
+for (const width of [320, 461, 1218]) {
+  test(`${width}px 전체 구매는 미보유 착용 2개부터 표시하고 합계 확인 후 모두 구매한다`, async ({
+    page,
+  }, info) => {
+    const { state, batchRequests } = await installSlots(page);
+    await page.setViewportSize({ width, height: 786 });
+    await page.goto("/shop");
+    const all = panel(page).getByRole("button", {
+      name: "전체 구매하기",
+      exact: true,
+    });
+    await toggle(page, firstSet[0]);
+    await expect(all).toHaveCount(0);
+    await toggle(page, firstSet[1]);
+    await expect(all).toBeEnabled();
+    await toggle(page, firstSet[2]);
+    await expect(all).toHaveCSS("color", "rgb(255, 255, 255)");
+    const header = await panel(page).getByRole("heading").boundingBox();
+    const button = await all.boundingBox();
+    expect(button!.x).toBeGreaterThanOrEqual(header!.x + header!.width);
+    await all.click();
+    const dialog = page.getByRole("dialog", { name: "전체 구매할까요?" });
+    await expect(dialog.getByRole("listitem")).toHaveCount(3);
+    await expect(dialog.locator("dl")).toContainText("75");
+    for (const p of firstSet)
+      await expect(dialog.getByRole("list")).toContainText(name(p));
+    await page.screenshot({
+      path: info.outputPath(`batch-confirm-${width}.png`),
+      fullPage: true,
+    });
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth),
+    ).toBeLessThanOrEqual(width);
+    await dialog.getByRole("button", { name: "닫기", exact: true }).click();
+    expect(batchRequests).toEqual([]);
+    await all.click();
+    await dialog
+      .getByRole("button", { name: "전체 구매 확정", exact: true })
+      .evaluate((button: HTMLButtonElement) => {
+        button.click();
+        button.click();
+      });
+    await expect(dialog).toHaveCount(0);
+    await expect(panel(page)).toHaveCount(0);
+    await expect(page.getByRole("group", { name: "보유 재화" })).toHaveText(
+      "25",
+    );
+    expect(batchRequests).toHaveLength(1);
+    expect(JSON.parse(batchRequests[0].body)).toEqual({
+      items: firstSet.map((p) => ({
+        productId: p.id,
+        catalogRevision: p.catalogRevision,
+      })),
+    });
+    expect(state.purchases).toEqual([]);
+    expect(state.puts).toBe(0);
+    await expect(
+      page.getByRole("img", { name: "내 캐릭터 미리보기" }).locator("image"),
+    ).toHaveCount(4);
+  });
+}
+
+test("전체 구매 금액이 부족하면 확인창에서 안내하고 요청하지 않는다", async ({
+  page,
+}) => {
+  const { state, batchRequests } = await installSlots(page);
+  state.balance = 70;
+  await page.goto("/shop");
+  for (const p of firstSet) await toggle(page, p);
+  await panel(page)
+    .getByRole("button", { name: "전체 구매하기", exact: true })
+    .click();
+  const dialog = page.getByRole("dialog", { name: "전체 구매할까요?" });
+  await expect(dialog).toContainText("전체 금액이 있어야 구매할 수 있어요.");
+  await expect(
+    dialog.getByRole("button", { name: "전체 구매 확정", exact: true }),
+  ).toBeDisabled();
+  expect(batchRequests).toEqual([]);
+  expect(state.balance).toBe(70);
+  expect(state.owned).toHaveLength(3);
+});
+
+test("확인 후 서버 잔액이 부족해져도 전체 구매가 거절되고 한 개도 구매하지 않는다", async ({
+  page,
+}) => {
+  const { state, batchRequests } = await installSlots(page);
+  await page.goto("/shop");
+  for (const p of firstSet) await toggle(page, p);
+  await panel(page)
+    .getByRole("button", { name: "전체 구매하기", exact: true })
+    .click();
+  state.balance = 70;
+  await page
+    .getByRole("button", { name: "전체 구매 확정", exact: true })
+    .click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(
+    page.getByText("해바라기씨가 부족해요.", { exact: true }),
+  ).toBeVisible();
+  await expect(panel(page).getByRole("listitem")).toHaveCount(3);
+  await expect(page.getByRole("group", { name: "보유 재화" })).toHaveText("70");
+  expect(batchRequests).toHaveLength(1);
+  expect(state.owned).toHaveLength(3);
+  expect(state.purchases).toEqual([]);
+});
+
+test("전체 구매 응답 유실은 새로고침 후에도 원래 묶음과 키로 복구한다", async ({
+  page,
+}) => {
+  const { state, batchRequests } = await installSlots(page);
+  state.losePurchase = true;
+  await page.goto("/shop");
+  for (const p of firstSet) await toggle(page, p);
+  await panel(page)
+    .getByRole("button", { name: "전체 구매하기", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "전체 구매 확정", exact: true })
+    .click();
+  const retry = page.getByRole("button", {
+    name: "이전 구매 결과 확인",
+    exact: true,
+  });
+  await expect(retry).toBeVisible();
+  expect(state.balance).toBe(25);
+  await page.reload();
+  await retry.click();
+  await expect(retry).toHaveCount(0);
+  await expect(
+    page.getByText("구매했어요. 내 옷장에서 착용하고 저장할 수 있어요."),
+  ).toBeVisible();
+  expect(batchRequests).toHaveLength(2);
+  expect(batchRequests[0]).toEqual(batchRequests[1]);
+  expect(state.balance).toBe(25);
+  expect(state.purchases).toEqual([]);
+  expect(state.puts).toBe(0);
+});
+
+test("전체 구매 대상은 보유 아이템을 제외하고 해제 시 버튼을 숨긴다", async ({
+  page,
+}) => {
+  const { state, batchRequests } = await installSlots(page);
+  state.owned.push(firstSet[0].id);
+  await page.goto("/shop");
+  for (const p of firstSet) await toggle(page, p);
+  const all = panel(page).getByRole("button", {
+    name: "전체 구매하기",
+    exact: true,
+  });
+  await expect(panel(page).getByRole("listitem")).toHaveCount(2);
+  await toggle(page, firstSet[1]);
+  await expect(all).toHaveCount(0);
+  await toggle(page, firstSet[1]);
+  await all.click();
+  const dialog = page.getByRole("dialog", { name: "전체 구매할까요?" });
+  await expect(dialog.getByRole("listitem")).toHaveCount(2);
+  await expect(dialog.getByRole("list")).not.toContainText(name(firstSet[0]));
+  await dialog
+    .getByRole("button", { name: "전체 구매 확정", exact: true })
+    .click();
+  await expect(panel(page)).toHaveCount(0);
+  expect(
+    JSON.parse(batchRequests[0].body)
+      .items.map((p: { productId: string }) => p.productId)
+      .sort(),
+  ).toEqual(
+    firstSet
+      .slice(1)
+      .map((p) => p.id)
+      .sort(),
+  );
 });
