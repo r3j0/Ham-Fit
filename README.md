@@ -1,13 +1,13 @@
 <div align="center">
 
 <p>
-  <img src="frontend/public/hamsters/base/situp-cream.webp" alt="윗몸 운동하는 햄돌이" width="20%" />
+  <img src="frontend/public/hamsters/base/situp-cream.webp" alt="윗몸 운동하는 햄돌이" height="128" />
   &nbsp;
-  <img src="frontend/public/hamsters/base/run-gray.webp" alt="달리는 햄콩이" width="20%" />
+  <img src="frontend/public/hamsters/base/run-gray.webp" alt="달리는 햄콩이" height="128" />
   &nbsp;
-  <img src="frontend/public/hamsters/base/victory-cream.webp" alt="빅토리 자세의 햄돌이" width="20%" />
+  <img src="frontend/public/hamsters/base/victory-cream.webp" alt="빅토리 자세의 햄돌이" height="128" />
   &nbsp;
-  <img src="frontend/public/hamsters/base/weight-gray.webp" alt="체중계 위의 햄콩이" width="20%" />
+  <img src="frontend/public/hamsters/base/weight-gray.webp" alt="체중계 위의 햄콩이" height="128" />
 </p>
 
 # 🐹 Ham Fit · 햄피트
@@ -23,14 +23,6 @@
 
 </div>
 
-캐릭터와 함께 오늘의 운동을 이어 하고, 그룹원들의 모습과 최근 운동 습관을 한눈에 확인합니다.
-
-<p align="center">
-  <a href="docs/screenshots/home.jpg"><img src="docs/screenshots/home.jpg" alt="운영 배포 홈: 지훈의 대표 캐릭터, 그룹원, 오늘 운동 2/5 완료와 11일 연속 운동" width="800" /></a>
-</p>
-
-> 아래 화면은 2026년 10월 2일 [운영 배포](https://ham-fit.vercel.app)에서 시연용으로 준비된 계정으로 직접 촬영했습니다. 이미지를 클릭하면 원본 캡처를 볼 수 있습니다.
-
 ## ✨ 주요 기능
 
 | 기능               | 설명                                                                                                |
@@ -44,37 +36,61 @@
 
 현재 추천 대상 연령은 만 13–64세이며 성인 간이측정은 만 19–64세를 지원합니다. 사진 추출에는 별도 서버 설정이 필요합니다. 간이측정과 참고 평가는 정식 국민체력100 인증을 부여하지 않습니다.
 
-### 내 체력을 알고, 변화를 기록해요
-
-국민체력100 결과를 직접 입력하거나 사진으로 불러오고, 성인 간이측정으로 체력을 기록합니다. 프로필에서는 최근 측정의 6축 체력 그래프와 운동 일수·연속 운동·캐릭터 컬렉션을 함께 살펴볼 수 있습니다.
-
-<p align="center">
-  <a href="docs/screenshots/profile.jpg"><img src="docs/screenshots/profile.jpg" alt="운영 배포 프로필: 6축 체력 그래프와 연속 운동·총 운동 일수·보유 컬렉션" width="800" /></a>
-</p>
-
-### 오늘의 운동을 내 속도로 이어 가요
-
-체력·운동 목적·운동량·보유 도구를 반영한 루틴에서 운동별 처방과 진행 상태를 확인합니다. 중단한 운동은 이어 하고, 주간·월간 달력으로 쌓인 운동 기록을 돌아봅니다. 화면에는 오늘 운동 2개 완료와 9월 운동 기록이 표시되어 있습니다.
-
-<p align="center">
-  <a href="docs/screenshots/workout.jpg"><img src="docs/screenshots/workout.jpg" alt="운영 배포 운동: 5개 루틴의 처방과 완료 상태, 유산소 안내, 9월 운동 26일 기록" width="800" /></a>
-</p>
-
-### 함께 운동하며 해바라기를 키워요
-
-그룹에 가입해 서로의 캐릭터와 운동 현황을 확인하고 해바라기 미션을 진행합니다. 누적 물 주기와 개인 기여도가 화면에 표시되며, 미션을 완성하면 그룹 룰렛으로 이어집니다.
-
-<p align="center">
-  <a href="docs/screenshots/group-mission.jpg"><img src="docs/screenshots/group-mission.jpg" alt="운영 배포 그룹: 꽃봉오리 단계 32/56회, 물 주기 기여와 서로 다른 코디의 그룹원 4명" width="800" /></a>
-</p>
-
-### 운동의 보상으로 나만의 햄스터를 꾸며요
-
-운동으로 모은 해바라기씨를 상점에서 사용하고, 모자·상의·하의·자세를 조합해 대표 캐릭터를 꾸밉니다. 코디 미리보기에서 원하는 조합을 확인하고 보유한 아이템은 옷장에서 다시 꺼내 입습니다.
-
-<p align="center">
-  <a href="docs/screenshots/shop.jpg"><img src="docs/screenshots/shop.jpg" alt="운영 배포 상점: 95개 해바라기씨, 착용 코디 미리보기와 모자 상품 목록" width="800" /></a>
-</p>
+<table>
+  <thead>
+    <tr>
+      <th width="45%">사용 화면</th>
+      <th width="55%">설명</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td align="center" valign="middle">
+        <a href="docs/screenshots/home.jpg"><img src="docs/screenshots/home.jpg" alt="운영 배포 홈: 대표 캐릭터, 그룹원, 오늘의 운동과 연속 운동" width="400" /></a>
+      </td>
+      <td valign="middle">
+        <h3>오늘의 운동을 한눈에</h3>
+        <p>캐릭터와 함께 오늘의 운동을 이어 하고, 그룹원들의 모습과 최근 운동 습관을 한눈에 확인합니다.</p>
+      </td>
+    </tr>
+    <tr>
+      <td align="center" valign="middle">
+        <a href="docs/screenshots/profile.jpg"><img src="docs/screenshots/profile.jpg" alt="운영 배포 프로필: 6축 체력 그래프와 활동 리포트" width="400" /></a>
+      </td>
+      <td valign="middle">
+        <h3>내 체력을 알고, 변화를 기록해요</h3>
+        <p>국민체력100 결과를 직접 입력하거나 사진으로 불러오고, 성인 간이측정으로 체력을 기록합니다. 프로필에서는 최근 측정의 6축 체력 그래프와 운동 일수·연속 운동·캐릭터 컬렉션을 함께 살펴볼 수 있습니다.</p>
+      </td>
+    </tr>
+    <tr>
+      <td align="center" valign="middle">
+        <a href="docs/screenshots/workout.jpg"><img src="docs/screenshots/workout.jpg" alt="운영 배포 운동: 루틴 처방과 진행 상태, 유산소 안내와 월간 달력" width="400" /></a>
+      </td>
+      <td valign="middle">
+        <h3>오늘의 운동을 내 속도로 이어 가요</h3>
+        <p>체력·운동 목적·운동량·보유 도구를 반영한 루틴에서 운동별 처방과 진행 상태를 확인합니다. 중단한 운동은 이어 하고, 주간·월간 달력으로 쌓인 운동 기록을 돌아봅니다.</p>
+      </td>
+    </tr>
+    <tr>
+      <td align="center" valign="middle">
+        <a href="docs/screenshots/group-mission.jpg"><img src="docs/screenshots/group-mission.jpg" alt="운영 배포 그룹: 꽃봉오리 미션과 물 주기 기여도, 그룹원 캐릭터" width="400" /></a>
+      </td>
+      <td valign="middle">
+        <h3>함께 운동하며 해바라기를 키워요</h3>
+        <p>그룹에 가입해 서로의 캐릭터와 운동 현황을 확인하고 해바라기 미션을 진행합니다. 누적 물 주기와 개인 기여도가 화면에 표시되며, 미션을 완성하면 그룹 룰렛으로 이어집니다.</p>
+      </td>
+    </tr>
+    <tr>
+      <td align="center" valign="middle">
+        <a href="docs/screenshots/shop.jpg"><img src="docs/screenshots/shop.jpg" alt="운영 배포 상점: 코디 미리보기, 잔액과 의상 상품" width="400" /></a>
+      </td>
+      <td valign="middle">
+        <h3>운동의 보상으로 나만의 햄스터를 꾸며요</h3>
+        <p>운동으로 모은 해바라기씨를 상점에서 사용하고, 모자·상의·하의·자세를 조합해 대표 캐릭터를 꾸밉니다. 코디 미리보기에서 원하는 조합을 확인하고 보유한 아이템은 옷장에서 다시 꺼내 입습니다.</p>
+      </td>
+    </tr>
+  </tbody>
+</table>
 
 ## 🧩 프로젝트 구성
 
