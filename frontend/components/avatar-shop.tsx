@@ -416,21 +416,60 @@ function ShopView({
       </div>
       {confirm && selected && (
         <Dialog
-          title="이 아이템을 구매할까요?"
+          title="구매할까요?"
           onClose={() => setConfirm(false)}
           busy={busy}
         >
-          <p>
-            {productName(selected, assets)} · 해바라기씨 {selected.price}개
-          </p>
-          <p>구매 후 옷장에서 착용할 수 있어요.</p>
-          <button
-            className="button primary"
-            disabled={busy}
-            onClick={() => void buy()}
-          >
-            <SubmitLabel busy={busy}>구매 확정</SubmitLabel>
-          </button>
+          <div className={styles.purchaseContent}>
+            <div className={styles.purchaseItem}>
+              {preview && (
+                <div className={styles.purchasePreview} aria-hidden="true">
+                  <ProfileCharacter outfit={preview} size={76} label="" />
+                </div>
+              )}
+              <div className={styles.purchaseName}>
+                <span>구매할 아이템</span>
+                <strong>{productName(selected, assets)}</strong>
+              </div>
+            </div>
+            <dl className={styles.purchaseSummary}>
+              <div className={styles.purchaseTotal}>
+                <dt>결제 금액</dt>
+                <dd>
+                  <SeedIcon height={28} alt="해바라기씨" />
+                  <strong>{selected.price?.toLocaleString("ko-KR")}</strong>
+                  <span>개</span>
+                </dd>
+              </div>
+              <div className={styles.purchaseBalance}>
+                <dt>보유 해바라기씨</dt>
+                <dd>{inventory.currency.balance.toLocaleString("ko-KR")}개</dd>
+              </div>
+              {selected.price !== null && (
+                <div className={styles.purchaseBalance}>
+                  <dt>구매 후 잔액</dt>
+                  <dd>
+                    {(
+                      inventory.currency.balance - selected.price
+                    ).toLocaleString("ko-KR")}
+                    개
+                  </dd>
+                </div>
+              )}
+            </dl>
+            <p className={styles.purchaseHint}>
+              구매한 아이템은 <strong>내 옷장</strong>에 보관돼요.
+              <br />
+              옷장에서 착용하고 코디를 저장해 주세요.
+            </p>
+            <button
+              className="button primary"
+              disabled={busy}
+              onClick={() => void buy()}
+            >
+              <SubmitLabel busy={busy}>구매 확정</SubmitLabel>
+            </button>
+          </div>
         </Dialog>
       )}
     </>
