@@ -25,6 +25,9 @@
   place-items: center;
   min-height: 160px;
 }
+.mascotStage > [role="img"] {
+  max-width: 70%;
+}
 .heading {
   display: flex;
   align-items: center;
