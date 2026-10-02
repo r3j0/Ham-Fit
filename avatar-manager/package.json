@@ -2,6 +2,7 @@
   "name": "project-health-avatar-manager",
   "version": "2.0.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "next dev --hostname 127.0.0.1 --port 3002",
