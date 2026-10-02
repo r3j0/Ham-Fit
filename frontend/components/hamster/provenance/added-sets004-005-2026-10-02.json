@@ -1,0 +1,100 @@
+{
+  "registeredAt": "2026-10-02",
+  "sources": [
+    {
+      "file": "hamfit-third-set004-fit-r1.zip",
+      "sha256": "29144500cc188eb75235a5d29d863b5c681f619bb2330c5cebc3a63a716e7d00"
+    },
+    {
+      "file": "hamfit-fourth-set005-editable-fit.zip",
+      "sha256": "5265550eb46bdaee942072f7b9b27e35cce4bee1a67107baaed4af0bf5f41c6f"
+    }
+  ],
+  "bundle": "3c35bac6c3850075a338e36c4ac9ae8e16ee7ddde2298e238f995de17544d1c9",
+  "previousBundle": "bfef8c24f30f61a1594c33ad75d87f98936896cf29de0d18de37cd21fb8f9765",
+  "newProducts": [
+    {
+      "id": "clothing.set004-mustard-beret",
+      "label": "머스터드 베레모",
+      "slot": "hat",
+      "price": 30,
+      "saleStatus": "on_sale",
+      "poses": 16,
+      "variants": [
+        "cream",
+        "gray"
+      ]
+    },
+    {
+      "id": "clothing.set004-lavender-henley",
+      "label": "라벤더 헨리 티셔츠",
+      "slot": "top",
+      "price": 25,
+      "saleStatus": "on_sale",
+      "poses": 16,
+      "variants": [
+        "cream",
+        "gray"
+      ]
+    },
+    {
+      "id": "clothing.set004-olive-cargo",
+      "label": "올리브 카고 반바지",
+      "slot": "bottom",
+      "price": 20,
+      "saleStatus": "on_sale",
+      "poses": 16,
+      "variants": [
+        "cream",
+        "gray"
+      ]
+    },
+    {
+      "id": "clothing.set005-skyblue-visor",
+      "label": "하늘색 선바이저",
+      "slot": "hat",
+      "price": 30,
+      "saleStatus": "on_sale",
+      "poses": 16,
+      "variants": [
+        "cream",
+        "gray"
+      ]
+    },
+    {
+      "id": "clothing.set005-green-raglan",
+      "label": "아이보리 그린 래글런 티",
+      "slot": "top",
+      "price": 25,
+      "saleStatus": "on_sale",
+      "poses": 16,
+      "variants": [
+        "cream",
+        "gray"
+      ]
+    },
+    {
+      "id": "clothing.set005-striped-track-shorts",
+      "label": "차콜 두 줄 트랙 반바지",
+      "slot": "bottom",
+      "price": 20,
+      "saleStatus": "on_sale",
+      "poses": 16,
+      "variants": [
+        "cream",
+        "gray"
+      ]
+    }
+  ],
+  "catalogProducts": 12,
+  "referencedAssets": 417,
+  "qa": {
+    "allPackageFileHashes": "passed",
+    "transparentPng1000x1000": "passed",
+    "editorRoundTrip": "exact display/source/geometry/hashes",
+    "existingSixProducts": "display and source unchanged",
+    "frontendRenderer": "128 full-set frames and 896 same-set combinations without warnings",
+    "backendMetadata": "strict schema and topology passed"
+  },
+  "imageStorage": "frontend"
+}

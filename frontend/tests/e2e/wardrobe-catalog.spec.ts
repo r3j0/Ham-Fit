@@ -25,7 +25,7 @@ const clothes: Product[] = Object.entries(assets).map(([renderKey, item]) => {
   };
 });
 
-test("배포된 두 의상 세트의 가격과 실제 정적 PNG를 표시하고 같은 세트를 함께 미리본다", async ({
+test("등록된 의상 세트의 가격과 실제 정적 PNG를 표시하고 같은 세트를 함께 미리본다", async ({
   page,
 }, info) => {
   await installCommerce(page);
@@ -40,7 +40,7 @@ test("배포된 두 의상 세트의 가격과 실제 정적 PNG를 표시하고
       poseId: "pose.basic",
       clothingIds: [] as string[],
     },
-    ...[0, 3].flatMap((start) =>
+    ...[0, 3, 6, 9].flatMap((start) =>
       Array.from({ length: 7 }, (_, index) => ({
         characterId: `character.${variant}`,
         poseId: "pose.basic",
@@ -67,7 +67,7 @@ test("배포된 두 의상 세트의 가격과 실제 정적 PNG를 표시하고
   });
   await page.goto("/shop");
   const preview = page.getByRole("img", { name: "내 캐릭터 미리보기" });
-  for (const start of [0, 3]) {
+  for (const start of [0, 3, 6, 9]) {
     if (start)
       await page.getByRole("button", { name: "초기화", exact: true }).click();
     for (const product of clothes.slice(start, start + 3)) {
