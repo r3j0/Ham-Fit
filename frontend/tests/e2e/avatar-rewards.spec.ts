@@ -450,7 +450,7 @@ test("그룹 미션은 성장 모습과 참여 자격을 표시하고 룰렛 응
       },
     }),
   );
-  await page.goto("/account/notifications");
+  await page.goto(`/groups/${groupId}`);
   await page
     .getByRole("region", { name: "그룹 룰렛", exact: true })
     .getByRole("link", { name: "룰렛 돌리기" })
@@ -459,7 +459,7 @@ test("그룹 미션은 성장 모습과 참여 자격을 표시하고 룰렛 응
   await expect(
     page.getByRole("button", { name: "이전 추첨 결과 확인" }),
   ).toBeVisible();
-  await page.getByRole("link", { name: "알림으로", exact: true }).click();
+  await page.getByRole("link", { name: "그룹으로", exact: true }).click();
   await expect(page.getByLabel("그룹 룰렛 사용 가능 횟수")).toHaveText("0회");
   await page.getByRole("link", { name: "이전 추첨 결과 확인" }).click();
   await expect(page).toHaveURL(`/groups/${groupId}/roulette`);

@@ -21,7 +21,7 @@ async function register(page: Page, origin: string) {
   headers.Authorization = `Bearer ${auth.access_token}`;
   return headers;
 }
-test("실제 API: 개인·그룹 0회 알림과 미션 시작 직후 참여자 물 횟수를 표시한다", async ({
+test("실제 API: 개인·그룹 0회 진입점과 미션 시작 직후 참여자 물 횟수를 표시한다", async ({
   page,
   browser,
 }, info) => {
@@ -86,19 +86,19 @@ test("실제 API: 개인·그룹 0회 알림과 미션 시작 직후 참여자 �
     );
     expect(tickets.status()).toBe(200);
     expect((await tickets.json()).availableCount).toBe(0);
-    await page.goto("/account/notifications");
-    await expect(page.getByLabel("개인 룰렛 사용 가능 횟수")).toHaveText("0회");
+    await page.goto("/");
+    await expect(
+      page.getByRole("region", { name: "개인 룰렛", exact: true }),
+    ).toHaveCount(0);
+    await page.goto(`/groups/${groupId}`);
     await expect(page.getByLabel("그룹 룰렛 사용 가능 횟수")).toHaveText("0회");
     await expect(
       page
-        .getByRole("region", { name: "룰렛 알림" })
-        .getByRole("button", { name: "룰렛 돌리기" }),
-    ).toHaveCount(2);
-    await expect(
-      page
-        .getByRole("region", { name: "개인 룰렛", exact: true })
+        .getByRole("region", { name: "그룹 룰렛", exact: true })
         .getByRole("button", { name: "룰렛 돌리기" }),
     ).toBeDisabled();
+    await page.goto("/account/notifications");
+    await expect(page.getByRole("region", { name: /룰렛/ })).toHaveCount(0);
   } finally {
     if (groupId)
       expect(

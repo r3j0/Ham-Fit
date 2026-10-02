@@ -1,5 +1,6 @@
 "use client";
 import { GroupMission } from "./group-mission";
+import { GroupRouletteEntry } from "./roulette-entry";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -180,6 +181,7 @@ function GroupView({ row, refresh }: { row: Detail; refresh: () => void }) {
     description: row.description,
     maxMembers: row.maxMembers,
   });
+  const [rouletteRevision, setRouletteRevision] = useState(0);
   const settingsButton = useRef<HTMLButtonElement>(null);
   function closeSettings() {
     setEditing(false);
@@ -305,7 +307,10 @@ function GroupView({ row, refresh }: { row: Detail; refresh: () => void }) {
         id={row.id}
         leader={leader}
         memberCount={row.currentMembers}
-        onChanged={refresh}
+        onChanged={() => {
+          refresh();
+          setRouletteRevision((revision) => revision + 1);
+        }}
       />
       <section className={styles.card}>
         <h2>{row.name}</h2>
@@ -401,6 +406,7 @@ function GroupView({ row, refresh }: { row: Detail; refresh: () => void }) {
           ))}
         </ul>
       </section>
+      <GroupRouletteEntry key={rouletteRevision} id={row.id} />
       {leader && applicationsOpen && (
         <Dialog
           title="가입 신청 관리"

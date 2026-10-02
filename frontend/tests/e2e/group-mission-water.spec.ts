@@ -165,22 +165,18 @@ test("물 선택의 응답 유실은 원래 그룹과 요청 키로 복구하고
   expect(state.writes).toHaveLength(2);
   expect(state.writes[0]).toEqual(state.writes[1]);
 });
-test("미참여·만료·조회 실패는 물 지급 성공으로 표시하지 않는다", async ({
-  page,
-}) => {
+test("미참여·만료는 건너뛰고 조회 실패는 다시 확인한다", async ({ page }) => {
   const { state, base } = await setup(page, 0);
   await page.goto(`${base}/water`);
+  await expect(page).toHaveURL("/");
   await expect(
-    page.getByText("운동을 마칠 때 참여 중인 그룹 미션이 없었어요."),
-  ).toBeVisible();
-  await expect(page.getByText(/그룹에 물을 주었어요!/)).toHaveCount(0);
+    page.getByRole("region", { name: "오늘의 그룹 물 주기" }),
+  ).toHaveCount(0);
   state.expired = true;
-  await page.reload();
-  await expect(
-    page.getByText("물 주기는 운동을 완료한 날에만 할 수 있어요."),
-  ).toBeVisible();
+  await page.goto(`${base}/water`);
+  await expect(page).toHaveURL("/");
   state.fail = true;
-  await page.reload();
+  await page.goto(`${base}/water`);
   await expect(
     page.getByRole("button", { name: "물 주기 다시 확인" }),
   ).toBeVisible();

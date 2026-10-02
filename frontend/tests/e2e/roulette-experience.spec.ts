@@ -160,12 +160,12 @@ for (const kind of ["personal", "group"] as const) {
     ).toBeVisible();
     await expect(page.locator(".eyebrow, details")).toHaveCount(0);
     const navigation = page.getByRole("link", {
-      name: kind === "personal" ? "메인으로" : "알림으로",
+      name: kind === "personal" ? "메인으로" : "그룹으로",
       exact: true,
     });
     await expect(navigation).toHaveAttribute(
       "href",
-      kind === "personal" ? "/" : "/account/notifications",
+      kind === "personal" ? "/" : `/groups/${id(1)}`,
     );
     const balance = page.getByRole("group", { name: "보유 재화" });
     await expect(balance).toHaveText("100");

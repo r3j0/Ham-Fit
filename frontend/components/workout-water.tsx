@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Check, Droplets } from "lucide-react";
 import { getMissionWater, selectMissionWater } from "@/lib/group-mission-water";
 import { errorMessage } from "@/lib/http";
@@ -24,10 +25,12 @@ export function WorkoutWater({
   id,
   next,
   sourceKind = "routine",
+  skipUnavailableTo,
 }: {
   id: string;
   next: string;
   sourceKind?: "routine" | "daily_assignment";
+  skipUnavailableTo?: string;
 }) {
   const resource = useApiResource(
     useCallback(
@@ -40,6 +43,12 @@ export function WorkoutWater({
   const [saved, setSaved] = useState<MissionWater>();
   const [error, setError] = useState("");
   const water = saved ?? resource.data;
+  const router = useRouter();
+  const unavailable =
+    water?.status === "unavailable" && !resource.error && !mutation.pending;
+  useEffect(() => {
+    if (unavailable && skipUnavailableTo) router.replace(skipUnavailableTo);
+  }, [unavailable, skipUnavailableTo, router]);
   useUnsaved(
     mutation.busy,
     "물 주기 결과를 확인 중이에요. 이 화면을 나갈까요?",
@@ -64,6 +73,12 @@ export function WorkoutWater({
       resource.reload();
     }
   }
+  if (!water && !resource.error)
+    return <Loading label="오늘의 물 주기를 확인하고 있어요" />;
+  if (unavailable)
+    return skipUnavailableTo ? (
+      <Loading label="다음 화면으로 이동하고 있어요" />
+    ) : null;
   return (
     <section className={styles.waterPage} aria-label="오늘의 그룹 물 주기">
       <div className={styles.waterHero}>

@@ -1,0 +1,91 @@
+.card {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid var(--roulette-mid);
+  border-radius: 24px;
+  background: linear-gradient(
+    125deg,
+    var(--surface) 20%,
+    var(--roulette-light)
+  );
+}
+.heading {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  align-items: center;
+  gap: 18px;
+}
+.card .preview {
+  width: 88px;
+  margin: 4px 0;
+}
+.copy {
+  display: grid;
+  gap: 6px;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+.copy h2 {
+  color: var(--roulette-ink);
+  font-size: 20px;
+  line-height: 1.3;
+}
+.copy p {
+  color: var(--roulette-ink);
+  font-size: 14px;
+  line-height: 1.5;
+  font-weight: 600;
+}
+.hint {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.count {
+  color: var(--roulette-ink);
+  font-size: 20px;
+  font-weight: 800;
+}
+.count span {
+  font-size: 12px;
+  font-weight: 500;
+}
+.card .action {
+  width: auto;
+  min-height: 44px;
+  padding: 10px 16px;
+  border: 1px solid var(--roulette-ink);
+  background: var(--roulette-ink);
+  color: #fff;
+  font-size: 13px;
+}
+.card .action:disabled {
+  border-color: var(--roulette-mid);
+  background: var(--surface);
+  color: var(--roulette-ink);
+  opacity: 0.55;
+}
+@media (max-width: 380px) {
+  .card {
+    padding: 16px;
+  }
+  .heading {
+    grid-template-columns: 64px minmax(0, 1fr);
+    gap: 12px;
+  }
+  .card .preview {
+    width: 64px;
+  }
+  .copy h2 {
+    font-size: 18px;
+  }
+}

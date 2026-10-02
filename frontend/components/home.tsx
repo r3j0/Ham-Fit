@@ -7,6 +7,7 @@ import { ArrowRight } from "lucide-react";
 import { Brand, Loading, Notice, Shell } from "./ui";
 import { TodayWorkout } from "./today-workout";
 import { WorkoutStreak } from "./workout-streak";
+import { PersonalRouletteEntry } from "./roulette-entry";
 import { useUserProfile } from "./user-profile-provider";
 
 export function Home() {
@@ -61,6 +62,7 @@ export function Home() {
                   <TodayWorkout embedded />
                 </section>
                 <WorkoutStreak />
+                <PersonalRouletteEntry />
               </div>
             </div>
             <div className="home-companions">

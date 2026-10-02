@@ -3,7 +3,12 @@ import Link from "next/link";
 import { useCallback, useState } from "react";
 import { getRoutine } from "@/lib/workout-routines";
 import { getActivityProfile } from "@/lib/activity-profile";
-import { getActivityReward } from "@/lib/personal-rewards";
+import {
+  getActivityReward,
+  dailyRewardsEnabled,
+  personalRouletteEnabled,
+} from "@/lib/personal-rewards";
+import { getMissionWater } from "@/lib/group-mission-water";
 import { nextRoutineHref } from "@/lib/workout-practice";
 import { errorMessage } from "@/lib/http";
 import { useApiResource } from "./use-api-resource";
@@ -18,12 +23,15 @@ import { useActivityHistory } from "./use-activity-history";
 import { completedRoutineDate, shiftDay } from "@/lib/workout-history";
 import type { WorkoutRoutine } from "@/lib/workout-routine";
 import styles from "./workout-completion.module.css";
+import wheelStyles from "./roulette-wheel.module.css";
+export type CompletionStep =
+  "complete" | "streak" | "roulette" | "reward" | "water";
 export function WorkoutCompletion({
   id,
   step = "complete",
 }: {
   id: string;
-  step?: "complete" | "streak" | "reward" | "water";
+  step?: CompletionStep;
 }) {
   const routine = useApiResource(
     useCallback((signal: AbortSignal) => getRoutine(id, signal), [id]),
@@ -31,7 +39,9 @@ export function WorkoutCompletion({
   return (
     <Shell>
       <Header title="운동 완료" back="/workout" />
-      <div className="content stack completion-page">
+      <div
+        className={`content stack completion-page ${step === "roulette" ? styles.rouletteStep : ""}`}
+      >
         {routine.error ? (
           <>
             <Notice>{errorMessage(routine.error)}</Notice>
@@ -69,7 +79,7 @@ function Completed({
   step,
 }: {
   routine: WorkoutRoutine;
-  step: "complete" | "streak" | "reward" | "water";
+  step: CompletionStep;
 }) {
   const { id, koreanDate, serverKoreanDate: today } = routine;
   const activity = useApiResource(getActivityProfile, {
@@ -106,20 +116,37 @@ function Completed({
       [id, koreanDate],
     ),
   );
-  const receipt = reward.data,
-    base = `/workout-routines/${id}/complete`;
+  const water = useApiResource(
+    useCallback((signal: AbortSignal) => getMissionWater(id, signal), [id]),
+    { enabled: step === "streak" || step === "roulette" },
+  );
+  const receipt = reward.error === undefined ? reward.data : undefined;
+  const base = `/workout-routines/${id}/complete`;
+  const ticketGranted =
+    personalRouletteEnabled && !!receipt?.personalTicketIds.length;
+  const rewardNext =
+    dailyRewardsEnabled && receipt?.seed.status === "granted"
+      ? `${base}/reward`
+      : "/";
+  // An unavailable receipt means there is no mission action or contribution to show.
+  // A failed read goes to the water screen so the user can retry there.
+  const afterRoulette =
+    water.error === undefined && water.data?.status === "unavailable"
+      ? rewardNext
+      : `${base}/water`;
   const next =
     step === "complete"
       ? `${base}/streak`
-      : step === "streak"
-        ? `${base}/water`
-        : "/";
+      : step === "streak" && ticketGranted
+        ? `${base}/roulette`
+        : step === "streak" || step === "roulette"
+          ? afterRoulette
+          : "/";
   if (step === "water")
-    return (
-      <WorkoutWater
-        id={id}
-        next={receipt?.seed.status === "granted" ? `${base}/reward` : "/"}
-      />
+    return reward.loading ? (
+      <Loading label="보상 내역을 확인하고 있어요" />
+    ) : (
+      <WorkoutWater id={id} next={rewardNext} skipUnavailableTo={rewardNext} />
     );
   return (
     <>
@@ -193,8 +220,48 @@ function Completed({
           )}
         </>
       )}
+      {step === "roulette" && ticketGranted && (
+        <>
+          <CompletionMotion
+            kind="sunflower"
+            onComplete={finishCelebration}
+            className={styles.rouletteCelebration}
+          >
+            <div
+              className={`${wheelStyles.page} ${styles.rouletteReward}`}
+              aria-hidden="true"
+            >
+              <div className={wheelStyles.stage}>
+                <div className={wheelStyles.wheel} />
+                <div className={wheelStyles.pointer} />
+                <div className={wheelStyles.hub}>
+                  <SeedIcon height={36} />
+                </div>
+              </div>
+              <span className={styles.ticketBadge}>+1</span>
+            </div>
+          </CompletionMotion>
+          <h1>
+            스트릭 룰렛
+            <br />
+            <strong className={styles.ticketTitle}>1회 획득!</strong>
+          </h1>
+          <p>연속 운동 5일마다 찾아오는 선물이에요.</p>
+          <p className={styles.ticketHint}>
+            받은 룰렛은 메인에서 돌릴 수 있어요.
+          </p>
+        </>
+      )}
+      {step === "roulette" &&
+        !ticketGranted &&
+        !reward.loading &&
+        !reward.error && (
+          <Notice tone="info">
+            이번 운동에서 획득한 스트릭 룰렛이 없어요.
+          </Notice>
+        )}
       {step === "reward" &&
-        (receipt?.seed.status === "granted" ? (
+        (dailyRewardsEnabled && receipt?.seed.status === "granted" ? (
           <>
             <div className="reward-symbol" aria-hidden="true">
               <SeedIcon height={100} />
@@ -222,7 +289,10 @@ function Completed({
         <Loading label="보상 내역을 확인하고 있어요" />
       )}
       {waitingForAnimation ||
-      (step === "streak" && (reward.loading || activity.loading)) ? (
+      (step === "streak" &&
+        (reward.loading || activity.loading || water.loading)) ||
+      (step === "roulette" &&
+        (reward.loading || water.loading || (ticketGranted && !celebrated))) ? (
         <button className="button primary" disabled>
           다음
         </button>
