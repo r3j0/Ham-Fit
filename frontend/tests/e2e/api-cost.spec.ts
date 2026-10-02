@@ -114,7 +114,7 @@ test("빈 의상 카탈로그에서도 기본 캐릭터를 표시하고 백엔�
   await installCommerce(page, true);
   await page.unroute("**/hamsters/wardrobe/assets/*.png");
   await page.route("**/hamsters/wardrobe/catalog.json", (route) =>
-    route.fulfill({ json: catalog }),
+    route.fulfill({ json: { revision: 1, catalog: {} } }),
   );
   const backendImages: string[] = [];
   page.on("request", (request) => {
@@ -140,7 +140,7 @@ test("빈 의상 카탈로그에서도 기본 캐릭터를 표시하고 백엔�
   ).toHaveCount(0);
   const response = await page.request.get("/hamsters/wardrobe/catalog.json");
   expect(response.status()).toBe(200);
-  expect((await response.json()).catalog).toEqual({});
+  expect((await response.json()).catalog).toEqual(catalog.catalog);
   expect(backendImages).toEqual([]);
 });
 

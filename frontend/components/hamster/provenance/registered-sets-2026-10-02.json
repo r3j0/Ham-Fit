@@ -1,0 +1,108 @@
+{
+  "registeredAt": "2026-10-02",
+  "sources": [
+    {
+      "file": "hamfit-set001-final-r4.zip",
+      "sha256": "4fa82c2ec407910d71b836b59089d1d0816c98b925d5ade88e5cd3a2e27eca4c",
+      "packageRevision": "r4"
+    },
+    {
+      "file": "hamfit-second-set003-fit-r2.zip",
+      "sha256": "066f1ec2100629a2a6eac158d1e077909efc3a68b0a70b7a47250778e1cb8a2f",
+      "packageRevision": "r2"
+    }
+  ],
+  "bundle": "bfef8c24f30f61a1594c33ad75d87f98936896cf29de0d18de37cd21fb8f9765",
+  "assets": 203,
+  "products": [
+    {
+      "id": "clothing.beige-hat",
+      "renderKey": "beige-hat",
+      "label": "베이지 모자",
+      "slot": "hat",
+      "price": 30,
+      "saleStatus": "on_sale",
+      "poses": 16,
+      "variants": [
+        "cream",
+        "gray"
+      ]
+    },
+    {
+      "id": "clothing.mint-shirt",
+      "renderKey": "mint-shirt",
+      "label": "민트 티셔츠",
+      "slot": "top",
+      "price": 25,
+      "saleStatus": "on_sale",
+      "poses": 16,
+      "variants": [
+        "cream",
+        "gray"
+      ]
+    },
+    {
+      "id": "clothing.navy-shorts",
+      "renderKey": "navy-shorts",
+      "label": "네이비 반바지",
+      "slot": "bottom",
+      "price": 20,
+      "saleStatus": "on_sale",
+      "poses": 16,
+      "variants": [
+        "cream",
+        "gray"
+      ]
+    },
+    {
+      "id": "clothing.set003-burgundy-beanie",
+      "renderKey": "set003-burgundy-beanie",
+      "label": "버건디 골지 비니",
+      "slot": "hat",
+      "price": 30,
+      "saleStatus": "on_sale",
+      "poses": 16,
+      "variants": [
+        "cream",
+        "gray"
+      ]
+    },
+    {
+      "id": "clothing.set003-teal-pocket-tee",
+      "renderKey": "set003-teal-pocket-tee",
+      "label": "더스티 틸 포켓 티",
+      "slot": "top",
+      "price": 25,
+      "saleStatus": "on_sale",
+      "poses": 16,
+      "variants": [
+        "cream",
+        "gray"
+      ]
+    },
+    {
+      "id": "clothing.set003-denim-shorts",
+      "renderKey": "set003-denim-shorts",
+      "label": "인디고 롤업 데님 쇼츠",
+      "slot": "bottom",
+      "price": 20,
+      "saleStatus": "on_sale",
+      "poses": 16,
+      "variants": [
+        "cream",
+        "gray"
+      ]
+    }
+  ],
+  "qa": {
+    "packageHashes": "passed",
+    "pngFormat": "1000x1000 transparent PNG",
+    "editorRoundTrip": "exact display, source, geometry and hashes",
+    "frontendRenderer": "64 full-set frames, 448 same-set supported combinations without warnings",
+    "backendMetadata": "strict schema and topology validation passed"
+  },
+  "storage": {
+    "imagesAndPlacements": "frontend static assets",
+    "backend": "product metadata and supported combinations only"
+  }
+}

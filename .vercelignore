@@ -1,0 +1,12 @@
+**/.local/**
+**/.env*
+!**/.env.example
+**/node_modules/**
+**/.next/**
+**/.next-*/**
+**/test-results/**
+**/playwright-report/**
+**/*.tsbuildinfo
+**/public/hamsters/edits/**
+**/public/hamsters/wardrobe/server/**
+**/public/hamsters/wardrobe/imported/**
