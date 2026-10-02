@@ -27,7 +27,6 @@ export async function publishDraft(input: { revision: number; products: unknown[
 export async function pullCatalog() {
   const originals = structuredClone(await readFrontendCatalog(true));
   const catalog = await readFrontendCatalog();
-  if (!Object.keys(catalog).length) throw new Error('프론트엔드에 내보낸 의상이 없습니다.');
   const placementEntries: PlacementChange[] = [], artworkEntries: ArtworkEntry[] = [];
   const root = process.cwd();
   await mkdir(path.join(root, 'public/hamsters/wardrobe/server'), { recursive: true });

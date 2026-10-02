@@ -108,15 +108,14 @@ test("달력·상세는 보이는 월·주·날짜만 조회하고 과거 기록
   expect(ranges).toHaveLength(2);
 });
 
-test("저장소의 실제 아바타 PNG를 FE 정적 경로로 렌더링하고 백엔드 이미지 호출은 없다", async ({
+test("빈 의상 카탈로그에서도 기본 캐릭터를 표시하고 백엔드 이미지 요청을 하지 않는다", async ({
   page,
 }) => {
   await installCommerce(page, true);
   await page.unroute("**/hamsters/wardrobe/assets/*.png");
   await page.route("**/hamsters/wardrobe/catalog.json", (route) =>
-    route.fulfill({ json: catalog }),
+    route.fulfill({ json: { revision: 1, catalog: {} } }),
   );
-  const shirt = catalog.catalog["mint-shirt"].poses.basic.cream.layers[0].src;
   const backendImages: string[] = [];
   page.on("request", (request) => {
     if (
@@ -127,27 +126,21 @@ test("저장소의 실제 아바타 PNG를 FE 정적 경로로 렌더링하고 �
       backendImages.push(request.url());
   });
   await page.goto("/shop/wardrobe");
-  await page.getByRole("button", { name: "상의", exact: true }).click();
-  await page.getByRole("button", { name: /민트 티셔츠.*보유 중/ }).click();
   const layers = page
     .getByRole("img", { name: "내 캐릭터 미리보기" })
     .locator("image");
-  await expect(layers.nth(1)).toHaveAttribute("href", shirt);
-  const response = await page.request.get(shirt);
-  expect(response.status()).toBe(200);
-  expect(response.headers()["content-type"]).toContain("image/png");
-  expect(response.headers()["cache-control"]).toContain("immutable");
-  const dimensions = await page.evaluate(
-    (src) =>
-      new Promise<number[]>((resolve, reject) => {
-        const image = new Image();
-        image.onload = () => resolve([image.naturalWidth, image.naturalHeight]);
-        image.onerror = () => reject(new Error("FE avatar PNG failed to load"));
-        image.src = src;
-      }),
-    shirt,
+  await expect(layers).toHaveCount(1);
+  await expect(layers.first()).toHaveAttribute(
+    "href",
+    "/hamsters/base/basic-cream-hamdoli.webp",
   );
-  expect(dimensions).toEqual([1000, 1000]);
+  await page.getByRole("button", { name: "상의", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: /민트 티셔츠.*보유 중/ }),
+  ).toHaveCount(0);
+  const response = await page.request.get("/hamsters/wardrobe/catalog.json");
+  expect(response.status()).toBe(200);
+  expect((await response.json()).catalog).toEqual(catalog.catalog);
   expect(backendImages).toEqual([]);
 });
 
