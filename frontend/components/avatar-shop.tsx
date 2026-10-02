@@ -98,9 +98,8 @@ function ShopView({
   const [draft, setDraft] = useState<OutfitSelection>(outfit);
   const [revision, setRevision] = useState(outfit.revision);
   const [category, setCategory] = useState<string>("hat");
-  const [selected, setSelected] = useState<Product>();
-  const [confirm, setConfirm] = useState(false),
-    [saving, setSaving] = useState(false);
+  const [purchaseTarget, setPurchaseTarget] = useState<Product>();
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState(""),
     [message, setMessage] = useState("");
   const purchaseMutation = useDurableMutation("shop:purchase");
@@ -126,7 +125,7 @@ function ShopView({
       (wardrobe ? owned.has(p.id) : p.saleStatus !== "retired"),
   );
   async function buy() {
-    const product = selected;
+    const product = purchaseTarget;
     if (
       !purchaseMutation.pending &&
       (!product || product.priceProvisional || product.saleStatus !== "on_sale")
@@ -144,14 +143,13 @@ function ShopView({
         purchase,
       );
       if (!current() || !result) return;
-      setConfirm(false);
+      setPurchaseTarget(undefined);
       setMessage("구매했어요. 내 옷장에서 착용하고 저장할 수 있어요.");
       reload();
     } catch (e) {
       if (current()) {
         setError(shopError(e));
-        setSelected(undefined);
-        setConfirm(false);
+        setPurchaseTarget(undefined);
         reload();
       }
     }
@@ -252,25 +250,59 @@ function ShopView({
             )}
             <SeedBalance balance={inventory.currency.balance} />
           </section>
-          {!wardrobe && selected && !owned.has(selected.id) && (
-            <button
-              className="button primary"
-              disabled={
-                busy ||
-                !!purchaseMutation.pending ||
-                selected.saleStatus !== "on_sale" ||
-                selected.priceProvisional ||
-                !preview ||
-                (selected.price ?? Infinity) > inventory.currency.balance
-              }
-              onClick={() => setConfirm(true)}
-            >
-              {selected.priceProvisional
-                ? "가격 확정 후 구매할 수 있어요"
-                : (selected.price ?? Infinity) > inventory.currency.balance
-                  ? "해바라기씨가 부족해요"
-                  : `${productName(selected, assets)} 구매하기 · ${selected.price}개`}
-            </button>
+          {!wardrobe && (
+            <section className={styles.tryOn} aria-label="현재 착용 아이템">
+              <h2>현재 착용 아이템</h2>
+              <ul className={styles.tryOnList}>
+                {categories.map(({ id, label }) => {
+                  const product = catalog.products.find((p) =>
+                    id === "pose"
+                      ? p.id === draft.poseId
+                      : p.slot === id && draft.clothingIds.includes(p.id),
+                  );
+                  const isOwned = !!product && owned.has(product.id);
+                  return (
+                    <li key={id} className={styles.tryOnRow} aria-label={label}>
+                      <div className={styles.tryOnName}>
+                        <span>{label}</span>
+                        <strong>
+                          {product ? productName(product, assets) : "미착용"}
+                        </strong>
+                      </div>
+                      {product &&
+                        (isOwned ? (
+                          <span className={styles.owned}>보유 중</span>
+                        ) : (
+                          <button
+                            type="button"
+                            className={`button primary ${styles.tryOnBuy}`}
+                            disabled={
+                              busy ||
+                              !!purchaseMutation.pending ||
+                              product.saleStatus !== "on_sale" ||
+                              product.priceProvisional ||
+                              !preview ||
+                              (product.price ?? Infinity) >
+                                inventory.currency.balance
+                            }
+                            onClick={() => setPurchaseTarget(product)}
+                            aria-label={`${productName(product, assets)} 구매하기`}
+                          >
+                            {product.saleStatus !== "on_sale"
+                              ? "판매하지 않는 아이템"
+                              : product.priceProvisional
+                                ? "가격 확정 전"
+                                : (product.price ?? Infinity) >
+                                    inventory.currency.balance
+                                  ? "해바라기씨 부족"
+                                  : `구매하기 · ${product.price}개`}
+                          </button>
+                        ))}
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
           )}
           {error && <Notice>{error}</Notice>}
           {message && <Notice tone="success">{message}</Notice>}
@@ -339,10 +371,7 @@ function ShopView({
               <button
                 key={c.id}
                 aria-pressed={category === c.id}
-                onClick={() => {
-                  setCategory(c.id);
-                  setSelected(undefined);
-                }}
+                onClick={() => setCategory(c.id)}
               >
                 {c.label}
               </button>
@@ -382,7 +411,6 @@ function ShopView({
                   aria-pressed={active}
                   disabled={busy || !!purchaseMutation.pending}
                   onClick={() => {
-                    setSelected(p);
                     setDraft(candidate);
                     setMessage("");
                     setError("");
@@ -414,10 +442,10 @@ function ShopView({
           </div>
         </div>
       </div>
-      {confirm && selected && (
+      {purchaseTarget && (
         <Dialog
           title="구매할까요?"
-          onClose={() => setConfirm(false)}
+          onClose={() => setPurchaseTarget(undefined)}
           busy={busy}
         >
           <div className={styles.purchaseContent}>
@@ -429,7 +457,7 @@ function ShopView({
               )}
               <div className={styles.purchaseName}>
                 <span>구매할 아이템</span>
-                <strong>{productName(selected, assets)}</strong>
+                <strong>{productName(purchaseTarget, assets)}</strong>
               </div>
             </div>
             <dl className={styles.purchaseSummary}>
@@ -437,7 +465,9 @@ function ShopView({
                 <dt>결제 금액</dt>
                 <dd>
                   <SeedIcon height={28} alt="해바라기씨" />
-                  <strong>{selected.price?.toLocaleString("ko-KR")}</strong>
+                  <strong>
+                    {purchaseTarget.price?.toLocaleString("ko-KR")}
+                  </strong>
                   <span>개</span>
                 </dd>
               </div>
@@ -445,12 +475,12 @@ function ShopView({
                 <dt>보유 해바라기씨</dt>
                 <dd>{inventory.currency.balance.toLocaleString("ko-KR")}개</dd>
               </div>
-              {selected.price !== null && (
+              {purchaseTarget.price !== null && (
                 <div className={styles.purchaseBalance}>
                   <dt>구매 후 잔액</dt>
                   <dd>
                     {(
-                      inventory.currency.balance - selected.price
+                      inventory.currency.balance - purchaseTarget.price
                     ).toLocaleString("ko-KR")}
                     개
                   </dd>

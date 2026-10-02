@@ -142,3 +142,52 @@
     font-size: 20px;
   }
 }
+
+.tryOn {
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--surface);
+}
+.tryOn h2 {
+  margin: 0 0 12px;
+  font-size: 16px;
+}
+.tryOnList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.tryOnRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  padding: 12px 0;
+}
+.tryOnRow + .tryOnRow {
+  border-top: 1px solid var(--border);
+}
+.tryOnName {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  flex: 1 1 100px;
+  overflow-wrap: anywhere;
+}
+.tryOnName > span,
+.owned {
+  color: var(--muted);
+  font-size: 12px;
+}
+.tryOnName > strong {
+  font-size: 14px;
+}
+.tryOnBuy {
+  width: auto;
+  max-width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  font-size: 12px;
+}
